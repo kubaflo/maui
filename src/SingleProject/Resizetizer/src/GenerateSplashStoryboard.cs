@@ -80,10 +80,7 @@ namespace Microsoft.Maui.Resizetizer
 			Log.LogMessage(MessageImportance.Low, $"Splash Screen Storyboard: " + storyboardFile);
 
 			DpiPath dpi;
-			if (resizer.Info.Resize)
-				dpi = DpiPath.Ios.Image[0];
-			else
-				dpi = DpiPath.Ios.Original;
+			dpi = DpiPath.Ios.Image[0];
 
 			var image = resizer.GetRasterFileDestination(dpi, includeIntermediate: false, includeScale: false);
 
