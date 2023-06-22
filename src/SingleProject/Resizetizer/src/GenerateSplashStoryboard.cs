@@ -55,20 +55,10 @@ namespace Microsoft.Maui.Resizetizer
 
 		private void WriteImages(Resizer resizer)
 		{
-			if (resizer.Info.Resize)
+			foreach (var dpi in DpiPath.Ios.Image)
 			{
-				foreach (var dpi in DpiPath.Ios.Image)
-				{
-					Log.LogMessage(MessageImportance.Low, $"Splash Screen Resize: " + dpi);
-					resizer.Resize(dpi, InputsFile);
-				}
-			}
-			else
-			{
-				var dpi = DpiPath.Ios.Original;
-
-				Log.LogMessage(MessageImportance.Low, $"Splash Screen Copy: " + dpi);
-				resizer.CopyFile(dpi, InputsFile);
+				Log.LogMessage(MessageImportance.Low, $"Splash Screen Resize: " + dpi);
+				resizer.Resize(dpi, InputsFile);
 			}
 		}
 
