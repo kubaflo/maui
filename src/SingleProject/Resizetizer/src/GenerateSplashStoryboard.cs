@@ -79,6 +79,8 @@ namespace Microsoft.Maui.Resizetizer
 
 			Log.LogMessage(MessageImportance.Low, $"Splash Screen Storyboard: " + storyboardFile);
 
+			Log.LogMessage(MessageImportance.High, $"Base size: {resizer.BaseSize}, IsResizing {resizer.Info.Resize}");
+
 			DpiPath dpi;
 			dpi = DpiPath.Ios.Image[0];
 
