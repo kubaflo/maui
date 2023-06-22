@@ -52,12 +52,13 @@ namespace Microsoft.Maui.Resizetizer
 		{
 			var sw = new Stopwatch();
 			sw.Start();
-
+			
 			var originalSize = GetOriginalSize();
 			var absoluteSize = dpiSizeIsAbsolute ? dpi.Size : null;
 			var (scaledSize, scale) = GetScaledSize(originalSize, dpi, absoluteSize);
 			var (canvasSize, _) = GetCanvasSize(dpi, null, this);
 
+			Logger.Log($"originalSize: {originalSize},absoluteSize: {absoluteSize}, scaledSize: {scaledSize}, scale: {scale}, canvasSize: {canvasSize}");
 			using (var tempBitmap = new SKBitmap(canvasSize.Width, canvasSize.Height))
 			{
 				Draw(tempBitmap, additionalScale, originalSize, scale, scaledSize);
