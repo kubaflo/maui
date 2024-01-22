@@ -8,6 +8,7 @@ namespace Microsoft.Maui.Handlers
 			{
 #if IOS || TIZEN
 				[nameof(IContentView.Background)] = MapBackground,
+				[nameof(IHomeIndicatorAutoHiddenView.IsHomeIndicatorAutoHidden)] = MapHomeIndicatorAutoHidden,
 #endif
 				[nameof(ITitledElement.Title)] = MapTitle,
 			};
