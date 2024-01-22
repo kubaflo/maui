@@ -1,0 +1,37 @@
+﻿<FlyoutPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+            x:Class="Maui.Controls.Sample.DemoFlyoutPage"
+            Title="Flyout Page">
+
+    <FlyoutPage.Flyout>
+        <ContentPage Title="Menu">
+            <StackLayout>
+                <Button x:Name="btnPage1"
+                        BackgroundColor="White"
+                        TextColor="Black"
+                        Text="Page 1"
+                        CornerRadius="0"
+                        Clicked="btnPage1_Clicked">
+                </Button>
+                <Button x:Name="btnPage2"
+                        BackgroundColor="White"
+                        TextColor="Black"
+                        Text="Page 2"
+                        CornerRadius="0"
+                        Clicked="btnPage2_Clicked">
+                </Button>
+            </StackLayout>
+        </ContentPage>
+    </FlyoutPage.Flyout>
+
+    <FlyoutPage.Detail>
+        <ContentPage>
+            <StackLayout Margin="20,35,20,20">
+                <Label Text="Open flyout to choose a page" />
+                <Button VerticalOptions="End" Text="Back"
+                        Clicked="Back_Clicked" />
+            </StackLayout>
+        </ContentPage>
+    </FlyoutPage.Detail>
+
+</FlyoutPage>
