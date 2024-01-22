@@ -44,6 +44,8 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		UIViewController IShellFlyoutRenderer.ViewController => this;
 
+		public override bool PrefersHomeIndicatorAutoHidden => Detail.PrefersHomeIndicatorAutoHidden;
+
 		void IShellFlyoutRenderer.AttachFlyout(IShellContext context, UIViewController content)
 		{
 			Context = context;

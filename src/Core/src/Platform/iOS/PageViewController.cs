@@ -21,6 +21,8 @@ namespace Microsoft.Maui.Platform
 			};
 		}
 
+		public override bool PrefersHomeIndicatorAutoHidden => CurrentView is IHomeIndicatorAutoHiddenView hav && hav.IsHomeIndicatorAutoHidden;
+
 		public override void TraitCollectionDidChange(UITraitCollection? previousTraitCollection)
 		{
 			if (CurrentView?.Handler is ElementHandler handler)
