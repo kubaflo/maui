@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Maui;
-using Microsoft.Maui.Controls;
-using Microsoft.Maui.Graphics;
+﻿using Microsoft.Maui.Controls;
 
 namespace Maui.Controls.Sample
 {
@@ -13,6 +7,30 @@ namespace Maui.Controls.Sample
 		public MainPage()
 		{
 			InitializeComponent();
+		}
+
+		void Button_Clicked_1(System.Object sender, System.EventArgs e)
+		{
+			if (Application.Current != null)
+				Application.Current.MainPage = new NavigationPage(new DemoNavigationPage());
+		}
+
+		void Button_Clicked_2(System.Object sender, System.EventArgs e)
+		{
+			if (Application.Current != null)
+				Application.Current.MainPage = new DemoTabbedPage();
+		}
+
+		void Button_Clicked_3(System.Object sender, System.EventArgs e)
+		{
+			if (Application.Current != null)
+				Application.Current.MainPage = new DemoFlyoutPage();
+		}
+
+		void Button_Clicked_4(System.Object sender, System.EventArgs e)
+		{
+			if (Application.Current != null)
+				Application.Current.MainPage = new DemoShellPage();
 		}
 	}
 }
