@@ -30,6 +30,14 @@ namespace Microsoft.Maui.Handlers
 			}
 		}
 
+		public static void MapHomeIndicatorAutoHidden(IPageHandler handler, IContentView page)
+		{
+			if (handler is IPlatformViewHandler platformViewHandler && platformViewHandler.ViewController is not null)
+			{
+				platformViewHandler.ViewController.SetNeedsUpdateOfHomeIndicatorAutoHidden();
+			}
+		}
+
 		public static void MapTitle(IPageHandler handler, IContentView page)
 		{
 			if (handler is IPlatformViewHandler platformViewHandler && platformViewHandler.ViewController is not null)

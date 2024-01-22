@@ -1,6 +1,7 @@
 #nullable disable
 
 using System;
+using System.ComponentModel;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.HotReload;
 using Microsoft.Maui.Layouts;
@@ -37,6 +38,15 @@ namespace Microsoft.Maui.Controls
 		public ContentPage()
 		{
 			this.NavigatedTo += (_, _) => UpdateHideSoftInputOnTapped();
+			this.PropertyChanged += ContentPage_PropertyChanged;
+		}
+
+		private void ContentPage_PropertyChanged(object sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName == PlatformConfiguration.iOSSpecific.Page.PrefersHomeIndicatorAutoHiddenProperty.PropertyName)
+			{
+				Handler?.UpdateValue(nameof(IHomeIndicatorAutoHiddenView.IsHomeIndicatorAutoHidden));
+			}
 		}
 
 		protected override void OnBindingContextChanged()

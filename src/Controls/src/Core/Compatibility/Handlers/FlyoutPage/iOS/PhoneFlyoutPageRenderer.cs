@@ -198,6 +198,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			UpdatePanGesture();
 			UpdateApplyShadow(((FlyoutPage)Element).OnThisPlatform().GetApplyShadow());
+			UpdatePrefersHomeIndicatorAutoHiddenOnDetailPage();
 		}
 
 		public override void ViewWillTransitionToSize(CoreGraphics.CGSize toSize, IUIViewControllerTransitionCoordinator coordinator)
@@ -364,6 +365,8 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				UpdateBackground();
 			else if (e.PropertyName == PlatformConfiguration.iOSSpecific.FlyoutPage.ApplyShadowProperty.PropertyName)
 				UpdateApplyShadow(((FlyoutPage)Element).OnThisPlatform().GetApplyShadow());
+			else if (e.PropertyName == PlatformConfiguration.iOSSpecific.Page.PrefersHomeIndicatorAutoHiddenProperty.PropertyName)
+				UpdatePrefersHomeIndicatorAutoHiddenOnDetailPage();
 		}
 
 		void LayoutChildren(bool animated)
@@ -551,6 +554,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				detailRenderer.ViewController.View.Superview.BackgroundColor = Microsoft.Maui.Graphics.Colors.Black.ToPlatform();
 
 			ToggleAccessibilityElementsHidden();
+			UpdatePrefersHomeIndicatorAutoHiddenOnDetailPage();
 		}
 
 		void UpdateLeftBarButton()
@@ -571,6 +575,13 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		void UpdateApplyShadow(bool value)
 		{
 			_applyShadow = value;
+		}
+
+		void UpdatePrefersHomeIndicatorAutoHiddenOnDetailPage()
+		{
+			bool isHomeIndicatorHidden = ((FlyoutPage)Element).OnThisPlatform().PrefersHomeIndicatorAutoHidden();
+			((FlyoutPage)Element).Detail.OnThisPlatform().SetPrefersHomeIndicatorAutoHidden(isHomeIndicatorHidden);
+			ChildViewControllerForHomeIndicatorAutoHidden.SetNeedsUpdateOfHomeIndicatorAutoHidden();
 		}
 
 		public override UIViewController ChildViewControllerForStatusBarHidden()
