@@ -74,7 +74,13 @@ namespace UITest.Appium
 
 				var logFile = Environment.GetEnvironmentVariable("APPIUM_LOG_FILE") ?? "appium.log";
 
+				IDictionary<string, string> env = new Dictionary<string, string>()
+				{
+					{"ANDROID_HOME","/Users/kubaflo/Library/Android/sdk" }
+				};
+
 				var service = new AppiumServiceBuilder()
+					.WithEnvironment(env)
 					.WithArguments(arguments)
 					.UsingPort(port)
 					.WithLogFile(new FileInfo(logFile))
