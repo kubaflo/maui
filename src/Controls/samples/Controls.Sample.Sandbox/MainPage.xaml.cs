@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
+using System.ComponentModel;
+using System.Globalization;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
 
 namespace Maui.Controls.Sample
@@ -14,5 +14,6 @@ namespace Maui.Controls.Sample
 		{
 			InitializeComponent();
 		}
+
 	}
 }

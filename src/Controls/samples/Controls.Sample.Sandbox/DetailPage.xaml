@@ -1,0 +1,13 @@
+﻿<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="Maui.Controls.Sample.DetailPage">
+    <VerticalStackLayout
+            Spacing="25"
+            Padding="30,0"
+            VerticalOptions="Center">
+            <Label>Detail</Label>
+            <Button Clicked="NavigateBack" Text="GoToAsync('..')"></Button>
+            <Button Clicked="NavigateBackPop" Text="Navigation.PopAsync()"></Button>
+        </VerticalStackLayout>
+</ContentPage>
