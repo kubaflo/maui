@@ -26,7 +26,7 @@
 
 // 		App.WaitForElement("btn3");
 // 		App.Tap("btn3");
-		
+
 // 		App.Back();
 // 		App.Back();
 // 		App.Back();
