@@ -1,6 +1,6 @@
 using System;
-using Microsoft.Maui.Controls.Internals;
 using System.Collections.Generic;
+using Microsoft.Maui.Controls.Internals;
 
 
 namespace Maui.Controls.Sample.Issues;

@@ -1,5 +1,5 @@
 ﻿namespace Maui.Controls.Sample.Issues
-{ 
+{
 	[XamlCompilation(XamlCompilationOptions.Compile)]
 	[Issue(IssueTracker.Github, 5669, "Windows SearchBar MaxLength > 0 not working properly", PlatformAffected.UWP)]
 	public partial class Issue5669 : ContentPage
@@ -13,5 +13,5 @@
 		{
 			searchbar.MaxLength = 4;
 		}
-    }
+	}
 }

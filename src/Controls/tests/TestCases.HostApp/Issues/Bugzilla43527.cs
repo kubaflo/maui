@@ -35,7 +35,7 @@ public class Bugzilla43527 : TestFlyoutPage
 					{
 						Title = $"New Title: {DateTime.Now.Second}";
 						AutomationId = Title;
-					}) 
+					})
 					}
 				}
 			};

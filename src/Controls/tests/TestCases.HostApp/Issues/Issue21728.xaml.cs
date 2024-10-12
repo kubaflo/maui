@@ -11,14 +11,14 @@ public partial class Issue21728 : ContentPage
 	public IList<Issue21728TestItem> Items { get; set; }
 
 	public Issue21728()
-    {
-        InitializeComponent();
+	{
+		InitializeComponent();
 		BindingContext = this;
 		Items = new List<Issue21728TestItem>();
 		Items.Add(new Issue21728TestItem() { Name = "Test Item 1" });
 		collectionview.ItemsSource = Items;
 	}
-	
+
 	public class Issue21728TestItem
 	{
 		public string Name { get; set; }
