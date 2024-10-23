@@ -4,8 +4,6 @@ using Android.App.Roles;
 using Android.Runtime;
 using Android.Views;
 using AndroidX.AppCompat.Widget;
-using AndroidX.CoordinatorLayout.Widget;
-using AndroidX.Core.View;
 using AndroidX.DrawerLayout.Widget;
 using AndroidX.Fragment.App;
 using AndroidX.Lifecycle;
@@ -120,13 +118,24 @@ namespace Microsoft.Maui.Handlers
 		void UpdateFlyout()
 		{
 			_ = MauiContext ?? throw new InvalidOperationException($"{nameof(MauiContext)} should have been set by base class.");
+
+			// Once this issue has been taken care of
+			// https://github.com/dotnet/maui/issues/8456
+			// we can remove this code
+			if (VirtualView.Flyout.Handler?.MauiContext != null &&
+				VirtualView.Flyout.Handler.MauiContext != MauiContext)
+			{
+				VirtualView.Flyout.Handler.DisconnectHandler();
+			}
+
 			_ = VirtualView.Flyout.ToPlatform(MauiContext);
 
 			var newFlyoutView = VirtualView.Flyout.ToPlatform();
 			if (_flyoutView == newFlyoutView)
 				return;
 
-			_flyoutView?.RemoveFromParent();
+			if (_flyoutView != null)
+				_flyoutView.RemoveFromParent();
 
 			_flyoutView = newFlyoutView;
 			if (_flyoutView == null)
@@ -246,6 +255,8 @@ namespace Microsoft.Maui.Handlers
 				DrawerLayout.AddView(flyoutView, layoutParameters);
 			}
 
+			DrawerLayout.CloseDrawer(flyoutView);
+
 			if (VirtualView is IToolbarElement te && te.Toolbar?.Handler is ToolbarHandler th)
 				th.SetupWithDrawerLayout(DrawerLayout);
 		}
@@ -264,34 +275,31 @@ namespace Microsoft.Maui.Handlers
 		void UpdateFlyoutBehavior()
 		{
 			var behavior = VirtualView.FlyoutBehavior;
-			if (_detailViewFragment?.DetailView?.Handler?.PlatformView == null)
-				return;
 
-			// Important to create the layout views before setting the lock mode
-			LayoutViews();
-
-			switch (behavior)
+			if (_detailViewFragment?.DetailView?.Handler?.PlatformView is not null)
 			{
-				case FlyoutBehavior.Disabled:
-				case FlyoutBehavior.Locked:
-					DrawerLayout.CloseDrawers();
-					DrawerLayout.SetDrawerLockMode(DrawerLayout.LockModeLockedClosed);
-					break;
-				case FlyoutBehavior.Flyout:
-					DrawerLayout.SetDrawerLockMode(VirtualView.IsGestureEnabled ? DrawerLayout.LockModeUnlocked : DrawerLayout.LockModeLockedClosed);
-					break;
+				// Important to create the layout views before setting the lock mode
+				LayoutViews();
+			}
+
+			if (DrawerLayout is not null)
+			{
+				switch (behavior)
+				{
+					case FlyoutBehavior.Disabled:
+					case FlyoutBehavior.Locked:
+						DrawerLayout.CloseDrawers();
+						DrawerLayout.SetDrawerLockMode(DrawerLayout.LockModeLockedClosed);
+						break;
+					case FlyoutBehavior.Flyout:
+						DrawerLayout.SetDrawerLockMode(VirtualView.IsGestureEnabled ? DrawerLayout.LockModeUnlocked : DrawerLayout.LockModeLockedClosed);
+						break;
+				}
 			}
 		}
 
 		protected override void ConnectHandler(View platformView)
 		{
-			MauiWindowInsetListener.RegisterParentForChildViews(platformView);
-
-			if (_navigationRoot is CoordinatorLayout cl)
-			{
-				MauiWindowInsetListener.SetupViewWithLocalListener(cl);
-			}
-
 			if (platformView is DrawerLayout dl)
 			{
 				dl.DrawerStateChanged += OnDrawerStateChanged;
@@ -301,13 +309,6 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void DisconnectHandler(View platformView)
 		{
-			MauiWindowInsetListener.UnregisterView(platformView);
-			if (_navigationRoot is CoordinatorLayout cl)
-			{
-				MauiWindowInsetListener.UnregisterView(cl);
-				_navigationRoot = null;
-			}
-
 			if (platformView is DrawerLayout dl)
 			{
 				dl.DrawerStateChanged -= OnDrawerStateChanged;
