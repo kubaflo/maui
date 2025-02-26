@@ -538,10 +538,28 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				return null;
 			}
 
-			float iconSize = TraitCollection.VerticalSizeClass == UIUserInterfaceSizeClass.Compact ? 18 : 25;
-			var size = new CGSize(iconSize, iconSize);
-			UIGraphics.BeginImageContextWithOptions(size, false, 0);
-			image.Draw(new CGRect(0, 0, size.Width, size.Height));
+			CGSize newSize = image.Size;
+
+			//https://developer.apple.com/design/human-interface-guidelines/tab-bars#Target-dimensions
+			bool isRegularTabBar = TraitCollection.VerticalSizeClass == UIUserInterfaceSizeClass.Regular;
+			if (image.Size.Width > image.Size.Height) //Wide
+			{
+				newSize.Width = isRegularTabBar ? 31 : 23;
+				newSize.Height = newSize.Width * image.Size.Height / image.Size.Width;
+			}
+			else if (image.Size.Width < image.Size.Height) //Tall
+			{
+				newSize.Height = isRegularTabBar ? 28 : 20;
+				newSize.Width = newSize.Height * image.Size.Width / image.Size.Height;
+			}
+			else //Square
+			{
+				newSize.Width = isRegularTabBar ? 25 : 18;
+				newSize.Height = newSize.Width;
+			}
+
+			UIGraphics.BeginImageContextWithOptions(newSize, false, 0);
+			image.Draw(new CGRect(0, 0, newSize.Width, newSize.Height));
 			var resizedImage = UIGraphics.GetImageFromCurrentImageContext();
 			UIGraphics.EndImageContext();
 
