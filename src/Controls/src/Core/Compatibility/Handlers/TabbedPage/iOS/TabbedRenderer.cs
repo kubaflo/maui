@@ -186,6 +186,16 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			}
 		}
 
+#pragma warning disable RS0016
+		//todo add it to public API
+		public override void TraitCollectionDidChange(UITraitCollection previousTraitCollection)
+		{
+			if (Element is not null && TabbedPageConfiguration.GetAutoResizeIcons(Element))
+			{
+				UpdateTabBarItems();
+			}
+		}
+
 		void UpdateTabBarItem(Page page)
 		{
 			IPlatformViewHandler renderer = page.ToHandler(_mauiContext);
@@ -246,12 +256,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			else if (e.PropertyName == TabbedPageConfiguration.TranslucencyModeProperty.PropertyName)
 				UpdateBarTranslucent();
 			else if (e.PropertyName == TabbedPageConfiguration.AutoResizeIconsProperty.PropertyName)
-			{
-				foreach (var page in Tabbed.InternalChildren)
-				{
-					UpdateTabBarItem((Page)page);
-				}
-			}
+				UpdateTabBarItems();
 		}
 
 		public override UIViewController ChildViewControllerForStatusBarHidden()
@@ -460,6 +465,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			}
 		}
 
+		void UpdateTabBarItems()
+		{
+			foreach (var page in Tabbed.InternalChildren)
+			{
+				UpdateTabBarItem((Page)page);
+			}
+		}
+
 		void UpdateChildrenOrderIndex(UIViewController[] viewControllers)
 		{
 			if (Tabbed is not TabbedPage tabbed)
@@ -525,7 +538,8 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				return null;
 			}
 
-			var size = new CGSize(25, 25);
+			float iconSize = TraitCollection.VerticalSizeClass == UIUserInterfaceSizeClass.Compact ? 18 : 25;
+			var size = new CGSize(iconSize, iconSize);
 			UIGraphics.BeginImageContextWithOptions(size, false, 0);
 			image.Draw(new CGRect(0, 0, size.Width, size.Height));
 			var resizedImage = UIGraphics.GetImageFromCurrentImageContext();
