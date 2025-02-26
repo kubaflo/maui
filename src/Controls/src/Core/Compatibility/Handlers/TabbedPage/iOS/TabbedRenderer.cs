@@ -5,6 +5,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using CoreGraphics;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Graphics;
@@ -177,17 +178,22 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		{
 			// Setting TabBarItem.Title in iOS 10 causes rendering bugs
 			// Work around this by creating a new UITabBarItem on each change
-			if (e.PropertyName == Page.IconImageSourceProperty.PropertyName || e.PropertyName == Page.TitleProperty.PropertyName)
+			if (e.PropertyName == Page.IconImageSourceProperty.PropertyName ||
+				e.PropertyName == Page.TitleProperty.PropertyName ||
+			 	e.PropertyName == TabbedPageConfiguration.AutoResizeIconsProperty.PropertyName)
 			{
-				var page = (Page)sender;
-
-				IPlatformViewHandler renderer = page.ToHandler(_mauiContext);
-
-				if (renderer?.ViewController.TabBarItem == null)
-					return;
-
-				SetTabBarItem(renderer);
+				UpdateTabBarItem((Page)sender);
 			}
+		}
+
+		void UpdateTabBarItem(Page page)
+		{
+			IPlatformViewHandler renderer = page.ToHandler(_mauiContext);
+
+			if (renderer?.ViewController.TabBarItem == null)
+				return;
+
+			SetTabBarItem(renderer);
 		}
 
 		void OnPagesChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -239,7 +245,13 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				UpdatePageSpecifics();
 			else if (e.PropertyName == TabbedPageConfiguration.TranslucencyModeProperty.PropertyName)
 				UpdateBarTranslucent();
-
+			else if (e.PropertyName == TabbedPageConfiguration.AutoResizeIconsProperty.PropertyName)
+			{
+				foreach (var page in Tabbed.InternalChildren)
+				{
+					UpdateTabBarItem((Page)page);
+				}
+			}
 		}
 
 		public override UIViewController ChildViewControllerForStatusBarHidden()
@@ -480,13 +492,46 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				throw new InvalidCastException($"{nameof(renderer)} must be a {nameof(Page)} renderer.");
 
 			var icons = await GetIcon(page);
-			renderer.ViewController.TabBarItem = new UITabBarItem(page.Title, icons?.Item1, icons?.Item2)
+			if (TabbedPageConfiguration.GetAutoResizeIcons(Element))
 			{
-				Tag = Tabbed?.Children.IndexOf(page) ?? -1,
-				AccessibilityIdentifier = page.AutomationId
-			};
+				var resizedImage = AutoResizeTabBarImage(icons?.Item1);
+				var resizedSelectedImage = AutoResizeTabBarImage(icons?.Item2);
+				SetTabBarItem(resizedImage, resizedSelectedImage);
+				resizedImage?.Dispose();
+				resizedSelectedImage?.Dispose();
+			}
+			else
+			{
+				SetTabBarItem(icons?.Item1, icons?.Item2);
+			}
+
+			void SetTabBarItem(UIImage image, UIImage selectedImage)
+			{
+				renderer.ViewController.TabBarItem = new UITabBarItem(page.Title, image, selectedImage)
+				{
+					Tag = Tabbed?.Children.IndexOf(page) ?? -1,
+					AccessibilityIdentifier = page.AutomationId
+				};
+			}
+
 			icons?.Item1?.Dispose();
 			icons?.Item2?.Dispose();
+		}
+
+		UIImage AutoResizeTabBarImage(UIImage image)
+		{
+			if (image == null)
+			{
+				return null;
+			}
+
+			var size = new CGSize(25, 25);
+			UIGraphics.BeginImageContextWithOptions(size, false, 0);
+			image.Draw(new CGRect(0, 0, size.Width, size.Height));
+			var resizedImage = UIGraphics.GetImageFromCurrentImageContext();
+			UIGraphics.EndImageContext();
+
+			return resizedImage;
 		}
 
 		void UpdateSelectedTabColors()
