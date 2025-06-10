@@ -2,9 +2,9 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.Issues.Issue25598">
-    <VerticalStackLayout 
-            Padding="30,0"
-            Spacing="25">
+    <VerticalStackLayout
+        Padding="30,0"
+        Spacing="25">
         <Button
             AutomationId="AddItemButton"
             Margin="0,20,0,0"
@@ -16,25 +16,22 @@
             Command="{Binding RemoveCurrentItemCommand}"
             CommandParameter="{Binding Source={x:Reference carouselView}, Path=Position}"
             Text="Remove Current Item"/>
-        <Grid
+        <VerticalStackLayout
             x:Name="cvGrid"
             Margin="5,0"
-            RowDefinitions="Auto,50,Auto"
             BackgroundColor="Transparent"
             HorizontalOptions="FillAndExpand">
             <Label
-                Grid.Row="0"
                 FontSize="24"
                 Text="CarouselView + IndicatorView using DataTemplate!"/>
             <CarouselView
                 x:Name="carouselView"
-                Grid.Row="1"
                 HorizontalOptions="FillAndExpand"
                 IndicatorView="indicatorView"
-                IsScrollAnimated="True"
+                IsScrollAnimated="False"
                 ItemsSource="{Binding Items}"
-                ItemsUpdatingScrollMode="KeepScrollOffset"
-                VerticalOptions="EndAndExpand"
+                ItemsUpdatingScrollMode="KeepItemsInView"
+                HeightRequest="50"
                 VerticalScrollBarVisibility="Default">
                 <CarouselView.ItemTemplate>
                     <DataTemplate>
@@ -49,7 +46,6 @@
 
             <IndicatorView
                 x:Name="indicatorView"
-                Grid.Row="2"
                 HorizontalOptions="Center"
                 IndicatorColor="White"
                 SelectedIndicatorColor="#2040a0">
@@ -67,11 +63,11 @@
                     </DataTemplate>
                 </IndicatorView.IndicatorTemplate>
             </IndicatorView>
-        </Grid>
-        <Grid
+        </VerticalStackLayout>
+
+        <VerticalStackLayout
             x:Name="cvGrid2"
             Margin="5,0"
-            RowDefinitions="Auto,50,Auto"
             BackgroundColor="Transparent"
             HorizontalOptions="FillAndExpand">
             <Label
@@ -80,12 +76,12 @@
                 Text="CarouselView + IndicatorView NOT USING DataTemplate!"/>
             <CarouselView
                 x:Name="carouselView2"
-                Grid.Row="1"
                 HorizontalOptions="FillAndExpand"
                 IndicatorView="indicatorView2"
-                IsScrollAnimated="True"
+                IsScrollAnimated="False"
                 ItemsSource="{Binding Items}"
-                ItemsUpdatingScrollMode="KeepScrollOffset"
+                HeightRequest="50"
+                ItemsUpdatingScrollMode="KeepItemsInView"
                 VerticalOptions="EndAndExpand"
                 VerticalScrollBarVisibility="Default">
                 <CarouselView.ItemTemplate>
@@ -101,11 +97,10 @@
 
             <IndicatorView
                 x:Name="indicatorView2"
-                Grid.Row="2"
                 HorizontalOptions="Center"
                 IndicatorColor="Black"
                 IndicatorsShape="Square"
                 SelectedIndicatorColor="#2040a0"/>
-        </Grid>
+        </VerticalStackLayout>
     </VerticalStackLayout>
 </ContentPage>

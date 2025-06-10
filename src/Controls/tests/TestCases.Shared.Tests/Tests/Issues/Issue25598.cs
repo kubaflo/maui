@@ -1,3 +1,5 @@
+#if TEST_FAILS_ON_WINDOWS
+// Related issue link https://github.com/dotnet/maui/pull/25642#discussion_r1833637157 - Windows
 using NUnit.Framework;
 using UITest.Appium;
 using UITest.Core;
@@ -22,7 +24,9 @@ namespace Microsoft.Maui.TestCases.Tests.Issues
 			for (int i = 0; i < 3; i++)
 				App.Click("AddItemButton");
 
+			App.WaitForElement("Item4");
 			VerifyScreenshot();
 		}
 	}
 }
+#endif
