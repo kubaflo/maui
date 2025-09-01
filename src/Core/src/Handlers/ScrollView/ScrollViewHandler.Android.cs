@@ -64,11 +64,30 @@ namespace Microsoft.Maui.Handlers
 
 				var orientation = virtualView.Orientation;
 
+<<<<<<< HEAD
 				if (!double.IsInfinity(widthConstraint))
 					widthSpec = AdjustSpecForAlignment(widthSpec, virtualView.HorizontalLayoutAlignment);
 
 				if (!double.IsInfinity(heightConstraint))
 					heightSpec = AdjustSpecForAlignment(heightSpec, virtualView.VerticalLayoutAlignment);
+=======
+				if (orientation == ScrollOrientation.Both || orientation == ScrollOrientation.Vertical)
+				{
+					if (!double.IsInfinity(heightConstraint))
+						heightSpec = AdjustSpecForAlignment(heightSpec, virtualView.VerticalLayoutAlignment);
+
+					widthSpec = AdjustSpecForAlignment(widthSpec, virtualView.HorizontalLayoutAlignment);
+
+				}
+
+				if (orientation == ScrollOrientation.Both || orientation == ScrollOrientation.Horizontal)
+				{
+					if (!double.IsInfinity(widthConstraint))
+						widthSpec = AdjustSpecForAlignment(widthSpec, virtualView.HorizontalLayoutAlignment);
+
+					heightSpec = AdjustSpecForAlignment(heightSpec, virtualView.VerticalLayoutAlignment);
+				}
+>>>>>>> 981cd05005 ([Android] Refactor alignment adjustment in ScrollViewHandler)
 			}
 
 			platformView.Measure(widthSpec, heightSpec);
