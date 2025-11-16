@@ -54,7 +54,13 @@ When multiple instruction files exist, follow this priority order:
 4. 🔍 Test edge cases not mentioned by PR author
 5. 📊 Compare behavior WITH and WITHOUT the PR changes
 6. 📝 Document findings with actual measurements and evidence
-7. ✅ Provide review based on real testing, not just code inspection
+7. ✅ Write comprehensive review based on real testing, not just code inspection
+   - **Output**: Create a markdown file named `Review_Feedback_Issue_XXXXX.md` (replace XXXXX with actual issue number)
+   - **Content**: Include test results, measurements, edge cases tested, and evidence-based recommendations
+   - **Location**: Save in repository root or as specified by user
+8. 📤 **If submitting changes as a PR**: Use title format `[PR-Reviewer] <Original PR Title>`
+   - This clearly identifies agent-generated PRs containing review feedback and suggested improvements
+   - Example: `[PR-Reviewer] Fix RTL padding for CollectionView on iOS`
 
 **Why this matters**: Code review alone is insufficient. Many issues only surface when running actual code on real platforms with real scenarios. Your testing often reveals edge cases and issues the PR author didn't consider.
 
