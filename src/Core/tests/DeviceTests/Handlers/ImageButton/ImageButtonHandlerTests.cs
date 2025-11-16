@@ -7,11 +7,12 @@ using Microsoft.Maui.DeviceTests.Stubs;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Handlers;
 using Xunit;
+using static Microsoft.Maui.DeviceTests.AssertHelpers;
 
 namespace Microsoft.Maui.DeviceTests
 {
 	[Category(TestCategory.ImageButton)]
-	public partial class ImageButtonHandlerTests : HandlerTestBase<ImageButtonHandler, ImageButtonStub>
+	public partial class ImageButtonHandlerTests : CoreHandlerTestBase<ImageButtonHandler, ImageButtonStub>
 	{
 		const int Precision = 4;
 
@@ -21,6 +22,7 @@ namespace Microsoft.Maui.DeviceTests
 			var clicked = false;
 
 			var button = new ImageButtonStub();
+
 			button.Clicked += delegate
 			{
 				clicked = true;
@@ -31,6 +33,42 @@ namespace Microsoft.Maui.DeviceTests
 			Assert.True(clicked);
 		}
 
+		[Fact(DisplayName = "LoadingCompleted event fires")]
+		public async Task LoadingCompletedEventFires()
+		{
+			bool loadingStarted = false;
+			bool loadingCompleted = false;
+
+			var imageButton = new ImageButtonStub
+			{
+				Background = new SolidPaintStub(Colors.Black),
+				ImageSource = new FileImageSourceStub("red.png"),
+			};
+
+			imageButton.LoadingStarted += delegate
+			{
+				loadingStarted = true;
+			};
+
+			imageButton.LoadingCompleted += delegate
+			{
+				loadingCompleted = true;
+			};
+
+			var order = new List<string>();
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var handler = CreateHandler(imageButton);
+
+				await AssertEventually(() => ImageSourceLoaded(handler));
+			});
+
+			Assert.True(loadingStarted);
+			Assert.True(loadingCompleted);
+		}
+
+#if IOS || MACCATALYST
 		[Theory(DisplayName = "Padding Initializes Correctly")]
 		[InlineData(0, 0, 0, 0)]
 		[InlineData(1, 1, 1, 1)]
@@ -50,10 +88,6 @@ namespace Microsoft.Maui.DeviceTests
 				var native = GetNativePadding(handler);
 				var scaled = user;
 
-#if __ANDROID__
-				scaled = handler.PlatformView.Context!.ToPixels(scaled);
-#endif
-
 				return (scaled, native);
 			});
 
@@ -62,6 +96,7 @@ namespace Microsoft.Maui.DeviceTests
 			Assert.Equal(expected.Right, native.Right, Precision);
 			Assert.Equal(expected.Bottom, native.Bottom, Precision);
 		}
+#endif
 
 		[Category(TestCategory.ImageButton)]
 		public partial class ImageButtonImageHandlerTests : ImageHandlerTests<ImageButtonHandler, ImageButtonStub>

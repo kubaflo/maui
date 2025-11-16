@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using Android.Content.Res;
 using Android.Util;
@@ -7,7 +8,7 @@ using Microsoft.Maui.Graphics;
 namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 {
 	[Obsolete]
-	internal class ResourcesProvider : ISystemResourcesProvider
+	internal sealed class ResourcesProvider : ISystemResourcesProvider
 	{
 		ResourceDictionary _dictionary;
 		static global::Android.Content.Context _applicationContext;

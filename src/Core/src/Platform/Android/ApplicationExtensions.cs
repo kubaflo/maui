@@ -2,6 +2,8 @@
 using Android.App;
 using Android.Content;
 using Android.OS;
+using AndroidX.AppCompat.App;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Handlers;
 using Microsoft.Maui.LifecycleEvents;
 
@@ -43,6 +45,17 @@ namespace Microsoft.Maui.Platform
 
 			var window = application.CreateWindow(activationState);
 
+			if (window.Handler?.PlatformView is Activity oldActivity &&
+				oldActivity != activity &&
+				!oldActivity.IsDestroyed)
+			{
+				throw new InvalidOperationException(
+					$"This window is already associated with an active Activity ({oldActivity.GetType()}). " +
+					$"Please override CreateWindow on {application.GetType()} " +
+					$"to add support for multiple activities https://aka.ms/maui-docs-create-window " +
+					$"or set the LaunchMode to SingleTop on {activity.GetType()}.");
+			}
+
 			activity.SetWindowHandler(window, mauiContext);
 		}
 
@@ -59,6 +72,25 @@ namespace Microsoft.Maui.Platform
 			}
 
 			return userInfo;
+		}
+
+		public static void UpdateNightMode(this IApplication application)
+		{
+			if (application is null)
+				return;
+
+			switch (application.UserAppTheme)
+			{
+				case AppTheme.Light:
+					AppCompatDelegate.DefaultNightMode = AppCompatDelegate.ModeNightNo;
+					break;
+				case AppTheme.Dark:
+					AppCompatDelegate.DefaultNightMode = AppCompatDelegate.ModeNightYes;
+					break;
+				default:
+					AppCompatDelegate.DefaultNightMode = AppCompatDelegate.ModeNightFollowSystem;
+					break;
+			}
 		}
 	}
 }

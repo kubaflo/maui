@@ -1,11 +1,11 @@
 using System;
-using Microsoft.UI.Xaml;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
+using Microsoft.UI.Xaml;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
-	internal class FormsPresenter : Microsoft.UI.Xaml.Controls.ContentPresenter
+	internal partial class FormsPresenter : Microsoft.UI.Xaml.Controls.ContentPresenter
 	{
 		public FormsPresenter()
 		{

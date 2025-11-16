@@ -1,3 +1,4 @@
+#nullable disable
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -5,7 +6,7 @@ using Microsoft.UI.Xaml.Media;
 
 namespace Microsoft.Maui.Controls.Platform.Compatibility
 {
-	public class ListGroupHeaderPresenter : Microsoft.UI.Xaml.Controls.ContentPresenter
+	public partial class ListGroupHeaderPresenter : Microsoft.UI.Xaml.Controls.ContentPresenter
 	{
 		void OnTapped(object sender, TappedRoutedEventArgs tappedRoutedEventArgs)
 		{
@@ -25,10 +26,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 					zoom.ToggleActiveView();
 
 					var grid = zoom.ZoomedOutView as GridView;
-					if (grid != null)
-					{
-						grid.MakeVisible(new SemanticZoomLocation { Item = DataContext });
-					}
+					grid?.MakeVisible(new SemanticZoomLocation { Item = DataContext });
 
 					return;
 				}

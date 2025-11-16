@@ -71,6 +71,10 @@ namespace Microsoft.Maui.Controls.XamlcUnitTests
 		{
 		}
 
+
+		class Zoo<T> : IGrault<T[]>
+		{ }
+
 		interface ICovariant<out T>
 		{
 		}
@@ -175,7 +179,7 @@ namespace Microsoft.Maui.Controls.XamlcUnitTests
 		[TestCase(typeof(Covariant<string>), typeof(ICovariant<object>), ExpectedResult = true)]
 		public bool TestInheritsFromOrImplements(Type typeRef, Type baseClass)
 		{
-			return TypeReferenceExtensions.InheritsFromOrImplements(module.ImportReference(typeRef), module.ImportReference(baseClass));
+			return TypeReferenceExtensions.InheritsFromOrImplements(module.ImportReference(typeRef), new XamlCache(), module.ImportReference(baseClass));
 		}
 
 		[Test]
@@ -242,12 +246,28 @@ namespace Microsoft.Maui.Controls.XamlcUnitTests
 			IList<TypeReference> arguments;
 			var garply = module.ImportReference(typeof(Garply<System.Byte>));
 
-			Assert.That(garply.ImplementsGenericInterface("Microsoft.Maui.Controls.XamlcUnitTests.TypeReferenceExtensionsTests/IGrault`1<T>", out igrault, out arguments));
+			Assert.That(garply.ImplementsGenericInterface(new XamlCache(), "Microsoft.Maui.Controls.XamlcUnitTests.TypeReferenceExtensionsTests/IGrault`1", out igrault, out arguments));
 
 			Assert.AreEqual("System", igrault.GenericArguments[0].Namespace);
 			Assert.AreEqual("Byte", igrault.GenericArguments[0].Name);
 			Assert.AreEqual("System", arguments[0].Namespace);
 			Assert.AreEqual("Byte", arguments[0].Name);
+		}
+
+		[Test]
+		//https://github.com/dotnet/maui/issues/10583
+		public void TestImplementsGenericInterfaceWithArray()
+		{
+			GenericInstanceType igrault;
+			IList<TypeReference> arguments;
+			var garply = module.ImportReference(typeof(Zoo<System.Byte>));
+
+			Assert.That(garply.ImplementsGenericInterface(new XamlCache(), "Microsoft.Maui.Controls.XamlcUnitTests.TypeReferenceExtensionsTests/IGrault`1", out igrault, out arguments));
+
+			Assert.AreEqual("System", igrault.GenericArguments[0].Namespace);
+			Assert.AreEqual("Byte[]", igrault.GenericArguments[0].Name);
+			Assert.AreEqual("System", arguments[0].Namespace);
+			Assert.AreEqual("Byte[]", arguments[0].Name);
 		}
 	}
 }

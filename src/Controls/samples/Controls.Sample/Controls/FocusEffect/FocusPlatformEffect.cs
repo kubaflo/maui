@@ -12,11 +12,11 @@ namespace Maui.Controls.Sample.Controls
 	{
 #if __ANDROID__
 		Android.Graphics.Color originalBackgroundColor = new Android.Graphics.Color(0, 0, 0, 0);
-		Android.Graphics.Color backgroundColor;
+		Android.Graphics.Color backgroundColor = default!;
 #elif __IOS__
-		UIKit.UIColor backgroundColor;
+		UIKit.UIColor backgroundColor = default!;
 #elif TIZEN
-		ElmSharp.Color backgroundColor;
+		Tizen.NUI.Color backgroundColor = default!;
 #endif
 
 		public FocusPlatformEffect()
@@ -29,14 +29,14 @@ namespace Maui.Controls.Sample.Controls
 			try
 			{
 #if WINDOWS
-				(Control as Microsoft.UI.Xaml.Controls.Control).Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Cyan);
+				(Control as Microsoft.UI.Xaml.Controls.Control)!.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Cyan);
 #elif __ANDROID__
 				backgroundColor = Android.Graphics.Color.LightGreen;
 				Control.SetBackgroundColor(backgroundColor);
 #elif __IOS__
 				Control.BackgroundColor = backgroundColor = UIKit.UIColor.FromRGB(204, 153, 255);
 #elif TIZEN
-				(Control as ElmSharp.Widget).BackgroundColor = backgroundColor = ElmSharp.Color.FromRgb(204, 153, 255);
+				(Control as Tizen.NUI.BaseComponents.View).BackgroundColor = backgroundColor = Tizen.NUI.Color.LightGreen;
 #endif
 			}
 			catch (Exception ex)
@@ -58,7 +58,7 @@ namespace Maui.Controls.Sample.Controls
 #if __ANDROID__
 				if (args.PropertyName == "IsFocused")
 				{
-					if (((Android.Graphics.Drawables.ColorDrawable)Control.Background).Color == backgroundColor)
+					if (((Android.Graphics.Drawables.ColorDrawable)Control.Background!).Color == backgroundColor)
 					{
 						Control.SetBackgroundColor(originalBackgroundColor);
 					}
@@ -82,16 +82,13 @@ namespace Maui.Controls.Sample.Controls
 #elif TIZEN
 				if (args.PropertyName == "IsFocused")
 				{
-					if (Control is ElmSharp.Widget widget)
+					if (Control.BackgroundColor == backgroundColor)
 					{
-						if (widget.BackgroundColor == backgroundColor)
-						{
-							widget.BackgroundColor = ElmSharp.Color.White;
-						}
-						else
-						{
-							widget.BackgroundColor = backgroundColor;
-						}
+						Control.BackgroundColor = Tizen.NUI.Color.White;
+					}
+					else
+					{
+						Control.BackgroundColor = backgroundColor;
 					}
 				}
 #endif

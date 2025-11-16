@@ -1,6 +1,8 @@
-using System;
+using AndroidX.AppCompat.App;
+using AndroidX.Window.Layout;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Hosting;
-using Microsoft.Maui.LifecycleEvents;
 
 namespace Microsoft.Maui.LifecycleEvents
 {
@@ -9,12 +11,15 @@ namespace Microsoft.Maui.LifecycleEvents
 		internal static MauiAppBuilder ConfigureCrossPlatformLifecycleEvents(this MauiAppBuilder builder) =>
 			builder.ConfigureLifecycleEvents(events => events.AddAndroid(OnConfigureLifeCycle));
 
+		internal static MauiAppBuilder ConfigureWindowEvents(this MauiAppBuilder builder) =>
+			builder.ConfigureLifecycleEvents(events => events.AddAndroid(OnConfigureWindow));
+
 		static void OnConfigureLifeCycle(IAndroidLifecycleBuilder android)
 		{
 			android
 				.OnPostCreate((activity, bundle) =>
 				{
-					// OnCreate is only ever called once when the activity is initally created
+					// OnCreate is only ever called once when the activity is initially created
 					activity.GetWindow()?.Created();
 				})
 				.OnRestart(activity =>
@@ -50,19 +55,40 @@ namespace Microsoft.Maui.LifecycleEvents
 				})
 				.OnDestroy(activity =>
 				{
-					// If the activity is being recreated from a configuration change
-					// or something like the inspector getting attached then
-					// IsFinishing will be set to false so we still need to call
-					// Destroying to remove the xplat Window from Application
-					if (!activity.IsFinishing)
-					{
-						var window = activity.GetWindow();
-						window?.Destroying();
-					}
+					// If we tried to call window.Destroying() before, GetWindow() should return null
+					activity.GetWindow()?.Destroying();
 				})
 				.OnBackPressed(activity =>
 				{
 					return activity.GetWindow()?.BackButtonClicked() ?? false;
+				});
+		}
+
+		static void OnConfigureWindow(IAndroidLifecycleBuilder android)
+		{
+			android
+				.OnConfigurationChanged((activity, newConfig) =>
+				{
+					if (IPlatformApplication.Current is IPlatformApplication platformApplication)
+					{
+						var application = platformApplication.Application;
+
+						application?.UpdateNightMode();
+						application?.ThemeChanged();
+					}
+
+					var mauiWindow = activity.GetWindow();
+					if (mauiWindow is not null)
+					{
+						if (newConfig is not null)
+						{
+							var density = newConfig.DensityDpi / DeviceDisplay.BaseLogicalDpi;
+							mauiWindow.DisplayDensityChanged(density);
+						}
+
+						var frame = activity.GetWindowFrame();
+						mauiWindow.FrameChanged(frame);
+					}
 				});
 		}
 	}

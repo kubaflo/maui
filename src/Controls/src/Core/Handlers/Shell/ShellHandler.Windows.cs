@@ -1,8 +1,11 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using Microsoft.Maui.Controls.Platform;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
+using WBorder = Microsoft.UI.Xaml.Controls.Border;
 using WScrollMode = Microsoft.UI.Xaml.Controls.ScrollMode;
 
 namespace Microsoft.Maui.Controls.Handlers
@@ -37,7 +40,9 @@ namespace Microsoft.Maui.Controls.Handlers
 
 		private void OnLoaded(object sender, UI.Xaml.RoutedEventArgs e)
 		{
+			UpdateValue(nameof(Shell.FlyoutIcon));
 			UpdateValue(nameof(Shell.FlyoutBackground));
+			UpdateValue(nameof(Shell.FlyoutBackgroundImage));
 		}
 
 		protected override void DisconnectHandler(ShellView platformView)
@@ -56,9 +61,12 @@ namespace Microsoft.Maui.Controls.Handlers
 
 		void OnMenuItemInvoked(Microsoft.UI.Xaml.Controls.NavigationView sender, Microsoft.UI.Xaml.Controls.NavigationViewItemInvokedEventArgs args)
 		{
-			var item = args.InvokedItemContainer?.DataContext as Element;
-			if (item != null)
-				(VirtualView as IShellController)?.OnFlyoutItemSelected(item);
+			var item = args.InvokedItemContainer?.DataContext;
+
+			if (item is NavigationViewItemViewModel nvm && nvm.Data is Element e)
+				(VirtualView as IShellController)?.OnFlyoutItemSelected(e);
+			else if (item is Element e2)
+				(VirtualView as IShellController)?.OnFlyoutItemSelected(e2);
 		}
 
 		void OnApplyTemplateFinished(object sender, System.EventArgs e)
@@ -86,6 +94,7 @@ namespace Microsoft.Maui.Controls.Handlers
 		{
 			UpdateValue(nameof(Shell.FlyoutBackground));
 			UpdateValue(nameof(Shell.FlyoutVerticalScrollMode));
+			UpdateValue(nameof(Shell.FlyoutBackgroundImage));
 			PlatformView.UpdateFlyoutBackdrop();
 			PlatformView.UpdateFlyoutPosition();
 			VirtualView.FlyoutIsPresented = true;
@@ -120,6 +129,24 @@ namespace Microsoft.Maui.Controls.Handlers
 					view.FlyoutBackgroundColor?.AsPaint());
 		}
 
+		//TODO: Make it public in .NET 10.
+		internal static void MapFlyoutBackgroundImage(ShellHandler handler, Shell view)
+		{
+			var provider = handler.GetRequiredService<IImageSourceServiceProvider>();
+			if (handler?.PlatformView is not null && provider is not null)
+			{
+				handler.PlatformView.UpdateBackgroundImageSourceAsync(view.FlyoutBackgroundImage, provider, view.FlyoutBackgroundImageAspect).FireAndForget();
+			}
+		}
+
+		public static void MapFlyoutIcon(ShellHandler handler, Shell view)
+		{
+			var flyoutIcon = view.FlyoutIcon;
+			var provider = handler.GetRequiredService<IImageSourceServiceProvider>();
+
+			handler.PlatformView.UpdateFlyoutIconAsync(flyoutIcon, provider).FireAndForget();
+		}
+
 		public static void MapFlyoutVerticalScrollMode(ShellHandler handler, Shell view)
 		{
 			handler.PlatformView.UpdateFlyoutVerticalScrollMode((WScrollMode)(int)view.FlyoutVerticalScrollMode);
@@ -131,7 +158,12 @@ namespace Microsoft.Maui.Controls.Handlers
 				rnv.FlyoutView = flyoutView.Flyout;
 
 			handler.PlatformView.FlyoutCustomContent = flyoutView.Flyout?.ToPlatform(handler.MauiContext);
-			
+
+		}
+
+		internal static void MapFlowDirection(ShellHandler handler, Shell view)
+		{
+			handler.PlatformView.UpdateFlowDirection(view);
 		}
 
 		public static void MapIsPresented(ShellHandler handler, IFlyoutView flyoutView)
@@ -172,11 +204,13 @@ namespace Microsoft.Maui.Controls.Handlers
 		public static void MapItems(ShellHandler handler, Shell view)
 		{
 			handler.PlatformView.UpdateMenuItemSource();
+			handler.UpdateValue(nameof(Shell.CurrentItem));
 		}
 
 		public static void MapFlyoutItems(ShellHandler handler, Shell view)
 		{
 			handler.PlatformView.UpdateMenuItemSource();
+			handler.UpdateValue(nameof(Shell.CurrentItem));
 		}
 
 		void UpdateFlyoutHeaderBehavior(Shell view)
@@ -246,9 +280,9 @@ namespace Microsoft.Maui.Controls.Handlers
 					UpdateFlyoutHeaderTransformation(flyoutHeader, scrollHeight, scrollTranslateY);
 					break;
 				case FlyoutHeaderBehavior.CollapseOnScroll:
-					var topNavArea = (StackPanel)PlatformView.TopNavArea;
+
 					if (_topAreaHeight == null)
-						_topAreaHeight = Math.Max(topNavArea.ActualHeight, 50.0f);
+						_topAreaHeight = Math.Max(PlatformView.TopNavArea?.ActualHeight ?? 0, _headerHeight.Value);
 
 					var calculatedHeight = _headerHeight.Value - _scrollViewer.VerticalOffset;
 					var collapseOnScrollHeight = calculatedHeight < _topAreaHeight.Value ? _topAreaHeight.Value : calculatedHeight;

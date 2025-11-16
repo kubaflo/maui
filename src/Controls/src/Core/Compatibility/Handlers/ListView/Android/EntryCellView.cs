@@ -1,9 +1,11 @@
+#nullable disable
 using System;
 using Android.Content;
 using Android.Text;
 using Android.Views;
 using Android.Views.InputMethods;
 using Android.Widget;
+using AndroidX.AppCompat.Widget;
 using AndroidX.Core.Widget;
 using Java.Lang;
 using Microsoft.Maui.Controls.Compatibility;
@@ -16,13 +18,17 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 	{
 		public const double DefaultMinHeight = 55;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		readonly Cell _cell;
-		readonly TextView _label;
+#pragma warning restore CS0618 // Type or member is obsolete
+		readonly AppCompatTextView _label;
 
 		Color _labelTextColor;
 		string _labelTextText;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		public EntryCellView(Context context, Cell cell) : base(context)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 			_cell = cell;
 			SetMinimumWidth((int)context.ToPixels(50));
@@ -32,7 +38,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			var padding = (int)context.ToPixels(8);
 			SetPadding((int)context.ToPixels(15), padding, padding, padding);
 
-			_label = new TextView(context);
+			_label = new AppCompatTextView(context);
 			TextViewCompat.SetTextAppearance(_label, global::Android.Resource.Style.TextAppearanceSmall);
 
 			var layoutParams = new LayoutParams(ViewGroup.LayoutParams.WrapContent, ViewGroup.LayoutParams.WrapContent) { Gravity = GravityFlags.CenterVertical };
@@ -83,7 +89,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				OnKeyboardDoneButtonPressed(EditText, EventArgs.Empty);
 				EditText.ClearFocus();
-				v.HideKeyboard();
+				v.HideSoftInput();
 			}
 
 			// Fire Completed and dismiss keyboard for hardware / physical keyboards
@@ -91,7 +97,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				OnKeyboardDoneButtonPressed(EditText, EventArgs.Empty);
 				EditText.ClearFocus();
-				v.HideKeyboard();
+				v.HideSoftInput();
 			}
 
 			return true;
@@ -116,7 +122,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		{
 			Action<string> changed = TextChanged;
 			if (changed != null)
-				changed(s != null ? s.ToString() : null);
+				changed(s?.ToString());
 		}
 
 		public void SetLabelTextColor(Color color, int defaultColorResourceId)

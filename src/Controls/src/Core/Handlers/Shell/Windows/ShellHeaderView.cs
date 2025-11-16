@@ -1,9 +1,10 @@
-using Microsoft.UI.Xaml;
+#nullable disable
 using System.ComponentModel;
+using Microsoft.UI.Xaml;
 
 namespace Microsoft.Maui.Controls.Platform
 {
-	public class ShellHeaderView : UI.Xaml.Controls.ContentControl
+	public partial class ShellHeaderView : UI.Xaml.Controls.ContentControl
 	{
 		Shell _shell;
 
@@ -13,22 +14,22 @@ namespace Microsoft.Maui.Controls.Platform
 			SizeChanged += OnShellHeaderViewSizeChanged;
 			HorizontalContentAlignment = HorizontalAlignment.Stretch;
 			VerticalContentAlignment = VerticalAlignment.Stretch;
+			IsTabStop = false;
 		}
 
 		void OnShellHeaderViewSizeChanged(object sender, SizeChangedEventArgs e)
 		{
-			if (Element is Controls.Compatibility.Layout layout)
-				layout.ForceLayout();
+			Element?.InvalidateMeasure();
 		}
 
 		internal VisualElement Element { get; set; }
 
 		public void SetElement(Shell shell)
 		{
-			if(_shell != null)
+			if (_shell != null)
 				_shell.PropertyChanged -= OnShellPropertyChanged;
 
-			if(shell != null)
+			if (shell != null)
 			{
 				_shell = shell;
 				_shell.PropertyChanged += OnShellPropertyChanged;
@@ -38,7 +39,7 @@ namespace Microsoft.Maui.Controls.Platform
 
 		void OnShellPropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
-			if(e.IsOneOf(Shell.FlyoutHeaderProperty, Shell.FlyoutHeaderTemplateProperty))
+			if (e.IsOneOf(Shell.FlyoutHeaderProperty, Shell.FlyoutHeaderTemplateProperty))
 				UpdateHeader();
 		}
 
@@ -46,7 +47,7 @@ namespace Microsoft.Maui.Controls.Platform
 		{
 			if (Element != null)
 			{
-				if(Content is ViewToHandlerConverter.WrapperControl wrapperControl)
+				if (Content is ViewToHandlerConverter.WrapperControl wrapperControl)
 				{
 					wrapperControl.CleanUp();
 					Content = null;

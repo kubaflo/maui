@@ -1,3 +1,4 @@
+#nullable disable
 using System.Collections.Generic;
 
 namespace Microsoft.Maui.Controls
@@ -6,7 +7,11 @@ namespace Microsoft.Maui.Controls
 	{
 		ControlTemplate ControlTemplate { get; set; }
 
-		IList<Element> InternalChildren { get; }
+		IReadOnlyList<Element> InternalChildren { get; }
+
+		void AddLogicalChild(Element element);
+		bool RemoveLogicalChild(Element element);
+		bool RemoveAt(int index);
 
 		Element TemplateRoot { get; set; }
 

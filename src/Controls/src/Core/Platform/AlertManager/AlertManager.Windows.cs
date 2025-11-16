@@ -1,5 +1,4 @@
-﻿#nullable enable
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,65 +10,39 @@ namespace Microsoft.Maui.Controls.Platform
 {
 	internal partial class AlertManager
 	{
-		readonly List<AlertRequestHelper> Subscriptions = new List<AlertRequestHelper>();
-
-		internal void Subscribe(Window window)
+		private partial IAlertManagerSubscription CreateSubscription(IMauiContext mauiContext)
 		{
-			var platformWindow = window.MauiContext.GetPlatformWindow();
+			var platformWindow = mauiContext.GetPlatformWindow();
 
-			if (Subscriptions.Any(s => s.Window == platformWindow))
-				return;
-
-			Subscriptions.Add(new AlertRequestHelper(platformWindow, window.MauiContext));
+			return new AlertRequestHelper(Window, platformWindow);
 		}
 
-		internal void Unsubscribe(Window window)
+		internal sealed partial class AlertRequestHelper
 		{
-			var platformWindow = window.MauiContext.GetPlatformWindow();
+			Task<bool>? CurrentAlert;
+			Task<string?>? CurrentPrompt;
 
-			var toRemove = Subscriptions.Where(s => s.Window == platformWindow).ToList();
-
-			foreach (AlertRequestHelper alertRequestHelper in toRemove)
+			internal AlertRequestHelper(Window virtualView, UI.Xaml.Window platformView)
 			{
-				alertRequestHelper.Dispose();
-				Subscriptions.Remove(alertRequestHelper);
-			}
-		}
-
-		internal sealed class AlertRequestHelper : IDisposable
-		{
-			static Task<bool>? CurrentAlert;
-			static Task<string?>? CurrentPrompt;
-
-			internal AlertRequestHelper(UI.Xaml.Window window, IMauiContext mauiContext)
-			{
-				Window = window;
-				MauiContext = mauiContext;
-
-				MessagingCenter.Subscribe<Page, bool>(Window, Page.BusySetSignalName, OnPageBusy);
-				MessagingCenter.Subscribe<Page, AlertArguments>(Window, Page.AlertSignalName, OnAlertRequested);
-				MessagingCenter.Subscribe<Page, PromptArguments>(Window, Page.PromptSignalName, OnPromptRequested);
-				MessagingCenter.Subscribe<Page, ActionSheetArguments>(Window, Page.ActionSheetSignalName, OnActionSheetRequested);
+				VirtualView = virtualView;
+				PlatformView = platformView;
 			}
 
-			public UI.Xaml.Window Window { get; }
-			public IMauiContext MauiContext { get; }
+			public Window VirtualView { get; }
 
-			public void Dispose()
-			{
-				MessagingCenter.Unsubscribe<Page, bool>(Window, Page.BusySetSignalName);
-				MessagingCenter.Unsubscribe<Page, AlertArguments>(Window, Page.AlertSignalName);
-				MessagingCenter.Unsubscribe<Page, PromptArguments>(Window, Page.PromptSignalName);
-				MessagingCenter.Unsubscribe<Page, ActionSheetArguments>(Window, Page.ActionSheetSignalName);
-			}
+			public UI.Xaml.Window PlatformView { get; }
 
-			void OnPageBusy(Page sender, bool enabled)
+			// TODO: This method is obsolete in .NET 10 and will be removed in .NET11.
+			public partial void OnPageBusy(Page sender, bool enabled)
 			{
 				// TODO: Wrap the pages in a Canvas, and dynamically add a ProgressBar
 			}
 
-			async void OnAlertRequested(Page sender, AlertArguments arguments)
+			public async partial void OnAlertRequested(Page sender, AlertArguments arguments)
 			{
+				if (!PageIsInThisWindow(sender))
+					return;
+
 				string content = arguments.Message ?? string.Empty;
 				string title = arguments.Title ?? string.Empty;
 
@@ -79,6 +52,11 @@ namespace Microsoft.Maui.Controls.Platform
 					Title = title,
 					VerticalScrollBarVisibility = UI.Xaml.Controls.ScrollBarVisibility.Auto
 				};
+
+				if (PlatformView.Content is FrameworkElement windowContent)
+				{
+					alertDialog.RequestedTheme = windowContent.RequestedTheme;
+				}
 
 				if (arguments.FlowDirection == FlowDirection.RightToLeft)
 				{
@@ -106,7 +84,7 @@ namespace Microsoft.Maui.Controls.Platform
 					alertDialog.PrimaryButtonText = arguments.Accept;
 
 				// This is a temporary workaround
-				alertDialog.XamlRoot = Window.Content.XamlRoot;
+				alertDialog.XamlRoot = PlatformView.Content.XamlRoot;
 
 				var currentAlert = CurrentAlert;
 
@@ -121,8 +99,11 @@ namespace Microsoft.Maui.Controls.Platform
 				CurrentAlert = null;
 			}
 
-			async void OnPromptRequested(Page sender, PromptArguments arguments)
+			public async partial void OnPromptRequested(Page sender, PromptArguments arguments)
 			{
+				if (!PageIsInThisWindow(sender))
+					return;
+
 				var promptDialog = new PromptDialog
 				{
 					Title = arguments.Title ?? string.Empty,
@@ -130,8 +111,14 @@ namespace Microsoft.Maui.Controls.Platform
 					Input = arguments.InitialValue ?? string.Empty,
 					Placeholder = arguments.Placeholder ?? string.Empty,
 					MaxLength = arguments.MaxLength >= 0 ? arguments.MaxLength : 0,
-					InputScope = arguments.Keyboard.ToInputScope()
+					InputScope = arguments.Keyboard.ToInputScope(),
+					DefaultButton = ContentDialogButton.Primary
 				};
+
+				if (PlatformView.Content is FrameworkElement windowContent)
+				{
+					promptDialog.RequestedTheme = windowContent.RequestedTheme;
+				}
 
 				if (arguments.Cancel != null)
 					promptDialog.SecondaryButtonText = arguments.Cancel;
@@ -148,15 +135,18 @@ namespace Microsoft.Maui.Controls.Platform
 				}
 
 				// This is a temporary workaround
-				promptDialog.XamlRoot = Window.Content.XamlRoot;
+				promptDialog.XamlRoot = PlatformView.Content.XamlRoot;
 
 				CurrentPrompt = ShowPrompt(promptDialog);
 				arguments.SetResult(await CurrentPrompt.ConfigureAwait(false));
 				CurrentPrompt = null;
 			}
 
-			void OnActionSheetRequested(Page sender, ActionSheetArguments arguments)
+			public partial void OnActionSheetRequested(Page sender, ActionSheetArguments arguments)
 			{
+				if (!PageIsInThisWindow(sender))
+					return;
+
 				bool userDidSelect = false;
 
 				if (arguments.FlowDirection == FlowDirection.MatchParent)
@@ -174,6 +164,7 @@ namespace Microsoft.Maui.Controls.Platform
 
 				var actionSheet = new Flyout
 				{
+					FlyoutPresenterStyle = (UI.Xaml.Style)UI.Xaml.Application.Current.Resources["MauiFlyoutPresenterStyle"],
 					Placement = UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Full,
 					Content = actionSheetContent
 				};
@@ -192,12 +183,18 @@ namespace Microsoft.Maui.Controls.Platform
 
 				try
 				{
-					var pageParent = sender.ToPlatform(MauiContext).Parent as FrameworkElement;
+					var current = sender.ToPlatform();
+					var pageParent = current?.Parent as FrameworkElement;
 
 					if (pageParent != null)
 						actionSheet.ShowAt(pageParent);
 					else
-						arguments.SetResult(null);
+					{
+						if (current != null && current is FrameworkElement mainPage)
+							actionSheet.ShowAt(current);
+						else
+							arguments.SetResult(null);
+					}
 				}
 				catch (ArgumentException) // If the page is not in the visual tree
 				{
@@ -224,6 +221,9 @@ namespace Microsoft.Maui.Controls.Platform
 
 				return null;
 			}
+
+			bool PageIsInThisWindow(Page page) =>
+				page?.Window == VirtualView;
 		}
 	}
 }

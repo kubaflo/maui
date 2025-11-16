@@ -7,8 +7,30 @@ using Xunit;
 namespace Microsoft.Maui.DeviceTests.Handlers.Layout
 {
 	[Category(TestCategory.Layout)]
-	public partial class LayoutHandlerTests : HandlerTestBase<LayoutHandler, LayoutStub>
+	public partial class LayoutHandlerTests : CoreHandlerTestBase<LayoutHandler, LayoutStub>
 	{
+		[Fact(DisplayName = "Shadow Initializes Correctly",
+			Skip = "This test is currently invalid https://github.com/dotnet/maui/issues/13692")]
+		public async Task ShadowInitializesCorrectly()
+		{
+			var xPlatShadow = new ShadowStub
+			{
+				Offset = new Point(10, 10),
+				Opacity = 1.0f,
+				Radius = 2.0f
+			};
+
+			var layout = new LayoutStub
+			{
+				Height = 50,
+				Width = 50
+			};
+
+			layout.Shadow = xPlatShadow;
+
+			await ValidateHasColor(layout, Colors.Red, () => xPlatShadow.Paint = new SolidPaint(Colors.Red));
+		}
+
 		[Fact(DisplayName = "Empty layout")]
 		public async Task EmptyLayout()
 		{
@@ -41,7 +63,7 @@ namespace Microsoft.Maui.DeviceTests.Handlers.Layout
 				return GetNativeChildren(handler);
 			});
 
-			Assert.Equal(1, children.Count);
+			Assert.Single(children);
 			Assert.Same(slider.Handler.PlatformView, children[0]);
 
 			var count = await InvokeOnMainThreadAsync(() =>
@@ -90,8 +112,8 @@ namespace Microsoft.Maui.DeviceTests.Handlers.Layout
 			});
 
 			Assert.Equal(2, children.Count);
-			Assert.Same(slider.Handler.PlatformView, children[0]);
-			Assert.Same(button.Handler.PlatformView, children[1]);
+			Assert.Same(slider.ToPlatform(), children[0]);
+			Assert.Same(button.ToPlatform(), children[1]);
 
 			var count = await InvokeOnMainThreadAsync(() =>
 			{
@@ -118,8 +140,8 @@ namespace Microsoft.Maui.DeviceTests.Handlers.Layout
 				return GetNativeChildren(handler);
 			});
 
-			Assert.Equal(1, children.Count);
-			Assert.Same(slider.Handler.PlatformView, children[0]);
+			Assert.Single(children);
+			Assert.Same(slider.ToPlatform(), children[0]);
 
 			children = await InvokeOnMainThreadAsync(() =>
 			{
@@ -129,8 +151,8 @@ namespace Microsoft.Maui.DeviceTests.Handlers.Layout
 			});
 
 			Assert.Equal(2, children.Count);
-			Assert.Same(button.Handler.PlatformView, children[0]);
-			Assert.Same(slider.Handler.PlatformView, children[1]);
+			Assert.Same(button.ToPlatform(), children[0]);
+			Assert.Same(slider.ToPlatform(), children[1]);
 		}
 
 		[Fact]
@@ -149,7 +171,7 @@ namespace Microsoft.Maui.DeviceTests.Handlers.Layout
 				return GetNativeChildren(handler);
 			});
 
-			Assert.Equal(1, children.Count);
+			Assert.Single(children);
 			Assert.Same(slider.Handler.PlatformView, children[0]);
 
 			children = await InvokeOnMainThreadAsync(() =>
@@ -159,8 +181,8 @@ namespace Microsoft.Maui.DeviceTests.Handlers.Layout
 				return GetNativeChildren(handler);
 			});
 
-			Assert.Equal(1, children.Count);
-			Assert.Same(button.Handler.PlatformView, children[0]);
+			Assert.Single(children);
+			Assert.Same(button.ToPlatform(), children[0]);
 		}
 
 		[Fact]
@@ -179,7 +201,7 @@ namespace Microsoft.Maui.DeviceTests.Handlers.Layout
 				return GetNativeChildren(handler);
 			});
 
-			Assert.Equal(1, children.Count);
+			Assert.Single(children);
 			Assert.Same(addedSlider.Handler.ContainerView, children[0]);
 
 			children = await InvokeOnMainThreadAsync(() =>
@@ -202,7 +224,7 @@ namespace Microsoft.Maui.DeviceTests.Handlers.Layout
 			layout.Add(containedButton);
 			_ = await CreateHandlerAsync(layout);
 			var handler = containedButton.Handler as IPlatformViewHandler;
-			Assert.NotEqual(handler.PlatformView, handler.ContainerView);
+			await InvokeOnMainThreadAsync(() => Assert.NotEqual(handler.PlatformView, handler.ContainerView));
 		}
 
 		LabelStub CreateZTestLabel(int zIndex)

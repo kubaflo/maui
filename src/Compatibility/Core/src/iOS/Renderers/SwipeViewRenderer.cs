@@ -178,8 +178,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			if (Brush.IsNullOrEmpty(background))
 				return;
 
-			if (Control != null)
-				Control.UpdateBackground(background);
+			Control?.UpdateBackground(background);
 		}
 
 		public override void TouchesEnded(NSSet touches, UIEvent evt)
@@ -251,23 +250,14 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 					_panGestureRecognizer = null;
 				}
 
-				if (_contentView != null)
-				{
-					_contentView.Dispose();
-					_contentView = null;
-				}
+				_contentView?.Dispose();
+				_contentView = null;
 
-				if (_actionView != null)
-				{
-					_actionView.Dispose();
-					_actionView = null;
-				}
+				_actionView?.Dispose();
+				_actionView = null;
 
-				if (_swipeItemsRect != null)
-				{
-					_swipeItemsRect.Clear();
-					_swipeItemsRect = null;
-				}
+				_swipeItemsRect?.Clear();
+				_swipeItemsRect = null;
 			}
 
 			_isDisposed = true;
@@ -659,7 +649,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			var imageSize = button.ImageView.Image.Size;
 
 			var titleEdgeInsets = new UIEdgeInsets(spacing, -imageSize.Width, -imageSize.Height, 0.0f);
-#pragma warning disable CA1416 // TODO: TitleEdgeInsets, StringSize(...), ImageEdgeInsets unsupported on: 'ios' 15.0 and later
+#pragma warning disable CA1416, CA1422 // TODO: TitleEdgeInsets, StringSize(...), ImageEdgeInsets unsupported on: 'ios' 15.0 and later
 			button.TitleEdgeInsets = titleEdgeInsets;
 
 			var labelString = button.TitleLabel.Text ?? string.Empty;
@@ -669,7 +659,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 #pragma warning restore BI1234 // Type or member is obsolete
 			var imageEdgeInsets = new UIEdgeInsets(-(titleSize.Height + spacing), 0.0f, 0.0f, -titleSize.Width);
 			button.ImageEdgeInsets = imageEdgeInsets;
-#pragma warning restore CA1416
+#pragma warning restore CA1416, CA1422
 		}
 
 		Color GetSwipeItemColor(Color backgroundColor)
@@ -706,7 +696,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 				catch (Exception)
 				{
 					// UIImage ctor throws on file not found if MonoTouch.ObjCRuntime.Class.ThrowOnInitFailure is true;
-					Forms.MauiContext?.CreateLogger<SwipeViewRenderer>()?.LogWarning("Can not load SwipeItem Icon");
+					Forms.MauiContext?.CreateLogger<SwipeViewRenderer>()?.LogWarning("Cannot load SwipeItem Icon");
 				}
 			}
 		}
@@ -724,12 +714,16 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 			var width = maxResizeFactor * sourceSize.Width;
 			var height = maxResizeFactor * sourceSize.Height;
-			UIGraphics.BeginImageContextWithOptions(new CGSize((nfloat)width, (nfloat)height), false, 0);
-			sourceImage.Draw(new CGRect(0, 0, (nfloat)width, (nfloat)height));
-			var resultImage = UIGraphics.GetImageFromCurrentImageContext();
-			UIGraphics.EndImageContext();
+			var renderer = new UIGraphicsImageRenderer(new CGSize((nfloat)width, (nfloat)height), new UIGraphicsImageRendererFormat()
+			{
+				Opaque = false,
+				Scale = 0,
+			});
 
-			return resultImage;
+			return renderer.CreateImage((context) =>
+			{
+				sourceImage.Draw(new CGRect(0, 0, (nfloat)width, (nfloat)height));
+			});
 		}
 
 		void HandleTouchInteractions(GestureStatus status, CGPoint point)
@@ -1032,11 +1026,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 				_actionView = null;
 			}
 
-			if (_swipeItemsRect != null)
-			{
-				_swipeItemsRect.Clear();
-				_swipeItemsRect = null;
-			}
+			_swipeItemsRect?.Clear();
+			_swipeItemsRect = null;
 
 			UpdateIsOpen(false);
 		}

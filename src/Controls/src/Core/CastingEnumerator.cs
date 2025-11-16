@@ -1,9 +1,10 @@
+#nullable disable
 using System.Collections;
 using System.Collections.Generic;
 
 namespace Microsoft.Maui.Controls
 {
-	internal class CastingEnumerator<T, TFrom> : IEnumerator<T> where T : class where TFrom : class
+	internal sealed class CastingEnumerator<T, TFrom> : IEnumerator<T> where T : class where TFrom : class
 	{
 		readonly IEnumerator<TFrom> _enumerator;
 

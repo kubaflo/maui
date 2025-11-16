@@ -6,46 +6,34 @@
 
 ## Getting Started ##
 
-* [Install .NET MAUI](https://docs.microsoft.com/dotnet/maui/get-started/first-app?pivots=windows)
-* [.NET MAUI documentation](https://docs.microsoft.com/dotnet/maui)
-* [.NET Podcasts Sample Apps](https://github.com/microsoft/dotnet-podcasts)
-* [Weather '21 Sample App](https://github.com/davidortinau/WeatherTwentyOne)
+* [Install .NET MAUI](https://dot.net/maui)
+* [.NET MAUI Documentation](https://docs.microsoft.com/dotnet/maui)
+* [.NET MAUI Samples](https://github.com/dotnet/maui-samples)
 * [Development Guide](./.github/DEVELOPMENT.md)
+
+Create a new app with `dotnet new maui -n NewApp` or a [sample app](https://github.com/dotnet/maui-samples/tree/main/10.0/Apps/DeveloperBalance#developer-balance) with `dotnet new maui -n NewApp -sc` that includes the [open-source Syncfusion Toolkit for .NET MAUI](https://www.syncfusion.com/net-maui-toolkit?utm_source=msftdotnet&utm_medium=banner&utm_campaign=mauipremium_sep25) with over 30 additional controls, the [.NET MAUI Community Toolkit](https://github.com/CommunityToolkit/Maui) with tons of helpers and views, and [MVVM Toolkit](https://github.com/CommunityToolkit/dotnet). 
 
 ## Overview
 
-.NET Multi-platform App UI (.NET MAUI) is the evolution of Xamarin.Forms that expands capabilities beyond mobile Android and iOS into desktop apps for Windows and macOS. With .NET MAUI, you can build apps that perform great for any device that runs Windows, macOS, Android, & iOS from a single codebase. Coupled with Visual Studio productivity tools and emulators, .NET and Visual Studio significantly speed up the development process for building apps that target the widest possible set of devices. Use a single development stack that supports the best of breed solutions for all modern workloads with a unified SDK, base class libraries, and toolchain. [Read More](https://docs.microsoft.com/dotnet/maui/what-is-maui)
+.NET Multi-platform App UI (.NET MAUI) is the evolution of Xamarin.Forms that expand capabilities beyond mobile Android and iOS into desktop apps for Windows and macOS. With .NET MAUI, you can build apps that perform great on any device that runs Windows, macOS, Android, & iOS from a single codebase. Coupled with Visual Studio productivity tools and emulators, .NET and Visual Studio significantly speed up the development process for building apps that target the widest possible set of devices. Use a single development stack that supports the best-of-breed solutions for all modern workloads with a unified SDK, base class libraries, and a toolchain. [Read More](https://docs.microsoft.com/dotnet/maui/what-is-maui)
 
 ![.NET MAUI Weather App on all platforms](Assets/maui-weather-hero-sm.png)
 
 ## Current News
-
-* April 26, 2022 - [.NET MAUI Release Candidate 2](https://devblogs.microsoft.com/dotnet/dotnet-maui-rc-2/)
-* April 12, 2022 - [.NET MAUI Release Candidate - Ready for Cross-Platform App Development](https://devblogs.microsoft.com/dotnet/dotnet-maui-rc-1/)
-* March 16, 2022 - [Announcing .NET MAUI Preview 14](https://devblogs.microsoft.com/dotnet/dotnet-maui-preview-14/)
-* February 15, 2022 - [Announcing .NET MAUI Preview 13](https://devblogs.microsoft.com/dotnet/announcing-net-maui-preview-13/)
-* January 19, 2022 - [Announcing .NET MAUI Preview 12](https://devblogs.microsoft.com/dotnet/announcing-net-maui-preview-12/)
-* December 14, 2021 - [Announcing .NET MAUI Preview 11](https://devblogs.microsoft.com/dotnet/announcing-dotnet-maui-preview-11/)
-* November 8, 2021 - [Announcing .NET MAUI Preview 10](https://devblogs.microsoft.com/dotnet/announcing-net-maui-preview-10/)
-* October 12, 2021 - [Announcing .NET MAUI Preview 9](https://devblogs.microsoft.com/dotnet/announcing-net-maui-preview-9/)
-* September 14, 2021 - [Update on .NET Multi-platform App UI (.NET MAUI)](https://aka.ms/maui-update/)
+* 2025 - [What's new in .NET MAUI for .NET 10](https://learn.microsoft.com/dotnet/maui/whats-new/dotnet-10)
+* November 13, 2024 - [What's new in .NET MAUI for .NET 9](https://learn.microsoft.com/dotnet/maui/whats-new/dotnet-9)
+* November 12, 2024 - [Announcing .NET 9](https://devblogs.microsoft.com/dotnet/announcing-dotnet-9/#.net-maui-–-enhancing-multi-platform-app-development)
+* October 22, 2024 - [.NET MAUI Welcomes Syncfusion Open-source Contributions](https://devblogs.microsoft.com/dotnet/dotnet-maui-welcomes-syncfusion-open-source-contributions/)
 
 Follow the [.NET MAUI Blog](https://devblogs.microsoft.com/dotnet/category/net-maui/) and visit the [News](https://github.com/dotnet/maui/wiki/News) wiki page for more news and updates.
 
 ## FAQs
 
-Do you have questions? Do not worry, we have prepared a complete [FAQ](https://github.com/dotnet/maui/wiki/FAQs) answering the most common questions.
+Do you have questions? Do not worry; we have prepared a complete [FAQ](https://github.com/dotnet/maui/wiki/FAQs) answering the most common questions.
 
 ## How to Engage, Contribute, and Give Feedback
 
 Some of the best ways to [contribute](./.github/CONTRIBUTING.md) are to try things out, file issues, join in design conversations,
 and make pull-requests. Proposals for changes specific to MAUI can be found [here for discussion](https://github.com/dotnet/maui/issues).
 
-See [CONTRIBUTING](./.github/CONTRIBUTING.md)
-
-## Code of conduct
-
-See [CODE-OF-CONDUCT](./.github/CODE_OF_CONDUCT.md)
-
-## Stats
-<img src="https://repobeats.axiom.co/api/embed/f917a77cbbdeee19b87fa1f2f932895d1df18b71.svg" />
+See [CONTRIBUTING](./.github/CONTRIBUTING.md), [CODE-OF-CONDUCT](./.github/CODE_OF_CONDUCT.md) and the [Development Guide](./.github/DEVELOPMENT.md).

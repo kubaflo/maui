@@ -1,15 +1,15 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
 using WImageSource = Microsoft.UI.Xaml.Media.ImageSource;
 using WVisibility = Microsoft.UI.Xaml.Visibility;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
-	public class FlyoutPageControl : Control, IToolbarProvider, ITitleViewRendererController
+	public partial class FlyoutPageControl : Control, IToolbarProvider, ITitleViewRendererController
 	{
 		public static readonly DependencyProperty FlyoutProperty = DependencyProperty.Register(nameof(Flyout), typeof(FrameworkElement), typeof(FlyoutPageControl),
 			new PropertyMetadata(default(FrameworkElement)));
@@ -74,7 +74,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		FrameworkElement _flyoutPresenter;
 		FrameworkElement _detailPresenter;
 		SplitView _split;
-	    ToolbarPlacement _toolbarPlacement;
+		ToolbarPlacement _toolbarPlacement;
 		bool _toolbarDynamicOverflowEnabled = true;
 		FrameworkElement _titleViewPresenter;
 		TitleViewManager _titleViewManager;
@@ -212,16 +212,16 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			set { SetValue(CollapseStyleProperty, value); }
 		}
 
-	    public ToolbarPlacement ToolbarPlacement
-	    {
-	        get { return _toolbarPlacement; }
-	        set
-	        {
-	            _toolbarPlacement = value;
-	            _toolbarPlacementHelper.UpdateToolbarPlacement();
-	        }
-	    }
-		
+		public ToolbarPlacement ToolbarPlacement
+		{
+			get { return _toolbarPlacement; }
+			set
+			{
+				_toolbarPlacement = value;
+				_toolbarPlacementHelper.UpdateToolbarPlacement();
+			}
+		}
+
 		public bool ToolbarDynamicOverflowEnabled
 		{
 			get { return _toolbarDynamicOverflowEnabled; }
@@ -299,11 +299,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			_commandBar = GetTemplateChild("CommandBar") as CommandBar;
 			_toolbarPlacementHelper.Initialize(_commandBar, () => ToolbarPlacement, GetTemplateChild);
 			UpdateToolbarDynamicOverflowEnabled();
-			
-			UpdateMode(); 
 
-			if (_commandBarTcs != null)
-				_commandBarTcs.SetResult(_commandBar);
+			UpdateMode();
+
+			_commandBarTcs?.SetResult(_commandBar);
 
 			_titleViewManager = new TitleViewManager(this);
 		}
@@ -378,17 +377,17 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 
 		CommandBar ITitleViewRendererController.CommandBar { get => _commandBar; }
 
-        void UpdateToolbarDynamicOverflowEnabled()
-        {
-            if (_commandBar != null)
-            {
-                _commandBar.IsDynamicOverflowEnabled = ToolbarDynamicOverflowEnabled;
-            }
-        }
+		void UpdateToolbarDynamicOverflowEnabled()
+		{
+			if (_commandBar != null)
+			{
+				_commandBar.IsDynamicOverflowEnabled = ToolbarDynamicOverflowEnabled;
+			}
+		}
 
-    }
+	}
 
-	public class MasterDetailControl : FlyoutPageControl
+	public partial class MasterDetailControl : FlyoutPageControl
 	{
 		public FrameworkElement Master
 		{

@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using Android.App;
@@ -26,7 +27,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 		DisableSetStatusBarColor = 1 << 0,
 	}
 
+#pragma warning disable CA1815 // Override equals and operator equals on value types
 	public struct ActivationOptions
+#pragma warning restore CA1815 // Override equals and operator equals on value types
 	{
 		public ActivationOptions(Bundle bundle)
 		{
@@ -69,11 +72,16 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 
 		public event EventHandler ConfigurationChanged;
 
+		[Obsolete]
+#pragma warning disable 809
 		public override void OnBackPressed()
+#pragma warning restore 809
 		{
 			if (BackPressed != null && BackPressed(this, EventArgs.Empty))
 				return;
+#pragma warning disable CA1416, CA1422 // Validate platform compatibility
 			base.OnBackPressed();
+#pragma warning restore CA1416, CA1422 // Validate platform compatibility
 		}
 
 		public override void OnConfigurationChanged(Configuration newConfig)
@@ -94,10 +102,12 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 
 		public void SetStatusBarColor(AColor color)
 		{
+#pragma warning disable CA1422 // Obsolete in API 35 https://developer.android.com/reference/android/view/Window#setStatusBarColor(int)
 			Window.SetStatusBarColor(color);
+#pragma warning restore CA1422 // Obsolete in API 35
 		}
 
-		static void RegisterHandler(Type target, Type handler, Type filter)
+		static void RegisterHandler(Type target, [DynamicallyAccessedMembers(Internals.HandlerType.TargetMembers)] Type handler, Type filter)
 		{
 			Profile.FrameBegin();
 
@@ -287,7 +297,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 
 		protected override void OnPause()
 		{
-			_layout.HideKeyboard(true);
+			_layout.HideSoftInput();
 
 			// Stop animations or other ongoing actions that could consume CPU
 			// Commit unsaved changes, build only if users expect such changes to be permanently saved when thy leave such as a draft email
@@ -320,7 +330,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 
 			if (_application != null && CurrentFocus != null && _application.OnThisPlatform().GetShouldPreserveKeyboardOnResume())
 			{
-				CurrentFocus.ShowKeyboard();
+				CurrentFocus.ShowSoftInput();
 			}
 
 			_previousState = _currentState;
@@ -452,7 +462,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 		}
 
 		// This is currently being used by the previewer please do not change or remove this
-		void RegisterHandlerForDefaultRenderer(Type target, Type handler, Type filter)
+		void RegisterHandlerForDefaultRenderer(Type target, [DynamicallyAccessedMembers(Internals.HandlerType.TargetMembers)] Type handler, Type filter)
 		{
 			RegisterHandler(target, handler, filter);
 		}

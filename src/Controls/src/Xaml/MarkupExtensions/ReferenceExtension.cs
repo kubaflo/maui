@@ -1,11 +1,11 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls.Internals;
-using Microsoft.Maui.Controls.Xaml.Internals;
 
 namespace Microsoft.Maui.Controls.Xaml
 {
 	[ContentProperty(nameof(Name))]
+	[RequireService([typeof(IReferenceProvider), typeof(IProvideValueTarget)])]
 	public class ReferenceExtension : IMarkupExtension
 	{
 		public string Name { get; set; }
@@ -21,19 +21,20 @@ namespace Microsoft.Maui.Controls.Xaml
 
 			//fallback
 			var valueProvider = serviceProvider.GetService<IProvideValueTarget>() as IProvideParentValues
-								   ?? throw new ArgumentException("serviceProvider does not provide an IProvideValueTarget");
+				?? throw new ArgumentException("serviceProvider does not provide an IProvideValueTarget");
+
 			foreach (var target in valueProvider.ParentObjects)
 			{
-				if (!(target is BindableObject bo))
+				if (target is not BindableObject bo)
 					continue;
-				if (!(NameScope.GetNameScope(bo) is INameScope ns))
+				if (NameScope.GetNameScope(bo) is not INameScope ns)
 					continue;
 				value = ns.FindByName(Name);
 				if (value != null)
 					return value;
 			}
 
-			throw new XamlParseException($"Can not find the object referenced by `{Name}`", serviceProvider);
+			throw new XamlParseException($"Cannot find the object referenced by `{Name}`", serviceProvider);
 		}
 	}
 }

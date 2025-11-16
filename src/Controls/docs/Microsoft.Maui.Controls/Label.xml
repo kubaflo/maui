@@ -41,7 +41,7 @@
     <remarks>
       <para>A Label is used to display single-line text elements as well as multi-line blocks of text.</para>
       <para>
-        <img href="~/Microsoft.Maui.Controls/_images/Label.TripleScreenShot.png" />
+        <img href="~/xml/Microsoft.Maui.Controls/_images/Label.TripleScreenShot.png" />
       </para>
       <para>The following example, adapted from the default Microsoft.Maui.Controls solution, shows a basic use:</para>
       <example>
@@ -60,7 +60,6 @@ public class App : Application
     };
 }
 ]]></code>
-        <para>The FormsGallery sample, which can be found on the <format type="text/html"><a href="https://developer.xamarin.com/samples/tag/Microsoft.Maui.Controls/" target="_blank">Sample Applications</a></format> page, has a LabelDemoPage.cs file. This file contains a longer and more complete example.</para>
       </example>
     </remarks>
   </Docs>
@@ -102,9 +101,6 @@ public class App : Application
         <ReturnType>System.Double</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="CharacterSpacingProperty">
@@ -121,8 +117,6 @@ public class App : Application
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Font">
@@ -179,8 +173,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Gets a value that indicates whether the font for the label is bold, italic, or neither.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="FontAttributesProperty">
@@ -202,7 +194,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Backing store for the FontAttributes property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="FontFamily">
@@ -225,7 +216,7 @@ public class App : Application
       <Docs>
         <summary>Gets or sets the font family to which the font for the label belongs.</summary>
         <value>The font family, or null for the platform default font family.</value>
-        <remarks>The font family can refer to a system font or a <a href="https://docs.microsoft.com/en-us/xamarin/xamarin-forms/user-interface/text/fonts#use-a-custom-font">custom font</a>.</remarks>
+        <remarks>The font family can refer to a system font or a custom font.</remarks>
       </Docs>
     </Member>
     <Member MemberName="FontFamilyProperty">
@@ -247,7 +238,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Backing store for the FontFamily property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="FontProperty">
@@ -292,7 +282,7 @@ public class App : Application
       </AssemblyInfo>
       <Attributes>
         <Attribute>
-          <AttributeName>Microsoft.Maui.Controls.TypeConverter(typeof(Microsoft.Maui.Controls.FontSizeConverter))</AttributeName>
+          <AttributeName>System.ComponentModel.TypeConverter(typeof(Microsoft.Maui.Controls.FontSizeConverter))</AttributeName>
         </Attribute>
       </Attributes>
       <ReturnValue>
@@ -300,8 +290,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Gets the size of the font for the label.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="FontSizeProperty">
@@ -323,7 +311,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Backing store for the FontSize property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="FormattedText">
@@ -371,7 +358,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Backing store for the FormattedText property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="GetChildElements">
@@ -395,14 +381,13 @@ public class App : Application
         <param name="point">The point under which to look for child elements.</param>
         <summary>Returns the child elements that are under the specified point.</summary>
         <returns>The child elements that are under the specified point.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="HorizontalTextAlignment">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.TextAlignment HorizontalTextAlignment { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.TextAlignment HorizontalTextAlignment" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.TextAlignment HorizontalTextAlignment { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.TextAlignment HorizontalTextAlignment" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.Label.HorizontalTextAlignment" />
-      <MemberSignature Language="F#" Value="member this.HorizontalTextAlignment : Microsoft.Maui.Controls.TextAlignment with get, set" Usage="Microsoft.Maui.Controls.Label.HorizontalTextAlignment" />
+      <MemberSignature Language="F#" Value="member this.HorizontalTextAlignment : Microsoft.Maui.TextAlignment with get, set" Usage="Microsoft.Maui.Controls.Label.HorizontalTextAlignment" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyVersion>0.0.0.0</AssemblyVersion>
@@ -411,12 +396,10 @@ public class App : Application
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.TextAlignment</ReturnType>
+        <ReturnType>Microsoft.Maui.TextAlignment</ReturnType>
       </ReturnValue>
       <Docs>
         <summary>Gets or sets the horizontal alignment of the Text property. This is a bindable property.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="HorizontalTextAlignmentProperty">
@@ -436,14 +419,13 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Identifies the HorizontalTextAlignment bindable property</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="LineBreakMode">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.LineBreakMode LineBreakMode { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.LineBreakMode LineBreakMode" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.LineBreakMode LineBreakMode { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.LineBreakMode LineBreakMode" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.Label.LineBreakMode" />
-      <MemberSignature Language="F#" Value="member this.LineBreakMode : Microsoft.Maui.Controls.LineBreakMode with get, set" Usage="Microsoft.Maui.Controls.Label.LineBreakMode" />
+      <MemberSignature Language="F#" Value="member this.LineBreakMode : Microsoft.Maui.LineBreakMode with get, set" Usage="Microsoft.Maui.Controls.Label.LineBreakMode" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyVersion>0.0.0.0</AssemblyVersion>
@@ -457,11 +439,11 @@ public class App : Application
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.LineBreakMode</ReturnType>
+        <ReturnType>Microsoft.Maui.LineBreakMode</ReturnType>
       </ReturnValue>
       <Docs>
         <summary>Gets or sets the LineBreakMode for the Label. This is a bindable property.</summary>
-        <value>The <see cref="T:Microsoft.Maui.Controls.LineBreakMode" /> value for the Label. The default is <see cref="F:Microsoft.Maui.Controls.LineBreakMode.WordWrap" /></value>
+        <value>The <see cref="T:Microsoft.Maui.LineBreakMode" /> value for the Label. The default is <see cref="F:Microsoft.Maui.LineBreakMode.WordWrap" /></value>
         <remarks>
         </remarks>
       </Docs>
@@ -509,7 +491,6 @@ public class App : Application
       <Docs>
         <summary>Gets or sets the multiplier to apply to the default line height when displaying text.</summary>
         <value>The multiplier to apply to the default line height when displaying text.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="LineHeightProperty">
@@ -528,7 +509,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Backing store for the <see cref="P:Microsoft.Maui.Controls.Label.LineHeight" /> bindable property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="MaxLines">
@@ -546,8 +526,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Gets or sets the maximum number of lines allowed in the <see cref="T:Microsoft.Maui.Controls.Label" />.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="MaxLinesProperty">
@@ -565,7 +543,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Static method providing the <see cref="T:Microsoft.Maui.Controls.BindableProperty" /> for <see cref="P:Microsoft.Maui.Controls.Label.MaxLines" />.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="On&lt;T&gt;">
@@ -596,8 +573,6 @@ public class App : Application
       <Docs>
         <typeparam name="T">To be added.</typeparam>
         <summary>Returns the platform-specific instance of this <see cref="T:Microsoft.Maui.Controls.Label" />, on which a platform-specific method may be called.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="OnBindingContextChanged">
@@ -617,26 +592,22 @@ public class App : Application
       <Parameters />
       <Docs>
         <summary>Method that is called when the binding context is changed.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Padding">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.Thickness Padding { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.Thickness Padding" />
+      <MemberSignature Language="C#" Value="publicMicrosoft.Maui.Thickness Padding { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetypeMicrosoft.Maui.Thickness Padding" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.Label.Padding" />
-      <MemberSignature Language="F#" Value="member this.Padding : Microsoft.Maui.Controls.Thickness with get, set" Usage="Microsoft.Maui.Controls.Label.Padding" />
+      <MemberSignature Language="F#" Value="member this.Padding :Microsoft.Maui.Thickness with get, set" Usage="Microsoft.Maui.Controls.Label.Padding" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.Thickness</ReturnType>
+        <ReturnType>Microsoft.Maui.Thickness</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="PaddingProperty">
@@ -653,8 +624,6 @@ public class App : Application
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Text">
@@ -685,10 +654,10 @@ public class App : Application
       </Docs>
     </Member>
     <Member MemberName="TextColor">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.Color TextColor { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.Color TextColor" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.Graphics.Color TextColor { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Graphics.Color TextColor" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.Label.TextColor" />
-      <MemberSignature Language="F#" Value="member this.TextColor : Microsoft.Maui.Controls.Color with get, set" Usage="Microsoft.Maui.Controls.Label.TextColor" />
+      <MemberSignature Language="F#" Value="member this.TextColor : Microsoft.Maui.Graphics.Color with get, set" Usage="Microsoft.Maui.Controls.Label.TextColor" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyVersion>0.0.0.0</AssemblyVersion>
@@ -702,11 +671,11 @@ public class App : Application
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.Color</ReturnType>
+        <ReturnType>Microsoft.Maui.Graphics.Color</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>Gets or sets the <see cref="T:Microsoft.Maui.Controls.Color" /> for the text of this Label. This is a bindable property.</summary>
-        <value>The <see cref="T:Microsoft.Maui.Controls.Color" /> value.</value>
+        <summary>Gets or sets the <see cref="T:Microsoft.Maui.Graphics.Color" /> for the text of this Label. This is a bindable property.</summary>
+        <value>The <see cref="T:Microsoft.Maui.Graphics.Color" /> value.</value>
         <remarks>
         </remarks>
       </Docs>
@@ -738,10 +707,10 @@ public class App : Application
       </Docs>
     </Member>
     <Member MemberName="TextDecorations">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.TextDecorations TextDecorations { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.TextDecorations TextDecorations" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.TextDecorations TextDecorations { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.TextDecorations TextDecorations" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.Label.TextDecorations" />
-      <MemberSignature Language="F#" Value="member this.TextDecorations : Microsoft.Maui.Controls.TextDecorations with get, set" Usage="Microsoft.Maui.Controls.Label.TextDecorations" />
+      <MemberSignature Language="F#" Value="member this.TextDecorations : Microsoft.Maui.TextDecorations with get, set" Usage="Microsoft.Maui.Controls.Label.TextDecorations" />
       <MemberType>Property</MemberType>
       <Implements>
         <InterfaceMember>P:Microsoft.Maui.Controls.IDecorableTextElement.TextDecorations</InterfaceMember>
@@ -751,12 +720,10 @@ public class App : Application
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.TextDecorations</ReturnType>
+        <ReturnType>Microsoft.Maui.TextDecorations</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>Gets or sets the <see cref="T:Microsoft.Maui.Controls.TextDecorations" /> applied to <see cref="P:Microsoft.Maui.Controls.Label.Text" />.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
+        <summary>Gets or sets the <see cref="T:Microsoft.Maui.TextDecorations" /> applied to <see cref="P:Microsoft.Maui.Controls.Label.Text" />.</summary>
       </Docs>
     </Member>
     <Member MemberName="TextDecorationsProperty">
@@ -774,7 +741,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Static method providing the <see cref="T:Microsoft.Maui.Controls.BindableProperty" /> associated with <see cref="P:Microsoft.Maui.Controls.Label.TextDecorations" />.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="TextProperty">
@@ -817,9 +783,6 @@ public class App : Application
         <ReturnType>Microsoft.Maui.Controls.TextTransform</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="TextTransformProperty">
@@ -836,8 +799,6 @@ public class App : Application
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="TextType">
@@ -855,8 +816,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Determines whether the Label should display plain text or HTML text.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="TextTypeProperty">
@@ -874,7 +833,6 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Backing store for the TextType bindable property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="UpdateFormsText">
@@ -897,16 +855,13 @@ public class App : Application
       <Docs>
         <param name="source">To be added.</param>
         <param name="textTransform">To be added.</param>
-        <summary>To be added.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="VerticalTextAlignment">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.TextAlignment VerticalTextAlignment { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.TextAlignment VerticalTextAlignment" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.TextAlignment VerticalTextAlignment { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.TextAlignment VerticalTextAlignment" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.Label.VerticalTextAlignment" />
-      <MemberSignature Language="F#" Value="member this.VerticalTextAlignment : Microsoft.Maui.Controls.TextAlignment with get, set" Usage="Microsoft.Maui.Controls.Label.VerticalTextAlignment" />
+      <MemberSignature Language="F#" Value="member this.VerticalTextAlignment : Microsoft.Maui.TextAlignment with get, set" Usage="Microsoft.Maui.Controls.Label.VerticalTextAlignment" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyVersion>0.0.0.0</AssemblyVersion>
@@ -915,12 +870,10 @@ public class App : Application
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.TextAlignment</ReturnType>
+        <ReturnType>Microsoft.Maui.TextAlignment</ReturnType>
       </ReturnValue>
       <Docs>
         <summary>Gets or sets the vertical alignement of the Text property. This is a bindable property.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="VerticalTextAlignmentProperty">
@@ -940,14 +893,13 @@ public class App : Application
       </ReturnValue>
       <Docs>
         <summary>Identifies the VerticalTextAlignment bindable property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="XAlign">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.TextAlignment XAlign { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.TextAlignment XAlign" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.TextAlignment XAlign { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.TextAlignment XAlign" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.Label.XAlign" />
-      <MemberSignature Language="F#" Value="member this.XAlign : Microsoft.Maui.Controls.TextAlignment with get, set" Usage="Microsoft.Maui.Controls.Label.XAlign" />
+      <MemberSignature Language="F#" Value="member this.XAlign : Microsoft.Maui.TextAlignment with get, set" Usage="Microsoft.Maui.Controls.Label.XAlign" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyVersion>0.0.0.0</AssemblyVersion>
@@ -969,11 +921,11 @@ public class App : Application
         </Attribute>
       </Attributes>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.TextAlignment</ReturnType>
+        <ReturnType>Microsoft.Maui.TextAlignment</ReturnType>
       </ReturnValue>
       <Docs>
         <summary>Gets or sets the horizontal alignment for the Text inside of the Label bound.</summary>
-        <value>The <see cref="T:Microsoft.Maui.Controls.TextAlignment" /> value. The default is <see cref="F:Microsoft.Maui.Controls.TextAlignment.Start" />, i.e. the text is left-aligned.</value>
+        <value>The <see cref="T:Microsoft.Maui.TextAlignment" /> value. The default is <see cref="F:Microsoft.Maui.TextAlignment.Start" />, i.e. the text is left-aligned.</value>
         <remarks>
         </remarks>
       </Docs>
@@ -1032,8 +984,6 @@ public class App : Application
       <Parameters />
       <Docs>
         <summary>For internal use by the Microsoft.Maui.Controls platform.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Microsoft.Maui.Controls.Internals.IFontElement.OnFontAttributesChanged">
@@ -1061,7 +1011,6 @@ public class App : Application
         <param name="oldValue">For internal use by the Microsoft.Maui.Controls platform.</param>
         <param name="newValue">For internal use by the Microsoft.Maui.Controls platform.</param>
         <summary>For internal use by the Microsoft.Maui.Controls platform.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Microsoft.Maui.Controls.Internals.IFontElement.OnFontChanged">
@@ -1089,7 +1038,6 @@ public class App : Application
         <param name="oldValue">For internal use by the Microsoft.Maui.Controls platform.</param>
         <param name="newValue">For internal use by the Microsoft.Maui.Controls platform.</param>
         <summary>For internal use by the Microsoft.Maui.Controls platform.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Microsoft.Maui.Controls.Internals.IFontElement.OnFontFamilyChanged">
@@ -1117,7 +1065,6 @@ public class App : Application
         <param name="oldValue">For internal use by the Microsoft.Maui.Controls platform.</param>
         <param name="newValue">For internal use by the Microsoft.Maui.Controls platform.</param>
         <summary>For internal use by the Microsoft.Maui.Controls platform.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Microsoft.Maui.Controls.Internals.IFontElement.OnFontSizeChanged">
@@ -1145,14 +1092,13 @@ public class App : Application
         <param name="oldValue">For internal use by the Microsoft.Maui.Controls platform.</param>
         <param name="newValue">For internal use by the Microsoft.Maui.Controls platform.</param>
         <summary>For internal use by the Microsoft.Maui.Controls platform.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="YAlign">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.TextAlignment YAlign { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.TextAlignment YAlign" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.TextAlignment YAlign { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.TextAlignment YAlign" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.Label.YAlign" />
-      <MemberSignature Language="F#" Value="member this.YAlign : Microsoft.Maui.Controls.TextAlignment with get, set" Usage="Microsoft.Maui.Controls.Label.YAlign" />
+      <MemberSignature Language="F#" Value="member this.YAlign : Microsoft.Maui.TextAlignment with get, set" Usage="Microsoft.Maui.Controls.Label.YAlign" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyVersion>0.0.0.0</AssemblyVersion>
@@ -1174,11 +1120,11 @@ public class App : Application
         </Attribute>
       </Attributes>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.TextAlignment</ReturnType>
+        <ReturnType>Microsoft.Maui.TextAlignment</ReturnType>
       </ReturnValue>
       <Docs>
         <summary>Gets or sets the vertical alignment for the Text inside of the Label bound.</summary>
-        <value>The <see cref="T:Microsoft.Maui.Controls.TextAlignment" /> value. The default is <see cref="F:Microsoft.Maui.Controls.TextAlignment.Start" />, i.e. the text is top-aligned.</value>
+        <value>The <see cref="T:Microsoft.Maui.TextAlignment" /> value. The default is <see cref="F:Microsoft.Maui.TextAlignment.Start" />, i.e. the text is top-aligned.</value>
         <remarks>
         </remarks>
       </Docs>

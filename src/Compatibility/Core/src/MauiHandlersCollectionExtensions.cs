@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Maui.Controls.Hosting;
 using Microsoft.Maui.Hosting;
 
@@ -6,8 +7,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Hosting
 {
 	public static class MauiHandlersCollectionExtensions
 	{
-		public static IMauiHandlersCollection TryAddCompatibilityRenderer(this IMauiHandlersCollection handlersCollection, Type controlType, Type rendererType)
+		public static IMauiHandlersCollection TryAddCompatibilityRenderer(this IMauiHandlersCollection handlersCollection, Type controlType, [DynamicallyAccessedMembers(Internals.HandlerType.TargetMembers)] Type rendererType)
 		{
+			Internals.Registrar.CheckIfRendererIsCompatibilityRenderer(rendererType);
 			Hosting.MauiAppBuilderExtensions.CheckForCompatibility();
 			Internals.Registrar.Registered.Register(controlType, rendererType);
 
@@ -20,8 +22,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Hosting
 			return handlersCollection;
 		}
 
-		public static IMauiHandlersCollection AddCompatibilityRenderer(this IMauiHandlersCollection handlersCollection, Type controlType, Type rendererType)
+		public static IMauiHandlersCollection AddCompatibilityRenderer(this IMauiHandlersCollection handlersCollection, Type controlType, [DynamicallyAccessedMembers(Internals.HandlerType.TargetMembers)] Type rendererType)
 		{
+			Internals.Registrar.CheckIfRendererIsCompatibilityRenderer(rendererType);
 			Hosting.MauiAppBuilderExtensions.CheckForCompatibility();
 			Internals.Registrar.Registered.Register(controlType, rendererType);
 
@@ -34,9 +37,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Hosting
 			return handlersCollection;
 		}
 
-		public static IMauiHandlersCollection AddCompatibilityRenderer<TControlType, TMauiType, TRenderer>(this IMauiHandlersCollection handlersCollection)
+		public static IMauiHandlersCollection AddCompatibilityRenderer<TControlType, TMauiType, [DynamicallyAccessedMembers(Internals.HandlerType.TargetMembers)] TRenderer>(this IMauiHandlersCollection handlersCollection)
 			where TMauiType : IView
 		{
+			Internals.Registrar.CheckIfRendererIsCompatibilityRenderer(typeof(TRenderer));
 			Hosting.MauiAppBuilderExtensions.CheckForCompatibility();
 			Internals.Registrar.Registered.Register(typeof(TControlType), typeof(TRenderer));
 
@@ -48,9 +52,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Hosting
 			return handlersCollection;
 		}
 
-		public static IMauiHandlersCollection AddCompatibilityRenderer<TControlType, TRenderer>(this IMauiHandlersCollection handlersCollection)
+		public static IMauiHandlersCollection AddCompatibilityRenderer<TControlType, [DynamicallyAccessedMembers(Internals.HandlerType.TargetMembers)] TRenderer>(this IMauiHandlersCollection handlersCollection)
 			where TControlType : IView
 		{
+			Internals.Registrar.CheckIfRendererIsCompatibilityRenderer(typeof(TRenderer));
 			Hosting.MauiAppBuilderExtensions.CheckForCompatibility();
 			handlersCollection.AddCompatibilityRenderer<TControlType, TControlType, TRenderer>();
 

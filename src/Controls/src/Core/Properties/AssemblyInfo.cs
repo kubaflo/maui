@@ -4,8 +4,9 @@ using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.StyleSheets;
 using Compatibility = Microsoft.Maui.Controls.Compatibility;
 
+[assembly: InternalsVisibleTo("Microsoft.AspNetCore.Components.WebView.Maui")]
+
 [assembly: InternalsVisibleTo("iOSUnitTests")]
-[assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.ControlGallery")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.Android")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.iOS")]
@@ -13,9 +14,11 @@ using Compatibility = Microsoft.Maui.Controls.Compatibility;
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.Tizen")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Core.Design")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Core.UnitTests")]
+[assembly: InternalsVisibleTo("Microsoft.Maui.UnitTests")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Android.UnitTests")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.Android.UnitTests")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.UAP.UnitTests")]
+[assembly: InternalsVisibleTo("Microsoft.Maui.Compatibility.Core.UnitTests")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Xaml")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.Maps")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.Maps.iOS")]
@@ -46,12 +49,17 @@ using Compatibility = Microsoft.Maui.Controls.Compatibility;
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Foldable.UnitTests")]
 [assembly: InternalsVisibleTo("WinUI.UITests")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.DeviceTests")]
+[assembly: InternalsVisibleTo("Controls.TestCases.HostApp")]
 
 [assembly: InternalsVisibleTo("CommunityToolkit.Maui")]
 [assembly: InternalsVisibleTo("CommunityToolkit.Maui.Core")]
+[assembly: InternalsVisibleTo("CommunityToolkit.Maui.Embedding")]
 [assembly: InternalsVisibleTo("CommunityToolkit.Maui.UnitTests")]
 [assembly: InternalsVisibleTo("CommunityToolkit.Maui.Markup")]
 [assembly: InternalsVisibleTo("CommunityToolkit.Maui.Markup.UnitTests")]
+[assembly: InternalsVisibleTo("Controls.TestCases.HostApp")]
+
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
 
 [assembly: Preserve]
 
@@ -74,16 +82,22 @@ using Compatibility = Microsoft.Maui.Controls.Compatibility;
 
 [assembly: XmlnsPrefix("http://schemas.microsoft.com/dotnet/2021/maui", "maui")]
 [assembly: XmlnsPrefix("http://schemas.microsoft.com/dotnet/2021/maui/design", "d")]
+[assembly: XmlnsPrefix("http://schemas.microsoft.com/winfx/2009/xaml", "x")]
 
 [assembly: StyleProperty("background-color", typeof(VisualElement), nameof(VisualElement.BackgroundColorProperty))]
 [assembly: StyleProperty("background", typeof(VisualElement), nameof(VisualElement.BackgroundProperty))]
 [assembly: StyleProperty("background-image", typeof(Page), nameof(Page.BackgroundImageSourceProperty))]
 [assembly: StyleProperty("border-color", typeof(IBorderElement), nameof(BorderElement.BorderColorProperty))]
+[assembly: StyleProperty("border-color", typeof(IBorderView), nameof(Border.StrokeProperty))]
 [assembly: StyleProperty("border-radius", typeof(ICornerElement), nameof(CornerElement.CornerRadiusProperty))]
 [assembly: StyleProperty("border-radius", typeof(Button), nameof(Button.CornerRadiusProperty))]
+#pragma warning disable CS0618 // Type or member is obsolete
 [assembly: StyleProperty("border-radius", typeof(Frame), nameof(Frame.CornerRadiusProperty))]
+#pragma warning restore CS0618 // Type or member is obsolete
+[assembly: StyleProperty("border-radius", typeof(IBorderView), nameof(Border.StrokeShapeProperty))]
 [assembly: StyleProperty("border-radius", typeof(ImageButton), nameof(BorderElement.CornerRadiusProperty))]
 [assembly: StyleProperty("border-width", typeof(IBorderElement), nameof(BorderElement.BorderWidthProperty))]
+[assembly: StyleProperty("border-width", typeof(IBorderView), nameof(Border.StrokeThicknessProperty))]
 [assembly: StyleProperty("color", typeof(IColorElement), nameof(ColorElement.ColorProperty), Inherited = true)]
 [assembly: StyleProperty("color", typeof(ITextElement), nameof(TextElement.TextColorProperty), Inherited = true)]
 [assembly: StyleProperty("text-transform", typeof(ITextElement), nameof(TextElement.TextTransformProperty), Inherited = true)]
@@ -118,7 +132,7 @@ using Compatibility = Microsoft.Maui.Controls.Compatibility;
 [assembly: StyleProperty("visibility", typeof(VisualElement), nameof(VisualElement.IsVisibleProperty), Inherited = true)]
 [assembly: StyleProperty("width", typeof(VisualElement), nameof(VisualElement.WidthRequestProperty))]
 [assembly: StyleProperty("letter-spacing", typeof(ITextElement), nameof(TextElement.CharacterSpacingProperty), Inherited = true)]
-[assembly: StyleProperty("line-height", typeof(ILineHeightElement), nameof(LineHeightElement.LineHeightProperty), Inherited = true)]
+[assembly: StyleProperty("line-height", typeof(Microsoft.Maui.Controls.ILineHeightElement), nameof(LineHeightElement.LineHeightProperty), Inherited = true)]
 
 //flex
 [assembly: StyleProperty("align-content", typeof(FlexLayout), nameof(FlexLayout.AlignContentProperty))]
@@ -145,18 +159,14 @@ using Compatibility = Microsoft.Maui.Controls.Compatibility;
 [assembly: StyleProperty("-maui-min-track-color", typeof(Slider), nameof(Slider.MinimumTrackColorProperty))]
 [assembly: StyleProperty("-maui-max-track-color", typeof(Slider), nameof(Slider.MaximumTrackColorProperty))]
 [assembly: StyleProperty("-maui-thumb-color", typeof(Slider), nameof(Slider.ThumbColorProperty))]
-[assembly: StyleProperty("-maui-spacing", typeof(StackLayout), nameof(StackLayout.SpacingProperty))]
+[assembly: StyleProperty("-maui-spacing", typeof(StackBase), nameof(StackBase.SpacingProperty))]
 [assembly: StyleProperty("-maui-orientation", typeof(StackLayout), nameof(StackLayout.OrientationProperty))]
-
-// TODO ezhart 2021-07-16 When we fix #1634, we'll need to enable this so the CSS applies 
-//[assembly: StyleProperty("-maui-spacing", typeof(StackLayout), nameof(StackLayout.SpacingProperty))]
-
-// TODO ezhart 2021-07-16 When we create the new composed StackLayout, we'll need to ensure we have this enabled 
-//[assembly: StyleProperty("-maui-orientation", typeof(StackLayout), nameof(StackLayout.OrientationProperty))]
 
 [assembly: StyleProperty("-maui-visual", typeof(VisualElement), nameof(VisualElement.VisualProperty))]
 [assembly: StyleProperty("-maui-vertical-text-alignment", typeof(Label), nameof(TextAlignmentElement.VerticalTextAlignmentProperty))]
 [assembly: StyleProperty("-maui-thumb-color", typeof(Switch), nameof(Switch.ThumbColorProperty))]
+
+[assembly: StyleProperty("-maui-shadow", typeof(VisualElement), nameof(VisualElement.ShadowProperty))]
 
 //shell
 [assembly: StyleProperty("-maui-flyout-background", typeof(Shell), nameof(Shell.FlyoutBackgroundColorProperty))]

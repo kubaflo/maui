@@ -6,6 +6,7 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 {
 	// TEST NOTES:
 	//   - these tests require an accelerometer to be present
+	[Category("Accelerometer")]
 	public class Accelerometer_Tests
 	{
 		[Fact]
@@ -23,7 +24,7 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 			if (!HardwareSupport.HasAccelerometer)
 				return;
 
-			var tcs = new TaskCompletionSource<AccelerometerData>();
+			var tcs = new TaskCompletionSource<AccelerometerData>(TaskCreationOptions.RunContinuationsAsynchronously);
 			Accelerometer.ReadingChanged += Accelerometer_ReadingChanged;
 			Accelerometer.Start(sensorSpeed);
 
@@ -47,7 +48,7 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 			if (!HardwareSupport.HasAccelerometer)
 				return;
 
-			var tcs = new TaskCompletionSource<AccelerometerData>();
+			var tcs = new TaskCompletionSource<AccelerometerData>(TaskCreationOptions.RunContinuationsAsynchronously);
 			Accelerometer.ReadingChanged += Accelerometer_ReadingChanged;
 			Accelerometer.Start(sensorSpeed);
 
@@ -71,7 +72,7 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 			if (!HardwareSupport.HasAccelerometer)
 				return;
 
-			var tcs = new TaskCompletionSource<AccelerometerData>();
+			var tcs = new TaskCompletionSource<AccelerometerData>(TaskCreationOptions.RunContinuationsAsynchronously);
 
 			Accelerometer.ReadingChanged += Accelerometer_ReadingChanged;
 			Accelerometer.Start(sensorSpeed);

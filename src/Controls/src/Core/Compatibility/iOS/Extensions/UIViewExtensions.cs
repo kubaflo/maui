@@ -1,9 +1,12 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using static System.String;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Graphics;
+using System.Diagnostics.CodeAnalysis;
+
 #if __MOBILE__
 using ObjCRuntime;
 using UIKit;
@@ -36,6 +39,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.MacOS
 			}
 		}
 
+		[Obsolete("Use IView.Measure or just call SizeThatFits directly on the UIView")]
 		public static SizeRequest GetSizeRequest(this UIView self, double widthConstraint, double heightConstraint,
 			double minimumWidth = -1, double minimumHeight = -1)
 		{
@@ -47,6 +51,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.MacOS
 			return new SizeRequest(request, minimum);
 		}
 
+		[RequiresUnreferencedCode(TrimmerConstants.StringPathBindingWarning, Url = TrimmerConstants.ExpressionBasedBindingsDocsUrl)]
 		public static void SetBinding(this UIView view, string propertyName, BindingBase bindingBase,
 			string updateSourceEventName = null)
 		{
@@ -68,7 +73,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.MacOS
 				{
 					//TODO: We need to figure a way to map the value back to the real objectiveC property.
 					//the X.IOS camelcase property name won't work
-					var key = new Foundation.NSString(propertyName.ToLower());
+					var key = new Foundation.NSString(propertyName.ToLowerInvariant());
 					var valueKey = view.ValueForKey(key);
 					if (valueKey != null)
 					{
@@ -105,26 +110,6 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.MacOS
 		internal static void TransferbindablePropertiesToWrapper(this UIView target, View wrapper)
 		{
 			PlatformBindingHelpers.TransferBindablePropertiesToWrapper(target, wrapper);
-		}
-
-		internal static T FindDescendantView<T>(this UIView view) where T : UIView
-		{
-			var queue = new Queue<UIView>();
-			queue.Enqueue(view);
-
-			while (queue.Count > 0)
-			{
-				var descendantView = queue.Dequeue();
-
-				var result = descendantView as T;
-				if (result != null)
-					return result;
-
-				for (var i = 0; i < descendantView.Subviews?.Length; i++)
-					queue.Enqueue(descendantView.Subviews[i]);
-			}
-
-			return null;
 		}
 
 #if __MOBILE__

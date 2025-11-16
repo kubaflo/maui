@@ -1,24 +1,26 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Markup;
+using WBrush = Microsoft.UI.Xaml.Media.Brush;
 using WEllipse = Microsoft.UI.Xaml.Shapes.Ellipse;
 using WRectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
 using WShape = Microsoft.UI.Xaml.Shapes.Shape;
-using WBrush = Microsoft.UI.Xaml.Media.Brush;
-using Microsoft.Maui.Graphics;
-using System;
 
 namespace Microsoft.Maui.Platform
 {
-	public class MauiPageControl : ItemsControl
+	public partial class MauiPageControl : ItemsControl
 	{
 		IIndicatorView? _indicatorView;
 		const int DefaultPadding = 4;
 		WBrush? _selectedColor;
 		WBrush? _fillColor;
 		ObservableCollection<WShape>? _dots;
+
+		internal bool UseShapeIndicator => _indicatorView == null || (_indicatorView is ITemplatedIndicatorView templatedView && templatedView.IndicatorsLayoutOverride != null);
 
 		public MauiPageControl()
 		{
@@ -36,14 +38,16 @@ namespace Microsoft.Maui.Platform
 
 		internal void UpdateIndicatorsColor()
 		{
-			if (_indicatorView == null)
+			if (UseShapeIndicator)
+			{
 				return;
+			}
 
-			if (_indicatorView.IndicatorColor is SolidPaint solidPaint)
+			if (_indicatorView?.IndicatorColor is SolidPaint solidPaint)
 				_fillColor = solidPaint?.ToPlatform();
-			if (_indicatorView.SelectedIndicatorColor is SolidPaint selectedSolidPaint)
+			if (_indicatorView?.SelectedIndicatorColor is SolidPaint selectedSolidPaint)
 				_selectedColor = selectedSolidPaint.ToPlatform();
-			var position = _indicatorView.Position;
+			var position = _indicatorView?.Position;
 			int i = 0;
 			foreach (var item in Items)
 			{
@@ -54,19 +58,21 @@ namespace Microsoft.Maui.Platform
 
 		internal void CreateIndicators()
 		{
-			if (_indicatorView == null)
+			if (UseShapeIndicator)
+			{
 				return;
+			}
 
 			var position = GetIndexFromPosition();
 			var indicators = new List<WShape>();
 
-			var indicatorCount = _indicatorView.GetMaximumVisible();
+			var indicatorCount = _indicatorView?.GetMaximumVisible();
 			if (indicatorCount > 0)
 			{
 				for (int i = 0; i < indicatorCount; i++)
 				{
 					var shape = CreateIndicator(i, position);
-					
+
 					if (shape != null)
 					{
 						indicators.Add(shape);
@@ -78,7 +84,7 @@ namespace Microsoft.Maui.Platform
 			ItemsSource = _dots;
 		}
 
-		ItemsPanelTemplate GetItemsPanelTemplate()
+		static ItemsPanelTemplate GetItemsPanelTemplate()
 		{
 			var itemsPanelTemplateXaml =
 				$@"<ItemsPanelTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
@@ -117,7 +123,7 @@ namespace Microsoft.Maui.Platform
 				};
 			}
 			shape.Tag = i;
-			shape.PointerPressed += (s,e) =>
+			shape.PointerPressed += (s, e) =>
 			{
 				if (_indicatorView == null)
 					return;

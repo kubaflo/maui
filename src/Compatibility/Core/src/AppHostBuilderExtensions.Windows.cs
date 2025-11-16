@@ -1,16 +1,17 @@
 #nullable enable
+using System;
+using Microsoft.Maui.Controls.Compatibility;
 using Microsoft.Maui.Controls.Compatibility.Platform.UWP;
+using Microsoft.Maui.Graphics.Platform;
 using Microsoft.Maui.Graphics.Win2D;
+using Microsoft.Maui.Hosting;
+using Microsoft.Maui.LifecycleEvents;
 using BoxRenderer = Microsoft.Maui.Controls.Compatibility.Platform.UWP.BoxViewBorderRenderer;
 using CellRenderer = Microsoft.Maui.Controls.Compatibility.Platform.UWP.TextCellRenderer;
+using DefaultRenderer = Microsoft.Maui.Controls.Compatibility.Platform.UWP.DefaultRenderer;
+using ImageLoaderSourceHandler = Microsoft.Maui.Controls.Compatibility.Platform.UWP.UriImageSourceHandler;
 using ResourcesProvider = Microsoft.Maui.Controls.Compatibility.Platform.UWP.WindowsResourcesProvider;
 using StreamImagesourceHandler = Microsoft.Maui.Controls.Compatibility.Platform.UWP.StreamImageSourceHandler;
-using ImageLoaderSourceHandler = Microsoft.Maui.Controls.Compatibility.Platform.UWP.UriImageSourceHandler;
-using DefaultRenderer = Microsoft.Maui.Controls.Compatibility.Platform.UWP.DefaultRenderer;
-using Microsoft.Maui.LifecycleEvents;
-using Microsoft.Maui.Controls.Compatibility;
-using System;
-using Microsoft.Maui.Hosting;
 
 namespace Microsoft.Maui.Controls.Compatibility.Hosting
 {
@@ -32,7 +33,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Hosting
 				// Inside OnLaunched we grab the MauiContext that's on the window so we can have the correct
 				// MauiContext inside Forms
 
-				var services = MauiWinUIApplication.Current.Services;
+				var services = IPlatformApplication.Current?.Services ?? throw new InvalidOperationException("Unable to find Application Services");
 				var mauiContext = new MauiContext(services);
 				var state = new ActivationState(mauiContext, args);
 #pragma warning disable CS0612 // Type or member is obsolete

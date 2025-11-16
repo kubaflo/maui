@@ -1,6 +1,8 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Microsoft.Maui.TestUtils.DeviceTests.Runners.VisualRunner"
              x:Class="Microsoft.Maui.TestUtils.DeviceTests.Runners.VisualRunner.Pages.TestResultPage"
+             x:DataType="local:TestResultViewModel"
              Title="Test Result">
 
     <ScrollView>
@@ -16,9 +18,19 @@
                 </StackLayout>
             </Frame>
 
-            <Label Text="{Binding ErrorMessage}" FontAttributes="Bold" />
-            <Label Text="{Binding ErrorStackTrace}"/>
+            <Image Source="{Binding ErrorImage}"></Image>
+            
+            <Label Text="{Binding ErrorMessage}" FontAttributes="Bold" x:Name="ErrorMessage" />
+            <Label Text="{Binding ErrorStackTrace}"
+                   x:Name="ErrorTrace" />
 
+            <HorizontalStackLayout Spacing="5">
+                <Button Text="Copy Message"
+                        x:Name="CopyMessage" />
+
+                <Button Text="Copy StackTrace"
+                        x:Name="CopyTrace" />
+            </HorizontalStackLayout>
         </StackLayout>
     </ScrollView>
 

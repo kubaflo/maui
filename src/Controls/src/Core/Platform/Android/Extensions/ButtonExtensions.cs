@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using AndroidX.AppCompat.Widget;
 using AndroidX.Core.Widget;
@@ -13,7 +14,7 @@ namespace Microsoft.Maui.Controls.Platform
 	{
 		public static void UpdateText(this MaterialButton platformButton, Button button)
 		{
-			var text = TextTransformUtilites.GetTransformedText(button.Text, button.TextTransform);
+			var text = TextTransformUtilities.GetTransformedText(button.Text, button.TextTransform);
 			platformButton.Text = text;
 
 			// Content layout depends on whether or not the text is empty; changing the text means
@@ -28,14 +29,16 @@ namespace Microsoft.Maui.Controls.Platform
 				return;
 
 			var icon = materialButton.Icon ??
+#pragma warning disable CS0618 // Type or member is obsolete
 						TextViewCompat.GetCompoundDrawablesRelative(materialButton)[3];
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			if (icon != null &&
 				!String.IsNullOrEmpty(button.Text))
 			{
 				var contentLayout = button.ContentLayout;
 
-				// IconPadding calls materialButton.CompoundDrawablePadding				
+				// IconPadding calls materialButton.CompoundDrawablePadding
 				// Which is why we don't have to worry about calling setCompoundDrawablePadding
 				// ourselves for our custom implemented IconGravityBottom
 				materialButton.IconPadding = (int)context.ToPixels(contentLayout.Spacing);
@@ -43,21 +46,16 @@ namespace Microsoft.Maui.Controls.Platform
 				switch (contentLayout.Position)
 				{
 					case ButtonContentLayout.ImagePosition.Top:
-						materialButton.Icon = icon;
 						materialButton.IconGravity = MaterialButton.IconGravityTop;
 						break;
 					case ButtonContentLayout.ImagePosition.Bottom:
-						materialButton.Icon = null;
-						TextViewCompat.SetCompoundDrawablesRelative(materialButton, null, null, null, icon);
 						materialButton.IconGravity = MauiMaterialButton.IconGravityBottom;
 						break;
 					case ButtonContentLayout.ImagePosition.Left:
-						materialButton.Icon = icon;
-						materialButton.IconGravity = MaterialButton.IconGravityStart;
+						materialButton.IconGravity = MaterialButton.IconGravityTextStart;
 						break;
 					case ButtonContentLayout.ImagePosition.Right:
-						materialButton.Icon = icon;
-						materialButton.IconGravity = MaterialButton.IconGravityEnd;
+						materialButton.IconGravity = MaterialButton.IconGravityTextEnd;
 						break;
 				}
 			}

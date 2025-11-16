@@ -1,16 +1,20 @@
 ﻿#nullable disable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Android.App;
 using Android.Content;
 using Android.Text;
 using Android.Views;
 using Android.Widget;
+using AndroidX.AppCompat.Widget;
 using Microsoft.Maui.Controls.Internals;
+using static Android.Views.ViewGroup;
 using AButton = Android.Widget.Button;
 using AppCompatActivity = AndroidX.AppCompat.App.AppCompatActivity;
 using AppCompatAlertDialog = AndroidX.AppCompat.App.AlertDialog;
+using AProgressBar = Android.Widget.ProgressBar;
 using AView = Android.Views.View;
 using AWindow = Android.Views.Window;
 
@@ -18,78 +22,33 @@ namespace Microsoft.Maui.Controls.Platform
 {
 	internal partial class AlertManager
 	{
-		readonly List<AlertRequestHelper> Subscriptions = new List<AlertRequestHelper>();
-
-		internal void Subscribe(Window window)
+		private partial IAlertManagerSubscription CreateSubscription(IMauiContext mauiContext)
 		{
-			IMauiContext mauiContext = window?.MauiContext;
-			Context context = mauiContext?.Context;
+			Context context = mauiContext.Context;
 			Activity activity = context.GetActivity();
 
-			if (Subscriptions.Any(s => s.Activity == activity))
-			{
-				return;
-			}
-
-			Subscriptions.Add(new AlertRequestHelper(activity, mauiContext));
+			return new AlertRequestHelper(activity, mauiContext);
 		}
 
-		internal void Unsubscribe(Window window)
-		{
-			IMauiContext mauiContext = window?.MauiContext;
-			Context context = mauiContext?.Context;
-			Activity activity = context.GetActivity();
-
-			var toRemove = Subscriptions.Where(s => s.Activity == activity).ToList();
-
-			foreach (AlertRequestHelper alertRequestHelper in toRemove)
-			{
-				alertRequestHelper.Dispose();
-				Subscriptions.Remove(alertRequestHelper);
-			}
-		}
-
-		internal void ResetBusyCount(Activity context)
-		{
-			Subscriptions.FirstOrDefault(s => s.Activity == context)?.ResetBusyCount();
-		}
-
-		internal sealed class AlertRequestHelper : IDisposable
+		internal sealed partial class AlertRequestHelper
 		{
 			int _busyCount;
-			bool? _supportsProgress;
 
 			internal AlertRequestHelper(Activity context, IMauiContext mauiContext)
 			{
 				Activity = context;
 				MauiContext = mauiContext;
-
-				MessagingCenter.Subscribe<Page, bool>(Activity, Page.BusySetSignalName, OnPageBusy);
-				MessagingCenter.Subscribe<Page, AlertArguments>(Activity, Page.AlertSignalName, OnAlertRequested);
-				MessagingCenter.Subscribe<Page, PromptArguments>(Activity, Page.PromptSignalName, OnPromptRequested);
-				MessagingCenter.Subscribe<Page, ActionSheetArguments>(Activity, Page.ActionSheetSignalName, OnActionSheetRequested);
 			}
 
 			public Activity Activity { get; }
+
 			public IMauiContext MauiContext { get; }
 
-			public void Dispose()
-			{
-				MessagingCenter.Unsubscribe<Page, bool>(Activity, Page.BusySetSignalName);
-				MessagingCenter.Unsubscribe<Page, AlertArguments>(Activity, Page.AlertSignalName);
-				MessagingCenter.Unsubscribe<Page, PromptArguments>(Activity, Page.PromptSignalName);
-				MessagingCenter.Unsubscribe<Page, ActionSheetArguments>(Activity, Page.ActionSheetSignalName);
-			}
-
-			public void ResetBusyCount()
-			{
-				_busyCount = 0;
-			}
-
-			void OnPageBusy(IView sender, bool enabled)
+			// TODO: This method is obsolete in .NET 10 and will be removed in .NET11.
+			public partial void OnPageBusy(Page sender, bool enabled)
 			{
 				// Verify that the page making the request is part of this activity 
-				if (!PageIsInThisContext(sender))
+				if (!PageIsInThisContext(sender) && enabled)
 				{
 					return;
 				}
@@ -99,8 +58,14 @@ namespace Microsoft.Maui.Controls.Platform
 				UpdateProgressBarVisibility(_busyCount > 0);
 			}
 
-			void OnActionSheetRequested(IView sender, ActionSheetArguments arguments)
+			public partial void OnActionSheetRequested(Page sender, ActionSheetArguments arguments)
 			{
+				// Wait for handler to be ready before showing dialog
+				if (WaitForHandlerIfNeeded(sender, () => OnActionSheetRequested(sender, arguments)))
+				{
+					return;
+				}
+
 				// Verify that the page making the request is part of this activity 
 				if (!PageIsInThisContext(sender))
 				{
@@ -158,8 +123,14 @@ namespace Microsoft.Maui.Controls.Platform
 				}
 			}
 
-			void OnAlertRequested(IView sender, AlertArguments arguments)
+			public partial void OnAlertRequested(Page sender, AlertArguments arguments)
 			{
+				// Wait for handler to be ready before showing dialog
+				if (WaitForHandlerIfNeeded(sender, () => OnAlertRequested(sender, arguments)))
+				{
+					return;
+				}
+
 				// Verify that the page making the request is part of this activity 
 				if (!PageIsInThisContext(sender))
 				{
@@ -238,8 +209,14 @@ namespace Microsoft.Maui.Controls.Platform
 				return TextDirection.Ltr;
 			}
 
-			void OnPromptRequested(IView sender, PromptArguments arguments)
+			public partial void OnPromptRequested(Page sender, PromptArguments arguments)
 			{
+				// Wait for handler to be ready before showing dialog
+				if (WaitForHandlerIfNeeded(sender, () => OnPromptRequested(sender, arguments)))
+				{
+					return;
+				}
+
 				// Verify that the page making the request is part of this activity 
 				if (!PageIsInThisContext(sender))
 				{
@@ -255,7 +232,7 @@ namespace Microsoft.Maui.Controls.Platform
 				alertDialog.SetMessage(arguments.Message);
 
 				var frameLayout = new FrameLayout(Activity);
-				var editText = new EditText(Activity) { Hint = arguments.Placeholder, Text = arguments.InitialValue };
+				var editText = new AppCompatEditText(Activity) { Hint = arguments.Placeholder, Text = arguments.InitialValue };
 				var layoutParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.WrapContent)
 				{
 					LeftMargin = (int)(22 * Activity.Resources.DisplayMetrics.Density),
@@ -282,37 +259,68 @@ namespace Microsoft.Maui.Controls.Platform
 				editText.RequestFocus();
 			}
 
-			void UpdateProgressBarVisibility(bool isBusy)
+			bool WaitForHandlerIfNeeded(IView sender, System.Action action)
 			{
-				if (!SupportsProgress)
-					return;
-#pragma warning disable 612, 618
+				if (sender.Handler is null && sender is VisualElement ve)
+				{
+					void OnHandlerReady(object s, EventArgs e)
+					{
+						ve.HandlerChanged -= OnHandlerReady;
+						action();
+					}
 
-				Activity.SetProgressBarIndeterminate(true);
-				Activity.SetProgressBarIndeterminateVisibility(isBusy);
-#pragma warning restore 612, 618
+					ve.HandlerChanged += OnHandlerReady;
+					return true;
+				}
+				return false;
 			}
 
-			internal bool SupportsProgress
+			void UpdateProgressBarVisibility(bool isBusy)
 			{
-				get
+				int progressLayoutId = 16908999;
+
+				AView root = Activity?.Window?.DecorView?.RootView;
+
+				if (root?.FindViewById(Activity.Resources.GetIdentifier("content", "id", "android")) is not ViewGroup content)
 				{
-					if (_supportsProgress.HasValue)
-						return _supportsProgress.Value;
+					return;
+				}
 
-					int progressCircularId = Activity.Resources.GetIdentifier("progress_circular", "id", "android");
+				if (isBusy)
+				{
+					var progressLayout = new FrameLayout(Activity.ApplicationContext)
+					{
+						Id = progressLayoutId,
+						LayoutParameters = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.MatchParent)
+					};
 
-					if (progressCircularId > 0)
-						_supportsProgress = Activity.FindViewById(progressCircularId) != null;
-					else
-						_supportsProgress = true;
+					var progressBar = new AProgressBar(Activity.ApplicationContext)
+					{
+						Indeterminate = true,
+						LayoutParameters = new FrameLayout.LayoutParams(LayoutParams.WrapContent, LayoutParams.WrapContent)
+						{
+							Gravity = GravityFlags.Center
+						}
+					};
 
-					return _supportsProgress.Value;
+					progressLayout.AddView(progressBar);
+
+					content.AddView(progressLayout);
+				}
+				else
+				{
+					var viewToRemove = content.FindViewById(progressLayoutId);
+					content.RemoveView(viewToRemove);
 				}
 			}
 
 			bool PageIsInThisContext(IView page)
 			{
+				if (page.Handler == null)
+				{
+					return false;
+				}
+
 				var platformView = page.ToPlatform();
 
 				if (platformView.Context == null)

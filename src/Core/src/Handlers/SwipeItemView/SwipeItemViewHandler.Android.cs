@@ -14,8 +14,7 @@ namespace Microsoft.Maui.Handlers
 
 			var viewGroup = new ContentViewGroup(Context)
 			{
-				CrossPlatformMeasure = VirtualView.CrossPlatformMeasure,
-				CrossPlatformArrange = VirtualView.CrossPlatformArrange
+				CrossPlatformLayout = VirtualView
 			};
 
 			return viewGroup;
@@ -27,8 +26,7 @@ namespace Microsoft.Maui.Handlers
 			_ = VirtualView ?? throw new InvalidOperationException($"{nameof(VirtualView)} should have been set by base class.");
 			_ = PlatformView ?? throw new InvalidOperationException($"{nameof(PlatformView)} should have been set by base class.");
 
-			PlatformView.CrossPlatformMeasure = VirtualView.CrossPlatformMeasure;
-			PlatformView.CrossPlatformArrange = VirtualView.CrossPlatformArrange;
+			PlatformView.CrossPlatformLayout = VirtualView;
 		}
 
 		void UpdateContent()
@@ -52,13 +50,13 @@ namespace Microsoft.Maui.Handlers
 		public static void MapVisibility(ISwipeItemViewHandler handler, ISwipeItemView view)
 		{
 			var swipeView = handler.PlatformView?.Parent.GetParentOfType<MauiSwipeView>();
-			if (swipeView != null)
-				swipeView.UpdateIsVisibleSwipeItem(view);
+			swipeView?.UpdateIsVisibleSwipeItem(view);
 		}
 
 		protected override void DisconnectHandler(ContentViewGroup platformView)
 		{
-			// If we're being disconnected from the xplat element, then we should no longer be managing its chidren
+			// If we're being disconnected from the xplat element, then we should no longer be managing its children
+			platformView.CrossPlatformLayout = null;
 			platformView.RemoveAllViews();
 			base.DisconnectHandler(platformView);
 		}

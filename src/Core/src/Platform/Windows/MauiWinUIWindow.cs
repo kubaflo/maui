@@ -1,19 +1,34 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using Microsoft.Maui.Devices;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.LifecycleEvents;
 using Microsoft.UI;
+using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml.Media;
+using Windows.Graphics;
+using ViewManagement = Windows.UI.ViewManagement;
 
 namespace Microsoft.Maui
 {
-	public class MauiWinUIWindow : UI.Xaml.Window
+	public class MauiWinUIWindow : UI.Xaml.Window, IPlatformSizeRestrictedWindow
 	{
+		static readonly SizeInt32 DefaultMinimumSize = new SizeInt32(0, 0);
+		static readonly SizeInt32 DefaultMaximumSize = new SizeInt32(int.MaxValue, int.MaxValue);
+
+		readonly WindowMessageManager _windowManager;
+
 		IntPtr _windowIcon;
 		bool _enableResumeEvent;
+		bool _isActivated;
+		ViewManagement.UISettings _viewSettings;
 
 		public MauiWinUIWindow()
 		{
+			_windowManager = WindowMessageManager.Get(this);
+			_viewSettings = new ViewManagement.UISettings();
+
 			Activated += OnActivated;
 			Closed += OnClosedPrivate;
 			VisibilityChanged += OnVisibilityChanged;
@@ -21,7 +36,23 @@ namespace Microsoft.Maui
 			// We set this to true by default so later on if it's
 			// set to false we know the user toggled this to false 
 			// and then we can react accordingly
-			ExtendsContentIntoTitleBar = true;
+			if (AppWindowTitleBar.IsCustomizationSupported())
+			{
+				var titleBar = this.GetAppWindow()?.TitleBar;
+
+				if (titleBar is not null)
+				{
+					titleBar.ExtendsContentIntoTitleBar = true;
+				}
+
+				_viewSettings.ColorValuesChanged += _viewSettings_ColorValuesChanged;
+				SetTileBarButtonColors();
+			}
+
+			if (MicaController.IsSupported())
+			{
+				base.SystemBackdrop = new MicaBackdrop() { Kind = MicaKind.BaseAlt };
+			}
 
 			SubClassingWin32();
 			SetIcon();
@@ -31,87 +62,129 @@ namespace Microsoft.Maui
 		{
 			if (args.WindowActivationState != UI.Xaml.WindowActivationState.Deactivated)
 			{
+				// We have to track isActivated calls because WinUI will call OnActivated Twice
+				// when maximizing a window
+				// https://github.com/microsoft/microsoft-ui-xaml/issues/7343
+				if (_isActivated)
+					return;
+
+				_isActivated = true;
+
 				if (_enableResumeEvent)
-					MauiWinUIApplication.Current.Services?.InvokeLifecycleEvents<WindowsLifecycle.OnResumed>(del => del(this));
+					Services?.InvokeLifecycleEvents<WindowsLifecycle.OnResumed>(del => del(this));
 				else
 					_enableResumeEvent = true;
 			}
+			else if (args.WindowActivationState == UI.Xaml.WindowActivationState.Deactivated &&
+				!_isActivated)
+			{
+				// Don't invoke deactivated event if we're not activated. It's possible we can
+				// recieve this event multiple times if we start a new child process and that 
+				// process creates a new window
+				return;
+			}
+			else
+			{
+				_isActivated = false;
+			}
 
-			MauiWinUIApplication.Current.Services?.InvokeLifecycleEvents<WindowsLifecycle.OnActivated>(del => del(this, args));
+			Services?.InvokeLifecycleEvents<WindowsLifecycle.OnActivated>(del => del(this, args));
 		}
 
 		private void OnClosedPrivate(object sender, UI.Xaml.WindowEventArgs args)
 		{
 			OnClosed(sender, args);
 
+			Activated -= OnActivated;
+			Closed -= OnClosedPrivate;
+			VisibilityChanged -= OnVisibilityChanged;
+			_viewSettings.ColorValuesChanged -= _viewSettings_ColorValuesChanged;
+
 			if (_windowIcon != IntPtr.Zero)
 			{
-				DestroyIcon(_windowIcon);
+				_ = DestroyIcon(_windowIcon);
 				_windowIcon = IntPtr.Zero;
 			}
+
+			Window = null;
 		}
 
 		protected virtual void OnClosed(object sender, UI.Xaml.WindowEventArgs args)
 		{
-			MauiWinUIApplication.Current.Services?.InvokeLifecycleEvents<WindowsLifecycle.OnClosed>(del => del(this, args));
+			Services?.InvokeLifecycleEvents<WindowsLifecycle.OnClosed>(del => del(this, args));
 		}
 
 		protected virtual void OnVisibilityChanged(object sender, UI.Xaml.WindowVisibilityChangedEventArgs args)
 		{
-			MauiWinUIApplication.Current.Services?.InvokeLifecycleEvents<WindowsLifecycle.OnVisibilityChanged>(del => del(this, args));
+			Services?.InvokeLifecycleEvents<WindowsLifecycle.OnVisibilityChanged>(del => del(this, args));
 		}
 
-		#region Native Window
-
-		IntPtr _hwnd = IntPtr.Zero;
-
-		/// <summary>
-		/// Returns a pointer to the underlying platform window handle (hWnd).
-		/// </summary>
-		public IntPtr WindowHandle
-		{
-			get
-			{
-				if (_hwnd == IntPtr.Zero)
-					_hwnd = this.GetWindowHandle();
-				return _hwnd;
-			}
-		}
-
-		PlatformMethods.WindowProc? newWndProc = null;
-		IntPtr oldWndProc = IntPtr.Zero;
+		public IntPtr WindowHandle => _windowManager.WindowHandle;
 
 		void SubClassingWin32()
 		{
-			MauiWinUIApplication.Current.Services?.InvokeLifecycleEvents<WindowsLifecycle.OnPlatformWindowSubclassed>(
+			Services?.InvokeLifecycleEvents<WindowsLifecycle.OnPlatformWindowSubclassed>(
 				del => del(this, new WindowsPlatformWindowSubclassedEventArgs(WindowHandle)));
 
-			newWndProc = new PlatformMethods.WindowProc(NewWindowProc);
-			oldWndProc = PlatformMethods.SetWindowLongPtr(WindowHandle, PlatformMethods.WindowLongFlags.GWL_WNDPROC, newWndProc);
+			_windowManager.WindowMessage += OnWindowMessage;
 
-			IntPtr NewWindowProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
+			void OnWindowMessage(object? sender, WindowMessageEventArgs e)
 			{
-				if (msg == WindowsPlatformMessageIds.WM_SETTINGCHANGE || msg == WindowsPlatformMessageIds.WM_THEMECHANGE)
-					MauiWinUIApplication.Current.Application?.ThemeChanged();
-
-				if (msg == WindowsPlatformMessageIds.WM_DPICHANGED)
+				if (e.MessageId == PlatformMethods.MessageIds.WM_GETMINMAXINFO)
 				{
-					var dpiX = (short)(long)wParam;
-					var dpiY = (short)((long)wParam >> 16);
+					var win = this as IPlatformSizeRestrictedWindow;
+					var minSize = win.MinimumSize;
+					var maxSize = win.MaximumSize;
 
-					var window = this.GetWindow();
-					if (window is not null)
-						window.DisplayDensityChanged(dpiX / DeviceDisplay.BaseLogicalDpi);
+					var changedMinSize = minSize != DefaultMinimumSize;
+					var changedMaxSize = maxSize != DefaultMaximumSize;
+
+					if (changedMinSize || changedMaxSize)
+					{
+						var rect = Marshal.PtrToStructure<PlatformMethods.MinMaxInfo>(e.LParam);
+
+						if (changedMinSize)
+						{
+							var newMinSize = new PlatformMethods.POINT
+							{
+								X = Math.Max(minSize.Width, rect.MinTrackSize.X),
+								Y = Math.Max(minSize.Height, rect.MinTrackSize.Y)
+							};
+							rect.MinTrackSize = newMinSize;
+						}
+
+						if (changedMaxSize)
+						{
+							var newMaxSize = new PlatformMethods.POINT
+							{
+								X = Math.Min(maxSize.Width, rect.MaxTrackSize.X),
+								Y = Math.Min(maxSize.Height, rect.MaxTrackSize.Y)
+							};
+							rect.MaxTrackSize = newMaxSize;
+						}
+
+						Marshal.StructureToPtr(rect, e.LParam, true);
+					}
+				}
+				else if (e.MessageId == PlatformMethods.MessageIds.WM_STYLECHANGING)
+				{
+					if (e.WParam == (int)PlatformMethods.WindowLongFlags.GWL_STYLE)
+					{
+						var styleChange = Marshal.PtrToStructure<PlatformMethods.STYLESTRUCT>(e.LParam);
+						bool hasTitleBar = PlatformMethods.HasStyle(styleChange.StyleNew, PlatformMethods.WindowStyles.WS_CAPTIONANDSYSTEMMENU);
+
+						var rootManager = Window?.Handler?.MauiContext?.GetNavigationRootManager();
+						if (rootManager != null)
+						{
+							rootManager?.SetTitleBarVisibility(hasTitleBar);
+						}
+					}
 				}
 
-				MauiWinUIApplication.Current.Services?.InvokeLifecycleEvents<WindowsLifecycle.OnPlatformMessage>(
-					m => m.Invoke(this, new WindowsPlatformMessageEventArgs(hWnd, msg, wParam, lParam)));
-
-				return PlatformMethods.CallWindowProc(oldWndProc, hWnd, msg, wParam, lParam);
+				Services?.InvokeLifecycleEvents<WindowsLifecycle.OnPlatformMessage>(
+					m => m.Invoke(this, new WindowsPlatformMessageEventArgs(e.Hwnd, e.MessageId, e.WParam, e.LParam)));
 			}
 		}
-
-		#endregion
 
 		/// <summary>
 		/// Default the Window Icon to the icon stored in the .exe, if any.
@@ -137,10 +210,53 @@ namespace Microsoft.Maui
 			}
 		}
 
+		private void _viewSettings_ColorValuesChanged(ViewManagement.UISettings sender, object args)
+		{
+			DispatcherQueue.TryEnqueue(SetTileBarButtonColors);
+		}
+
+		private void SetTileBarButtonColors()
+		{
+			if (AppWindowTitleBar.IsCustomizationSupported())
+			{
+				var titleBar = this.GetAppWindow()?.TitleBar;
+
+				if (titleBar is null)
+					return;
+
+				titleBar.ButtonBackgroundColor = Colors.Transparent;
+				titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+				titleBar.ButtonForegroundColor = UI.Xaml.Application.Current.RequestedTheme == UI.Xaml.ApplicationTheme.Dark ?
+					Colors.White : Colors.Black;
+			}
+		}
+
+		SizeInt32 IPlatformSizeRestrictedWindow.MinimumSize { get; set; } = DefaultMinimumSize;
+
+		SizeInt32 IPlatformSizeRestrictedWindow.MaximumSize { get; set; } = DefaultMaximumSize;
+
+		internal IWindow? Window { get; private set; }
+
+		internal IServiceProvider? Services =>
+			Window?.Handler?.GetServiceProvider() ??
+			IPlatformApplication.Current?.Services;
+
 		[DllImport("shell32.dll", CharSet = CharSet.Auto)]
 		static extern IntPtr ExtractAssociatedIcon(IntPtr hInst, string iconPath, ref IntPtr index);
 
 		[DllImport("user32.dll", SetLastError = true)]
 		static extern int DestroyIcon(IntPtr hIcon);
+
+		internal void SetWindow(IWindow window)
+		{
+			Window = window;
+		}
+	}
+
+	interface IPlatformSizeRestrictedWindow
+	{
+		SizeInt32 MinimumSize { get; set; }
+
+		SizeInt32 MaximumSize { get; set; }
 	}
 }

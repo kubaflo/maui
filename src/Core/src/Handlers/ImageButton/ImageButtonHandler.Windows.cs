@@ -11,6 +11,8 @@ namespace Microsoft.Maui.Handlers
 		Image? _image;
 
 		PointerEventHandler? _pointerPressedHandler;
+		PointerEventHandler? _pointerReleasedHandler;
+		bool _isPressed;
 
 		protected override Button CreatePlatformView()
 		{
@@ -34,6 +36,7 @@ namespace Microsoft.Maui.Handlers
 		protected override void ConnectHandler(Button platformView)
 		{
 			_pointerPressedHandler = new PointerEventHandler(OnPointerPressed);
+			_pointerReleasedHandler = new PointerEventHandler(OnPointerReleased);
 
 			if (_image != null)
 			{
@@ -42,7 +45,9 @@ namespace Microsoft.Maui.Handlers
 			}
 
 			platformView.Click += OnClick;
+			platformView.Unloaded += OnUnloaded;
 			platformView.AddHandler(UIElement.PointerPressedEvent, _pointerPressedHandler, true);
+			platformView.AddHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler, true);
 
 			base.ConnectHandler(platformView);
 		}
@@ -56,9 +61,12 @@ namespace Microsoft.Maui.Handlers
 			}
 
 			platformView.Click -= OnClick;
+			platformView.Unloaded -= OnUnloaded;
 			platformView.RemoveHandler(UIElement.PointerPressedEvent, _pointerPressedHandler);
+			platformView.RemoveHandler(UIElement.PointerReleasedEvent, _pointerReleasedHandler);
 
 			_pointerPressedHandler = null;
+			_pointerReleasedHandler = null;
 
 			base.DisconnectHandler(platformView);
 
@@ -73,12 +81,14 @@ namespace Microsoft.Maui.Handlers
 		public static void MapStrokeThickness(IImageButtonHandler handler, IButtonStroke buttonStroke)
 		{
 			(handler.PlatformView as Button)?.UpdateStrokeThickness(buttonStroke);
+			handler.UpdateValue(nameof(IImageButton.Padding));
 		}
 
 		public static void MapCornerRadius(IImageButtonHandler handler, IButtonStroke buttonStroke)
 		{
 			(handler.PlatformView as Button)?.UpdateCornerRadius(buttonStroke);
-    }
+			handler.UpdateValue(nameof(IImageButton.Padding));
+		}
 
 		public static void MapBackground(IImageButtonHandler handler, IImageButton imageButton)
 		{
@@ -90,20 +100,30 @@ namespace Microsoft.Maui.Handlers
 			(handler.PlatformView as Button)?.UpdatePadding(imageButton);
 		}
 
-		void OnSetImageSource(ImageSource? nativeImageSource)
-		{
-			PlatformView.UpdateImageSource(nativeImageSource);
-		}
-
 		void OnClick(object sender, RoutedEventArgs e)
 		{
 			VirtualView?.Clicked();
-			VirtualView?.Released();
 		}
 
 		void OnPointerPressed(object sender, PointerRoutedEventArgs e)
 		{
+			_isPressed = true;
 			VirtualView?.Pressed();
+		}
+
+		void OnPointerReleased(object sender, PointerRoutedEventArgs e)
+		{
+			_isPressed = false;
+			VirtualView?.Released();
+		}
+
+		void OnUnloaded(object sender, RoutedEventArgs e)
+		{
+			// WinUI will not raise the PointerReleased event if the pointer is pressed and then unloaded
+			if (_isPressed)
+			{
+				VirtualView?.Released();
+			}
 		}
 
 		void OnImageOpened(object sender, RoutedEventArgs routedEventArgs)
@@ -115,6 +135,17 @@ namespace Microsoft.Maui.Handlers
 		{
 			MauiContext?.CreateLogger<ImageButtonHandler>()?.LogWarning("Image failed to load: {exceptionRoutedEventArgs.ErrorMessage}", exceptionRoutedEventArgs.ErrorMessage);
 			VirtualView?.UpdateIsLoading(false);
+		}
+
+		partial class ImageButtonImageSourcePartSetter
+		{
+			public override void SetImageSource(ImageSource? platformImage)
+			{
+				if (Handler?.PlatformView is not Button button)
+					return;
+
+				button.UpdateImageSource(platformImage);
+			}
 		}
 	}
 }

@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
@@ -9,9 +10,10 @@ using WVisibility = Microsoft.UI.Xaml.Visibility;
 
 namespace Microsoft.Maui.Controls.Platform
 {
-	internal class FormsListView : Microsoft.UI.Xaml.Controls.ListView, IEmptyView
+	internal partial class FormsListView : Microsoft.UI.Xaml.Controls.ListView, IEmptyView
 	{
 		ContentControl _emptyViewContentControl;
+		ScrollViewer _scrollViewer;
 		FrameworkElement _emptyView;
 		View _formsEmptyView;
 
@@ -39,13 +41,13 @@ namespace Microsoft.Maui.Controls.Platform
 
 		public WVisibility EmptyViewVisibility
 		{
-			get 
-			{ 
-				return (WVisibility)GetValue(EmptyViewVisibilityProperty); 
-			}
-			set 
+			get
 			{
-				SetValue(EmptyViewVisibilityProperty, value); 
+				return (WVisibility)GetValue(EmptyViewVisibilityProperty);
+			}
+			set
+			{
+				SetValue(EmptyViewVisibilityProperty, value);
 			}
 		}
 
@@ -67,6 +69,8 @@ namespace Microsoft.Maui.Controls.Platform
 
 			_emptyViewContentControl = GetTemplateChild("EmptyViewContentControl") as ContentControl;
 
+			_scrollViewer = GetTemplateChild("ScrollViewer") as ScrollViewer;
+
 			if (_emptyView != null)
 			{
 				_emptyViewContentControl.Content = _emptyView;
@@ -76,10 +80,7 @@ namespace Microsoft.Maui.Controls.Platform
 
 		protected override global::Windows.Foundation.Size ArrangeOverride(global::Windows.Foundation.Size finalSize)
 		{
-			if (_formsEmptyView != null)
-			{
-				_formsEmptyView.Layout(new Rect(0, 0, finalSize.Width, finalSize.Height));
-			}
+			_formsEmptyView?.Arrange(new Rect(0, 0, finalSize.Width, finalSize.Height));
 
 			return base.ArrangeOverride(finalSize);
 		}
@@ -92,9 +93,18 @@ namespace Microsoft.Maui.Controls.Platform
 
 		void UpdateEmptyViewVisibility(WVisibility visibility)
 		{
-			if (_emptyViewContentControl == null)
+			if (_emptyViewContentControl is null)
 			{
 				return;
+			}
+
+			// Adjust the ScrollViewer's hit test visibility if it exists
+			if (_scrollViewer is not null)
+			{
+				// When the empty view is visible, disable hit testing for the ScrollViewer.
+				// This ensures that interactions are directed to the empty view instead of the ScrollViewer.
+				// In the template, the empty view is placed below the ScrollViewer in the visual tree.
+				_scrollViewer.IsHitTestVisible = visibility != WVisibility.Visible;
 			}
 
 			_emptyViewContentControl.Visibility = visibility;

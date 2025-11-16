@@ -7,21 +7,24 @@ using Microsoft.Maui.Graphics.Converters;
 
 namespace Microsoft.Maui.Controls.Shapes
 {
-	/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/PointCollectionConverter.xml" path="Type[@FullName='Microsoft.Maui.Controls.Shapes.PointCollectionConverter']/Docs" />
+	/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/PointCollectionConverter.xml" path="Type[@FullName='Microsoft.Maui.Controls.Shapes.PointCollectionConverter']/Docs/*" />
 	public class PointCollectionConverter : TypeConverter
 	{
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/PointCollectionConverter.xml" path="//Member[@MemberName='CanConvertFrom']/Docs" />
-		public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-			=> sourceType == typeof(string);
+		public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
+			=> sourceType == typeof(string) || sourceType == typeof(Point[]);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/PointCollectionConverter.xml" path="//Member[@MemberName='CanConvertTo']/Docs" />
-		public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
+		public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destinationType)
 			=> destinationType == typeof(string);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/PointCollectionConverter.xml" path="//Member[@MemberName='ConvertFrom']/Docs" />
-		public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+		public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
 		{
-			var strValue = value?.ToString();
+			if (value is Point[] pointArray)
+			{
+				return (PointCollection)pointArray;
+			}
+
+			var strValue = value?.ToString() ?? string.Empty;
+
 			string[] points = strValue.Split(new char[] { ' ', ',' });
 			var pointCollection = new PointCollection();
 			double x = 0;
@@ -30,7 +33,9 @@ namespace Microsoft.Maui.Controls.Shapes
 			foreach (string point in points)
 			{
 				if (string.IsNullOrWhiteSpace(point))
+				{
 					continue;
+				}
 
 				if (double.TryParse(point, NumberStyles.Number, CultureInfo.InvariantCulture, out double number))
 				{
@@ -46,20 +51,25 @@ namespace Microsoft.Maui.Controls.Shapes
 					}
 				}
 				else
+				{
 					throw new InvalidOperationException(string.Format("Cannot convert \"{0}\" into {1}", point, typeof(double)));
+				}
 			}
 
 			if (hasX)
+			{
 				throw new InvalidOperationException(string.Format("Cannot convert string into PointCollection"));
+			}
 
 			return pointCollection;
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/PointCollectionConverter.xml" path="//Member[@MemberName='ConvertTo']/Docs" />
-		public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
+		public override object? ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
 		{
 			if (value is not PointCollection pc)
+			{
 				throw new NotSupportedException();
+			}
 
 			var converter = new PointTypeConverter();
 			return string.Join(", ", pc.Select(p => converter.ConvertToInvariantString(p)));

@@ -1,8 +1,8 @@
 ﻿using System;
+using Maui.Controls.Sample.ViewModels;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.PlatformConfiguration;
 using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
-using Maui.Controls.Sample.ViewModels;
 
 namespace Maui.Controls.Sample.Pages
 {
@@ -16,8 +16,8 @@ namespace Maui.Controls.Sample.Pages
 
 		void OnButtonClicked(object sender, EventArgs e)
 		{
-			Microsoft.Maui.Controls.Application.Current.On<iOS>().SetPanGestureRecognizerShouldRecognizeSimultaneously(
-				!Microsoft.Maui.Controls.Application.Current.On<iOS>().GetPanGestureRecognizerShouldRecognizeSimultaneously());
+			Microsoft.Maui.Controls.Application.Current!.On<iOS>().SetPanGestureRecognizerShouldRecognizeSimultaneously(
+				!Microsoft.Maui.Controls.Application.Current!.On<iOS>().GetPanGestureRecognizerShouldRecognizeSimultaneously());
 		}
 
 		void OnPanUpdated(object sender, PanUpdatedEventArgs e)

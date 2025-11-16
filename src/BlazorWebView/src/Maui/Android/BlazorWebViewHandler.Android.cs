@@ -1,12 +1,16 @@
 using System;
+using System.Threading.Tasks;
 using Android.Webkit;
+using Android.Widget;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Maui;
 using Microsoft.Maui.Dispatching;
 using Microsoft.Maui.Handlers;
-using static Android.Views.ViewGroup;
-using AWebView = Android.Webkit.WebView;
+using static global::Android.Views.ViewGroup;
+using AWebView = global::Android.Webkit.WebView;
 using Path = System.IO.Path;
 
 namespace Microsoft.AspNetCore.Components.WebView.Maui
@@ -18,14 +22,21 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 		private AndroidWebKitWebViewManager? _webviewManager;
 		internal AndroidWebKitWebViewManager? WebviewManager => _webviewManager;
 
+		private ILogger? _logger;
+		internal ILogger Logger => _logger ??= Services!.GetService<ILogger<BlazorWebViewHandler>>() ?? NullLogger<BlazorWebViewHandler>.Instance;
+
 		protected override AWebView CreatePlatformView()
 		{
+			Logger.CreatingAndroidWebkitWebView();
+
+#pragma warning disable CA1416, CA1412, CA1422 // Validate platform compatibility
 			var blazorAndroidWebView = new BlazorAndroidWebView(Context!)
 			{
 #pragma warning disable 618 // This can probably be replaced with LinearLayout(LayoutParams.MatchParent, LayoutParams.MatchParent); just need to test that theory
-				LayoutParameters = new Android.Widget.AbsoluteLayout.LayoutParams(LayoutParams.MatchParent, LayoutParams.MatchParent, 0, 0)
+				LayoutParameters = new AbsoluteLayout.LayoutParams(LayoutParams.MatchParent, LayoutParams.MatchParent, 0, 0)
 #pragma warning restore 618
 			};
+#pragma warning restore CA1416, CA1412, CA1422 // Validate platform compatibility
 
 			BlazorAndroidWebView.SetWebContentsDebuggingEnabled(enabled: DeveloperTools.Enabled);
 
@@ -44,8 +55,12 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			_webChromeClient = new BlazorWebChromeClient();
 			blazorAndroidWebView.SetWebChromeClient(_webChromeClient);
 
+			Logger.CreatedAndroidWebkitWebView();
+
 			return blazorAndroidWebView;
 		}
+
+		private const string AndroidFireAndForgetAsyncSwitch = "BlazorWebView.AndroidFireAndForgetAsync";
 
 		protected override void DisconnectHandler(AWebView platformView)
 		{
@@ -53,13 +68,32 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 
 			if (_webviewManager != null)
 			{
-				// Dispose this component's contents and block on completion so that user-written disposal logic and
-				// Blazor disposal logic will complete.
-				_webviewManager?
+				// Dispose this component's contents so that user-written disposal logic and Blazor disposal logic will complete.
+
+				// Start the disposal...
+				var disposalTask = _webviewManager?
 					.DisposeAsync()
-					.AsTask()
-					.GetAwaiter()
-					.GetResult();
+					.AsTask()!;
+
+				// When determining whether to block on disposal, we respect the more specific AndroidFireAndForgetAsync switch
+				// if specified. If not, we fall back to the general UseBlockingDisposal switch, defaulting to false.
+				var shouldBlockOnDispose = AppContext.TryGetSwitch(AndroidFireAndForgetAsyncSwitch, out var enableFireAndForget)
+					? !enableFireAndForget
+					: IsBlockingDisposalEnabled;
+
+				if (shouldBlockOnDispose)
+				{
+					// If the app is configured to block on dispose via an AppContext switch,
+					// we'll synchronously wait for the disposal to complete. This can cause a deadlock.
+					disposalTask
+						.GetAwaiter()
+						.GetResult();
+				}
+				else
+				{
+					// Otherwise, by default, we'll fire-and-forget the disposal task.
+					disposalTask.FireAndForget(_logger);
+				}
 
 				_webviewManager = null;
 			}
@@ -90,6 +124,8 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			var contentRootDir = Path.GetDirectoryName(HostPage!) ?? string.Empty;
 			var hostPageRelativePath = Path.GetRelativePath(contentRootDir, HostPage!);
 
+			Logger.CreatingFileProvider(contentRootDir, hostPageRelativePath);
+
 			var fileProvider = VirtualView.CreateFileProvider(contentRootDir);
 
 			_webviewManager = new AndroidWebKitWebViewManager(
@@ -99,7 +135,8 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 				fileProvider,
 				VirtualView.JSComponents,
 				contentRootDir,
-				hostPageRelativePath);
+				hostPageRelativePath,
+				Logger);
 
 			StaticContentHotReloadManager.AttachToWebViewManagerIfEnabled(_webviewManager);
 
@@ -113,17 +150,37 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			{
 				foreach (var rootComponent in RootComponents)
 				{
+					Logger.AddingRootComponent(rootComponent.ComponentType?.FullName ?? string.Empty, rootComponent.Selector ?? string.Empty, rootComponent.Parameters?.Count ?? 0);
+
 					// Since the page isn't loaded yet, this will always complete synchronously
 					_ = rootComponent.AddToWebViewManagerAsync(_webviewManager);
 				}
 			}
 
-			_webviewManager.Navigate("/");
+			Logger.StartingInitialNavigation(VirtualView.StartPath);
+			_webviewManager.Navigate(VirtualView.StartPath);
 		}
 
 		internal IFileProvider CreateFileProvider(string contentRootDir)
 		{
 			return new AndroidMauiAssetFileProvider(Context.Assets, contentRootDir);
+		}
+
+		/// <summary>
+		/// Calls the specified <paramref name="workItem"/> asynchronously and passes in the scoped services available to Razor components.
+		/// </summary>
+		/// <param name="workItem">The action to call.</param>
+		/// <returns>Returns a <see cref="Task"/> representing <c>true</c> if the <paramref name="workItem"/> was called, or <c>false</c> if it was not called because Blazor is not currently running.</returns>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="workItem"/> is <c>null</c>.</exception>
+		public virtual async Task<bool> TryDispatchAsync(Action<IServiceProvider> workItem)
+		{
+			ArgumentNullException.ThrowIfNull(workItem);
+			if (_webviewManager is null)
+			{
+				return false;
+			}
+
+			return await _webviewManager.TryDispatchAsync(workItem);
 		}
 	}
 }

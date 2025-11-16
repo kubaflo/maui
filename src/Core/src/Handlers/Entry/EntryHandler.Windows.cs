@@ -12,6 +12,7 @@ namespace Microsoft.Maui.Handlers
 	public partial class EntryHandler : ViewHandler<IEntry, TextBox>
 	{
 		static readonly bool s_shouldBeDelayed = DeviceInfo.Idiom != DeviceIdiom.Desktop;
+		bool _set;
 
 		protected override TextBox CreatePlatformView() =>
 			new MauiPasswordTextBox()
@@ -19,20 +20,33 @@ namespace Microsoft.Maui.Handlers
 				IsObfuscationDelayed = s_shouldBeDelayed
 			};
 
+		public override void SetVirtualView(IView view)
+		{
+			base.SetVirtualView(view);
+
+			if (!_set)
+				PlatformView.SelectionChanged += OnPlatformSelectionChanged;
+
+			_set = true;
+		}
+
 		protected override void ConnectHandler(TextBox platformView)
 		{
 			platformView.KeyUp += OnPlatformKeyUp;
 			platformView.TextChanged += OnPlatformTextChanged;
-			platformView.SelectionChanged += OnPlatformSelectionChanged;
-			platformView.Loaded += OnPlatformLoaded;
+			platformView.SizeChanged += OnPlatformViewSizeChanged;
 		}
 
 		protected override void DisconnectHandler(TextBox platformView)
 		{
-			platformView.Loaded -= OnPlatformLoaded;
+			platformView.SizeChanged -= OnPlatformViewSizeChanged;
 			platformView.KeyUp -= OnPlatformKeyUp;
 			platformView.TextChanged -= OnPlatformTextChanged;
-			platformView.SelectionChanged -= OnPlatformSelectionChanged;
+
+			if (_set)
+				platformView.SelectionChanged -= OnPlatformSelectionChanged;
+
+			_set = false;
 		}
 
 		public static void MapText(IEntryHandler handler, IEntry entry) =>
@@ -55,6 +69,9 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapIsTextPredictionEnabled(IEntryHandler handler, IEntry entry) =>
 			handler.PlatformView?.UpdateIsTextPredictionEnabled(entry);
+
+		public static void MapIsSpellCheckEnabled(IEntryHandler handler, IEntry entry) =>
+			handler.PlatformView?.UpdateIsSpellCheckEnabled(entry);
 
 		public static void MapMaxLength(IEntryHandler handler, IEntry entry) =>
 			handler.PlatformView?.UpdateMaxLength(entry);
@@ -106,24 +123,23 @@ namespace Microsoft.Maui.Handlers
 			{
 				PlatformView?.TryMoveFocus(FocusNavigationDirection.Next);
 			}
-			else
-			{
-				// TODO: Hide the soft keyboard; this matches the behavior of .NET MAUI on Android/iOS
-			}
 
 			VirtualView?.Completed();
 		}
 
 		void OnPlatformSelectionChanged(object sender, RoutedEventArgs e)
 		{
-			if (VirtualView.CursorPosition != PlatformView.SelectionStart)
-				VirtualView.CursorPosition = PlatformView.SelectionStart;
+			var cursorPosition = PlatformView.GetCursorPosition();
+			var selectedTextLength = PlatformView.SelectionLength;
 
-			if (VirtualView.SelectionLength != PlatformView.SelectionLength)
-				VirtualView.SelectionLength = PlatformView.SelectionLength;
+			if (VirtualView.CursorPosition != cursorPosition)
+				VirtualView.CursorPosition = cursorPosition;
+
+			if (VirtualView.SelectionLength != selectedTextLength)
+				VirtualView.SelectionLength = selectedTextLength;
 		}
 
-		void OnPlatformLoaded(object sender, RoutedEventArgs e) =>
+		void OnPlatformViewSizeChanged(object sender, SizeChangedEventArgs e) =>
 			MauiTextBox.InvalidateAttachedProperties(PlatformView);
 	}
 }

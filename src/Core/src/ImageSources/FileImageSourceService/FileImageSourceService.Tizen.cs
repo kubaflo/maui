@@ -4,37 +4,31 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Tizen.UIExtensions.ElmSharp;
 using AppFW = Tizen.Applications;
 
 namespace Microsoft.Maui
 {
 	public partial class FileImageSourceService
 	{
-		public override Task<IImageSourceServiceResult<Image>?> GetImageAsync(IImageSource imageSource, Image image, CancellationToken cancellationToken = default) =>
-			GetImageAsync((IFileImageSource)imageSource, image, cancellationToken);
+		public override Task<IImageSourceServiceResult<MauiImageSource>?> GetImageAsync(IImageSource imageSource, CancellationToken cancellationToken = default) =>
+			GetImageAsync((IFileImageSource)imageSource, cancellationToken);
 
-		public async Task<IImageSourceServiceResult<Image>?> GetImageAsync(IFileImageSource imageSource, Image image, CancellationToken cancellationToken = default)
+		public Task<IImageSourceServiceResult<MauiImageSource>?> GetImageAsync(IFileImageSource imageSource, CancellationToken cancellationToken = default)
 		{
 			if (imageSource.IsEmpty)
-				return null;
+				return FromResult(null);
 
 			var filename = imageSource.File;
 			try
 			{
 				if (!string.IsNullOrEmpty(filename))
 				{
-					var isLoadComplated = await image.LoadAsync(GetPath(filename), cancellationToken);
-
-					if (!isLoadComplated)
+					var image = new MauiImageSource
 					{
-						//If it fails, call the Load function to remove the previous image.
-						image.Load(string.Empty);
-						throw new InvalidOperationException("Unable to load image file.");
-					}
-
-					var result = new ImageSourceServiceResult(image);
-					return result;
+						ResourceUrl = GetPath(filename)
+					};
+					var result = new ImageSourceServiceResult(image, () => image.Dispose());
+					return FromResult(result);
 				}
 				else
 				{
@@ -48,6 +42,9 @@ namespace Microsoft.Maui
 			}
 		}
 
+		static Task<IImageSourceServiceResult<MauiImageSource>?> FromResult(IImageSourceServiceResult<MauiImageSource>? result) =>
+			Task.FromResult(result);
+
 		static string GetPath(string res)
 		{
 			if (Path.IsPathRooted(res))
@@ -55,7 +52,7 @@ namespace Microsoft.Maui
 				return res;
 			}
 
-			foreach (AppFW.ResourceManager.Category category in Enum.GetValues(typeof(AppFW.ResourceManager.Category)))
+			foreach (AppFW.ResourceManager.Category category in Enum.GetValues<AppFW.ResourceManager.Category>())
 			{
 				foreach (var file in new[] { res, res + ".jpg", res + ".png", res + ".gif" })
 				{
@@ -73,7 +70,7 @@ namespace Microsoft.Maui
 			{
 				string resPath = app.DirectoryInfo.Resource + res;
 
-				foreach (var file in new []{ resPath, resPath + ".jpg", resPath + ".png", resPath + ".gif" })
+				foreach (var file in new[] { resPath, resPath + ".jpg", resPath + ".png", resPath + ".gif" })
 				{
 					if (File.Exists(file))
 					{

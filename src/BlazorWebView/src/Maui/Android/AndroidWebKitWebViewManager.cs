@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Versioning;
-using System.Threading.Tasks;
 using Android.Webkit;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging;
 using AUri = Android.Net.Uri;
 using AWebView = Android.Webkit.WebView;
 
@@ -22,12 +22,12 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 		// Using an IP address means that WebView doesn't wait for any DNS resolution,
 		// making it substantially faster. Note that this isn't real HTTP traffic, since
 		// we intercept all the requests within this origin.
-		private static readonly string AppOrigin = $"https://{BlazorWebView.AppHostAddress}/";
-		private static readonly Uri AppOriginUri = new(AppOrigin);
-		private static readonly AUri AndroidAppOriginUri = AUri.Parse(AppOrigin)!;
+		private static string AppOrigin { get; } = $"https://{BlazorWebView.AppHostAddress}/";
+		private static Uri AppOriginUri { get; } = new(AppOrigin);
+		private static AUri AndroidAppOriginUri { get; } = AUri.Parse(AppOrigin)!;
+		private readonly ILogger _logger;
 		private readonly AWebView _webview;
 		private readonly string _contentRootRelativeToAppRoot;
-		private WebMessagePort[]? _nativeToJSPorts;
 
 		/// <summary>
 		/// Constructs an instance of <see cref="AndroidWebKitWebViewManager"/>.
@@ -38,9 +38,12 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 		/// <param name="fileProvider">Provides static content to the webview.</param>
 		/// <param name="contentRootRelativeToAppRoot">Path to the directory containing application content files.</param>
 		/// <param name="hostPageRelativePath">Path to the host page within the <paramref name="fileProvider"/>.</param>
-		public AndroidWebKitWebViewManager(AWebView webview!!, IServiceProvider services, Dispatcher dispatcher, IFileProvider fileProvider, JSComponentConfigurationStore jsComponents, string contentRootRelativeToAppRoot, string hostPageRelativePath)
+		/// <param name="logger">Logger to send log messages to.</param>
+		public AndroidWebKitWebViewManager(AWebView webview, IServiceProvider services, Dispatcher dispatcher, IFileProvider fileProvider, JSComponentConfigurationStore jsComponents, string contentRootRelativeToAppRoot, string hostPageRelativePath, ILogger logger)
 			: base(services, dispatcher, AppOriginUri, fileProvider, jsComponents, hostPageRelativePath)
 		{
+			ArgumentNullException.ThrowIfNull(webview);
+
 #if WEBVIEW2_MAUI
 			if (services.GetService<MauiBlazorMarkerService>() is null)
 			{
@@ -49,6 +52,8 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 					$"Please add all the required services by calling '{nameof(IServiceCollection)}.{nameof(BlazorWebViewServiceCollectionExtensions.AddMauiBlazorWebView)}' in the application startup code.");
 			}
 #endif
+			_logger = logger;
+
 			_webview = webview;
 			_contentRootRelativeToAppRoot = contentRootRelativeToAppRoot;
 		}
@@ -56,6 +61,7 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 		/// <inheritdoc />
 		protected override void NavigateCore(Uri absoluteUri)
 		{
+			_logger.NavigatingToUri(absoluteUri);
 			_webview.LoadUrl(absoluteUri.AbsoluteUri);
 		}
 
@@ -74,31 +80,19 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 
 		internal void SetUpMessageChannel()
 		{
-			_nativeToJSPorts = _webview.CreateWebMessageChannel();
+			// These ports will be closed automatically when the webview gets disposed.
+			var nativeToJSPorts = _webview.CreateWebMessageChannel();
 
 			var nativeToJs = new BlazorWebMessageCallback(message =>
 			{
 				MessageReceived(AppOriginUri, message!);
 			});
 
-			var destPort = new[] { _nativeToJSPorts[1] };
+			var destPort = new[] { nativeToJSPorts[1] };
 
-			_nativeToJSPorts[0].SetWebMessageCallback(nativeToJs);
+			nativeToJSPorts[0].SetWebMessageCallback(nativeToJs);
 
 			_webview.PostWebMessage(new WebMessage("capturePort", destPort), AndroidAppOriginUri);
-		}
-
-		protected override async ValueTask DisposeAsyncCore()
-		{
-			await base.DisposeAsyncCore();
-
-			if (_nativeToJSPorts is not null)
-			{
-				foreach (var port in _nativeToJSPorts)
-				{
-					port?.Close();
-				}
-			}
 		}
 
 		private class BlazorWebMessageCallback : WebMessagePort.WebMessageCallback

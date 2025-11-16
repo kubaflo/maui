@@ -14,11 +14,16 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateSource(this AWebView platformWebView, IWebView webView, IWebViewDelegate? webViewDelegate)
 		{
-			if (webViewDelegate != null)
-			{
-				webView.Source?.Load(webViewDelegate);
+			IWebViewSource? source = webView.Source;
 
-				platformWebView.UpdateCanGoBackForward(webView);
+			if (source != null)
+			{
+				if (webViewDelegate != null)
+				{
+					source.Load(webViewDelegate);
+
+					platformWebView.UpdateCanGoBackForward(webView);
+				}
 			}
 		}
 
@@ -29,6 +34,17 @@ namespace Microsoft.Maui.Platform
 
 			platformWebView.Settings.JavaScriptEnabled = javaScriptEnabled;
 			platformWebView.Settings.DomStorageEnabled = domStorageEnabled;
+		}
+
+		public static void UpdateUserAgent(this AWebView platformWebView, IWebView webView)
+		{
+			if (platformWebView.Settings == null)
+				return;
+
+			if (webView.UserAgent != null)
+				platformWebView.Settings.UserAgentString = webView.UserAgent;
+			else
+				webView.UserAgent = platformWebView.Settings.UserAgentString;
 		}
 
 		public static void Eval(this AWebView platformWebView, IWebView webView, string script)

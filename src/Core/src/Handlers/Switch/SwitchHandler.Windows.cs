@@ -1,12 +1,11 @@
 #nullable enable
 using Microsoft.UI.Xaml.Controls;
-using WResourceDictionary = Microsoft.UI.Xaml.ResourceDictionary;
 
 namespace Microsoft.Maui.Handlers
 {
 	public partial class SwitchHandler : ViewHandler<ISwitch, ToggleSwitch>
 	{
-		protected override ToggleSwitch CreatePlatformView() => new ToggleSwitch();
+		protected override ToggleSwitch CreatePlatformView() => new ToggleSwitch() { OffContent = null, OnContent = null };
 
 		public static void MapIsOn(ISwitchHandler handler, ISwitch view)
 		{
@@ -15,13 +14,13 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapTrackColor(ISwitchHandler handler, ISwitch view)
 		{
-			if (handler is SwitchHandler platformHandler)
+			if (handler is SwitchHandler)
 				handler.PlatformView?.UpdateTrackColor(view);
 		}
 
 		public static void MapThumbColor(ISwitchHandler handler, ISwitch view)
 		{
-			if (handler is SwitchHandler platformHandler)
+			if (handler is SwitchHandler)
 				handler.PlatformView?.UpdateThumbColor(view);
 		}
 

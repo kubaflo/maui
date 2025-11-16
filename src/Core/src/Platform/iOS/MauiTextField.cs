@@ -1,13 +1,15 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using CoreGraphics;
 using Foundation;
-using ObjCRuntime;
 using UIKit;
 
 namespace Microsoft.Maui.Platform
 {
-	public class MauiTextField : UITextField
+
+	public class MauiTextField : UITextField, IUIViewLifeCycleEvents
 	{
+
 		public MauiTextField(CGRect frame)
 			: base(frame)
 		{
@@ -15,6 +17,11 @@ namespace Microsoft.Maui.Platform
 
 		public MauiTextField()
 		{
+		}
+
+		public override void WillMoveToWindow(UIWindow? window)
+		{
+			base.WillMoveToWindow(window);
 		}
 
 		public override string? Text
@@ -45,6 +52,37 @@ namespace Microsoft.Maui.Platform
 			}
 		}
 
+		public override UITextRange? SelectedTextRange
+		{
+			get => base.SelectedTextRange;
+			set
+			{
+				var old = base.SelectedTextRange;
+
+				base.SelectedTextRange = value;
+
+				if (old?.Start != value?.Start || old?.End != value?.End)
+					SelectionChanged?.Invoke(this, EventArgs.Empty);
+			}
+		}
+
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = IUIViewLifeCycleEvents.UnconditionalSuppressMessage)]
+		EventHandler? _movedToWindow;
+		event EventHandler IUIViewLifeCycleEvents.MovedToWindow
+		{
+			add => _movedToWindow += value;
+			remove => _movedToWindow -= value;
+		}
+
+		public override void MovedToWindow()
+		{
+			base.MovedToWindow();
+			_movedToWindow?.Invoke(this, EventArgs.Empty);
+		}
+
+		[UnconditionalSuppressMessage("Memory", "MEM0001", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
 		public event EventHandler? TextPropertySet;
+		[UnconditionalSuppressMessage("Memory", "MEM0001", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
+		internal event EventHandler? SelectionChanged;
 	}
 }

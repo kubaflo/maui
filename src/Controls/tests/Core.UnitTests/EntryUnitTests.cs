@@ -1,13 +1,13 @@
 using System.Diagnostics;
 
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
-	[TestFixture]
+
 	public class EntryUnitTests : BaseTestFixture
 	{
-		[Test]
+		[Fact]
 		public void ValueChangedFromSetValue()
 		{
 			var entry = new Entry();
@@ -18,17 +18,18 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			entry.TextChanged += (sender, args) =>
 			{
 				signaled = true;
-				Assert.AreEqual(value, args.NewTextValue);
+				Assert.Equal(value, args.NewTextValue);
 			};
 
 			entry.SetValue(Entry.TextProperty, value);
 
-			Assert.IsTrue(signaled, "ValueChanged did not fire");
+			Assert.True(signaled, "ValueChanged did not fire");
 		}
 
-		[TestCase(null, "foo")]
-		[TestCase("foo", "bar")]
-		[TestCase("foo", null)]
+		[Theory]
+		[InlineData(null, "foo")]
+		[InlineData("foo", "bar")]
+		[InlineData("foo", null)]
 		public void ValueChangedArgs(string initial, string final)
 		{
 			var entry = new Entry
@@ -50,15 +51,15 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			entry.Text = final;
 
-			Assert.AreEqual(entry, entryFromSender);
-			Assert.AreEqual(initial, oldValue);
-			Assert.AreEqual(final, newValue);
+			Assert.Equal(entry, entryFromSender);
+			Assert.Equal(initial, oldValue);
+			Assert.Equal(final, newValue);
 		}
 
-
-		[TestCase(1)]
-		[TestCase(0)]
-		[TestCase(9999)]
+		[Theory]
+		[InlineData(1)]
+		[InlineData(0)]
+		[InlineData(9999)]
 		public void CursorPositionValid(int val)
 		{
 			var entry = new Entry
@@ -68,24 +69,23 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			var target = entry.CursorPosition;
 
-			Assert.AreEqual(target, val);
+			Assert.Equal(target, val);
 		}
 
-		[Test]
+		[Fact]
 		public void CursorPositionInvalid()
 		{
-			Assert.Throws<System.ArgumentException>(() =>
+			var entry = new Entry
 			{
-				var entry = new Entry
-				{
-					CursorPosition = -1
-				};
-			});
+				CursorPosition = -1
+			};
+			Assert.NotEqual(-1, entry.CursorPosition);
 		}
 
-		[TestCase(1)]
-		[TestCase(0)]
-		[TestCase(9999)]
+		[Theory]
+		[InlineData(1)]
+		[InlineData(0)]
+		[InlineData(9999)]
 		public void SelectionLengthValid(int val)
 		{
 			var entry = new Entry
@@ -95,23 +95,23 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			var target = entry.SelectionLength;
 
-			Assert.AreEqual(target, val);
+			Assert.Equal(target, val);
 		}
 
-		[Test]
+		[Fact]
 		public void SelectionLengthInvalid()
 		{
-			Assert.Throws<System.ArgumentException>(() =>
+
+			var entry = new Entry
 			{
-				var entry = new Entry
-				{
-					SelectionLength = -1
-				};
-			});
+				SelectionLength = -1
+			};
+			Assert.NotEqual(-1, entry.SelectionLength);
 		}
 
-		[TestCase(true)]
-		[TestCase(false)]
+		[Theory]
+		[InlineData(true)]
+		[InlineData(false)]
 		public void ReturnTypeCommand(bool isEnabled)
 		{
 			var entry = new Entry()
@@ -134,8 +134,9 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.True(result == isEnabled ? true : false);
 		}
 
-		[TestCase(true)]
-		[TestCase(false)]
+		[Theory]
+		[InlineData(true)]
+		[InlineData(false)]
 		public void ReturnTypeCommandNullTestIsEnabled(bool isEnabled)
 		{
 			var entry = new Entry()
@@ -156,19 +157,21 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.True(result == isEnabled ? true : false);
 		}
 
-		[TestCase(true)]
+		[Theory]
+		[InlineData(true)]
+		[InlineData(false)]
 		public void IsReadOnlyTest(bool isReadOnly)
 		{
 			Entry entry = new Entry();
 			entry.SetValue(InputView.IsReadOnlyProperty, isReadOnly);
-			Assert.AreEqual(isReadOnly, entry.IsReadOnly);
+			Assert.Equal(isReadOnly, entry.IsReadOnly);
 		}
 
-		[Test]
+		[Fact]
 		public void IsReadOnlyDefaultValueTest()
 		{
 			Entry entry = new Entry();
-			Assert.AreEqual(entry.IsReadOnly, false);
+			Assert.False(entry.IsReadOnly);
 		}
 	}
 }

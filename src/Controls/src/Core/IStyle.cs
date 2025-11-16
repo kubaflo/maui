@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 
 namespace Microsoft.Maui.Controls
@@ -6,7 +7,7 @@ namespace Microsoft.Maui.Controls
 	{
 		Type TargetType { get; }
 
-		void Apply(BindableObject bindable);
+		void Apply(BindableObject bindable, SetterSpecificity specificity);
 		void UnApply(BindableObject bindable);
 	}
 }

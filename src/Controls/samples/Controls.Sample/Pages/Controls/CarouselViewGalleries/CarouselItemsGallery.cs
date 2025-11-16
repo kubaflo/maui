@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Maui;
@@ -17,6 +18,8 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 	{
 		CarouselItemsGalleryViewModel _viewModel;
 		bool _setPositionOnAppering;
+
+		[RequiresUnreferencedCode("CarouselItemsGallery may require unreferenced code for data binding")]
 		public CarouselItemsGallery(bool startEmptyCollection = false, bool setCollectionWithAsync = false,
 									bool useNativeIndicators = false, bool setPositionOnConstructor = false,
 									bool setPositionOnAppearing = false, bool useScrollAnimated = true)
@@ -102,6 +105,16 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 				Orientation = StackOrientation.Horizontal
 			};
 
+			var changePositionButton = new Button
+			{
+				Text = "Update Position"
+			};
+
+			changePositionButton.Clicked += (sender, e) =>
+			{
+				_viewModel.CarouselPosition = Random.Shared.Next(_viewModel.Items!.Count);
+			};
+
 			var addItemButton = new Button
 			{
 				Text = "Add Item"
@@ -109,7 +122,7 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 
 			addItemButton.Clicked += (sender, e) =>
 			{
-				_viewModel.Items.Add(new CarouselData
+				_viewModel.Items!.Add(new CarouselData
 				{
 					Color = Colors.Red,
 					Name = $"{_viewModel.Items.Count + 1}"
@@ -124,10 +137,10 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 
 			removeItemButton.Clicked += (sender, e) =>
 			{
-				if (_viewModel.Items.Any())
-					_viewModel.Items.RemoveAt(_viewModel.Items.Count - 1);
+				if (_viewModel.Items!.Any())
+					_viewModel.Items!.RemoveAt(_viewModel.Items.Count - 1);
 
-				if (_viewModel.Items.Count > 0)
+				if (_viewModel.Items!.Count > 0)
 					_viewModel.CarouselPosition = _viewModel.Items.Count - 1;
 			};
 
@@ -138,7 +151,7 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 
 			clearItemsButton.Clicked += (sender, e) =>
 			{
-				_viewModel.Items.Clear();
+				_viewModel.Items!.Clear();
 			};
 
 			var lbl = new Label
@@ -148,6 +161,7 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 			lbl.SetBinding(Label.TextProperty, nameof(CarouselView.Position));
 			lbl.BindingContext = carouselView;
 
+			StackLayoutButtons.Children.Add(changePositionButton);
 			StackLayoutButtons.Children.Add(addItemButton);
 			StackLayoutButtons.Children.Add(removeItemButton);
 			StackLayoutButtons.Children.Add(clearItemsButton);
@@ -185,10 +199,9 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 
 				grid.Children.Add(info);
 
-				var frame = new Frame
+				var frame = new Border
 				{
-					Content = grid,
-					HasShadow = false
+					Content = grid
 				};
 
 				frame.SetBinding(BackgroundColorProperty, new Binding("Color"));
@@ -213,7 +226,7 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 	[Preserve(AllMembers = true)]
 	public class CarouselItemsGalleryViewModel : BindableObject
 	{
-		ObservableCollection<CarouselData> _items;
+		ObservableCollection<CarouselData>? _items;
 		int _carouselPosition;
 
 		public CarouselItemsGalleryViewModel(bool empty, bool async)
@@ -257,7 +270,7 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 			};
 		}
 
-		public ObservableCollection<CarouselData> Items
+		public ObservableCollection<CarouselData>? Items
 		{
 			get { return _items; }
 			set

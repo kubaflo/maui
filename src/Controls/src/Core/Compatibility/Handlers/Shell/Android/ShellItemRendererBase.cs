@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -32,7 +33,6 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		IShellObservableFragment _currentFragment;
 		ShellSection _shellSection;
 		Page _displayedPage;
-		bool _disposed;
 
 		protected ShellItemRendererBase(IShellContext shellContext)
 		{
@@ -75,13 +75,20 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			}
 		}
 
-		protected IShellContext ShellContext { get; }
+		protected IShellContext ShellContext { get; private set; }
 
 		protected ShellItem ShellItem { get; private set; }
 
 		protected virtual IShellObservableFragment CreateFragmentForPage(Page page)
 		{
 			return ShellContext.CreateFragmentForPage(page);
+		}
+
+		internal void Disconnect()
+		{
+			ShellSection = null;
+			DisplayedPage = null;
+			ShellContext = null;
 		}
 
 		void Destroy()
@@ -106,19 +113,6 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			Destroy();
 		}
 
-		protected override void Dispose(bool disposing)
-		{
-			if (_disposed)
-				return;
-
-			_disposed = true;
-
-			if (disposing)
-				Destroy();
-
-			base.Dispose(disposing);
-		}
-
 		protected abstract ViewGroup GetNavigationTarget();
 
 		protected virtual IShellObservableFragment GetOrCreateFragmentForTab(ShellSection shellSection)
@@ -130,7 +124,12 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		protected virtual Task<bool> HandleFragmentUpdate(ShellNavigationSource navSource, ShellSection shellSection, Page page, bool animated)
 		{
-			TaskCompletionSource<bool> result = new TaskCompletionSource<bool>();
+			// We're using RunContinuationsAsynchronously because we don't want a subsequent navigation
+			// to start until the current one has finished.
+			// The AnimationFinished event is used to signal when the animation has completed,
+			// but that doesn't mean the fragment transaction has completed.
+			var result = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
 			bool isForCurrentTab = shellSection == ShellSection;
 			bool initialUpdate = _fragmentMap.Count == 0;
 			if (!_fragmentMap.ContainsKey(ShellSection))
@@ -154,7 +153,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				case ShellNavigationSource.Pop:
 					if (_fragmentMap.TryGetValue(page, out var frag))
 					{
-						if (frag.Fragment.IsAdded && !isForCurrentTab)
+						if (ChildFragmentManager.Contains(frag.Fragment) && !isForCurrentTab)
 							RemoveFragment(frag.Fragment);
 						_fragmentMap.Remove(page);
 					}
@@ -165,7 +164,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				case ShellNavigationSource.Remove:
 					if (_fragmentMap.TryGetValue(page, out var removeFragment))
 					{
-						if (removeFragment.Fragment.IsAdded && !isForCurrentTab && removeFragment != _currentFragment)
+						if (ChildFragmentManager.Contains(removeFragment.Fragment) && !isForCurrentTab && removeFragment != _currentFragment)
 							RemoveFragment(removeFragment.Fragment);
 						_fragmentMap.Remove(page);
 					}
@@ -228,21 +227,29 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 					if (_currentFragment != null)
 						t.HideEx(_currentFragment.Fragment);
 
-					if (!target.Fragment.IsAdded)
+					if (!ChildFragmentManager.Contains(target.Fragment))
 						t.AddEx(GetNavigationTarget().Id, target.Fragment);
 					t.ShowEx(target.Fragment);
 					break;
 
+				case ShellNavigationSource.ShellSectionChanged:
+					if (_currentFragment != null)
+						t.HideEx(_currentFragment.Fragment);
+
+					if (!ChildFragmentManager.Contains(target.Fragment))
+						t.AddEx(GetNavigationTarget().Id, target.Fragment);
+
+					t.ShowEx(target.Fragment);
+					break;
 				case ShellNavigationSource.Pop:
 				case ShellNavigationSource.PopToRoot:
-				case ShellNavigationSource.ShellSectionChanged:
 				case ShellNavigationSource.Remove:
 					trackFragment = _currentFragment;
 
 					if (_currentFragment != null)
 						t.RemoveEx(_currentFragment.Fragment);
 
-					if (!target.Fragment.IsAdded)
+					if (!ChildFragmentManager.Contains(target.Fragment))
 						t.AddEx(GetNavigationTarget().Id, target.Fragment);
 					t.ShowEx(target.Fragment);
 					break;
@@ -386,7 +393,8 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 				trans ??= ChildFragmentManager.BeginTransactionEx();
 				trans.Remove(f);
-			};
+			}
+			;
 
 			trans?.CommitAllowingStateLossEx();
 		}

@@ -1,6 +1,9 @@
 ﻿using System;
+using System.ComponentModel;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Handlers;
 using Microsoft.Maui.Hosting;
 using Xunit;
@@ -8,12 +11,19 @@ using Xunit;
 namespace Microsoft.Maui.DeviceTests
 {
 	[Category(TestCategory.Editor)]
-	public partial class EditorTests : HandlerTestBase
+	public partial class EditorTests : ControlsHandlerTestBase
 	{
+		void SetupBuilder()
+		{
+			EnsureHandlerCreated(builder =>
+			{
+				builder.ConfigureMauiHandlers(handlers =>
+				{
+					handlers.AddHandler<Editor, EditorHandler>();
+				});
+			});
+		}
 
-#if !IOS
-		// iOS is broken until this point
-		// https://github.com/dotnet/maui/issues/3425
 		[Theory]
 		[InlineData(EditorAutoSizeOption.Disabled)]
 		[InlineData(EditorAutoSizeOption.TextChanges)]
@@ -25,50 +35,235 @@ namespace Microsoft.Maui.DeviceTests
 				Text = "Test"
 			};
 
-			IView layout = new VerticalStackLayout()
+			var layout = new VerticalStackLayout()
 			{
+				WidthRequest = 100,
+				HeightRequest = 100,
 				Children =
 				{
 					editor
 				}
 			};
 
-			await CreateHandlerAndAddToWindow<LayoutHandler>(layout, (_) =>
+			await AttachAndRun<LayoutHandler>(layout, async (_) =>
 			{
-				layout.Arrange(new Graphics.Rect(Graphics.Point.Zero, layout.Measure(1000, 1000)));
+				var frame = editor.Frame;
+
+				await Task.Yield();
+
 				var initialHeight = editor.Height;
 
-				editor.Text += Environment.NewLine + " Some new text" + Environment.NewLine;
-				layout.Arrange(new Graphics.Rect(Graphics.Point.Zero, layout.Measure(1000, 1000)));
+				editor.Text += Environment.NewLine + " Some new text" + Environment.NewLine + " Some new text" + Environment.NewLine;
 
-				if (option == EditorAutoSizeOption.Disabled)
-					Assert.Equal(initialHeight, editor.Height);
-				else
+				layout.WidthRequest = 1000;
+				layout.HeightRequest = 1000;
+
+				await WaitForUIUpdate(frame, editor);
+
+				if (option == EditorAutoSizeOption.TextChanges)
 					Assert.True(initialHeight < editor.Height);
-
-				return Task.CompletedTask;
+				else
+					Assert.Equal(initialHeight, editor.Height);
 			});
 		}
-#endif
 
-		[Theory]
-		[ClassData(typeof(TextTransformCases))]
-		public async Task InitialTextTransformApplied(string text, TextTransform transform, string expected)
+		[Fact]
+		public async Task EditorMeasureUpdatesWhenChangingHeight()
 		{
-			var control = new Editor() { Text = text, TextTransform = transform };
-			var platformText = await GetPlatformText(await CreateHandlerAsync<EditorHandler>(control));
-			Assert.Equal(expected, platformText);
+			await ValidateEditorLayoutChangesForDisabledAutoSize(
+				null,
+				(control) => control.HeightRequest = 60,
+				(control) =>
+				{
+					var frame = control.Frame;
+					var desiredSize = control.DesiredSize;
+
+					Assert.Equal(60, frame.Bottom, 0.5d);
+					Assert.Equal(60, desiredSize.Height, 0.5d);
+				});
 		}
 
-		[Theory]
-		[ClassData(typeof(TextTransformCases))]
-		public async Task TextTransformUpdated(string text, TextTransform transform, string expected)
+		[Fact]
+		public async Task EditorMeasureUpdatesWhenChangingWidth()
 		{
-			var control = new Editor() { Text = text };
-			var handler = await CreateHandlerAsync<EditorHandler>(control);
-			await InvokeOnMainThreadAsync(() => control.TextTransform = transform);
-			var platformText = await GetPlatformText(handler);
-			Assert.Equal(expected, platformText);
+
+			await ValidateEditorLayoutChangesForDisabledAutoSize(
+				null,
+				(control) => control.WidthRequest = 60,
+				(control) =>
+				{
+					var frame = control.Frame;
+					var desiredSize = control.DesiredSize;
+
+					Assert.Equal(60, frame.Right, 0.5d);
+					Assert.Equal(60, desiredSize.Width, 0.5d);
+				});
+		}
+
+		[Fact]
+		public async Task EditorMeasureUpdatesWhenChangingMargin()
+		{
+			await ValidateEditorLayoutChangesForDisabledAutoSize(
+				null,
+				(control) => control.Margin = new Thickness(5, 5, 5, 5),
+				(control) =>
+				{
+					var frame = control.Frame;
+					var desiredSize = control.DesiredSize;
+
+					Assert.Equal(55, frame.Right, 0.5d);
+					Assert.Equal(60, desiredSize.Width, 0.5d);
+				});
+		}
+
+		[Fact]
+		public async Task EditorMeasureUpdatesWhenChangingMinHeight()
+		{
+			await ValidateEditorLayoutChangesForDisabledAutoSize(
+				(control) =>
+				{
+					control.HeightRequest = Primitives.Dimension.Unset;
+				},
+				(control) => control.MinimumHeightRequest = 100,
+				(control) =>
+				{
+					var frame = control.Frame;
+					var desiredSize = control.DesiredSize;
+
+					Assert.Equal(100, frame.Bottom, 0.5d);
+					Assert.Equal(100, desiredSize.Height, 0.5d);
+				});
+		}
+
+		[Fact]
+		public async Task EditorMeasureUpdatesWhenChangingMaxHeight()
+		{
+			await ValidateEditorLayoutChangesForDisabledAutoSize(
+				(control) =>
+				{
+					control.HeightRequest = Primitives.Dimension.Unset;
+				},
+				(control) => control.MaximumHeightRequest = 10,
+				(control) =>
+				{
+					var frame = control.Frame;
+					var desiredSize = control.DesiredSize;
+
+					Assert.Equal(10, frame.Bottom, 0.5d);
+					Assert.Equal(10, desiredSize.Height, 0.5d);
+				});
+		}
+
+		[Fact]
+		public async Task EditorMeasureUpdatesWhenChangingMinWidth()
+		{
+			await ValidateEditorLayoutChangesForDisabledAutoSize(
+				(control) =>
+				{
+					control.WidthRequest = Primitives.Dimension.Unset;
+				},
+				(control) => control.MinimumWidthRequest = 100,
+				(control) =>
+				{
+					var frame = control.Frame;
+					var desiredSize = control.DesiredSize;
+
+					Assert.Equal(100, frame.Width, 0.5d);
+					Assert.Equal(100, desiredSize.Width, 0.5d);
+				});
+		}
+
+		[Fact]
+		public async Task EditorMeasureUpdatesWhenChangingMaxWidth()
+		{
+			await ValidateEditorLayoutChangesForDisabledAutoSize(
+				(control) =>
+				{
+					control.WidthRequest = Primitives.Dimension.Unset;
+					control.Text = String.Join(",", Enumerable.Range(0, 100).Select(x => "a").ToArray());
+				},
+				(control) =>
+				{
+					control.MaximumWidthRequest = 10;
+				},
+				(control) =>
+				{
+					var frame = control.Frame;
+					var desiredSize = control.DesiredSize;
+
+					Assert.Equal(10, frame.Width, 0.5d);
+					Assert.Equal(10, desiredSize.Width, 0.5d);
+				});
+		}
+
+		[Fact]
+		[Description("The BackgroundColor of a Editor should match with native background color")]
+		public async Task EditorBackgroundColorConsistent()
+		{
+			var expected = Colors.AliceBlue;
+			var editor = new Editor()
+			{
+				BackgroundColor = expected,
+				HeightRequest = 100,
+				WidthRequest = 200
+			};
+
+			await ValidateHasColor(editor, expected, typeof(EditorHandler));
+		}
+
+		async Task ValidateEditorLayoutChangesForDisabledAutoSize(
+			Action<Editor> arrange,
+			Action<Editor> act,
+			Action<Editor> assert
+			)
+		{
+			SetupBuilder();
+			var control = new Editor()
+			{
+				AutoSize = EditorAutoSizeOption.Disabled,
+				HorizontalOptions = LayoutOptions.Start,
+				VerticalOptions = LayoutOptions.Start,
+			};
+
+			control.HeightRequest = 50;
+			control.WidthRequest = 50;
+			control.MinimumWidthRequest = 0;
+			control.MaximumWidthRequest = 100;
+			control.MinimumHeightRequest = 0;
+			control.MaximumHeightRequest = 100;
+
+			IView layout = new VerticalStackLayout()
+			{
+				HeightRequest = 100,
+				WidthRequest = 100,
+				HorizontalOptions = LayoutOptions.Start,
+				VerticalOptions = LayoutOptions.Start,
+				Children =
+				{
+					control
+				}
+			};
+
+			arrange?.Invoke(control);
+
+			await AttachAndRun<LayoutHandler>(layout, async (_) =>
+			{
+				await Task.Yield();
+				var frame = control.Frame;
+				act.Invoke(control);
+				await WaitForUIUpdate(frame, control);
+				assert.Invoke(control);
+			});
+		}
+
+		static async Task WaitForUIUpdate(Graphics.Rect frame, Editor editor, int timeout = 1000, int interval = 100)
+		{
+			// Wait for layout to happen
+			while (editor.Frame == frame && timeout >= 0)
+			{
+				await Task.Delay(interval);
+				timeout -= interval;
+			}
 		}
 
 #if WINDOWS
@@ -95,5 +290,53 @@ namespace Microsoft.Maui.DeviceTests
 			});
 		}
 #endif
+
+		[Fact]
+		[Description("The Opacity property of a Editor should match with native Opacity")]
+		public async Task VerifyEditorOpacityProperty()
+		{
+			var editor = new Editor
+			{
+				Opacity = 0.35f
+			};
+			var expectedValue = editor.Opacity;
+
+			var handler = await CreateHandlerAsync<EditorHandler>(editor);
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var nativeOpacityValue = await GetPlatformOpacity(handler);
+				Assert.Equal(expectedValue, nativeOpacityValue);
+			});
+		}
+
+		[Fact]
+		[Description("The IsVisible property of a Editor should match with native IsVisible")]
+		public async Task VerifyEditorIsVisibleProperty()
+		{
+			var editor = new Editor();
+			editor.IsVisible = false;
+			var expectedValue = editor.IsVisible;
+
+			var handler = await CreateHandlerAsync<EditorHandler>(editor);
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var isVisible = await GetPlatformIsVisible(handler);
+				Assert.Equal(expectedValue, isVisible);
+			});
+		}
+
+		[Category(TestCategory.Editor)]
+		[Collection(RunInNewWindowCollection)]
+		public class EditorTextInputTests : TextInputTests<EditorHandler, Editor>
+		{
+			protected override int GetPlatformSelectionLength(EditorHandler handler) =>
+				EditorTests.GetPlatformSelectionLength(handler);
+
+			protected override int GetPlatformCursorPosition(EditorHandler handler) =>
+				EditorTests.GetPlatformCursorPosition(handler);
+
+			protected override Task<string> GetPlatformText(EditorHandler handler) =>
+				EditorTests.GetPlatformText(handler);
+		}
 	}
 }

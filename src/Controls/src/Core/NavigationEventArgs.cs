@@ -1,20 +1,23 @@
+#nullable disable
 using System;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls/NavigationEventArgs.xml" path="Type[@FullName='Microsoft.Maui.Controls.NavigationEventArgs']/Docs" />
+	/// <summary>EventArgs for the NavigationPage's navigation events.</summary>
 	public class NavigationEventArgs : EventArgs
 	{
-		/// <include file="../../docs/Microsoft.Maui.Controls/NavigationEventArgs.xml" path="//Member[@MemberName='.ctor']/Docs" />
+		/// <summary></summary>
+		/// <param name="page">The page that was popped or is newly visible.</param>
 		public NavigationEventArgs(Page page)
 		{
 			if (page == null)
-				throw new ArgumentNullException("page");
+				throw new ArgumentNullException(nameof(page));
 
 			Page = page;
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/NavigationEventArgs.xml" path="//Member[@MemberName='Page']/Docs" />
+		/// <summary>Gets the page that was removed or is newly visible.</summary>
+		/// <remarks>For</remarks>
 		public Page Page { get; private set; }
 	}
 }

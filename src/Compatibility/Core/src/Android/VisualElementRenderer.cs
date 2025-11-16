@@ -217,17 +217,11 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 					Element.PropertyChanged -= _propertyChangeHandler;
 				}
 
-				if (Tracker != null)
-				{
-					Tracker.Dispose();
-					Tracker = null;
-				}
+				Tracker?.Dispose();
+				Tracker = null;
 
-				if (_packager != null)
-				{
-					_packager.Dispose();
-					_packager = null;
-				}
+				_packager?.Dispose();
+				_packager = null;
 
 				if (ManageNativeControlLifetime)
 				{
@@ -300,10 +294,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 
 		protected override void OnLayout(bool changed, int l, int t, int r, int b)
 		{
-			if (Element == null)
-				return;
-
-			UpdateLayout(((IElementController)Element).LogicalChildren);
+			if (Element is IElementController controller)
+			{
+				UpdateLayout(controller.LogicalChildren);
+			}
 		}
 
 		public override void Draw(Canvas canvas)

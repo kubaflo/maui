@@ -10,16 +10,33 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 {
 	// TEST NOTES:
 	//   - a human needs to close the browser window
+	[Category("Launcher")]
 	public class Launcher_Tests
 	{
 		[Theory]
 		[InlineData("http://www.example.com")]
 		[InlineData("http://example.com/?query=blah")]
 		[InlineData("https://example.com/?query=blah")]
-		[InlineData("mailto://someone@microsoft.com")]
-		[InlineData("mailto://someone@microsoft.com?subject=test")]
-		[InlineData("tel:+1 555 010 9999")]
-		[InlineData("sms:5550109999")]
+		[InlineData("mailto://someone@microsoft.com"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
+		[InlineData("mailto://someone@microsoft.com?subject=test"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
+		[InlineData("tel:+1 555 010 9999"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
+		[InlineData("sms:5550109999"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
 		[Trait(Traits.InteractionType, Traits.InteractionTypes.Human)]
 		public Task Open(string uri)
 		{
@@ -30,43 +47,75 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 		[InlineData("http://www.example.com")]
 		[InlineData("http://example.com/?query=blah")]
 		[InlineData("https://example.com/?query=blah")]
-		[InlineData("mailto://someone@microsoft.com")]
-		[InlineData("mailto://someone@microsoft.com?subject=test")]
-		[InlineData("tel:+1 555 010 9999")]
-		[InlineData("sms:5550109999")]
+		[InlineData("mailto://someone@microsoft.com"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
+		[InlineData("mailto://someone@microsoft.com?subject=test"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
+		[InlineData("tel:+1 555 010 9999"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
+		[InlineData("sms:5550109999"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
 		public async Task CanOpen(string uri)
 		{
 #if __IOS__
 			if (DeviceInfo.DeviceType == DeviceType.Virtual && (uri.Contains("tel:", StringComparison.Ordinal) || uri.Contains("mailto:", StringComparison.Ordinal)))
 			{
-				Assert.False(await Launcher.CanOpenAsync(uri));
+				Assert.False(await Launcher.CanOpenAsync(uri).ConfigureAwait(false));
 				return;
 			}
 #endif
 
-			Assert.True(await Launcher.CanOpenAsync(uri));
+			Assert.True(await Launcher.CanOpenAsync(uri).ConfigureAwait(false));
 		}
 
 		[Theory]
 		[InlineData("http://www.example.com")]
 		[InlineData("http://example.com/?query=blah")]
 		[InlineData("https://example.com/?query=blah")]
-		[InlineData("mailto://someone@microsoft.com")]
-		[InlineData("mailto://someone@microsoft.com?subject=test")]
-		[InlineData("tel:+1 555 010 9999")]
-		[InlineData("sms:5550109999")]
+		[InlineData("mailto://someone@microsoft.com"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
+		[InlineData("mailto://someone@microsoft.com?subject=test"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
+		[InlineData("tel:+1 555 010 9999"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
+		[InlineData("sms:5550109999"
+#if WINDOWS
+			, Skip = "Doesn't work on Windows on CI"
+#endif
+			)]
 		public async Task CanOpenUri(string uri)
 		{
 #if __IOS__
 			if (DeviceInfo.DeviceType == DeviceType.Virtual && (uri.Contains("tel:", StringComparison.Ordinal) || uri.Contains("mailto:", StringComparison.Ordinal)))
 			{
-				Assert.False(await Launcher.CanOpenAsync(new Uri(uri)));
+				Assert.False(await Launcher.CanOpenAsync(new Uri(uri)).ConfigureAwait(false));
 				return;
 			}
 
 #endif
 
-			Assert.True(await Launcher.CanOpenAsync(new Uri(uri)));
+			Assert.True(await Launcher.CanOpenAsync(new Uri(uri)).ConfigureAwait(false));
 		}
 
 #if __IOS__
@@ -84,21 +133,21 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 		[InlineData("Not Valid Uri")]
 		public async Task InvalidUri(string uri)
 		{
-			await Assert.ThrowsAsync<UriFormatException>(() => Launcher.CanOpenAsync(uri));
+			await Assert.ThrowsAsync<UriFormatException>(() => Launcher.CanOpenAsync(uri)).ConfigureAwait(false);
 		}
 
 		[Theory]
 		[InlineData("ms-invalidurifortest:abc")]
 		public async Task CanNotOpenUri(string uri)
 		{
-			Assert.False(await Launcher.CanOpenAsync(new Uri(uri)));
+			Assert.False(await Launcher.CanOpenAsync(new Uri(uri)).ConfigureAwait(false));
 		}
 
 		[Theory]
 		[InlineData("ms-invalidurifortest:abc")]
 		public async Task CanNotOpen(string uri)
 		{
-			Assert.False(await Launcher.CanOpenAsync(uri));
+			Assert.False(await Launcher.CanOpenAsync(uri).ConfigureAwait(false));
 		}
 
 		[Theory]
@@ -115,12 +164,12 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 #if __IOS__
 			if (DeviceInfo.DeviceType == DeviceType.Virtual && (uri.Contains("tel:", StringComparison.Ordinal) || uri.Contains("mailto:", StringComparison.Ordinal)))
 			{
-				Assert.False(await Launcher.TryOpenAsync(uri));
+				Assert.False(await Launcher.TryOpenAsync(uri).ConfigureAwait(false));
 				return;
 			}
 #endif
 
-			Assert.True(await Launcher.TryOpenAsync(uri));
+			Assert.True(await Launcher.TryOpenAsync(uri).ConfigureAwait(false));
 		}
 
 		[Theory]
@@ -128,7 +177,7 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 		[Trait(Traits.InteractionType, Traits.InteractionTypes.Human)]
 		public async Task CanNotTryOpen(string uri)
 		{
-			Assert.False(await Launcher.TryOpenAsync(new Uri(uri)));
+			Assert.False(await Launcher.TryOpenAsync(new Uri(uri)).ConfigureAwait(false));
 		}
 	}
 }

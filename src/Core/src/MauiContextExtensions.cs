@@ -16,7 +16,7 @@ using NativeApplication = Android.App.Application;
 using NativeWindow = Android.App.Activity;
 #elif TIZEN
 using NativeApplication = Tizen.Applications.CoreApplication;
-using NativeWindow =  ElmSharp.Window;
+using NativeWindow = Tizen.NUI.Window;
 #else
 using NativeApplication = System.Object;
 using NativeWindow = System.Object;
@@ -41,13 +41,12 @@ namespace Microsoft.Maui
 
 			scopedContext.AddSpecific(platformApplication);
 
-			scopedContext.InitializeScopedServices();
-
 			return scopedContext;
 		}
 
 		public static IMauiContext MakeWindowScope(this IMauiContext mauiContext, NativeWindow platformWindow, out IServiceScope scope)
 		{
+			// Create the window-level scopes that will only be used for the lifetime of the window
 			scope = mauiContext.Services.CreateScope();
 
 #if ANDROID
@@ -55,6 +54,9 @@ namespace Microsoft.Maui
 #else
 			var scopedContext = new MauiContext(scope.ServiceProvider);
 #endif
+
+			// Store the scope in the scoped context so it can be disposed when the window is destroyed
+			scopedContext.SetWindowScope(scope);
 
 			scopedContext.AddWeakSpecific(platformWindow);
 
@@ -65,25 +67,30 @@ namespace Microsoft.Maui
 			scopedContext.AddSpecific(new NavigationRootManager(platformWindow));
 #endif
 
+			// Initialize any window-scoped services, for example the window dispatchers and animation tickers
+			scopedContext.InitializeScopedServices();
+
 			return scopedContext;
+		}
+
+		public static void InitializeAppServices(this MauiApp mauiApp)
+		{
+			var initServices = mauiApp.Services.GetServices<IMauiInitializeService>();
+			if (initServices is null)
+				return;
+
+			foreach (var instance in initServices)
+				instance.Initialize(mauiApp.Services);
 		}
 
 		public static void InitializeScopedServices(this IMauiContext scopedContext)
 		{
 			var scopedServices = scopedContext.Services.GetServices<IMauiInitializeScopedService>();
+			if (scopedServices is null)
+				return;
 
 			foreach (var service in scopedServices)
 				service.Initialize(scopedContext.Services);
-		}
-
-		public static FlowDirection GetFlowDirection(this IMauiContext mauiContext)
-		{
-			var appInfo = AppInfo.Current;
-
-			if (appInfo.RequestedLayoutDirection == LayoutDirection.RightToLeft)
-				return FlowDirection.RightToLeft;
-
-			return FlowDirection.LeftToRight;
 		}
 	}
 }

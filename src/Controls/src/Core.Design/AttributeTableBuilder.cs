@@ -33,12 +33,17 @@ namespace Microsoft.Maui.Controls.Design
 			AddMemberAttributes("Microsoft.Maui.Controls.VisualElement", "FlowDirection",
 			   new TypeConverterAttribute(typeof(FlowDirectionDesignTypeConverter)));
 
+			// We need to supersede type converted declared on VisualElement.Background,
+			// otherwise VS will use generic "all strings allowed" converter which
+			// does not expose color values, i.e. no XAML intellisense popup
+			AddMemberAttributes("Microsoft.Maui.Controls.VisualElement", "Background",
+			   new TypeConverterAttribute(typeof(ColorDesignTypeConverter)));
+
 			AddMemberAttributes("Microsoft.Maui.Controls.ItemsView", "ItemsLayout",
 			   new TypeConverterAttribute(typeof(ItemsLayoutDesignTypeConverter)));
 
 			AddMemberAttributes("Microsoft.Maui.Controls.InputView", "Keyboard",
-			   new TypeConverterAttribute(typeof(KeyboardDesignTypeConverter)),
-			   new TypeConverterAttribute(typeof(StringConverter)));
+			   new TypeConverterAttribute(typeof(KeyboardDesignTypeConverter)));
 
 			AddMemberAttributes("Microsoft.Maui.Controls.EntryCell", "Keyboard",
 			   new TypeConverterAttribute(typeof(KeyboardDesignTypeConverter)));
@@ -51,42 +56,61 @@ namespace Microsoft.Maui.Controls.Design
 			// though, since its visibility in the markup is controlled by the EditorBrowsableAttribute.
 			// Make OnPlatform/OnIdiom visible for intellisense, and set as markup extension. 
 			AddTypeAttributes("Microsoft.Maui.Controls.OnPlatform<>",
-				new EditorBrowsableAttribute (EditorBrowsableState.Always)
-				//new System.ComponentModel.TypeConverterAttribute(typeof(AnythingConverter)),
-				//new System.Windows.Markup.MarkupExtensionReturnTypeAttribute (),
+				new EditorBrowsableAttribute(EditorBrowsableState.Always)
+			//new System.ComponentModel.TypeConverterAttribute(typeof(AnythingConverter)),
+			//new System.Windows.Markup.MarkupExtensionReturnTypeAttribute (),
 			);
 			AddTypeAttributes("Microsoft.Maui.Controls.OnIdiom<>",
 				new EditorBrowsableAttribute(EditorBrowsableState.Always)
-				//new System.ComponentModel.TypeConverterAttribute(typeof(AnythingConverter)),
-				//new System.Windows.Markup.MarkupExtensionReturnTypeAttribute (),
+			//new System.ComponentModel.TypeConverterAttribute(typeof(AnythingConverter)),
+			//new System.Windows.Markup.MarkupExtensionReturnTypeAttribute (),
 			);
 
-			AddTypeAttributes("Microsoft.Maui.Graphics.Color", new TypeConverterAttribute(typeof(ColorDesignTypeConverter)));
-
+			// Type level attributes
+			AddTypeAttributes("Microsoft.Maui.Controls.Brush", new TypeConverterAttribute(typeof(ColorDesignTypeConverter)));
+			AddTypeAttributes("Microsoft.Maui.Controls.Button+ButtonContentLayout", new TypeConverterAttribute(typeof(ButtonContentDesignTypeConverter)));
+			AddTypeAttributes("Microsoft.Maui.Controls.Compatibility.Constraint", new TypeConverterAttribute(typeof(ConstraintDesignTypeConverter)));
 			AddTypeAttributes("Microsoft.Maui.Controls.ConstraintExpression", new MarkupExtensionReturnTypeAttribute());
+			AddTypeAttributes("Microsoft.Maui.Controls.ImageSource", new TypeConverterAttribute(typeof(ImageSourceDesignTypeConverter)));
 			AddTypeAttributes("Microsoft.Maui.Controls.LayoutOptions", new TypeConverterAttribute(typeof(LayoutOptionsDesignTypeConverter)));
 			AddTypeAttributes("Microsoft.Maui.Controls.LinearItemsLayout", new TypeConverterAttribute(typeof(LinearItemsLayoutDesignTypeConverter)));
 			AddTypeAttributes("Microsoft.Maui.Controls.ResourcesChangedEventArgs", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-
-			AddMemberAttributes("Microsoft.Maui.Controls.Button", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.DatePicker", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.Editor", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.Entry", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.Label", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.Picker", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.SearchBar", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.TimePicker", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.RadioButton", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.SearchHandler", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-			AddMemberAttributes("Microsoft.Maui.Controls.Span", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
-
-			AddTypeAttributes("Microsoft.Maui.Layouts.FlexJustify", new TypeConverterAttribute(typeof(FlexJustifyDesignTypeConverter)));
-			AddTypeAttributes("Microsoft.Maui.Layouts.FlexDirection", new TypeConverterAttribute(typeof(FlexDirectionDesignTypeConverter)));
+			AddTypeAttributes("Microsoft.Maui.CornerRadius", new TypeConverterAttribute(typeof(CornerRadiusDesignTypeConverter)));
+			AddTypeAttributes("Microsoft.Maui.Graphics.Color", new TypeConverterAttribute(typeof(ColorDesignTypeConverter)));
+			AddTypeAttributes("Microsoft.Maui.Graphics.Point", new TypeConverterAttribute(typeof(PointTypeDesignConverter)));
+			AddTypeAttributes("Microsoft.Maui.Graphics.Rect", new TypeConverterAttribute(typeof(RectTypeDesignConverter)));
+			AddTypeAttributes("Microsoft.Maui.GridLength", new TypeConverterAttribute(typeof(GridLengthDesignTypeConverter)));
 			AddTypeAttributes("Microsoft.Maui.Layouts.FlexAlignContent", new TypeConverterAttribute(typeof(FlexAlignContentDesignTypeConverter)));
 			AddTypeAttributes("Microsoft.Maui.Layouts.FlexAlignItems", new TypeConverterAttribute(typeof(FlexAlignItemsDesignTypeConverter)));
 			AddTypeAttributes("Microsoft.Maui.Layouts.FlexAlignSelf", new TypeConverterAttribute(typeof(FlexAlignSelfDesignTypeConverter)));
-			AddTypeAttributes("Microsoft.Maui.Layouts.FlexWrap", new TypeConverterAttribute(typeof(FlexWrapDesignTypeConverter)));
 			AddTypeAttributes("Microsoft.Maui.Layouts.FlexBasis", new TypeConverterAttribute(typeof(FlexBasisDesignTypeConverter)));
+			AddTypeAttributes("Microsoft.Maui.Layouts.FlexDirection", new TypeConverterAttribute(typeof(FlexDirectionDesignTypeConverter)));
+			AddTypeAttributes("Microsoft.Maui.Layouts.FlexJustify", new TypeConverterAttribute(typeof(FlexJustifyDesignTypeConverter)));
+			AddTypeAttributes("Microsoft.Maui.Layouts.FlexWrap", new TypeConverterAttribute(typeof(FlexWrapDesignTypeConverter)));
+			AddTypeAttributes("Microsoft.Maui.Thickness", new TypeConverterAttribute(typeof(ThicknessTypeDesignConverter)));
+
+			// Property level attributes
+			AddMemberAttributes("Microsoft.Maui.Controls.AbsoluteLayout", "LayoutBounds", new TypeConverterAttribute(typeof(BoundsDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Button", "ContentLayout", new TypeConverterAttribute(typeof(ButtonContentDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Button", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Compatibility.AbsoluteLayout", "LayoutBounds", new TypeConverterAttribute(typeof(BoundsDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.DatePicker", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Editor", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Entry", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Grid", "ColumnDefinitions", new TypeConverterAttribute(typeof(GridLengthCollectionDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Grid", "RowDefinitions", new TypeConverterAttribute(typeof(GridLengthCollectionDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Image", "Source", new TypeConverterAttribute(typeof(ImageSourceDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.ImageButton", "Source", new TypeConverterAttribute(typeof(ImageSourceDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.ImageCell", "ImageSource", new TypeConverterAttribute(typeof(ImageSourceDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Label", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Picker", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.RadioButton", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.SearchBar", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.SearchHandler", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Shell", "FlyoutBackgroundImage", new TypeConverterAttribute(typeof(ImageSourceDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.Span", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.TimePicker", "FontSize", new TypeConverterAttribute(typeof(FontSizeDesignTypeConverter)));
+			AddMemberAttributes("Microsoft.Maui.Controls.VisualElement", "IsVisible", new TypeConverterAttribute(typeof(VisibilityDesignTypeConverter)));
 		}
 
 		private void AddTypeAttributes(string typeName, params Attribute[] attribs)

@@ -183,22 +183,94 @@ namespace Microsoft.Maui.DeviceTests
 				timer.Interval = TimeSpan.FromMilliseconds(200);
 				timer.IsRepeating = true;
 
+				TaskCompletionSource taskCompletionSource = new TaskCompletionSource();
+
 				timer.Tick += (_, _) =>
 				{
 					Assert.True(timer.IsRunning, "Timer was not running DURING the tick.");
 					ticks++;
+
+					if (ticks > 1)
+						taskCompletionSource.SetResult();
 				};
 
 				timer.Start();
 
 				Assert.True(timer.IsRunning, "Timer was not running AFTER the tick.");
 
-				// Give it time to repeat at least once
-				await Task.Delay(TimeSpan.FromSeconds(1));
+				try
+				{
+					await taskCompletionSource.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+				}
+				catch (TaskCanceledException)
+				{
+					// If the task is cancelled we want it to just fall through to the assert
+				}
 
 				// If it's repeating, ticks will be greater than 1
-				Assert.True(ticks > 1);
+				Assert.True(ticks > 1, $"# of Ticks: {ticks}, expected > 1");
 			});
+
+		[Fact]
+		public async Task NonRepeatingTimerIsStoppedAfterFiring()
+		{
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var dispatcher = Dispatcher.GetForCurrentThread();
+				var timer = dispatcher.CreateTimer();
+				using var disposer = new TimerDisposer(timer);
+
+				Assert.False(timer.IsRunning);
+
+				timer.Interval = TimeSpan.FromMilliseconds(200);
+				timer.IsRepeating = false;
+
+				timer.Tick += (_, _) => { };
+				timer.Start();
+
+				await Task.Delay(TimeSpan.FromSeconds(1));
+				Assert.False(timer.IsRunning, "The timer is not repeating, so it should no longer be marked as running after the first tick.");
+			});
+		}
+
+		[Fact]
+		public async Task TimerCannotDoubleItself()
+		{
+			// This is a test specifically for the situation in https://github.com/dotnet/maui/issues/10257
+			// where the user is calling the timer's Stop/Start methods from the Tick handler, and thus
+			// exponentially increasing the number of handlers.
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var dispatcher = Dispatcher.GetForCurrentThread();
+
+				var ticks = 0;
+
+				var timer = dispatcher.CreateTimer();
+				using var disposer = new TimerDisposer(timer);
+
+				Assert.False(timer.IsRunning);
+
+				timer.Interval = TimeSpan.FromMilliseconds(200);
+				timer.IsRepeating = true;
+
+				timer.Tick += (_, _) =>
+				{
+					ticks += 1;
+					timer.Stop();
+					timer.Start();
+				};
+
+				timer.Start();
+
+				await Task.Delay(TimeSpan.FromSeconds(1.1));
+
+				// The actual number may vary a bit depending on timing, but 
+				// if the bug is present then ticks will be roughly 2^5, rather than 
+				// the expected value of about 5 
+				Assert.True(10 > ticks);
+			});
+		}
 
 		class TimerDisposer : IDisposable
 		{

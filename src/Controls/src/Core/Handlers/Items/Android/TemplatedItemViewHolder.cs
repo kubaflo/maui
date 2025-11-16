@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Graphics;
 
@@ -41,7 +42,6 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			}
 
 			itemsView.RemoveLogicalChild(View);
-			View.BindingContext = null;
 		}
 
 		public void Bind(object itemBindingContext, ItemsView itemsView,
@@ -57,7 +57,13 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				_itemContentView.Recycle();
 
 				// Create the new content
-				View = (View)template.CreateContent();
+				var content = template.CreateContent();
+				View = content as View;
+
+				if (View is null)
+				{
+					throw new InvalidOperationException($"{template} could not be created from {content}");
+				}
 
 				// Set the binding context _before_ we create the renderer; that way, the bound data will be 
 				// available during OnElementChanged

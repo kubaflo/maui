@@ -8,10 +8,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.AspNetCore.Components.WebView.WebView2;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using WebView2Control = Microsoft.Web.WebView2.WinForms.WebView2;
 
 namespace Microsoft.AspNetCore.Components.WebView.WindowsForms
@@ -55,7 +58,7 @@ namespace Microsoft.AspNetCore.Components.WebView.WindowsForms
 
 		private WindowsFormsDispatcher ComponentsDispatcher { get; }
 
-		/// <inheritdoc />
+		/// <inheritdoc cref="Control.OnCreateControl" />
 		protected override void OnCreateControl()
 		{
 			base.OnCreateControl();
@@ -68,6 +71,7 @@ namespace Microsoft.AspNetCore.Components.WebView.WindowsForms
 		/// This property must be set to a valid value for the Razor components to start.
 		/// </summary>
 		[Category("Behavior")]
+		[DefaultValue(null)]
 		[Description(@"Path to the host page within the application's static files. Example: wwwroot\index.html.")]
 		public string? HostPage
 		{
@@ -78,6 +82,14 @@ namespace Microsoft.AspNetCore.Components.WebView.WindowsForms
 				OnHostPagePropertyChanged();
 			}
 		}
+
+		/// <summary>
+		/// Path for initial Blazor navigation when the Blazor component is finished loading.
+		/// </summary>
+		[Category("Behavior")]
+		[DefaultValue("/")]
+		[Description(@"Path for initial Blazor navigation when the Blazor component is finished loading.")]
+		public string StartPath { get; set; } = "/";
 
 		// Learn more about these methods here: https://docs.microsoft.com/en-us/dotnet/desktop/winforms/controls/defining-default-values-with-the-shouldserialize-and-reset-methods?view=netframeworkdesktop-4.8
 		private void ResetHostPage() => HostPage = null;
@@ -155,23 +167,28 @@ namespace Microsoft.AspNetCore.Components.WebView.WindowsForms
 				return;
 			}
 
+			var logger = Services.GetService<ILogger<BlazorWebView>>() ?? NullLogger<BlazorWebView>.Instance;
+
 			// We assume the host page is always in the root of the content directory, because it's
 			// unclear there's any other use case. We can add more options later if so.
 			string appRootDir;
+#pragma warning disable IL3000 // 'System.Reflection.Assembly.Location.get' always returns an empty string for assemblies embedded in a single-file app. If the path to the app directory is needed, consider calling 'System.AppContext.BaseDirectory'.
 			var entryAssemblyLocation = Assembly.GetEntryAssembly()?.Location;
+#pragma warning restore IL3000
 			if (!string.IsNullOrEmpty(entryAssemblyLocation))
 			{
 				appRootDir = Path.GetDirectoryName(entryAssemblyLocation)!;
 			}
 			else
 			{
-				appRootDir = Environment.CurrentDirectory;
+				appRootDir = AppContext.BaseDirectory;
 			}
 			var hostPageFullPath = Path.GetFullPath(Path.Combine(appRootDir, HostPage!)); // HostPage is nonnull because RequiredStartupPropertiesSet is checked above
 			var contentRootDirFullPath = Path.GetDirectoryName(hostPageFullPath)!;
 			var contentRootRelativePath = Path.GetRelativePath(appRootDir, contentRootDirFullPath);
 			var hostPageRelativePath = Path.GetRelativePath(contentRootDirFullPath, hostPageFullPath);
 
+			logger.CreatingFileProvider(contentRootDirFullPath, hostPageRelativePath);
 			var fileProvider = CreateFileProvider(contentRootDirFullPath);
 
 			_webviewManager = new WebView2WebViewManager(
@@ -184,16 +201,21 @@ namespace Microsoft.AspNetCore.Components.WebView.WindowsForms
 				hostPageRelativePath,
 				(args) => UrlLoading?.Invoke(this, args),
 				(args) => BlazorWebViewInitializing?.Invoke(this, args),
-				(args) => BlazorWebViewInitialized?.Invoke(this, args));
+				(args) => BlazorWebViewInitialized?.Invoke(this, args),
+				logger);
 
 			StaticContentHotReloadManager.AttachToWebViewManagerIfEnabled(_webviewManager);
 
 			foreach (var rootComponent in RootComponents)
 			{
+				logger.AddingRootComponent(rootComponent.ComponentType.FullName ?? string.Empty, rootComponent.Selector, rootComponent.Parameters?.Count ?? 0);
+
 				// Since the page isn't loaded yet, this will always complete synchronously
 				_ = rootComponent.AddToWebViewManagerAsync(_webviewManager);
 			}
-			_webviewManager.Navigate("/");
+
+			logger.StartingInitialNavigation(StartPath);
+			_webviewManager.Navigate(StartPath);
 		}
 
 		private void HandleRootComponentsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs eventArgs)
@@ -243,28 +265,48 @@ namespace Microsoft.AspNetCore.Components.WebView.WindowsForms
 			}
 		}
 
-		/// <inheritdoc />
+		/// <inheritdoc cref="Control.Dispose(bool)" />
 		protected override void Dispose(bool disposing)
 		{
-			if (disposing)
+			if (disposing && _webviewManager is not null)
 			{
-				// Dispose this component's contents and block on completion so that user-written disposal logic and
+				// Await disposal of this component's contents so that user-written disposal logic and
 				// Razor component disposal logic will complete first. Then call base.Dispose(), which will dispose
 				// the WebView2 control. This order is critical because once the WebView2 is disposed it will prevent
 				// Razor component code from working because it requires the WebView to exist.
-				_webviewManager?
-					.DisposeAsync()
-					.AsTask()
-					.GetAwaiter()
-					.GetResult();
+				// Dispatch because this is going to be async, and we want to catch any errors.
+				_ = ComponentsDispatcher.InvokeAsync(async () =>
+				{
+					await _webviewManager.DisposeAsync();
+					base.Dispose(disposing);
+				});
+				return;
 			}
+
 			base.Dispose(disposing);
 		}
 
-		/// <inheritdoc />
+		/// <inheritdoc cref="Control.CreateControlsInstance" />
 		protected override ControlCollection CreateControlsInstance()
 		{
 			return new BlazorWebViewControlCollection(this);
+		}
+
+		/// <summary>
+		/// Calls the specified <paramref name="workItem"/> asynchronously and passes in the scoped services available to Razor components.
+		/// </summary>
+		/// <param name="workItem">The action to call.</param>
+		/// <returns>Returns a <see cref="Task"/> representing <c>true</c> if the <paramref name="workItem"/> was called, or <c>false</c> if it was not called because Blazor is not currently running.</returns>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="workItem"/> is <c>null</c>.</exception>
+		public virtual async Task<bool> TryDispatchAsync(Action<IServiceProvider> workItem)
+		{
+			ArgumentNullException.ThrowIfNull(workItem);
+			if (_webviewManager is null)
+			{
+				return false;
+			}
+
+			return await _webviewManager.TryDispatchAsync(workItem);
 		}
 
 		/// <summary>
@@ -286,9 +328,9 @@ namespace Microsoft.AspNetCore.Components.WebView.WindowsForms
 			// Everything below is overridden to protect the control collection as read-only.
 			public override bool IsReadOnly => true;
 
-			public override void Add(Control value) => throw new NotSupportedException();
+			public override void Add(Control? value) => throw new NotSupportedException();
 			public override void Clear() => throw new NotSupportedException();
-			public override void Remove(Control value) => throw new NotSupportedException();
+			public override void Remove(Control? value) => throw new NotSupportedException();
 			public override void SetChildIndex(Control child, int newIndex) => throw new NotSupportedException();
 		}
 	}

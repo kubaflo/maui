@@ -5,7 +5,6 @@ using Maui.Controls.Sample.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
-using Microsoft.Maui.Devices;
 using Microsoft.Maui.Storage;
 
 namespace Maui.Controls.Sample
@@ -19,6 +18,9 @@ namespace Maui.Controls.Sample
 			Services = services;
 
 			Debug.WriteLine($"The injected text service had a message: '{textService.GetText()}'");
+
+			var requested = services.GetRequiredService<ITextService>();
+			Debug.WriteLine($"The requested text service had a message: '{requested.GetText()}'");
 
 			Debug.WriteLine($"Current app theme: {RequestedTheme}");
 
@@ -47,10 +49,14 @@ namespace Maui.Controls.Sample
 		}
 
 		// Must not use MainPage for multi-window
-		protected override Window CreateWindow(IActivationState activationState)
+		protected override Window CreateWindow(IActivationState? activationState)
 		{
-			var window = new Window(Services.GetRequiredService<Page>());
-			window.Title = ".NET MAUI Samples Gallery";
+			var services = activationState!.Context.Services;
+			var window = new MauiWindow(services.GetRequiredService<Page>())
+			{
+				Title = ".NET MAUI Samples Gallery"
+			};
+
 			return window;
 		}
 

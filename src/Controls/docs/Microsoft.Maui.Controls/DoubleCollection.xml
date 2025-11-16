@@ -16,12 +16,10 @@
   <Interfaces />
   <Attributes>
     <Attribute>
-      <AttributeName>Microsoft.Maui.Controls.TypeConverter(typeof(Microsoft.Maui.Controls.DoubleCollectionConverter))</AttributeName>
+      <AttributeName>System.ComponentModel.TypeConverter(typeof(Microsoft.Maui.Controls.DoubleCollectionConverter))</AttributeName>
     </Attribute>
   </Attributes>
   <Docs>
-    <summary>To be added.</summary>
-    <remarks>To be added.</remarks>
   </Docs>
   <Members>
     <Member MemberName=".ctor">
@@ -35,8 +33,6 @@
       </AssemblyInfo>
       <Parameters />
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
   </Members>

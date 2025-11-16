@@ -1,25 +1,24 @@
+#nullable disable
 using System;
 using Microsoft.Maui.Controls.Xaml;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../../docs/Microsoft.Maui.Controls/BindingCondition.xml" path="Type[@FullName='Microsoft.Maui.Controls.BindingCondition']/Docs" />
-	[ProvideCompiled("Microsoft.Maui.Controls.XamlC.PassthroughValueProvider")]
-	[AcceptEmptyServiceProvider]
-	public sealed class BindingCondition : Condition, IValueProvider
+	/// <include file="../../../docs/Microsoft.Maui.Controls/BindingCondition.xml" path="Type[@FullName='Microsoft.Maui.Controls.BindingCondition']/Docs/*" />
+	public sealed class BindingCondition : Condition
 	{
 		readonly BindableProperty _boundProperty;
 
 		BindingBase _binding;
 		object _triggerValue;
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/BindingCondition.xml" path="//Member[@MemberName='.ctor']/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/BindingCondition.xml" path="//Member[@MemberName='.ctor']/Docs/*" />
 		public BindingCondition()
 		{
 			_boundProperty = BindableProperty.CreateAttached("Bound", typeof(object), typeof(BindingCondition), null, propertyChanged: OnBoundPropertyChanged);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/BindingCondition.xml" path="//Member[@MemberName='Binding']/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/BindingCondition.xml" path="//Member[@MemberName='Binding']/Docs/*" />
 		public BindingBase Binding
 		{
 			get { return _binding; }
@@ -33,7 +32,7 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/BindingCondition.xml" path="//Member[@MemberName='Value']/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/BindingCondition.xml" path="//Member[@MemberName='Value']/Docs/*" />
 		public object Value
 		{
 			get { return _triggerValue; }
@@ -45,12 +44,6 @@ namespace Microsoft.Maui.Controls
 					throw new InvalidOperationException("Cannot change Value once the Condition has been applied.");
 				_triggerValue = value;
 			}
-		}
-
-		object IValueProvider.ProvideValue(IServiceProvider serviceProvider)
-		{
-			//This is no longer required
-			return this;
 		}
 
 		internal override bool GetState(BindableObject bindable)
@@ -68,7 +61,7 @@ namespace Microsoft.Maui.Controls
 		internal override void TearDown(BindableObject bindable)
 		{
 			bindable.RemoveBinding(_boundProperty);
-			bindable.ClearValue(_boundProperty);
+			bindable.ClearValue(_boundProperty, SetterSpecificity.FromBinding);
 		}
 
 		static IValueConverterProvider s_valueConverter = DependencyService.Get<IValueConverterProvider>();
@@ -95,8 +88,7 @@ namespace Microsoft.Maui.Controls
 			if (newState == oldState)
 				return;
 
-			if (ConditionChanged != null)
-				ConditionChanged(bindable, oldState, newState);
+			ConditionChanged?.Invoke(bindable, oldState, newState);
 		}
 	}
 }

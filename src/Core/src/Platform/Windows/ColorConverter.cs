@@ -5,15 +5,15 @@ using WSolidColorBrush = Microsoft.UI.Xaml.Media.SolidColorBrush;
 
 namespace Microsoft.Maui.Platform
 {
-	public sealed class ColorConverter : UI.Xaml.Data.IValueConverter
+	public sealed partial class ColorConverter : UI.Xaml.Data.IValueConverter
 	{
 		public object Convert(object value, Type targetType, object parameter, string language)
 		{
 			var color = (Graphics.Color)value;
 			var defaultColorKey = (string)parameter;
 
-			WBrush defaultBrush = defaultColorKey != null ? 
-				(WBrush)UI.Xaml.Application.Current.Resources[defaultColorKey] : 
+			WBrush defaultBrush = defaultColorKey != null ?
+				(WBrush)UI.Xaml.Application.Current.Resources[defaultColorKey] :
 				new WSolidColorBrush(Colors.Transparent);
 
 			return color.IsDefault() ? defaultBrush : color.ToPlatform();

@@ -1,3 +1,4 @@
+﻿#nullable disable
 using System;
 using CoreGraphics;
 using Foundation;
@@ -32,6 +33,8 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			_fontManager = fontManager;
 			_searchHandler = searchHandler;
 			_searchHandler.PropertyChanged += SearchHandlerPropertyChanged;
+			_searchHandler.ShowSoftInputRequested += OnShowSoftInputRequested;
+			_searchHandler.HideSoftInputRequested += OnHideSoftInputRequested;
 			_searchHandler.FocusChangeRequested += SearchHandlerFocusChangeRequested;
 			_uiSearchBar = searchBar;
 			_uiSearchBar.OnEditingStarted += OnEditingStarted;
@@ -62,7 +65,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		internal void UpdateFlowDirection(Shell shell)
 		{
 			_uiSearchBar.UpdateFlowDirection(shell);
-			_numericAccessoryView.UpdateFlowDirection(shell);
+
+			// This UIToolbar variable is only initialized in case the platform is a Phone.
+			_numericAccessoryView?.UpdateFlowDirection(shell);
 
 			var uiTextField = _uiSearchBar.FindDescendantView<UITextField>();
 			UpdateSearchBarHorizontalTextAlignment(uiTextField, shell);
@@ -161,7 +166,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			backgroundView.ClipsToBounds = true;
 			if (_defaultBackgroundColor == null)
 				_defaultBackgroundColor = backgroundView.BackgroundColor;
-			backgroundView.BackgroundColor = backGroundColor.ToPlatform();
+
+			UIColor backgroundColor = backGroundColor.ToPlatform();
+			backgroundView.BackgroundColor = backgroundColor;
+			textField.BackgroundColor = backgroundColor;
 		}
 
 		void UpdateCancelButtonColor(UIButton cancelButton)
@@ -259,7 +267,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 
 			SetSearchBarIconColor(uiButton, targetColor, _defaultPlaceholderTintColor);
-			uiButton.TintColor = targetColor.ToPlatform() ?? _defaultPlaceholderTintColor;
+			uiButton.TintColor = targetColor?.ToPlatform() ?? _defaultPlaceholderTintColor;
 		}
 
 		void UpdateClearIconColor(Color targetColor)
@@ -281,11 +289,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			if (textField == null)
 				return;
 
-			textField.TextAlignment = _searchHandler.HorizontalTextAlignment.ToPlatformHorizontal();
-			if (view != null)
-			{
-				textField.TextAlignment = textField.TextAlignment.AdjustForFlowDirection(view);
-			}
+			textField.TextAlignment = _searchHandler.HorizontalTextAlignment.ToPlatformHorizontal(textField.EffectiveUserInterfaceLayoutDirection);
 		}
 
 		void UpdateSearchBarVerticalTextAlignment(UITextField textField)
@@ -304,7 +308,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			// iPhone does not have an enter key on numeric keyboards
 			if (DeviceInfo.Idiom == DeviceIdiom.Phone && (keyboard == Keyboard.Numeric || keyboard == Keyboard.Telephone))
 			{
-				_numericAccessoryView = _numericAccessoryView ?? CreateNumericKeyboardAccessoryView();
+				_numericAccessoryView ??= CreateNumericKeyboardAccessoryView();
 				_uiSearchBar.InputAccessoryView = _numericAccessoryView;
 			}
 			else
@@ -338,6 +342,17 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			((ISearchHandlerController)_searchHandler).QueryConfirmed();
 			_uiSearchBar.ResignFirstResponder();
 		}
+
+		void OnShowSoftInputRequested(object sender, EventArgs e)
+		{
+			_uiSearchBar?.BecomeFirstResponder();
+		}
+
+		void OnHideSoftInputRequested(object sender, EventArgs e)
+		{
+			_uiSearchBar?.ResignFirstResponder();
+		}
+
 
 		UIToolbar CreateNumericKeyboardAccessoryView()
 		{
@@ -374,7 +389,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			button.SetImage(newIcon, UIControlState.Normal);
 			button.SetImage(newIcon, UIControlState.Selected);
 			button.SetImage(newIcon, UIControlState.Highlighted);
-			button.TintColor = button.ImageView.TintColor = targetColor.ToPlatform() ?? defaultTintColor;
+			button.TintColor = button.ImageView.TintColor = targetColor?.ToPlatform() ?? defaultTintColor;
 		}
 
 		protected virtual void Dispose(bool disposing)
@@ -396,6 +411,8 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				{
 					_searchHandler.FocusChangeRequested -= SearchHandlerFocusChangeRequested;
 					_searchHandler.PropertyChanged -= SearchHandlerPropertyChanged;
+					_searchHandler.ShowSoftInputRequested -= OnShowSoftInputRequested;
+					_searchHandler.HideSoftInputRequested -= OnHideSoftInputRequested;
 				}
 				_searchHandler = null;
 				_uiSearchBar = null;

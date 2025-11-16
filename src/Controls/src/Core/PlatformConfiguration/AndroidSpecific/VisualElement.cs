@@ -1,36 +1,56 @@
+#nullable disable
 namespace Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific
 {
 	using FormsElement = Maui.Controls.VisualElement;
 
-	/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="Type[@FullName='Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific.VisualElement']/Docs" />
+	/// <summary>
+	/// Controls the legacy color mode and elevation for visual elements on the Android platform.
+	/// </summary>
 	public static class VisualElement
 	{
 		#region Elevation
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='ElevationProperty']/Docs" />
+		/// <summary>Bindable property for attached property <c>Elevation</c>.</summary>
 		public static readonly BindableProperty ElevationProperty =
 			BindableProperty.Create("Elevation", typeof(float?),
 				typeof(FormsElement));
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='GetElevation'][2]/Docs" />
+		/// <summary>
+		/// Gets the elevation for the element.
+		/// </summary>
+		/// <param name="element">The visual element on the Android platform whose elevation to get.</param>
+		/// <returns>The elevation for the element.</returns>
 		public static float? GetElevation(FormsElement element)
 		{
 			return (float?)element.GetValue(ElevationProperty);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='SetElevation'][2]/Docs" />
+		/// <summary>
+		/// Sets the elevation for the visual element.
+		/// </summary>
+		/// <param name="element"></param>
+		/// <param name="value">The new elevation value.</param>
 		public static void SetElevation(FormsElement element, float? value)
 		{
 			element.SetValue(ElevationProperty, value);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='GetElevation'][1]/Docs" />
+		/// <summary>
+		/// Gets the elevation for the element.
+		/// </summary>
+		/// <param name="config">The platform configuration for the visual element on the Android platform whose elevation to get.</param>
+		/// <returns>The elevation for the element.</returns>
 		public static float? GetElevation(this IPlatformElementConfiguration<Android, FormsElement> config)
 		{
 			return GetElevation(config.Element);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='SetElevation'][1]/Docs" />
+		/// <summary>
+		/// Sets the elevation for the visual element.
+		/// </summary>
+		/// <param name="config">The visual element on the Android platform whose elevation to set.</param>
+		/// <param name="value">The new elevation value.</param>
+		/// <returns></returns>
 		public static IPlatformElementConfiguration<Android, FormsElement> SetElevation(this IPlatformElementConfiguration<Android, FormsElement> config, float? value)
 		{
 			SetElevation(config.Element, value);
@@ -41,30 +61,47 @@ namespace Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific
 
 		#region IsLegacyColorModeEnabled
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='IsLegacyColorModeEnabledProperty']/Docs" />
+		/// <summary>Bindable property for attached property <c>IsLegacyColorModeEnabled</c>.</summary>
 		public static readonly BindableProperty IsLegacyColorModeEnabledProperty =
 			BindableProperty.CreateAttached("IsLegacyColorModeEnabled", typeof(bool),
 				typeof(FormsElement), true);
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='GetIsLegacyColorModeEnabled'][1]/Docs" />
+		/// <summary>
+		/// Gets whether or not the legacy color mode for this element is enabled.
+		/// </summary>
+		/// <param name="element">The element on the Android platform whose legacy color mode status to get.</param>
+		/// <returns><see langword="true"/> if legacy color mode is enabled for this element, otherwise <see langword="false"/>.</returns>
 		public static bool GetIsLegacyColorModeEnabled(BindableObject element)
 		{
 			return (bool)element.GetValue(IsLegacyColorModeEnabledProperty);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='SetIsLegacyColorModeEnabled'][1]/Docs" />
+		/// <summary>
+		/// Sets whether or not the legacy color mode for this element is enabled.
+		/// </summary>
+		/// <param name="element">The platform configuration for the visual element on the Android platform whose legacy color mode status to set.</param>
+		/// <param name="value"><see langword="true" /> to enable legacy color mode. Otherwise, <see langword="false" />.</param>
 		public static void SetIsLegacyColorModeEnabled(BindableObject element, bool value)
 		{
 			element.SetValue(IsLegacyColorModeEnabledProperty, value);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='GetIsLegacyColorModeEnabled'][2]/Docs" />
+		/// <summary>
+		/// Gets whether or not the legacy color mode for this element is enabled.
+		/// </summary>
+		/// <param name="config">The platform configuration for the visual element on the Android platform whose legacy color mode status to get.</param>
+		/// <returns><see langword="true"/> if legacy color mode is enabled for this element, otherwise <see langword="false"/>.</returns>
 		public static bool GetIsLegacyColorModeEnabled(this IPlatformElementConfiguration<Android, FormsElement> config)
 		{
 			return (bool)config.Element.GetValue(IsLegacyColorModeEnabledProperty);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific/VisualElement.xml" path="//Member[@MemberName='SetIsLegacyColorModeEnabled'][2]/Docs" />
+		/// <summary>
+		/// Sets whether or not the legacy color mode for this element is enabled.
+		/// </summary>
+		/// <param name="config">The platform configuration for the visual element on the Android platform whose legacy color mode status to set.</param>
+		/// <param name="value"><see langword="true" /> to enable legacy color mode. Otherwise, <see langword="false" />.</param>
+		/// <returns>A fluent object on which the developer may make further method calls.</returns>
 		public static IPlatformElementConfiguration<Android, FormsElement> SetIsLegacyColorModeEnabled(
 			this IPlatformElementConfiguration<Android, FormsElement> config, bool value)
 		{

@@ -8,6 +8,12 @@ namespace Microsoft.Maui.Handlers
 	{
 		static AppCompatRadioButton? GetPlatformRadioButton(IRadioButtonHandler handler) => handler.PlatformView as AppCompatRadioButton;
 
+		public override void PlatformArrange(Graphics.Rect frame)
+		{
+			this.PrepareForTextViewArrange(frame);
+			base.PlatformArrange(frame);
+		}
+
 		protected override AppCompatRadioButton CreatePlatformView()
 		{
 			return new AppCompatRadioButton(Context)
@@ -25,8 +31,7 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void DisconnectHandler(View platformView)
 		{
-			AppCompatRadioButton? platformRadioButton = GetPlatformRadioButton(this);
-			if (platformRadioButton != null)
+			if (platformView is AppCompatRadioButton platformRadioButton)
 				platformRadioButton.CheckedChange -= OnCheckChanged;
 		}
 

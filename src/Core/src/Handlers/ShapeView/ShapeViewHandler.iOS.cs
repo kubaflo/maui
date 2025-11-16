@@ -4,20 +4,12 @@ namespace Microsoft.Maui.Handlers
 {
 	public partial class ShapeViewHandler : ViewHandler<IShapeView, MauiShapeView>
 	{
-		protected override MauiShapeView CreatePlatformView() 
+		protected override MauiShapeView CreatePlatformView()
 			=> new MauiShapeView();
 
 		public override bool NeedsContainer =>
 			VirtualView?.Background != null ||
 			base.NeedsContainer;
-
-		public static void MapBackground(IShapeViewHandler handler, IShapeView shapeView)
-		{
-			handler.UpdateValue(nameof(IViewHandler.ContainerView));
-			handler.ToPlatform().UpdateBackground(shapeView);
-
-			handler.PlatformView?.InvalidateShape(shapeView);
-		}
 
 		public static void MapShape(IShapeViewHandler handler, IShapeView shapeView)
 		{

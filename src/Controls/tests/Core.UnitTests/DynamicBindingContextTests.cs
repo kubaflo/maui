@@ -5,14 +5,14 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
-	[TestFixture]
+
 	public class DynamicBindingContextTests
 	{
-		[Test]
+		[Fact]
 		public void BindingTwoWayToDynamicModel()
 		{
 			var view = new MockBindable();
@@ -27,11 +27,11 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			view.SetBinding(MockBindable.TextProperty, "Title");
 			view.BindingContext = model;
 
-			Assert.AreEqual("Foo", view.Text);
+			Assert.Equal("Foo", view.Text);
 
 			view.Text = "Bar";
 
-			Assert.AreEqual("Bar", model.Properties["Title"]);
+			Assert.Equal("Bar", model.Properties["Title"]);
 		}
 
 		// This whole class and inner types is just a very simple 
@@ -124,7 +124,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 					public override ParameterInfo[] GetIndexParameters()
 					{
-						return new ParameterInfo[0];
+						return Array.Empty<ParameterInfo>();
 					}
 
 					public override object GetValue(object obj, BindingFlags invokeAttr, Binder binder, object[] index, System.Globalization.CultureInfo culture)
@@ -247,7 +247,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 					public override ParameterInfo[] GetParameters()
 					{
-						return new ParameterInfo[0];
+						return Array.Empty<ParameterInfo>();
 					}
 
 					public override RuntimeMethodHandle MethodHandle
@@ -262,12 +262,12 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 					public override object[] GetCustomAttributes(Type attributeType, bool inherit)
 					{
-						return new object[0];
+						return Array.Empty<object>();
 					}
 
 					public override object[] GetCustomAttributes(bool inherit)
 					{
-						return new object[0];
+						return Array.Empty<object>();
 					}
 
 					public override bool IsDefined(Type attributeType, bool inherit)

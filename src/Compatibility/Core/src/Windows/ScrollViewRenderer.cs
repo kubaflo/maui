@@ -1,17 +1,17 @@
 using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using WRect = Windows.Foundation.Rect;
 using UwpScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
+using WRect = Windows.Foundation.Rect;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class ScrollViewRenderer : ViewRenderer<ScrollView, ScrollViewer>
+	public partial class ScrollViewRenderer : ViewRenderer<ScrollView, ScrollViewer>
 	{
 		VisualElement _currentView;
 		bool _checkedForRtlScroll = false;
@@ -58,7 +58,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			var result = new global::Windows.Foundation.Size(width, height);
 
 			Control?.Measure(result);
-			
+
 			return result;
 		}
 
@@ -76,8 +76,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				}
 			}
 
-			if (_currentView != null)
-				_currentView.Cleanup();
+			_currentView?.Cleanup();
 		}
 
 		protected override void OnElementChanged(ElementChangedEventArgs<ScrollView> e)
@@ -130,8 +129,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 
 		void UpdateContent()
 		{
-			if (_currentView != null)
-				_currentView.Cleanup();
+			_currentView?.Cleanup();
 
 			if (Control?.Content is FrameworkElement oldElement)
 			{
@@ -148,7 +146,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			if (_currentView != null)
 				renderer = _currentView.GetOrCreateRenderer();
 
-			Control.Content = renderer != null ? renderer.ContainerElement : null;
+			Control.Content = renderer?.ContainerElement;
 
 			UpdateContentMargins();
 			if (renderer?.Element != null)
@@ -163,7 +161,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			ClearRtlScrollCheck();
 
 			// Adding items into the view while scrolling to the end can cause it to fail, as
-			// the items have not actually been laid out and return incorrect scroll position
+			// the items have not actually been arranged and return incorrect scroll position
 			// values. The ScrollViewRenderer for Android does something similar by waiting up
 			// to 10ms for layout to occur.
 			int cycle = 0;
@@ -199,7 +197,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 
 		void SetInitialRtlPosition(object sender, object e)
 		{
-			if (Control == null) return;
+			if (Control == null)
+				return;
 
 			if (Control.ActualWidth <= 0 || _checkedForRtlScroll || Control.Content == null)
 				return;

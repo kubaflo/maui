@@ -1,6 +1,7 @@
 ﻿using Android.Views;
 using Android.Widget;
 using AndroidX.AppCompat.Widget;
+using Google.Android.Material.CheckBox;
 
 namespace Microsoft.Maui.Handlers
 {
@@ -8,7 +9,7 @@ namespace Microsoft.Maui.Handlers
 	{
 		protected override AppCompatCheckBox CreatePlatformView()
 		{
-			var platformCheckBox = new AppCompatCheckBox(Context)
+			var platformCheckBox = new MaterialCheckBox(Context)
 			{
 				SoundEffectsEnabled = false
 			};
@@ -28,17 +29,17 @@ namespace Microsoft.Maui.Handlers
 		}
 
 		// This is an Android-specific mapping
-		public static void MapBackground(ICheckBoxHandler handler, ICheckBox check)
+		public static partial void MapBackground(ICheckBoxHandler handler, ICheckBox check)
 		{
 			handler.PlatformView?.UpdateBackground(check);
 		}
 
-		public static void MapIsChecked(ICheckBoxHandler handler, ICheckBox check)
+		public static partial void MapIsChecked(ICheckBoxHandler handler, ICheckBox check)
 		{
 			handler.PlatformView?.UpdateIsChecked(check);
 		}
 
-		public static void MapForeground(ICheckBoxHandler handler, ICheckBox check)
+		public static partial void MapForeground(ICheckBoxHandler handler, ICheckBox check)
 		{
 			handler.PlatformView?.UpdateForeground(check);
 		}

@@ -16,41 +16,78 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void SetupContainer()
 		{
-			if (PlatformView == null || ContainerView != null)
+			if (PlatformView is null || ContainerView is not null)
+			{
 				return;
+			}
 
-			var oldParent = (Panel?)PlatformView.Parent;
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons. MauiPanel might not be used everywhere though.
+			var oldParentChildren = PlatformView.Parent is MauiPanel mauiPanel
+				? mauiPanel.CachedChildren
+				: (PlatformView.Parent as Panel)?.Children;
+#pragma warning restore RS0030 // Do not use banned APIs
 
-			var oldIndex = oldParent?.Children.IndexOf(PlatformView);
-			oldParent?.Children.Remove(PlatformView);
+			var oldIndex = oldParentChildren?.IndexOf(PlatformView);
+
+			if (oldIndex is int oldIdx && oldIdx >= 0)
+			{
+				oldParentChildren?.RemoveAt(oldIdx);
+			}
 
 			ContainerView ??= new WrapperView();
 			((WrapperView)ContainerView).Child = PlatformView;
 
 			if (oldIndex is int idx && idx >= 0)
-				oldParent?.Children.Insert(idx, ContainerView);
+			{
+				oldParentChildren?.Insert(idx, ContainerView);
+			}
 			else
-				oldParent?.Children.Add(ContainerView);
+			{
+				oldParentChildren?.Add(ContainerView);
+			}
 		}
 
 		protected override void RemoveContainer()
 		{
-			if (PlatformView == null || ContainerView == null || PlatformView.Parent != ContainerView)
+			if (PlatformView is null || ContainerView is null || PlatformView.Parent != ContainerView)
+			{
+				CleanupContainerView(ContainerView);
+				ContainerView = null;
 				return;
+			}
 
-			var oldParent = (Panel?)ContainerView.Parent;
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons. MauiPanel might not be used everywhere though.
+			var oldParentChildren = ContainerView.Parent is MauiPanel mauiPanel
+				? mauiPanel.CachedChildren
+				: (ContainerView.Parent as Panel)?.Children;
+#pragma warning restore RS0030 // Do not use banned APIs
 
-			var oldIndex = oldParent?.Children.IndexOf(ContainerView);
-			oldParent?.Children.Remove(ContainerView);
+			var oldIndex = oldParentChildren?.IndexOf(ContainerView);
+			if (oldIndex is int oldIdx && oldIdx >= 0)
+			{
+				oldParentChildren?.RemoveAt(oldIdx);
+			}
 
-			((WrapperView)ContainerView).Child = null;
-			((WrapperView)ContainerView).Dispose();
+			CleanupContainerView(ContainerView);
 			ContainerView = null;
 
 			if (oldIndex is int idx && idx >= 0)
-				oldParent?.Children.Insert(idx, PlatformView);
+			{
+				oldParentChildren?.Insert(idx, PlatformView);
+			}
 			else
-				oldParent?.Children.Add(PlatformView);
+			{
+				oldParentChildren?.Add(PlatformView);
+			}
+
+			static void CleanupContainerView(FrameworkElement? containerView)
+			{
+				if (containerView is WrapperView wrapperView)
+				{
+					wrapperView.Child = null;
+					wrapperView.Dispose();
+				}
+			}
 		}
 	}
 }

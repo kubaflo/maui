@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using Microsoft.Maui.Controls.Internals;
 
@@ -8,7 +9,11 @@ namespace Microsoft.Maui.Controls
 		Element Parent { get; set; }
 
 		//Use these 2 instead of an event to avoid cloning way too much multicastdelegates on mono
+
+		/// <summary>For internal use by .NET MAUI.</summary>
 		void AddResourcesChangedListener(Action<object, ResourcesChangedEventArgs> onchanged);
+
+		/// <summary>For internal use by .NET MAUI.</summary>
 		void RemoveResourcesChangedListener(Action<object, ResourcesChangedEventArgs> onchanged);
 	}
 }

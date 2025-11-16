@@ -6,22 +6,20 @@ namespace Microsoft.Maui.Controls
 {
 	static class DecorableTextElement
 	{
+		/// <summary>Bindable property for <see cref="TextDecorations"/>.</summary>
 		public static readonly BindableProperty TextDecorationsProperty = BindableProperty.Create(nameof(IDecorableTextElement.TextDecorations), typeof(TextDecorations), typeof(IDecorableTextElement), TextDecorations.None);
 	}
 
-	/// <include file="../../docs/Microsoft.Maui.Controls/TextDecorationConverter.xml" path="Type[@FullName='Microsoft.Maui.Controls.TextDecorationConverter']/Docs" />
+	/// <summary>A <see cref="System.ComponentModel.TypeConverter"/> subclass that can convert between a string and a <see cref="Microsoft.Maui.TextDecorations"/> object.</summary>
 	public class TextDecorationConverter : TypeConverter
 	{
-		/// <include file="../../docs/Microsoft.Maui.Controls/TextDecorationConverter.xml" path="//Member[@MemberName='CanConvertFrom']/Docs" />
-		public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
+		public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
 			=> sourceType == typeof(string);
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/TextDecorationConverter.xml" path="//Member[@MemberName='CanConvertTo']/Docs" />
-		public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
+		public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destinationType)
 			=> destinationType == typeof(string);
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/TextDecorationConverter.xml" path="//Member[@MemberName='ConvertFrom']/Docs" />
-		public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+		public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
 		{
 			var strValue = value?.ToString();
 
@@ -47,8 +45,7 @@ namespace Microsoft.Maui.Controls
 			return result;
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/TextDecorationConverter.xml" path="//Member[@MemberName='ConvertTo']/Docs" />
-		public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
+		public override object? ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
 		{
 			if (value is not TextDecorations td)
 				throw new NotSupportedException();

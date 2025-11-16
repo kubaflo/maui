@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -19,13 +20,23 @@ using Specifics = Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.List
 
 namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
+#pragma warning disable CS0618 // Type or member is obsolete
 	public class ListViewRenderer : ViewRenderer<ListView, UITableView>
+#pragma warning restore CS0618 // Type or member is obsolete
 	{
+#pragma warning disable CS0618 // Type or member is obsolete
 		public static PropertyMapper<ListView, ListViewRenderer> Mapper =
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 				new PropertyMapper<ListView, ListViewRenderer>(VisualElementRendererMapper);
+#pragma warning restore CS0618 // Type or member is obsolete
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		public static CommandMapper<ListView, ListViewRenderer> CommandMapper =
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 			new CommandMapper<ListView, ListViewRenderer>(VisualElementRendererCommandMapper);
+#pragma warning restore CS0618 // Type or member is obsolete
 
 		const int DefaultRowHeight = 44;
 
@@ -34,13 +45,16 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		IPlatformViewHandler _headerRenderer;
 		IPlatformViewHandler _footerRenderer;
 
-		KeyboardInsetTracker _insetTracker;
 		RectangleF _previousFrame;
 		ScrollToRequestedEventArgs _requestedScroll;
 
 		FormsUITableViewController _tableViewController;
+#pragma warning disable CS0618 // Type or member is obsolete
 		ListView ListView => Element;
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 		ITemplatedItemsView<Cell> TemplatedItemsView => Element;
+#pragma warning restore CS0618 // Type or member is obsolete
 		public override UIViewController ViewController => _tableViewController;
 		//bool _disposed;
 		bool _usingLargeTitles;
@@ -64,7 +78,6 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		public override void LayoutSubviews()
 		{
-			_insetTracker?.OnLayoutSubviews();
 			base.LayoutSubviews();
 
 			double height = Bounds.Height;
@@ -86,11 +99,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				OnScrollToRequested(this, request);
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (_previousFrame != Frame)
-			{
+#pragma warning disable CS0618 // Type or member is obsolete
 				_previousFrame = Frame;
-				_insetTracker?.UpdateInsets();
-			}
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		protected override void SetBackground(Brush brush)
@@ -130,6 +144,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			}
 		}
 
+		private protected override void DisconnectHandlerCore()
+		{
+			CleanUpResources();
+			base.DisconnectHandlerCore();
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			if (_disposed)
@@ -137,65 +157,52 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			if (disposing)
 			{
-				if (_insetTracker != null)
-				{
-					_insetTracker.Dispose();
-					_insetTracker = null;
-				}
-
-				if (Element != null)
-				{
-					var templatedItems = TemplatedItemsView.TemplatedItems;
-					templatedItems.CollectionChanged -= OnCollectionChanged;
-					templatedItems.GroupedCollectionChanged -= OnGroupedCollectionChanged;
-				}
-
-				if (_dataSource != null)
-				{
-					_dataSource.Dispose();
-					_dataSource = null;
-				}
-
-				if (_tableViewController != null)
-				{
-					_tableViewController.Dispose();
-					_tableViewController = null;
-				}
-
-				if (_headerRenderer != null)
-				{
-					_headerRenderer.VirtualView?.DisposeModalAndChildHandlers();
-					_headerRenderer = null;
-				}
-				if (_footerRenderer != null)
-				{
-					_footerRenderer.VirtualView?.DisposeModalAndChildHandlers();
-					_footerRenderer = null;
-				}
-
-				if (_backgroundUIView != null)
-				{
-					_backgroundUIView.Dispose();
-					_backgroundUIView = null;
-				}
-
-				var headerView = ListView?.HeaderElement as VisualElement;
-				if (headerView != null)
-					headerView.MeasureInvalidated -= OnHeaderMeasureInvalidated;
-				Control?.TableHeaderView?.Dispose();
-
-				var footerView = ListView?.FooterElement as VisualElement;
-				if (footerView != null)
-					footerView.MeasureInvalidated -= OnFooterMeasureInvalidated;
-				Control?.TableFooterView?.Dispose();
+				CleanUpResources();
 			}
 
 			_disposed = true;
 
 			base.Dispose(disposing);
 		}
+
 		bool _disposed = false;
+
+		void CleanUpResources()
+		{
+			if (Element != null)
+			{
+				var templatedItems = TemplatedItemsView.TemplatedItems;
+				templatedItems.CollectionChanged -= OnCollectionChanged;
+				templatedItems.GroupedCollectionChanged -= OnGroupedCollectionChanged;
+			}
+
+			_dataSource?.Dispose();
+			_dataSource = null;
+
+			_tableViewController?.Dispose();
+			_tableViewController = null;
+
+			_headerRenderer?.VirtualView?.DisposeModalAndChildHandlers();
+			_headerRenderer = null;
+			_footerRenderer?.VirtualView?.DisposeModalAndChildHandlers();
+			_footerRenderer = null;
+
+			_backgroundUIView?.Dispose();
+			_backgroundUIView = null;
+
+			var headerView = ListView?.HeaderElement as VisualElement;
+			if (headerView != null)
+				headerView.MeasureInvalidated -= OnHeaderMeasureInvalidated;
+			Control?.TableHeaderView?.Dispose();
+
+			var footerView = ListView?.FooterElement as VisualElement;
+			if (footerView != null)
+				footerView.MeasureInvalidated -= OnFooterMeasureInvalidated;
+			Control?.TableFooterView?.Dispose();
+		}
+#pragma warning disable CS0618 // Type or member is obsolete
 		protected override void OnElementChanged(ElementChangedEventArgs<ListView> e)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 			_requestedScroll = null;
 
@@ -211,7 +218,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					footerView.MeasureInvalidated -= OnFooterMeasureInvalidated;
 
 				listView.ScrollToRequested -= OnScrollToRequested;
+#pragma warning disable CS0618 // Type or member is obsolete
 				var templatedItems = ((ITemplatedItemsView<Cell>)e.OldElement).TemplatedItems;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 				templatedItems.CollectionChanged -= OnCollectionChanged;
 				templatedItems.GroupedCollectionChanged -= OnGroupedCollectionChanged;
@@ -221,7 +230,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				if (Control == null)
 				{
-					if (OperatingSystem.IsIOSVersionAtLeast(11) || OperatingSystem.IsTvOSVersionAtLeast(11))
+					if (OperatingSystem.IsIOSVersionAtLeast(11) || OperatingSystem.IsMacCatalystVersionAtLeast(11)
+#if TVOS
+						|| OperatingSystem.IsTvOSVersionAtLeast(11)
+#endif
+					)
 					{
 						var parentNav = e.NewElement.FindParentOfType<NavigationPage>();
 						_usingLargeTitles = (parentNav != null && parentNav.OnThisPlatform().PrefersLargeTitles());
@@ -229,23 +242,22 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					_tableViewController = new FormsUITableViewController(e.NewElement, _usingLargeTitles);
 					SetNativeControl(_tableViewController.TableView);
 
-					if (OperatingSystem.IsIOSVersionAtLeast(15) || OperatingSystem.IsTvOSVersionAtLeast(15))
+					if (OperatingSystem.IsIOSVersionAtLeast(15) || OperatingSystem.IsMacCatalystVersionAtLeast(15)
+#if TVOS
+						|| OperatingSystem.IsTvOSVersionAtLeast(15)
+#endif
+					)
 						_tableViewController.TableView.SectionHeaderTopPadding = new nfloat(0);
 
 					_backgroundUIView = _tableViewController.TableView.BackgroundView;
-
-					_insetTracker = new KeyboardInsetTracker(_tableViewController.TableView, () => Control.Window, insets => Control.ContentInset = Control.ScrollIndicatorInsets = insets, point =>
-					{
-						var offset = Control.ContentOffset;
-						offset.Y += point.Y;
-						Control.SetContentOffset(offset, true);
-					}, this);
 				}
 
 				var listView = e.NewElement;
 
 				listView.ScrollToRequested += OnScrollToRequested;
+#pragma warning disable CS0618 // Type or member is obsolete
 				var templatedItems = ((ITemplatedItemsView<Cell>)e.NewElement).TemplatedItems;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 				templatedItems.CollectionChanged += OnCollectionChanged;
 				templatedItems.GroupedCollectionChanged += OnGroupedCollectionChanged;
@@ -276,19 +288,26 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		protected override void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
 			base.OnElementPropertyChanged(sender, e);
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (e.PropertyName == Microsoft.Maui.Controls.ListView.RowHeightProperty.PropertyName)
 				UpdateRowHeight();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == Microsoft.Maui.Controls.ListView.IsGroupingEnabledProperty.PropertyName)
 				_dataSource.UpdateGrouping();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == Microsoft.Maui.Controls.ListView.HasUnevenRowsProperty.PropertyName)
 			{
 				Control.Source = _dataSource = Element.HasUnevenRows ? new UnevenListViewDataSource(_dataSource) : new ListViewDataSource(_dataSource);
 				ReloadData();
 			}
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == Microsoft.Maui.Controls.ListView.IsPullToRefreshEnabledProperty.PropertyName)
 				UpdatePullToRefreshEnabled();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == Microsoft.Maui.Controls.ListView.IsRefreshingProperty.PropertyName)
 				UpdateIsRefreshing();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == Microsoft.Maui.Controls.ListView.SeparatorColorProperty.PropertyName)
 				UpdateSeparatorColor();
 			else if (e.PropertyName == Microsoft.Maui.Controls.ListView.SeparatorVisibilityProperty.PropertyName)
@@ -297,8 +316,10 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				UpdateHeader();
 			else if (e.PropertyName == "FooterElement")
 				UpdateFooter();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == "RefreshAllowed")
 				UpdatePullToRefreshEnabled();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == Microsoft.Maui.Controls.ListView.SelectionModeProperty.PropertyName)
 				UpdateSelectionMode();
 			else if (e.PropertyName == Microsoft.Maui.Controls.ListView.RefreshControlColorProperty.PropertyName)
@@ -307,11 +328,22 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				UpdateVerticalScrollBarVisibility();
 			else if (e.PropertyName == ScrollView.HorizontalScrollBarVisibilityProperty.PropertyName)
 				UpdateHorizontalScrollBarVisibility();
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		public override void TraitCollectionDidChange(UITraitCollection previousTraitCollection)
 		{
+#pragma warning disable CA1422 // Validate platform compatibility
 			base.TraitCollectionDidChange(previousTraitCollection);
+#pragma warning restore CA1422 // Validate platform compatibility
 			// Make sure the cells adhere to changes UI theme
 			if (OperatingSystem.IsIOSVersionAtLeast(13) && previousTraitCollection?.UserInterfaceStyle != TraitCollection.UserInterfaceStyle)
 				ReloadData();
@@ -355,12 +387,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			var size = _footerRenderer.VirtualView.Measure(Bounds.Width, double.PositiveInfinity);
 			var platformFrame = new RectangleF(0, 0, size.Width, size.Height);
-			_footerRenderer.PlatformView.Frame = platformFrame;
+			_footerRenderer.ToPlatform().Frame = platformFrame;
 			_footerRenderer.VirtualView.Arrange(platformFrame.ToRectangle());
+			Control.TableFooterView = _footerRenderer.ToPlatform();
+
 			BeginInvokeOnMainThread(() =>
 			{
-				if (_headerRenderer != null)
-					Control.TableFooterView = _footerRenderer.PlatformView;
+				if (_footerRenderer != null)
+					Control.TableFooterView = _footerRenderer.ToPlatform();
 			});
 		}
 
@@ -373,9 +407,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			var size = _headerRenderer.VirtualView.Measure(Bounds.Width, double.PositiveInfinity);
 			var platformFrame = new RectangleF(0, 0, size.Width, size.Height);
-			_headerRenderer.PlatformView.Frame = platformFrame;
+			_headerRenderer.ToPlatform().Frame = platformFrame;
 			_headerRenderer.VirtualView.Arrange(platformFrame.ToRectangle());
-			Control.TableHeaderView = _headerRenderer.PlatformView;
+			Control.TableHeaderView = _headerRenderer.ToPlatform();
 
 			// Time for another story with Jason. Gather round children because the following Math.Ceiling will look like it's completely useless.
 			// You will remove it and test and find everything is fiiiiiine, but it is not fine, no it is far from fine. See iOS, or at least iOS 8
@@ -388,7 +422,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			BeginInvokeOnMainThread(() =>
 			{
 				if (_headerRenderer != null)
-					Control.TableHeaderView = _headerRenderer.PlatformView;
+					Control.TableHeaderView = _headerRenderer.ToPlatform();
 			});
 		}
 
@@ -399,7 +433,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		void OnGroupedCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 			var til = (TemplatedItemsList<ItemsView<Cell>, Cell>)sender;
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			var templatedItems = TemplatedItemsView.TemplatedItems;
 			var groupIndex = templatedItems.IndexOf(til.HeaderContent);
@@ -439,8 +477,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					if (OperatingSystem.IsIOSVersionAtLeast(11) || OperatingSystem.IsTvOSVersionAtLeast(11))
 						this.BeginInvokeOnMainThread(() =>
 						{
-							if (Control != null /*&& !_disposed*/)
-								Control.ScrollToRow(NSIndexPath.FromRowSection(index, 0), position, e.ShouldAnimate);
+							Control?.ScrollToRow(NSIndexPath.FromRowSection(index, 0), position, e.ShouldAnimate);
 						});
 					else
 						Control.ScrollToRow(NSIndexPath.FromRowSection(index, 0), position, e.ShouldAnimate);
@@ -528,8 +565,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		void UpdateIsRefreshing()
 		{
 			var refreshing = Element.IsRefreshing;
-			if (_tableViewController != null)
-				_tableViewController.UpdateIsRefreshing(refreshing);
+			_tableViewController?.UpdateIsRefreshing(refreshing);
 		}
 
 		void UpdateItems(NotifyCollectionChangedEventArgs e, int section, bool resetWhenGrouped)
@@ -614,10 +650,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				Control.EndUpdates();
 			});
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (Element.OnThisPlatform().RowAnimationsEnabled())
 				action.Invoke();
 			else
 				PerformWithoutAnimation(() => { action.Invoke(); });
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void DeleteRows(int oldStartingIndex, int oldItemsCount, int section)
@@ -629,10 +667,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				Control.EndUpdates();
 			});
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (Element.OnThisPlatform().RowAnimationsEnabled())
 				action.Invoke();
 			else
 				PerformWithoutAnimation(() => { action.Invoke(); });
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void MoveRows(int newStartingIndex, int oldStartingIndex, int oldItemsCount, int section)
@@ -656,10 +696,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				Control.EndUpdates();
 			});
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (Element.OnThisPlatform().RowAnimationsEnabled())
 				action.Invoke();
 			else
 				PerformWithoutAnimation(() => { action.Invoke(); });
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void ReloadRows(int oldStartingIndex, int oldItemsCount, int section)
@@ -671,18 +713,22 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				Control.EndUpdates();
 			});
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (Element.OnThisPlatform().RowAnimationsEnabled())
 				action.Invoke();
 			else
 				PerformWithoutAnimation(() => { action.Invoke(); });
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void ReloadData()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (Element.OnThisPlatform().RowAnimationsEnabled())
 				Control.ReloadData();
 			else
 				PerformWithoutAnimation(() => { Control.ReloadData(); });
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void InvalidateCellCache()
@@ -749,8 +795,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		{
 			var color = Element.RefreshControlColor;
 
-			if (_tableViewController != null)
-				_tableViewController.UpdateRefreshControlColor(color == null ? null : color.ToPlatform());
+			_tableViewController?.UpdateRefreshControlColor(color?.ToPlatform());
 		}
 
 		void UpdateVerticalScrollBarVisibility()
@@ -791,13 +836,19 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			}
 		}
 
-		internal class UnevenListViewDataSource : ListViewDataSource
+		internal sealed class UnevenListViewDataSource : ListViewDataSource
 		{
 			IPlatformViewHandler _prototype;
 			bool _disposed;
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 			Dictionary<object, Cell> _prototypicalCellByTypeOrDataTemplate = new Dictionary<object, Cell>();
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			public UnevenListViewDataSource(ListView list, FormsUITableViewController uiTableViewController) : base(list, uiTableViewController)
+#pragma warning restore CS0618 // Type or member is obsolete
 			{
 			}
 
@@ -807,14 +858,18 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			nfloat GetEstimatedRowHeight(UITableView table)
 			{
-				if (List.RowHeight != -1)
+				if (!_list.TryGetTarget(out var list))
+					return 0;
+				if (list.RowHeight != -1)
 				{
 					// Not even sure we need this case; A list with HasUnevenRows and a RowHeight doesn't make a ton of sense
 					// Anyway, no need for an estimate, because the heights we'll use are known
 					return 0;
 				}
 
-				var templatedItems = TemplatedItemsView.TemplatedItems;
+#pragma warning disable CS0618 // Type or member is obsolete
+				var templatedItems = ((ITemplatedItemsView<Cell>)list).TemplatedItems;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 				if (templatedItems.Count == 0)
 				{
@@ -823,7 +878,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				}
 
 				// We're going to base our estimate off of the first cell
-				var isGroupingEnabled = List.IsGroupingEnabled;
+				var isGroupingEnabled = list.IsGroupingEnabled;
 
 				if (isGroupingEnabled)
 					templatedItems = templatedItems.GetGroup(0);
@@ -864,11 +919,15 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					tableView.EstimatedRowHeight = estimatedRowHeight;
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			internal Cell GetPrototypicalCell(NSIndexPath indexPath)
+#pragma warning restore CS0618 // Type or member is obsolete
 			{
-				var itemTypeOrDataTemplate = default(object);
+				if (!_list.TryGetTarget(out var list))
+					return null;
 
-				var cachingStrategy = List.CachingStrategy;
+				var itemTypeOrDataTemplate = default(object);
+				var cachingStrategy = list.CachingStrategy;
 				if (cachingStrategy == ListViewCachingStrategy.RecycleElement)
 					itemTypeOrDataTemplate = GetDataTemplateForPath(indexPath);
 
@@ -879,8 +938,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					return GetCellForPath(indexPath);
 
 				if (itemTypeOrDataTemplate == null)
+#pragma warning disable CS0618 // Type or member is obsolete
 					itemTypeOrDataTemplate = typeof(TextCell);
+#pragma warning restore CS0618 // Type or member is obsolete
 
+#pragma warning disable CS0618 // Type or member is obsolete
 				if (!_prototypicalCellByTypeOrDataTemplate.TryGetValue(itemTypeOrDataTemplate, out Cell protoCell))
 				{
 					// cache prototypical cell by item type; Items of the same Type share
@@ -888,6 +950,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					protoCell = GetCellForPath(indexPath);
 					_prototypicalCellByTypeOrDataTemplate[itemTypeOrDataTemplate] = protoCell;
 				}
+#pragma warning restore CS0618 // Type or member is obsolete
 
 				var templatedItems = GetTemplatedItemsListForPath(indexPath);
 				return templatedItems.UpdateContent(protoCell, indexPath.Row);
@@ -901,16 +964,22 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 				var cell = GetPrototypicalCell(indexPath);
 
-				if (List.RowHeight == -1 && cell.Height == -1 && cell is ViewCell)
+#pragma warning disable CS0618 // Type or member is obsolete
+				if (_list.TryGetTarget(out var list) && list.RowHeight == -1 && cell.Height == -1 && cell is ViewCell)
 					return UITableView.AutomaticDimension;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 				var renderHeight = cell.RenderHeight;
 				return renderHeight > 0 ? (nfloat)renderHeight : DefaultRowHeight;
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			internal nfloat CalculateHeightForCell(UITableView tableView, Cell cell)
+#pragma warning restore CS0618 // Type or member is obsolete
 			{
+#pragma warning disable CS0618 // Type or member is obsolete
 				var viewCell = cell as ViewCell;
+#pragma warning restore CS0618 // Type or member is obsolete
 				if (viewCell != null && viewCell.View != null)
 				{
 					var target = viewCell.View;
@@ -933,7 +1002,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					// Let the EstimatedHeight method know to use this value.
 					// Much more efficient than checking the value each time.
 					//_useEstimatedRowHeight = true;
-					var height = (nfloat)req.Request.Height;
+					var height = (nfloat)req.Height;
 					return height > 1 ? height : DefaultRowHeight;
 				}
 
@@ -960,10 +1029,8 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				if (_prototype != null)
 				{
-					var element = _prototype.VirtualView;
-					element.Handler?.DisconnectHandler();
-					//_prototype?.Dispose();
-					//_prototype = null;
+					_prototype?.DisconnectHandler();
+					_prototype = null;
 				}
 			}
 		}
@@ -974,10 +1041,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			static int s_dataTemplateIncrementer = 2; // lets start at not 0 because
 			readonly nfloat _defaultSectionHeight;
 			Dictionary<DataTemplate, int> _templateToId = new Dictionary<DataTemplate, int>();
-			UITableView _uiTableView;
-			FormsUITableViewController _uiTableViewController;
-			protected ListView List;
-			protected ITemplatedItemsView<Cell> TemplatedItemsView => List;
+			readonly WeakReference<UITableView> _uiTableView;
+			readonly WeakReference<FormsUITableViewController> _uiTableViewController;
+#pragma warning disable CS0618 // Type or member is obsolete
+			protected readonly WeakReference<ListView> _list;
+#pragma warning restore CS0618 // Type or member is obsolete
+			readonly HashSet<ContextActionsCell> _contextActionsCells = new();
 			bool _isDragging;
 			bool _setupSelection;
 			bool _selectionFromNative;
@@ -990,7 +1059,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			public ListViewDataSource(ListViewDataSource source)
 			{
 				_uiTableViewController = source._uiTableViewController;
-				List = source.List;
+				_list = source._list;
 				_uiTableView = source._uiTableView;
 				_defaultSectionHeight = source._defaultSectionHeight;
 				_selectionFromNative = source._selectionFromNative;
@@ -998,13 +1067,15 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				Counts = new Dictionary<int, int>();
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			public ListViewDataSource(ListView list, FormsUITableViewController uiTableViewController)
+#pragma warning restore CS0618 // Type or member is obsolete
 			{
-				_uiTableViewController = uiTableViewController;
-				_uiTableView = uiTableViewController.TableView;
+				_uiTableViewController = new(uiTableViewController);
+				_uiTableView = new(uiTableViewController.TableView);
 				_defaultSectionHeight = DefaultRowHeight;
-				List = list;
-				List.ItemSelected += OnItemSelected;
+				_list = new(list);
+				list.ItemSelected += OnItemSelected;
 				UpdateShortNameListener();
 
 				Counts = new Dictionary<int, int>();
@@ -1027,7 +1098,10 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			public override void DraggingEnded(UIScrollView scrollView, bool willDecelerate)
 			{
 				_isDragging = false;
-				_uiTableViewController.UpdateShowHideRefresh(false);
+				if (_uiTableViewController.TryGetTarget(out var uiTableViewController))
+				{
+					uiTableViewController.UpdateShowHideRefresh(false);
+				}
 			}
 
 			public override void DraggingStarted(UIScrollView scrollView)
@@ -1050,12 +1124,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			public override UITableViewCell GetCell(UITableView tableView, NSIndexPath indexPath)
 			{
+#pragma warning disable CS0618 // Type or member is obsolete
 				Cell cell;
+#pragma warning restore CS0618 // Type or member is obsolete
 				UITableViewCell platformCell;
 
-				Performance.Start(out string reference);
-
-				var cachingStrategy = List.CachingStrategy;
+				if (!_list.TryGetTarget(out var list))
+					return null;
+				var cachingStrategy = list.CachingStrategy;
 				if (cachingStrategy == ListViewCachingStrategy.RetainElement)
 				{
 					cell = GetCellForPath(indexPath);
@@ -1073,9 +1149,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					}
 					else
 					{
-						var templatedList = TemplatedItemsView.TemplatedItems.GetGroup(indexPath.Section);
+						var templatedList = list.TemplatedItems.GetGroup(indexPath.Section);
 
+#pragma warning disable CS0618 // Type or member is obsolete
 						cell = (Cell)((INativeElementView)platformCell).Element;
+#pragma warning restore CS0618 // Type or member is obsolete
 						cell.SendDisappearing();
 
 						templatedList.UpdateContent(cell, indexPath.Row);
@@ -1087,27 +1165,34 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 				SetupSelection(platformCell, tableView);
 
-				if (List.IsSet(Specifics.SeparatorStyleProperty))
+#pragma warning disable CS0618 // Type or member is obsolete
+				if (list.IsSet(Specifics.SeparatorStyleProperty))
 				{
-					if (List.OnThisPlatform().GetSeparatorStyle() == SeparatorStyle.FullWidth)
+					if (list.OnThisPlatform().GetSeparatorStyle() == SeparatorStyle.FullWidth)
 					{
 						platformCell.SeparatorInset = UIEdgeInsets.Zero;
 						platformCell.LayoutMargins = UIEdgeInsets.Zero;
 						platformCell.PreservesSuperviewLayoutMargins = false;
 					}
 				}
+#pragma warning restore CS0618 // Type or member is obsolete
 				var bgColor = tableView.IndexPathForSelectedRow != null && tableView.IndexPathForSelectedRow.Equals(indexPath) ? UIColor.Clear : DefaultBackgroundColor;
 				SetCellBackgroundColor(platformCell, bgColor);
 				PreserveActivityIndicatorState(cell);
-				Performance.Stop(reference);
+
+				if (platformCell is ContextActionsCell contextActionsCell)
+					_contextActionsCells.Add(contextActionsCell);
+
 				return platformCell;
 			}
 
 			public override nfloat GetHeightForHeader(UITableView tableView, nint section)
 			{
-				if (List.IsGroupingEnabled)
+				if (!_list.TryGetTarget(out var list))
+					return 0;
+				if (list.IsGroupingEnabled)
 				{
-					var cell = TemplatedItemsView.TemplatedItems[(int)section];
+					var cell = list.TemplatedItems[(int)section];
 					nfloat height = (float)cell.RenderHeight;
 					if (height == -1)
 						height = _defaultSectionHeight;
@@ -1120,10 +1205,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			public override UIView GetViewForHeader(UITableView tableView, nint section)
 			{
-				if (!List.IsGroupingEnabled)
+				if (!_list.TryGetTarget(out var list))
+					return null;
+				if (!list.IsGroupingEnabled)
 					return null;
 
-				var cell = TemplatedItemsView.TemplatedItems[(int)section];
+				var cell = list.TemplatedItems[(int)section];
 				if (cell.HasContextActions)
 					throw new NotSupportedException("Header cells do not support context actions");
 
@@ -1143,7 +1230,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			public override void HeaderViewDisplayingEnded(UITableView tableView, UIView headerView, nint section)
 			{
-				if (!List.IsGroupingEnabled)
+				if (!_list.TryGetTarget(out var list) || !list.IsGroupingEnabled)
 					return;
 
 				if (headerView is HeaderWrapperView wrapper)
@@ -1155,8 +1242,8 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			public override nint NumberOfSections(UITableView tableView)
 			{
-				if (List.IsGroupingEnabled)
-					return TemplatedItemsView.TemplatedItems.Count;
+				if (_list.TryGetTarget(out var list) && list.IsGroupingEnabled)
+					return list.TemplatedItems.Count;
 
 				return 1;
 			}
@@ -1169,19 +1256,22 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					return;
 				}
 
-				if (List == null)
+				if (!_list.TryGetTarget(out var list))
 					return;
 
-				var location = TemplatedItemsView.TemplatedItems.GetGroupAndIndexOfItem(eventArg.SelectedItem);
+				if (!_uiTableView.TryGetTarget(out var uiTableView))
+					return;
+
+				var location = list.TemplatedItems.GetGroupAndIndexOfItem(eventArg.SelectedItem);
 				if (location.Item1 == -1 || location.Item2 == -1)
 				{
-					var selectedIndexPath = _uiTableView.IndexPathForSelectedRow;
+					var selectedIndexPath = uiTableView.IndexPathForSelectedRow;
 
 					var animate = true;
 
 					if (selectedIndexPath != null)
 					{
-						var cell = _uiTableView.CellAt(selectedIndexPath) as ContextActionsCell;
+						var cell = uiTableView.CellAt(selectedIndexPath) as ContextActionsCell;
 						if (cell != null)
 						{
 							cell.PrepareForDeselect();
@@ -1191,11 +1281,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					}
 
 					if (selectedIndexPath != null)
-						_uiTableView.DeselectRow(selectedIndexPath, animate);
+						uiTableView.DeselectRow(selectedIndexPath, animate);
 					return;
 				}
 
-				_uiTableView.SelectRow(NSIndexPath.FromRowSection(location.Item2, location.Item1), true, UITableViewScrollPosition.Middle);
+				uiTableView.SelectRow(NSIndexPath.FromRowSection(location.Item2, location.Item1), true, UITableViewScrollPosition.Middle);
 			}
 
 			public override void RowDeselected(UITableView tableView, NSIndexPath indexPath)
@@ -1213,20 +1303,26 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 				if (cell == null)
 					return;
+				if (!_list.TryGetTarget(out var list))
+					return;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 				Cell formsCell = null;
-				if ((List.CachingStrategy & ListViewCachingStrategy.RecycleElement) != 0)
+#pragma warning restore CS0618 // Type or member is obsolete
+				if ((list.CachingStrategy & ListViewCachingStrategy.RecycleElement) != 0)
+#pragma warning disable CS0618 // Type or member is obsolete
 					formsCell = (Cell)((INativeElementView)cell).Element;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 				SetCellBackgroundColor(cell, UIColor.Clear);
 
-				if (List.SelectionMode == ListViewSelectionMode.None)
+				if (list.SelectionMode == ListViewSelectionMode.None)
 					tableView.DeselectRow(indexPath, false);
 
 				_selectionFromNative = true;
 
 				tableView.EndEditing(true);
-				List.NotifyRowTapped(indexPath.Section, indexPath.Row, formsCell);
+				list.NotifyRowTapped(indexPath.Section, indexPath.Row, formsCell);
 			}
 
 			public override nint RowsInSection(UITableView tableview, nint section)
@@ -1245,8 +1341,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					return countOverride;
 				}
 
-				var templatedItems = TemplatedItemsView.TemplatedItems;
-				if (List.IsGroupingEnabled)
+				if (!_list.TryGetTarget(out var list))
+					return 0;
+
+				var templatedItems = list.TemplatedItems;
+				if (list.IsGroupingEnabled)
 				{
 					var group = (IList)((IList)templatedItems)[(int)section];
 					return group.Count;
@@ -1257,8 +1356,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			public override void Scrolled(UIScrollView scrollView)
 			{
+				if (!_uiTableViewController.TryGetTarget(out var uiTableViewController))
+					return;
+
 				var args = new ScrolledEventArgs(scrollView.ContentOffset.X, scrollView.ContentOffset.Y);
-				List?.SendScrolled(args);
+				if (_list.TryGetTarget(out var list))
+					list.SendScrolled(args);
 
 				if (_isDragging && scrollView.ContentOffset.Y < 0)
 				{
@@ -1268,19 +1371,21 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					// will promptly kill, and the app will close)
 					// So we temporarily flip _isDragging to false in order to prevent the loop.
 					_isDragging = false;
-					_uiTableViewController.UpdateShowHideRefresh(true);
+					uiTableViewController.UpdateShowHideRefresh(true);
 					_isDragging = true;
 				}
 
-				if (_isDragging && scrollView.ContentOffset.Y < -10f && _uiTableViewController._usingLargeTitles && DeviceDisplay.MainDisplayInfo.Orientation.IsPortrait())
+				if (_isDragging && scrollView.ContentOffset.Y < -10f && uiTableViewController._usingLargeTitles && DeviceDisplay.MainDisplayInfo.Orientation.IsPortrait())
 				{
-					_uiTableViewController.ForceRefreshing();
+					uiTableViewController.ForceRefreshing();
 				}
 			}
 
 			public override string[] SectionIndexTitles(UITableView tableView)
 			{
-				var templatedItems = TemplatedItemsView.TemplatedItems;
+				if (!_list.TryGetTarget(out var list))
+					return null;
+				var templatedItems = list.TemplatedItems;
 				if (templatedItems.ShortNames == null)
 					return null;
 
@@ -1297,10 +1402,17 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				UpdateShortNameListener();
 
-				if (List.OnThisPlatform().RowAnimationsEnabled())
-					_uiTableView.ReloadData();
+				if (!_uiTableView.TryGetTarget(out var uiTableView))
+					return;
+				if (!_list.TryGetTarget(out var list))
+					return;
+
+#pragma warning disable CS0618 // Type or member is obsolete
+				if (list.OnThisPlatform().RowAnimationsEnabled())
+					uiTableView.ReloadData();
 				else
-					PerformWithoutAnimation(() => { _uiTableView.ReloadData(); });
+					PerformWithoutAnimation(uiTableView.ReloadData);
+#pragma warning restore CS0618 // Type or member is obsolete
 			}
 
 			public void DetermineEstimatedRowHeight()
@@ -1308,31 +1420,48 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				if (_estimatedRowHeight)
 					return;
 
-				UpdateEstimatedRowHeight(_uiTableView);
+				if (!_uiTableView.TryGetTarget(out var uiTableView))
+					return;
+
+				UpdateEstimatedRowHeight(uiTableView);
 
 				_estimatedRowHeight = true;
 			}
 
 			protected bool IsValidIndexPath(NSIndexPath indexPath)
 			{
-				var templatedItems = TemplatedItemsView.TemplatedItems;
-				if (List.IsGroupingEnabled)
+				if (!_list.TryGetTarget(out var list))
+					return false;
+#pragma warning disable CS0618 // Type or member is obsolete
+				var templatedItems = ((ITemplatedItemsView<Cell>)list).TemplatedItems;
+#pragma warning restore CS0618 // Type or member is obsolete
+				if (list.IsGroupingEnabled)
 				{
 					var section = indexPath.Section;
 					if (section < 0 || section >= templatedItems.Count)
 						return false;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 					templatedItems = (ITemplatedItemsList<Cell>)((IList)templatedItems)[indexPath.Section];
+#pragma warning restore CS0618 // Type or member is obsolete
 				}
 
 				return templatedItems.ListProxy.TryGetValue(indexPath.Row, out var _);
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			protected ITemplatedItemsList<Cell> GetTemplatedItemsListForPath(NSIndexPath indexPath)
+#pragma warning restore CS0618 // Type or member is obsolete
 			{
-				var templatedItems = TemplatedItemsView.TemplatedItems;
-				if (List.IsGroupingEnabled)
+				if (!_list.TryGetTarget(out var list))
+					return null;
+#pragma warning disable CS0618 // Type or member is obsolete
+				var templatedItems = ((ITemplatedItemsView<Cell>)list).TemplatedItems;
+#pragma warning restore CS0618 // Type or member is obsolete
+				if (list.IsGroupingEnabled)
+#pragma warning disable CS0618 // Type or member is obsolete
 					templatedItems = (ITemplatedItemsList<Cell>)((IList)templatedItems)[indexPath.Section];
+#pragma warning restore CS0618 // Type or member is obsolete
 
 				return templatedItems;
 			}
@@ -1351,7 +1480,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				return item.GetType();
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			protected Cell GetCellForPath(NSIndexPath indexPath)
+#pragma warning restore CS0618 // Type or member is obsolete
 			{
 				var templatedItems = GetTemplatedItemsListForPath(indexPath);
 				var cell = templatedItems[indexPath.Row];
@@ -1360,10 +1491,16 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			void OnShortNamesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
 			{
-				if (List.OnThisPlatform().RowAnimationsEnabled())
-					_uiTableView.ReloadSectionIndexTitles();
+				if (!_uiTableView.TryGetTarget(out var uiTableView))
+					return;
+				if (!_list.TryGetTarget(out var list))
+					return;
+#pragma warning disable CS0618 // Type or member is obsolete
+				if (list.OnThisPlatform().RowAnimationsEnabled())
+					uiTableView.ReloadSectionIndexTitles();
 				else
-					PerformWithoutAnimation(() => { _uiTableView.ReloadSectionIndexTitles(); });
+					PerformWithoutAnimation(uiTableView.ReloadSectionIndexTitles);
+#pragma warning restore CS0618 // Type or member is obsolete
 			}
 
 			static void SetCellBackgroundColor(UITableViewCell cell, UIColor color)
@@ -1376,7 +1513,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			int TemplateIdForPath(NSIndexPath indexPath)
 			{
-				var itemTemplate = List.ItemTemplate;
+				if (!_list.TryGetTarget(out var list))
+					return 0;
+				var itemTemplate = list.ItemTemplate;
 				var selector = itemTemplate as DataTemplateSelector;
 				if (selector == null)
 					return DefaultItemTemplateId;
@@ -1384,7 +1523,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				var templatedList = GetTemplatedItemsListForPath(indexPath);
 				var item = templatedList.ListProxy[indexPath.Row];
 
-				itemTemplate = selector.SelectTemplate(item, List);
+				itemTemplate = selector.SelectTemplate(item, list);
 				int key;
 				if (!_templateToId.TryGetValue(itemTemplate, out key))
 				{
@@ -1397,12 +1536,16 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			void UpdateShortNameListener()
 			{
-				WatchShortNameCollection(List.IsGroupingEnabled);
+				if (!_list.TryGetTarget(out var list))
+					return;
+				WatchShortNameCollection(list.IsGroupingEnabled);
 			}
 
 			void WatchShortNameCollection(bool watch)
 			{
-				var templatedList = TemplatedItemsView.TemplatedItems;
+				if (!_list.TryGetTarget(out var list))
+					return;
+				var templatedList = list.TemplatedItems;
 
 				if (templatedList.ShortNames == null)
 				{
@@ -1429,7 +1572,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				tableView.EstimatedRowHeight = DefaultRowHeight;
 
 				// if even rows OR uneven rows but user specified a row height anyway...
-				if (!List.HasUnevenRows || List.RowHeight != -1)
+				if (!_list.TryGetTarget(out var list))
+					return;
+				if (!list.HasUnevenRows || list.RowHeight != -1)
 					tableView.EstimatedRowHeight = 0;
 			}
 
@@ -1440,16 +1585,17 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 				if (disposing)
 				{
-					if (List != null)
+					if (_list.TryGetTarget(out var list))
 					{
-						List.ItemSelected -= OnItemSelected;
+						list.ItemSelected -= OnItemSelected;
 						WatchShortNameCollection(false);
-						List = null;
 					}
 
+					foreach (var cell in _contextActionsCells)
+						cell.Dispose();
+					_contextActionsCells.Clear();
+
 					_templateToId = null;
-					_uiTableView = null;
-					_uiTableViewController = null;
 				}
 
 				_disposed = true;
@@ -1486,7 +1632,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		UITableViewCell _tableViewCell;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		public Cell Cell { get; set; }
+#pragma warning restore CS0618 // Type or member is obsolete
 
 		public void SetTableViewCell(UITableViewCell value)
 		{
@@ -1505,9 +1653,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		}
 	}
 
-	internal class FormsUITableViewController : UITableViewController
+	internal sealed class FormsUITableViewController : UITableViewController
 	{
-		ListView _list;
+#pragma warning disable CS0618 // Type or member is obsolete
+		readonly WeakReference<ListView> _list;
+#pragma warning restore CS0618 // Type or member is obsolete
 		UIRefreshControl _refresh;
 
 		bool _refreshAdded;
@@ -1516,18 +1666,20 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		bool _isRefreshing;
 		bool _isStartRefreshingPending;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		public FormsUITableViewController(ListView element, bool usingLargeTitles)
 		: base(element.OnThisPlatform().GetGroupHeaderStyle() == GroupHeaderStyle.Plain
 			? UITableViewStyle.Plain
 			  : UITableViewStyle.Grouped)
 		{
 			TableView.CellLayoutMarginsFollowReadableWidth = false;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			_usingLargeTitles = usingLargeTitles;
 
 			_refresh = new FormsRefreshControl(_usingLargeTitles);
 			_refresh.ValueChanged += OnRefreshingChanged;
-			_list = element;
+			_list = new(element);
 		}
 
 		public void UpdateIsRefreshing(bool refreshing)
@@ -1546,6 +1698,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					//hack: On iOS11 with large titles we need to adjust the scroll offset manually
 					//since our UITableView is not the first child of the UINavigationController
 					//This also forces the spinner color to be correct if we started refreshing immediately after changing it.
+#pragma warning disable CS0618 // Type or member is obsolete
 					UpdateContentOffset(TableView.ContentOffset.Y - _refresh.Frame.Height, () =>
 					{
 						if (_refresh == null || _disposed)
@@ -1557,8 +1710,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 						//hack: when we don't have cells in our UITableView the spinner fails to appear
 						CheckContentSize();
+#pragma warning disable CS0618 // Type or member is obsolete
 						TableView.ScrollRectToVisible(new RectangleF(0, 0, _refresh.Bounds.Width, _refresh.Bounds.Height), true);
+#pragma warning restore CS0618 // Type or member is obsolete
 					});
+#pragma warning restore CS0618 // Type or member is obsolete
 				}
 			}
 			else
@@ -1571,7 +1727,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				UpdateContentOffset(-1);
 
 				_isRefreshing = false;
-				if (!_list.IsPullToRefreshEnabled)
+				if (_list.TryGetTarget(out var list) && !list.IsPullToRefreshEnabled)
 					RemoveRefresh();
 			}
 		}
@@ -1618,31 +1774,41 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		//hack: Form some reason UIKit isn't allowing to scroll negative values with largetitles
 		public void ForceRefreshing()
 		{
-			if (!_list.IsPullToRefreshEnabled)
+			if (!_list.TryGetTarget(out var list))
+				return;
+			if (!list.IsPullToRefreshEnabled)
 				return;
 			if (!_refresh.Refreshing && !_isRefreshing)
 			{
 				_isRefreshing = true;
+#pragma warning disable CS0618 // Type or member is obsolete
 				UpdateContentOffset(TableView.ContentOffset.Y - _refresh.Frame.Height, StartRefreshing);
-				_list.SendRefreshing();
+#pragma warning restore CS0618 // Type or member is obsolete
+				list.SendRefreshing();
 			}
 		}
 
 		public void UpdateShowHideRefresh(bool shouldHide)
 		{
-			if (_list.IsPullToRefreshEnabled)
+			if (!_list.TryGetTarget(out var list))
+				return;
+			if (list.IsPullToRefreshEnabled)
 				return;
 
 			if (shouldHide)
 				RemoveRefresh();
 			else
-				UpdateIsRefreshing(_list.IsRefreshing);
+				UpdateIsRefreshing(list.IsRefreshing);
 		}
 
 		public override void ViewWillAppear(bool animated)
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			(TableView?.Source as ListViewRenderer.ListViewDataSource)?.Cleanup();
-			if (!_list.IsRefreshing || !_refresh.Refreshing)
+#pragma warning restore CS0618 // Type or member is obsolete
+			if (!_list.TryGetTarget(out var list))
+				return;
+			if (!list.IsRefreshing || !_refresh.Refreshing)
 				return;
 
 			// Restart the refreshing to get the animation to trigger
@@ -1652,7 +1818,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		public override void ViewWillLayoutSubviews()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			(TableView?.Source as ListViewRenderer.ListViewDataSource)?.DetermineEstimatedRowHeight();
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		public void UpdateRefreshControlColor(UIColor color)
@@ -1675,8 +1843,6 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					_refresh.Dispose();
 					_refresh = null;
 				}
-
-				_list = null;
 			}
 
 			_disposed = true;
@@ -1687,15 +1853,19 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		void CheckContentSize()
 		{
 			//adding a default height of at least 1 pixel tricks iOS to show the spinner
+#pragma warning disable CS0618 // Type or member is obsolete
 			var contentSize = TableView.ContentSize;
+#pragma warning restore CS0618 // Type or member is obsolete
 			if (contentSize.Height == 0)
+#pragma warning disable CS0618 // Type or member is obsolete
 				TableView.ContentSize = new SizeF(contentSize.Width, 1);
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void OnRefreshingChanged(object sender, EventArgs eventArgs)
 		{
-			if (_refresh.Refreshing)
-				_list.SendRefreshing();
+			if (_refresh.Refreshing && _list.TryGetTarget(out var list))
+				list.SendRefreshing();
 
 			_isRefreshing = _refresh.Refreshing;
 		}
@@ -1715,7 +1885,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		void UpdateContentOffset(nfloat offset, Action completed = null)
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 			UIView.Animate(0.2, () => TableView.ContentOffset = new CoreGraphics.CGPoint(TableView.ContentOffset.X, offset), completed);
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 	}
 

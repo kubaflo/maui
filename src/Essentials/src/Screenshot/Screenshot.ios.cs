@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using CoreAnimation;
 using CoreGraphics;
+using Microsoft.Maui.ApplicationModel;
 using ObjCRuntime;
 using UIKit;
 
@@ -17,26 +18,13 @@ namespace Microsoft.Maui.Media
 		public bool IsCaptureSupported =>
 			true;
 
-		[System.Runtime.Versioning.SupportedOSPlatform("ios13.0")]
-		[System.Runtime.Versioning.SupportedOSPlatform("tvos13.0")]
 		public Task<IScreenshotResult> CaptureAsync()
 		{
-			var scenes = UIApplication.SharedApplication.ConnectedScenes;
-//#pragma warning disable CA1416 // Known false positive with Lambda expression
-			var currentScene = scenes.ToArray().Where(n => n.ActivationState == UISceneActivationState.ForegroundActive).FirstOrDefault();
-//#pragma warning restore CA1416
-			if (currentScene == null)
-				throw new InvalidOperationException("Unable to find current scene.");
-
-			var uiWindowScene = currentScene as UIWindowScene;
-			if (uiWindowScene == null)
-				throw new InvalidOperationException("Unable to find current window scene.");
-
-			var currentWindow = uiWindowScene.Windows.FirstOrDefault(n => n.IsKeyWindow);
+			var currentWindow = WindowStateManager.Default.GetCurrentUIWindow();
 			if (currentWindow == null)
 				throw new InvalidOperationException("Unable to find current window.");
 
-			return CaptureAsync(currentWindow.Layer, true);
+			return CaptureAsync(currentWindow);
 		}
 
 		public Task<IScreenshotResult> CaptureAsync(UIWindow window)
@@ -44,86 +32,86 @@ namespace Microsoft.Maui.Media
 			_ = window ?? throw new ArgumentNullException(nameof(window));
 
 			// NOTE: We rely on the window frame having been set to the correct size when this method is invoked.
-			UIGraphics.BeginImageContextWithOptions(window.Bounds.Size, false, window.Screen.Scale);
-			var ctx = UIGraphics.GetCurrentContext();
-
-			if (!TryRender(window, out var error))
+			var renderer = new UIGraphicsImageRenderer(window.Bounds.Size, new UIGraphicsImageRendererFormat()
 			{
-				// FIXME: test/handle this case
+				Opaque = false,
+				Scale = window.Screen.Scale,
+			});
+
+			// renderer will be null if the width/height of the view is zero
+			if (renderer is not null && !TryRender(window, out _))
+			{
+				// TODO: test/handle this case
 			}
 
-			// Render the status bar with the correct frame size
-			try
+			var image = renderer?.CreateImage((_) =>
 			{
-				TryHideStatusClockView(UIApplication.SharedApplication);
-				var statusbarWindow = GetStatusBarWindow(UIApplication.SharedApplication);
-				if (statusbarWindow != null/* && metrics.StatusBar != null*/)
-				{
-					statusbarWindow.Frame = window.Frame;
-					statusbarWindow.Layer.RenderInContext(ctx);
-				}
-			}
-			catch
-			{
-				// FIXME: test/handle this case
-			}
+				window.DrawViewHierarchy(window.Bounds, true);
+			});
 
-			var image = UIGraphics.GetImageFromCurrentImageContext();
-			UIGraphics.EndImageContext();
-
-			var result = new ScreenshotResult(image);
+			var result = new ScreenshotResult(image ?? new UIImage());
 
 			return Task.FromResult<IScreenshotResult>(result);
 		}
 
-		public Task<IScreenshotResult> CaptureAsync(UIView view)
+		public Task<IScreenshotResult?> CaptureAsync(UIView view)
 		{
-			_ = view ?? throw new ArgumentNullException(nameof(view));
+			ArgumentNullException.ThrowIfNull(view);
+			ArgumentNullException.ThrowIfNull(view.Window);
 
 			// NOTE: We rely on the view frame having been set to the correct size when this method is invoked.
-			UIGraphics.BeginImageContextWithOptions(view.Bounds.Size, false, view.Window.Screen.Scale);
-			var ctx = UIGraphics.GetCurrentContext();
-
-			// ctx will be null if the width/height of the view is zero
-			if (ctx != null)
+			var renderer = new UIGraphicsImageRenderer(view.Bounds.Size, new UIGraphicsImageRendererFormat()
 			{
-				if (!TryRender(view, out var error))
-				{
-					// FIXME: test/handle this case
-				}
+				Opaque = false,
+				Scale = view.Window?.Screen?.Scale ?? 1.0f,
+			});
+
+			// renderer will be null if the width/height of the view is zero
+			if (renderer is not null && !TryRender(view, out _))
+			{
+				// TODO: test/handle this case
 			}
 
-			var image = UIGraphics.GetImageFromCurrentImageContext();
-			UIGraphics.EndImageContext();
+			var image = renderer?.CreateImage((_) =>
+			{
+				view.DrawViewHierarchy(view.Bounds, true);
+			});
 
-			var result = new ScreenshotResult(image);
+			var result = image is null ? null : new ScreenshotResult(image);
 
-			return Task.FromResult<IScreenshotResult>(result);
+			return Task.FromResult<IScreenshotResult?>(result);
 		}
 
-		public Task<IScreenshotResult> CaptureAsync(CALayer layer, bool skipChildren)
+		public Task<IScreenshotResult?> CaptureAsync(CALayer layer, bool skipChildren)
 		{
 			_ = layer ?? throw new ArgumentNullException(nameof(layer));
 
 			// NOTE: We rely on the layer frame having been set to the correct size when this method is invoked.
-			UIGraphics.BeginImageContextWithOptions(layer.Bounds.Size, false, layer.RasterizationScale);
-			var ctx = UIGraphics.GetCurrentContext();
-
-			// ctx will be null if the width/height of the view is zero
-			if (ctx != null)
+			var renderer = new UIGraphicsImageRenderer(layer.Bounds.Size, new UIGraphicsImageRendererFormat()
 			{
-				if (!TryRender(layer, ctx, skipChildren, out var error))
-				{
-					// FIXME: test/handle this case
-				}
+				Opaque = false,
+				Scale = layer.RasterizationScale,
+			});
+
+			// renderer will be null if the width/height of the view is zero
+			if (renderer is not null)
+			{
+				// TODO: test/handle this case
 			}
 
-			var image = UIGraphics.GetImageFromCurrentImageContext();
-			UIGraphics.EndImageContext();
+			var image = renderer?.CreateImage((context) =>
+			{
+				if (!TryRender(layer, context.CGContext, skipChildren, out _))
+				{
+					// TODO: test/handle this case
+				}
 
-			var result = new ScreenshotResult(image);
+				layer.RenderInContext(context.CGContext);
+			});
 
-			return Task.FromResult<IScreenshotResult>(result);
+			var result = image is null ? null : new ScreenshotResult(image);
+
+			return Task.FromResult<IScreenshotResult?>(result);
 		}
 
 		static bool TryRender(UIView view, out Exception? error)
@@ -170,10 +158,11 @@ namespace Microsoft.Maui.Media
 
 		static void HideSublayers(CALayer layer, Dictionary<CALayer, bool> visibilitySnapshot)
 		{
-			if (layer.Sublayers == null)
+			var sublayers = layer?.Sublayers;
+			if (sublayers is null)
 				return;
 
-			foreach (var sublayer in layer.Sublayers)
+			foreach (var sublayer in sublayers)
 			{
 				HideSublayers(sublayer, visibilitySnapshot);
 
@@ -192,56 +181,6 @@ namespace Microsoft.Maui.Media
 				sublayer.Key.Hidden = sublayer.Value;
 			}
 		}
-
-		static void TryHideStatusClockView(UIApplication app)
-		{
-			var statusBarWindow = GetStatusBarWindow(app);
-			if (statusBarWindow == null)
-				return;
-
-			var clockView = GetClockView(statusBarWindow);
-			if (clockView != null)
-				clockView.Hidden = true;
-		}
-
-		static UIView? GetClockView(UIWindow window)
-		{
-			var classNames = new[] {
-				"UIStatusBar",
-				"UIStatusBarForegroundView",
-				"UIStatusBarTimeItemView"
-			};
-
-			return FindSubview(window, ((IEnumerable<string>)classNames).GetEnumerator());
-
-			static UIView? FindSubview(UIView view, IEnumerator<string> classNames)
-			{
-				if (!classNames.MoveNext())
-					return view;
-
-				foreach (var subview in view.Subviews)
-				{
-					if (subview.ToString().StartsWith($"<{classNames.Current}:", StringComparison.Ordinal))
-						return FindSubview(subview, classNames);
-				}
-
-				return null;
-			}
-		}
-
-		static UIWindow? GetStatusBarWindow(UIApplication app)
-		{
-			if (!app.RespondsToSelector(statusBarWindowSelector))
-				return null;
-
-			var ptr = IntPtr_objc_msgSend(app.Handle, statusBarWindowSelector.Handle);
-			return ptr != IntPtr.Zero ? Runtime.GetNSObject(ptr) as UIWindow : null;
-		}
-
-		static readonly Selector statusBarWindowSelector = new Selector("statusBarWindow");
-
-		[DllImport(Constants.ObjectiveCLibrary, EntryPoint = "objc_msgSend")]
-		static extern IntPtr IntPtr_objc_msgSend(IntPtr receiver, IntPtr selector);
 	}
 
 	partial class ScreenshotResult
@@ -266,9 +205,9 @@ namespace Microsoft.Maui.Media
 				_ => throw new ArgumentOutOfRangeException(nameof(format))
 			};
 
-			var result = data.AsStream();
+			ArgumentNullException.ThrowIfNull(data);
 
-			return Task.FromResult(result);
+			return Task.FromResult(data.AsStream());
 		}
 
 		Task PlatformCopyToAsync(Stream destination, ScreenshotFormat format, int quality)
@@ -279,6 +218,8 @@ namespace Microsoft.Maui.Media
 				ScreenshotFormat.Jpeg => bmp.AsJPEG(quality / 100.0f),
 				_ => throw new ArgumentOutOfRangeException(nameof(format))
 			};
+
+			ArgumentNullException.ThrowIfNull(data);
 
 			using var result = data.AsStream();
 

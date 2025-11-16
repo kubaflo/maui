@@ -1,8 +1,4 @@
-﻿#nullable enable
-using System;
-using CoreGraphics;
-using Microsoft.Maui.Graphics;
-using ObjCRuntime;
+﻿using CoreGraphics;
 using UIKit;
 using PlatformView = UIKit.UIView;
 
@@ -21,15 +17,26 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 	{
 		TPlatformView? _nativeView;
 
-		public TPlatformView? Control => ((IElementHandler)this).PlatformView as TPlatformView ?? _nativeView;
-		object? IElementHandler.PlatformView => _nativeView;
+		public TPlatformView? Control
+		{
+			get
+			{
+				var value = ((IElementHandler)this).PlatformView as TPlatformView;
+				if (value != this && value != null)
+					return value;
+
+				return _nativeView;
+			}
+		}
+
+		object? IElementHandler.PlatformView => (_nativeView as object) ?? this;
 
 		public ViewRenderer() : this(VisualElementRendererMapper, VisualElementRendererCommandMapper)
 		{
 
 		}
 
-		internal ViewRenderer(IPropertyMapper mapper, CommandMapper? commandMapper = null)
+		protected ViewRenderer(IPropertyMapper mapper, CommandMapper? commandMapper = null)
 			: base(mapper, commandMapper)
 		{
 		}
@@ -44,12 +51,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			}
 		}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		public override SizeRequest GetDesiredSize(double widthConstraint, double heightConstraint)
 		{
 			return
 				new SizeRequest(this.GetDesiredSizeFromHandler(widthConstraint, heightConstraint),
 				MinimumSize());
 		}
+#pragma warning restore CS0618 // Type or member is obsolete
 
 		public override void SizeToFit()
 		{

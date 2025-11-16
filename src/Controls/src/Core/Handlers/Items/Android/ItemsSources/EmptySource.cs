@@ -1,8 +1,9 @@
-﻿namespace Microsoft.Maui.Controls.Handlers.Items
+﻿#nullable disable
+namespace Microsoft.Maui.Controls.Handlers.Items
 {
 	sealed internal class EmptySource : IItemsViewSource
 	{
-		public int Count => 0;
+		public int Count => (HasHeader ? 1 : 0) + (HasFooter ? 1 : 0);
 
 		public bool HasHeader { get; set; }
 		public bool HasFooter { get; set; }

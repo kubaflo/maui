@@ -46,7 +46,7 @@ Debug.WriteLine ("Animation completed");
 ]]></code>
       </example>
       <para>
-        <img href="~/Microsoft.Maui.Controls/_images/ProgressBar.TripleScreenShot.png" />
+        <img href="~/xml/Microsoft.Maui.Controls/_images/ProgressBar.TripleScreenShot.png" />
       </para>
     </remarks>
   </Docs>
@@ -102,8 +102,6 @@ Debug.WriteLine ("Animation completed");
       <Docs>
         <typeparam name="T">To be added.</typeparam>
         <summary>Returns the platform-specific instance of this <see cref="T:Microsoft.Maui.Controls.ProgressBar" />, on which a platform-specific method may be called.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Progress">
@@ -133,10 +131,10 @@ Debug.WriteLine ("Animation completed");
       </Docs>
     </Member>
     <Member MemberName="ProgressColor">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.Color ProgressColor { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.Color ProgressColor" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.Graphics.Color ProgressColor { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Graphics.Color ProgressColor" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.ProgressBar.ProgressColor" />
-      <MemberSignature Language="F#" Value="member this.ProgressColor : Microsoft.Maui.Controls.Color with get, set" Usage="Microsoft.Maui.Controls.ProgressBar.ProgressColor" />
+      <MemberSignature Language="F#" Value="member this.ProgressColor : Microsoft.Maui.Graphics.Color with get, set" Usage="Microsoft.Maui.Controls.ProgressBar.ProgressColor" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
@@ -144,12 +142,11 @@ Debug.WriteLine ("Animation completed");
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.Color</ReturnType>
+        <ReturnType>Microsoft.Maui.Graphics.Color</ReturnType>
       </ReturnValue>
       <Docs>
         <summary>Get or sets the color of the progress bar.</summary>
         <value>The color of the progress bar.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="ProgressColorProperty">
@@ -168,7 +165,6 @@ Debug.WriteLine ("Animation completed");
       </ReturnValue>
       <Docs>
         <summary>Backing store for the <see cref="P:Microsoft.Maui.Controls.ProgressBar.ProgressColor" /> property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="ProgressProperty">
@@ -247,9 +243,6 @@ Debug.WriteLine ("Animation completed");
       </ReturnValue>
       <Parameters />
       <Docs>
-        <summary>To be added.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
   </Members>

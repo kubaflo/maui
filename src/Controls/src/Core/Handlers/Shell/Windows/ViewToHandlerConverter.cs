@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
@@ -8,7 +7,7 @@ using WSize = global::Windows.Foundation.Size;
 
 namespace Microsoft.Maui.Controls.Platform
 {
-	public class ViewToHandlerConverter : Microsoft.UI.Xaml.Data.IValueConverter
+	public partial class ViewToHandlerConverter : Microsoft.UI.Xaml.Data.IValueConverter
 	{
 		public object? Convert(object value, Type targetType, object parameter, string language)
 		{
@@ -33,7 +32,7 @@ namespace Microsoft.Maui.Controls.Platform
 			throw new NotSupportedException();
 		}
 
-		internal class WrapperControl : Panel
+		internal partial class WrapperControl : Panel
 		{
 			readonly View _view;
 			IView View => _view;
@@ -45,7 +44,7 @@ namespace Microsoft.Maui.Controls.Platform
 			{
 				_view?.Cleanup();
 
-				if(_view != null)
+				if (_view != null)
 					_view.MeasureInvalidated -= OnMeasureInvalidated;
 			}
 
@@ -55,10 +54,13 @@ namespace Microsoft.Maui.Controls.Platform
 				_view.MeasureInvalidated += OnMeasureInvalidated;
 
 				FrameworkElement = view.ToPlatform(view.FindMauiContext()!);
+
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons. Here we allow it as a part of initialization.
 				Children.Add(FrameworkElement);
+#pragma warning restore RS0030 // Do not use banned APIs
 
 				// make sure we re-measure once the template is applied
-				
+
 				FrameworkElement.Loaded += (sender, args) =>
 				{
 					// If the view is a layout (stacklayout, grid, etc) we need to trigger a layout pass
@@ -77,7 +79,7 @@ namespace Microsoft.Maui.Controls.Platform
 			protected override WSize ArrangeOverride(WSize finalSize)
 			{
 				_view.IsInPlatformLayout = true;
-				(_view.Handler as IPlatformViewHandler)?.LayoutVirtualView(finalSize);				
+				(_view.Handler as IPlatformViewHandler)?.LayoutVirtualView(finalSize);
 
 				if (_view.Width <= 0 || _view.Height <= 0)
 				{

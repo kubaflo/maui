@@ -1,5 +1,4 @@
 ﻿#nullable enable
-
 using System;
 
 namespace Microsoft.Maui
@@ -26,7 +25,7 @@ namespace Microsoft.Maui
 			if (service != null)
 				return service;
 
-			throw new InvalidOperationException($"Unable to find a image source service for {provider.GetImageSourceType(imageSourceType)}.");
+			throw new InvalidOperationException($"Unable to find a image source service for {imageSourceType}.");
 		}
 	}
 }

@@ -1,22 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.Maui.Controls.Internals;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Specifics = Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific.VisualElement;
 using WRect = Windows.Foundation.Rect;
 using WSolidColorBrush = Microsoft.UI.Xaml.Media.SolidColorBrush;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[Obsolete("Use Microsoft.Maui.Controls.Handlers.Compatibility.VisualElementRenderer instead")]
-	public class VisualElementRenderer<TElement, TNativeElement> : Panel, IVisualNativeElementRenderer, IDisposable, IEffectControlProvider where TElement : VisualElement
+	public partial class VisualElementRenderer<TElement, TNativeElement> : Panel, IVisualNativeElementRenderer, IDisposable, IEffectControlProvider where TElement : VisualElement
 																																	  where TNativeElement : FrameworkElement
 	{
 		string _defaultAutomationPropertiesName;
@@ -106,8 +106,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 
 		public virtual SizeRequest GetDesiredSize(double widthConstraint, double heightConstraint)
 		{
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 			if (Children.Count == 0 || Control == null)
 				return new SizeRequest();
+#pragma warning restore RS0030 // Do not use banned APIs
 
 			var constraint = new global::Windows.Foundation.Size(widthConstraint, heightConstraint);
 			TNativeElement child = Control;
@@ -154,8 +156,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				// and may cause issues
 				//Loaded += (sender, args) =>
 				//{
-				if (Packager != null)
-					Packager.Load();
+				Packager?.Load();
 				//};
 			}
 
@@ -199,10 +200,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 
 			var myRect = new WRect(0, 0, finalSize.Width, finalSize.Height);
 
-			if (Control != null)
-			{
-				Control.Arrange(myRect);
-			}
+			Control?.Arrange(myRect);
 
 			List<UIElement> arrangedChildren = null;
 			for (var i = 0; i < ElementController.LogicalChildren.Count; i++)
@@ -228,8 +226,11 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			if (ArrangeNativeChildren)
 			{
 				// in the event that a custom renderer has added native controls,
-				// we need to be sure to arrange them so that they are laid out.
+				// we need to be sure to arrange them so that they are arranged.
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 				var nativeChildren = Children;
+#pragma warning restore RS0030 // Do not use banned APIs
+
 				for (int i = 0; i < nativeChildren.Count; i++)
 				{
 					var nativeChild = nativeChildren[i];
@@ -404,7 +405,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 
 			if (oldControl != null)
 			{
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 				Children.Remove(oldControl);
+#pragma warning restore RS0030 // Do not use banned APIs
 
 				oldControl.Loaded -= OnControlLoaded;
 				oldControl.GotFocus -= OnControlGotFocus;
@@ -432,8 +435,11 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 
 			control.GotFocus += OnControlGotFocus;
 			control.LostFocus += OnControlLostFocus;
+
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 			Children.Add(control);
-			
+#pragma warning restore RS0030 // Do not use banned APIs
+
 			UpdateBackgroundColor();
 			UpdateBackground();
 
@@ -520,7 +526,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			}
 		}
 
-		protected void UpdateAccessKey() {
+		protected void UpdateAccessKey()
+		{
 			var control = Control;
 			var element = Element as IElementConfiguration<TElement>;
 
@@ -668,7 +675,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			// Panel will be our Background color
 
 			_backgroundLayer = new Canvas { IsHitTestVisible = false };
+
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 			Children.Insert(0, _backgroundLayer);
+#pragma warning restore RS0030 // Do not use banned APIs
 
 			UpdateBackgroundColor();
 			UpdateBackground();
@@ -681,7 +691,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				return;
 			}
 
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 			Children.Remove(_backgroundLayer);
+#pragma warning restore RS0030 // Do not use banned APIs
+
 			_backgroundLayer = null;
 
 			UpdateBackgroundColor();

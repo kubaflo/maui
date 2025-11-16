@@ -1,9 +1,12 @@
 using System;
+using System.IO;
 using System.Text.RegularExpressions;
+using System.Xml;
 using System.Xml.Linq;
-using Microsoft.UI.Xaml;
+using System.Xml.Resolvers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
+using WThickness = Microsoft.UI.Xaml.Thickness;
 
 namespace Microsoft.Maui.Platform
 {
@@ -29,8 +32,18 @@ namespace Microsoft.Maui.Platform
 		public static void UpdateTextColor(this TextBlock platformControl, ITextStyle text) =>
 			platformControl.UpdateProperty(TextBlock.ForegroundProperty, text.TextColor);
 
-		public static void UpdatePadding(this TextBlock platformControl, ILabel label) =>
-			platformControl.UpdateProperty(TextBlock.PaddingProperty, label.Padding.ToPlatform());
+		public static void UpdatePadding(this TextBlock platformControl, ILabel label)
+		{
+			// Label padding values do not support negative values; if specified, negative values will be replaced with zero
+			var padding = new WThickness(
+				Math.Max(0, label.Padding.Left),
+				Math.Max(0, label.Padding.Top),
+				Math.Max(0, label.Padding.Right),
+				Math.Max(0, label.Padding.Bottom)
+			);
+
+			platformControl.UpdateProperty(TextBlock.PaddingProperty, padding);
+		}
 
 		public static void UpdateCharacterSpacing(this TextBlock platformControl, ITextStyle label)
 		{
@@ -50,32 +63,6 @@ namespace Microsoft.Maui.Platform
 				platformControl.TextDecorations &= ~global::Windows.UI.Text.TextDecorations.Strikethrough;
 			else
 				platformControl.TextDecorations |= global::Windows.UI.Text.TextDecorations.Strikethrough;
-
-			// TextDecorations are not updated in the UI until the text changes
-			if (platformControl.Inlines != null && platformControl.Inlines.Count > 0)
-			{
-				foreach (var inline in platformControl.Inlines)
-				{
-					if (inline is Run run)
-					{
-						run.Text = run.Text;
-					}
-					else if (inline is Span span)
-					{
-						foreach (var inline2 in span.Inlines)
-						{
-							if (inline2 is Run run2)
-							{
-								run2.Text = run2.Text;
-							}
-						}
-					}
-				}
-			}
-			else
-			{
-				platformControl.Text = platformControl.Text;
-			}
 		}
 
 		public static void UpdateLineHeight(this TextBlock platformControl, ILabel label)
@@ -98,10 +85,8 @@ namespace Microsoft.Maui.Platform
 			platformControl.VerticalAlignment = label.VerticalTextAlignment.ToPlatformVerticalAlignment();
 		}
 
-		internal static void UpdateTextHtml(this TextBlock platformControl, ILabel label)
+		internal static void UpdateTextHtml(this TextBlock platformControl, ILabel label, string text)
 		{
-			var text = label.Text ?? string.Empty;
-
 			// Just in case we are not given text with elements.
 			var modifiedText = string.Format("<div>{0}</div>", text);
 			modifiedText = Regex.Replace(modifiedText, "<br>", "<br></br>", RegexOptions.IgnoreCase);
@@ -111,19 +96,47 @@ namespace Microsoft.Maui.Platform
 
 			try
 			{
-				var element = XElement.Parse(modifiedText);
+				var element = ParseXhtml(modifiedText);
 				LabelHtmlHelper.ParseText(element, platformControl.Inlines, label);
 			}
 			catch (Exception)
 			{
 				// If anything goes wrong just show the html
-				platformControl.Text = global::Windows.Data.Html.HtmlUtilities.ConvertToText(label.Text);
+				platformControl.Text = label.Text;
 			}
 		}
 
 		internal static void UpdateTextPlainText(this TextBlock platformControl, IText label)
 		{
 			platformControl.Text = label.Text;
+		}
+
+		static XElement? ParseXhtml(string? html)
+		{
+			if (string.IsNullOrEmpty(html))
+				return null;
+
+			XmlNameTable nt = new NameTable();
+			XmlNamespaceManager nsmgr = new XmlNamespaceManager(nt);
+			var xmlParserContext = new XmlParserContext(null, nsmgr, null, XmlSpace.None);
+			XmlParserContext context = xmlParserContext;
+			context.DocTypeName = "html";
+			context.PublicId = "-//W3C//DTD XHTML 1.0 Strict//EN";
+			context.SystemId = "xhtml1-strict.dtd";
+			XmlParserContext xhtmlContext = context;
+
+			StringReader stringReader = new StringReader(html);
+
+			XmlReaderSettings settings = new XmlReaderSettings
+			{
+				DtdProcessing = DtdProcessing.Parse,
+				ValidationType = ValidationType.DTD,
+				XmlResolver = new XmlPreloadedResolver(XmlKnownDtds.All)
+			};
+
+			XmlReader reader = XmlReader.Create(stringReader, settings, xhtmlContext);
+
+			return XElement.Load(reader);
 		}
 	}
 }

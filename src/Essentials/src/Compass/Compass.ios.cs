@@ -4,7 +4,7 @@ namespace Microsoft.Maui.Devices.Sensors
 {
 	partial class CompassImplementation : ICompass, IPlatformCompass
 	{
-		// The angular distance is measured relative to the last delivered heading event. Align with UWP numbers
+		// The angular distance is measured relative to the last delivered heading event. Align with Windows numbers
 		internal const double FastestFilter = .01;
 		internal const double GameFilter = .5;
 		internal const double NormalFilter = 1;
@@ -26,11 +26,11 @@ namespace Microsoft.Maui.Devices.Sensors
 			{
 				case SensorSpeed.Fastest:
 					locationManager.HeadingFilter = FastestFilter;
-					locationManager.DesiredAccuracy = CLLocation.AccurracyBestForNavigation;
+					locationManager.DesiredAccuracy = CLLocation.AccuracyBestForNavigation;
 					break;
 				case SensorSpeed.Game:
 					locationManager.HeadingFilter = GameFilter;
-					locationManager.DesiredAccuracy = CLLocation.AccurracyBestForNavigation;
+					locationManager.DesiredAccuracy = CLLocation.AccuracyBestForNavigation;
 					break;
 				case SensorSpeed.Default:
 					locationManager.HeadingFilter = NormalFilter;

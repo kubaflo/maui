@@ -60,7 +60,7 @@ namespace Microsoft.Maui.TestUtils.DeviceTests.Runners.HeadlessRunner
 
 			await _waitForApplication.Task;
 
-			Services = MauiApplication.Current.Services;
+			Services = IPlatformApplication.Current?.Services ?? throw new InvalidOperationException("Unable to find Application Services");
 			Options = Services.GetRequiredService<TestOptions>();
 			RunnerOptions = Services.GetRequiredService<HeadlessRunnerOptions>();
 
@@ -98,7 +98,7 @@ namespace Microsoft.Maui.TestUtils.DeviceTests.Runners.HeadlessRunner
 			}
 			else
 			{
-				var downloads = Android.OS.Environment.DirectoryDownloads!;
+				var downloads = global::Android.OS.Environment.DirectoryDownloads!;
 				var relative = Path.Combine(downloads, Context!.PackageName!, guid);
 
 				var values = new ContentValues();
@@ -113,7 +113,7 @@ namespace Microsoft.Maui.TestUtils.DeviceTests.Runners.HeadlessRunner
 					source.CopyTo(dest);
 
 #pragma warning disable CS0618 // Type or member is obsolete
-				var root = Android.OS.Environment.ExternalStorageDirectory!.AbsolutePath;
+				var root = global::Android.OS.Environment.ExternalStorageDirectory!.AbsolutePath;
 #pragma warning restore CS0618 // Type or member is obsolete
 				finalPath = Path.Combine(root, relative, name);
 			}

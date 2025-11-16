@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using Foundation;
-using Microsoft.Maui.Platform;
-using ObjCRuntime;
 using UIKit;
 
 namespace Microsoft.Maui.Handlers
@@ -55,7 +51,7 @@ namespace Microsoft.Maui.Handlers
 					}
 					else
 					{
-						PlatformView.InsertSiblingMenuBefore(menuItem, UIMenuIdentifier.File.GetConstant());
+						PlatformView.InsertSiblingMenuBefore(menuItem, UIMenuIdentifier.File.GetConstant() ?? string.Empty);
 					}
 				}
 

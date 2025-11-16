@@ -3,6 +3,7 @@ using CoreFoundation;
 
 namespace Microsoft.Maui.Dispatching
 {
+	/// <inheritdoc/>
 	public partial class Dispatcher : IDispatcher
 	{
 		readonly DispatchQueue _dispatchQueue;
@@ -27,30 +28,39 @@ namespace Microsoft.Maui.Dispatching
 			return true;
 		}
 
-		IDispatcherTimer CreateTimerImplementation()
+		DispatcherTimer CreateTimerImplementation()
 		{
 			return new DispatcherTimer(_dispatchQueue);
 		}
 	}
 
+	/// <inheritdoc/>
 	partial class DispatcherTimer : IDispatcherTimer
 	{
 		readonly DispatchQueue _dispatchQueue;
 		DispatchBlock? _dispatchBlock;
 
+		/// <summary>
+		/// Initializes a new instance of the <see cref="DispatcherTimer"/> class.
+		/// </summary>
 		public DispatcherTimer(DispatchQueue dispatchQueue)
 		{
 			_dispatchQueue = dispatchQueue;
 		}
 
+		/// <inheritdoc/>
 		public TimeSpan Interval { get; set; }
 
+		/// <inheritdoc/>
 		public bool IsRepeating { get; set; } = true;
 
+		/// <inheritdoc/>
 		public bool IsRunning { get; private set; }
 
+		/// <inheritdoc/>
 		public event EventHandler? Tick;
 
+		/// <inheritdoc/>
 		public void Start()
 		{
 			if (IsRunning)
@@ -62,6 +72,7 @@ namespace Microsoft.Maui.Dispatching
 			_dispatchQueue.DispatchAfter(new DispatchTime(DispatchTime.Now, Interval), _dispatchBlock);
 		}
 
+		/// <inheritdoc/>
 		public void Stop()
 		{
 			if (!IsRunning)
@@ -70,6 +81,7 @@ namespace Microsoft.Maui.Dispatching
 			IsRunning = false;
 
 			_dispatchBlock?.Cancel();
+			_dispatchBlock = null;
 		}
 
 		void OnTimerTick()
@@ -80,17 +92,27 @@ namespace Microsoft.Maui.Dispatching
 			Tick?.Invoke(this, EventArgs.Empty);
 
 			if (IsRepeating)
-				_dispatchQueue.DispatchAfter(new DispatchTime(DispatchTime.Now, Interval), _dispatchBlock);
+			{
+				if (_dispatchBlock is not null)
+				{
+					_dispatchQueue.DispatchAfter(new DispatchTime(DispatchTime.Now, Interval), _dispatchBlock);
+				}
+			}
+			else
+			{
+				Stop();
+			}
 		}
 	}
 
+	/// <inheritdoc/>
 	public partial class DispatcherProvider
 	{
-		static IDispatcher? GetForCurrentThreadImplementation()
+		static Dispatcher? GetForCurrentThreadImplementation()
 		{
-#pragma warning disable BI1234, CA1416 // Type or member is obsolete, has [UnsupportedOSPlatform("ios6.0")], deprecated but still works
+#pragma warning disable BI1234, CA1416, CA1422 // Type or member is obsolete, has [UnsupportedOSPlatform("ios6.0")], deprecated but still works
 			var q = DispatchQueue.CurrentQueue;
-#pragma warning restore BI1234, CA1416 // Type or member is obsolete
+#pragma warning restore BI1234, CA1416, CA1422 // Type or member is obsolete
 			if (q != DispatchQueue.MainQueue)
 				return null;
 

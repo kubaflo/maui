@@ -1,26 +1,27 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Handlers;
 using Microsoft.UI.Xaml;
-using WVisibility = Microsoft.UI.Xaml.Visibility;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
-using Microsoft.Maui.Controls.Internals;
+using WASDKApp = Microsoft.UI.Xaml.Application;
 using WASDKDataTemplate = Microsoft.UI.Xaml.DataTemplate;
 using WASDKScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility;
-using WASDKApp = Microsoft.UI.Xaml.Application;
 using WRect = Windows.Foundation.Rect;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.Maui.Controls;
-using System.Threading.Tasks;
+using WVisibility = Microsoft.UI.Xaml.Visibility;
 
 namespace Microsoft.Maui.Controls.Handlers.Items
 {
-	public abstract partial class ItemsViewHandler<TItemsView> : ViewHandler<TItemsView, ListViewBase>  where TItemsView : ItemsView
+	public abstract partial class ItemsViewHandler<TItemsView> : ViewHandler<TItemsView, ListViewBase> where TItemsView : ItemsView
 	{
 		protected CollectionViewSource CollectionViewSource;
 		ScrollViewer _scrollViewer;
@@ -50,15 +51,18 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		{
 			base.ConnectHandler(platformView);
 			VirtualView.ScrollToRequested += ScrollToRequested;
+			FindScrollViewer(ListViewBase);
 		}
 
 		protected override void DisconnectHandler(ListViewBase platformView)
 		{
 			VirtualView.ScrollToRequested -= ScrollToRequested;
+			CleanUpCollectionViewSource(platformView);
+			_formsEmptyView?.Handler?.DisconnectHandler();
 			base.DisconnectHandler(platformView);
 		}
 
-		public static void MapItemsSource(ItemsViewHandler<TItemsView> handler, ItemsView itemsView) 
+		public static void MapItemsSource(ItemsViewHandler<TItemsView> handler, ItemsView itemsView)
 		{
 			handler.UpdateItemsSource();
 		}
@@ -100,18 +104,69 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public static void MapItemsUpdatingScrollMode(ItemsViewHandler<TItemsView> handler, ItemsView itemsView)
 		{
-			
+			handler.UpdateItemsUpdatingScrollMode();
+		}
+
+		void UpdateItemsUpdatingScrollMode()
+		{
+			if (PlatformView is null || PlatformView.Items is null)
+				return;
+
+			if (VirtualView.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepScrollOffset)
+			{
+				// The scroll position is maintained when new items are added as the default,
+				// so we don't need to watch for data changes
+				PlatformView.Items.VectorChanged -= OnItemsVectorChanged;
+			}
+			else
+			{
+				PlatformView.Items.VectorChanged -= OnItemsVectorChanged;
+				PlatformView.Items.VectorChanged += OnItemsVectorChanged;
+			}
+		}
+
+		void OnItemsVectorChanged(global::Windows.Foundation.Collections.IObservableVector<object> sender, global::Windows.Foundation.Collections.IVectorChangedEventArgs @event)
+		{
+			if (VirtualView is null)
+				return;
+
+			if (sender is not ItemCollection items)
+				return;
+
+			var itemsCount = items.Count;
+
+			if (itemsCount == 0)
+				return;
+
+			if (VirtualView.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepItemsInView)
+			{
+				var firstItem = items[0];
+				// Keeps the first item in the list displayed when new items are added.
+				ListViewBase.ScrollIntoView(firstItem);
+			}
+
+			if (VirtualView.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepLastItemInView)
+			{
+				var lastItem = items[itemsCount - 1];
+				// Adjusts the scroll offset to keep the last item in the list displayed when new items are added.
+				ListViewBase.ScrollIntoView(lastItem, ScrollIntoViewAlignment.Leading);
+			}
 		}
 
 		protected abstract ListViewBase SelectListViewBase();
 
 		protected virtual void CleanUpCollectionViewSource()
 		{
-			if (CollectionViewSource != null)
+			CleanUpCollectionViewSource(ListViewBase);
+		}
+
+		private void CleanUpCollectionViewSource(ListViewBase platformView)
+		{
+			if (CollectionViewSource is not null)
 			{
-				if (CollectionViewSource.Source is ObservableItemTemplateCollection observableItemTemplateCollection)
+				if (CollectionViewSource.Source is IDisposable disposableItemTemplateCollection)
 				{
-					observableItemTemplateCollection.CleanUp();
+					disposableItemTemplateCollection.Dispose();
 				}
 
 				if (CollectionViewSource.Source is INotifyCollectionChanged incc)
@@ -123,9 +178,19 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				CollectionViewSource = null;
 			}
 
-			if (VirtualView?.ItemsSource == null)
+			// Remove all children inside the ItemsSource
+			if (VirtualView is not null)
 			{
-				ListViewBase.ItemsSource = null;
+				foreach (var item in platformView.GetChildren<ItemContentControl>())
+				{
+					var element = item.GetVisualElement();
+					VirtualView.RemoveLogicalChild(element);
+				}
+			}
+
+			if (VirtualView?.ItemsSource is null)
+			{
+				platformView.ItemsSource = null;
 				return;
 			}
 		}
@@ -155,7 +220,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 					emptyView.EmptyViewVisibility = WVisibility.Visible;
 
 					if (PlatformView.ActualWidth >= 0 && PlatformView.ActualHeight >= 0)
-						_formsEmptyView?.Layout(new Rect(0, 0, PlatformView.ActualWidth, PlatformView.ActualHeight));
+						_formsEmptyView?.Arrange(new Rect(0, 0, PlatformView.ActualWidth, PlatformView.ActualHeight));
 				}
 
 				_emptyViewDisplayed = true;
@@ -286,8 +351,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			UpdateItemTemplate();
 			UpdateItemsSource();
-			UpdateVerticalScrollBarVisibility();
-			UpdateHorizontalScrollBarVisibility();
+			UpdateScrollBarVisibility();
 			UpdateEmptyView();
 		}
 
@@ -311,10 +375,27 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			listView.Loaded += ListViewLoaded;
 		}
 
+		internal void UpdateScrollBarVisibility()
+		{
+			UpdateVerticalScrollBarVisibility();
+			UpdateHorizontalScrollBarVisibility();
+		}
+
 		void UpdateVerticalScrollBarVisibility()
 		{
+			if (Element.VerticalScrollBarVisibility != ScrollBarVisibility.Default)
+			{
+				// If the value is changing to anything other than the default, record the default 
+				if (_defaultVerticalScrollVisibility == null)
+					_defaultVerticalScrollVisibility = ScrollViewer.GetVerticalScrollBarVisibility(Control);
+			}
+
 			if (_defaultVerticalScrollVisibility == null)
-				_defaultVerticalScrollVisibility = ScrollViewer.GetVerticalScrollBarVisibility(Control);
+			{
+				// If the default has never been recorded, then this has never been set to anything but the 
+				// default value; there's nothing to do.
+				return;
+			}
 
 			switch (Element.VerticalScrollBarVisibility)
 			{
@@ -351,6 +432,16 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		protected virtual void OnScrollViewerFound(ScrollViewer scrollViewer)
 		{
+			if (_scrollViewer == scrollViewer)
+			{
+				return;
+			}
+
+			if (_scrollViewer != null)
+			{
+				_scrollViewer.ViewChanged -= ScrollViewChanged;
+			}
+
 			_scrollViewer = scrollViewer;
 			_scrollViewer.ViewChanged += ScrollViewChanged;
 		}
@@ -421,6 +512,13 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			itemsViewScrolledEventArgs = ComputeVisibleIndexes(itemsViewScrolledEventArgs, layoutOrientaton, advancing);
 
 			Element.SendScrolled(itemsViewScrolledEventArgs);
+
+			var remainingItemsThreshold = Element.RemainingItemsThreshold;
+			if (remainingItemsThreshold > -1 &&
+				ItemCount - 1 - itemsViewScrolledEventArgs.LastVisibleItemIndex <= remainingItemsThreshold)
+			{
+				Element.SendRemainingItemsThresholdReached();
+			}
 		}
 
 		protected virtual ItemsViewScrolledEventArgs ComputeVisibleIndexes(ItemsViewScrolledEventArgs args, ItemsLayoutOrientation orientation, bool advancing)
@@ -490,7 +588,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 				default:
 					return elementBounds.Left < containerBounds.Right && elementBounds.Right > containerBounds.Left;
-			};
+			}
+			;
 		}
 
 		async void ScrollToRequested(object sender, ScrollToRequestEventArgs args)
@@ -532,6 +631,22 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 					return null;
 				}
 
+				if (CollectionViewSource.IsSourceGrouped && args.GroupIndex >= 0)
+				{
+					if (args.GroupIndex >= CollectionViewSource.View.CollectionGroups.Count)
+					{
+						return null;
+					}
+
+					// CollectionGroups property is of type IObservableVector, but these objects should implement ICollectionViewGroup
+					var itemGroup = CollectionViewSource.View.CollectionGroups[args.GroupIndex] as ICollectionViewGroup;
+					if (itemGroup != null &&
+						args.Index < itemGroup.GroupItems.Count)
+					{
+						return itemGroup.GroupItems[args.Index];
+					}
+				}
+
 				return GetItem(args.Index);
 			}
 
@@ -544,7 +659,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			{
 				if (CollectionViewSource.View[n] is ItemTemplateContext pair)
 				{
-					if (pair.Item == args.Item)
+					if (Equals(pair.Item, args.Item))
 					{
 						return CollectionViewSource.View[n];
 					}

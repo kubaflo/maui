@@ -1,42 +1,48 @@
+using Android.Content;
 using Android.Content.Res;
-using Android.Graphics.Drawables;
+using Android.Views;
 using Android.Widget;
+using AndroidX.AppCompat.Widget;
 using static AndroidX.AppCompat.Widget.SearchView;
+using AView = Android.Views.View;
 using SearchView = AndroidX.AppCompat.Widget.SearchView;
 
 namespace Microsoft.Maui.Handlers
 {
 	public partial class SearchBarHandler : ViewHandler<ISearchBar, SearchView>
 	{
+		FocusChangeListener FocusListener { get; } = new FocusChangeListener();
+
 		static ColorStateList? DefaultPlaceholderTextColors { get; set; }
 
-		EditText? _editText;
+		MauiSearchView? _platformSearchView;
 
-		public EditText? QueryEditor => _editText;
+		public EditText? QueryEditor => _platformSearchView?._queryEditor;
 
 		protected override SearchView CreatePlatformView()
 		{
-			var searchView = new SearchView(Context);
-			searchView.SetIconifiedByDefault(false);
-
-			_editText = searchView.GetFirstChildOfType<EditText>();
-
-			return searchView;
+			_platformSearchView = new MauiSearchView(Context);
+			return _platformSearchView;
 		}
 
 		protected override void ConnectHandler(SearchView platformView)
 		{
+			FocusListener.Handler = this;
+			platformView.SetOnQueryTextFocusChangeListener(FocusListener);
+
 			platformView.QueryTextChange += OnQueryTextChange;
 			platformView.QueryTextSubmit += OnQueryTextSubmit;
 		}
 
 		protected override void DisconnectHandler(SearchView platformView)
 		{
+			FocusListener.Handler = null;
+			platformView.SetOnQueryTextFocusChangeListener(null);
+
 			platformView.QueryTextChange -= OnQueryTextChange;
 			platformView.QueryTextSubmit -= OnQueryTextSubmit;
 		}
 
-		// This is a Android-specific mapping
 		public static void MapBackground(ISearchBarHandler handler, ISearchBar searchBar)
 		{
 			handler.PlatformView?.UpdateBackground(searchBar);
@@ -63,6 +69,25 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView?.UpdatePlaceholderColor(searchBar, DefaultPlaceholderTextColors, handler.QueryEditor);
 		}
 
+		internal static void MapFlowDirection(ISearchBarHandler handler, ISearchBar searchBar)
+		{
+			if (searchBar.FlowDirection == FlowDirection.MatchParent && searchBar.Parent != null && searchBar.Parent is IView parentView)
+			{
+				// When FlowDirection is MatchParent, respect the parent's FlowDirection
+				if (handler.PlatformView is AView platformView)
+					Microsoft.Maui.Platform.ViewExtensions.UpdateFlowDirection(platformView, parentView);
+
+				if (handler.QueryEditor is TextView textView)
+					Microsoft.Maui.Platform.TextViewExtensions.UpdateFlowDirection(textView, parentView);
+			}
+			else
+			{
+				// Otherwise, use the SearchBar's own FlowDirection
+				handler.PlatformView?.UpdateFlowDirection(searchBar);
+				handler.QueryEditor?.UpdateFlowDirection(searchBar);
+			}
+		}
+
 		public static void MapFont(ISearchBarHandler handler, ISearchBar searchBar)
 		{
 			var fontManager = handler.GetRequiredService<IFontManager>();
@@ -87,11 +112,17 @@ namespace Microsoft.Maui.Handlers
 		public static void MapTextColor(ISearchBarHandler handler, ISearchBar searchBar)
 		{
 			handler.QueryEditor?.UpdateTextColor(searchBar);
+			handler.PlatformView?.UpdateTextColor(searchBar);
 		}
 
 		public static void MapIsTextPredictionEnabled(ISearchBarHandler handler, ISearchBar searchBar)
 		{
 			handler.PlatformView?.UpdateIsTextPredictionEnabled(searchBar, handler.QueryEditor);
+		}
+
+		public static void MapIsSpellCheckEnabled(ISearchBarHandler handler, ISearchBar searchBar)
+		{
+			handler.PlatformView?.UpdateIsSpellCheckEnabled(searchBar, handler.QueryEditor);
 		}
 
 		public static void MapMaxLength(ISearchBarHandler handler, ISearchBar searchBar)
@@ -109,6 +140,29 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView?.UpdateCancelButtonColor(searchBar);
 		}
 
+		internal static void MapSearchIconColor(ISearchBarHandler handler, ISearchBar searchBar)
+		{
+			handler.PlatformView?.UpdateSearchIconColor(searchBar);
+		}
+
+		public static void MapKeyboard(ISearchBarHandler handler, ISearchBar searchBar)
+		{
+			handler.UpdateValue(nameof(ISearchBar.Text));
+
+			handler.PlatformView?.UpdateKeyboard(searchBar);
+		}
+
+		public static void MapFocus(ISearchBarHandler handler, ISearchBar searchBar, object? args)
+		{
+			if (args is FocusRequest request)
+				handler.QueryEditor?.Focus(request);
+		}
+
+		public static void MapReturnType(ISearchBarHandler handler, ISearchBar searchBar)
+		{
+			handler.PlatformView?.UpdateReturnType(searchBar);
+		}
+
 		void OnQueryTextSubmit(object? sender, QueryTextSubmitEventArgs e)
 		{
 			VirtualView.SearchButtonPressed();
@@ -119,6 +173,22 @@ namespace Microsoft.Maui.Handlers
 		{
 			VirtualView.UpdateText(e.NewText);
 			e.Handled = true;
+		}
+
+		class FocusChangeListener : Java.Lang.Object, SearchView.IOnFocusChangeListener
+		{
+			public SearchBarHandler? Handler { get; set; }
+
+			public void OnFocusChange(View? v, bool hasFocus)
+			{
+				if (Handler == null)
+					return;
+
+				var virtualView = Handler.VirtualView;
+
+				if (virtualView != null)
+					virtualView.IsFocused = hasFocus;
+			}
 		}
 	}
 }

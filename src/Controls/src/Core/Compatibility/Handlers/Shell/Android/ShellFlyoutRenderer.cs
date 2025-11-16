@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using System.ComponentModel;
 using Android.Content;
 using Android.Graphics;
@@ -10,6 +11,7 @@ using Microsoft.Maui.Controls.Platform.Compatibility;
 using Microsoft.Maui.Graphics;
 using AView = Android.Views.View;
 using Color = Microsoft.Maui.Graphics.Color;
+using LD = Android.Views.LayoutDirection;
 using LP = Android.Views.ViewGroup.LayoutParams;
 using Paint = Android.Graphics.Paint;
 
@@ -118,13 +120,13 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		#endregion IFlyoutBehaviorObserver
 
 		const uint DefaultScrimColor = 0x99000000;
-		readonly IShellContext _shellContext;
+		IShellContext _shellContext;
 		AView _content;
 		IShellFlyoutContentRenderer _flyoutContent;
 		int _flyoutWidthDefault;
 		double _flyoutWidth = -1;
 		double _flyoutHeight;
-		bool _flyoutFirstDrawPassFinished;
+		internal bool FlyoutFirstDrawPassFinished { get; private set; }
 		int _currentLockMode;
 		bool _disposed;
 		Brush _scrimBrush;
@@ -143,6 +145,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			Shell.PropertyChanged += OnShellPropertyChanged;
 			ShellController.AddAppearanceObserver(this, Shell);
+			UpdateFlowDirection();
 
 			this.DrawerClosed += OnDrawerClosed;
 			this.DrawerSlide += OnDrawerSlide;
@@ -182,10 +185,11 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				canvas.DrawRect(0, 0, Width, Height, _scrimPaint);
 			}
 
-			if (!_flyoutFirstDrawPassFinished && _flyoutContent != null)
+			if (!FlyoutFirstDrawPassFinished && _flyoutContent is not null)
 			{
-				if (child == _flyoutContent?.AndroidView)
-					_flyoutFirstDrawPassFinished = true;
+				// If the AndroidView property which is the DrawerLayout is initialized at this point, the Flyout first draw pass finished.
+				if (_flyoutContent?.AndroidView is not null)
+					FlyoutFirstDrawPassFinished = true;
 
 				if (this.IsDrawerOpen(_flyoutContent.AndroidView) != _shellContext.Shell.FlyoutIsPresented)
 				{
@@ -261,7 +265,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			if (e.PropertyName == Shell.FlyoutIsPresentedProperty.PropertyName)
 			{
-				if (!_flyoutFirstDrawPassFinished)
+				if (!FlyoutFirstDrawPassFinished)
 				{
 					// if the first draw pass hasn't happened yet
 					// then calling close/open drawer really confuses 
@@ -270,6 +274,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				}
 
 				UpdateDrawerState();
+			}
+			else if (e.PropertyName == Shell.FlowDirectionProperty.PropertyName)
+			{
+				UpdateFlowDirection();
 			}
 		}
 
@@ -286,6 +294,11 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				CloseDrawers();
 			}
+		}
+
+		void UpdateFlowDirection()
+		{
+			LayoutDirection = _shellContext.Shell.FlowDirection.ToLayoutDirection();
 		}
 
 		void OnDualScreenServiceScreenChanged(object sender, EventArgs e)
@@ -391,6 +404,31 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			}
 		}
 
+		internal void Disconnect()
+		{
+			ShellController?.RemoveAppearanceObserver(this);
+
+			if (Shell != null)
+				Shell.PropertyChanged -= OnShellPropertyChanged;
+
+			if (this.IsAlive())
+			{
+				this.DrawerClosed -= OnDrawerClosed;
+				this.DrawerSlide -= OnDrawerSlide;
+				this.DrawerOpened -= OnDrawerOpened;
+				this.DrawerStateChanged -= OnDrawerStateChanged;
+			}
+
+			ShellController?.RemoveFlyoutBehaviorObserver(this);
+
+			if (_flyoutContent is ShellFlyoutTemplatedContentRenderer flyoutTemplatedContentRenderer)
+			{
+				flyoutTemplatedContentRenderer.Disconnect();
+			}
+
+			_shellContext = null;
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			if (_disposed)
@@ -400,15 +438,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			if (disposing)
 			{
-				ShellController.RemoveAppearanceObserver(this);
-				Shell.PropertyChanged -= OnShellPropertyChanged;
-
-				this.DrawerClosed -= OnDrawerClosed;
-				this.DrawerSlide -= OnDrawerSlide;
-				this.DrawerOpened -= OnDrawerOpened;
-				this.DrawerStateChanged -= OnDrawerStateChanged;
-
-				((IShellController)_shellContext.Shell).RemoveFlyoutBehaviorObserver(this);
+				Disconnect();
 
 				RemoveView(_content);
 

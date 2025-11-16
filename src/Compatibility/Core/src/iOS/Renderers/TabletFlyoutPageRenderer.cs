@@ -168,17 +168,11 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 					Element = null;
 				}
 
-				if (_tracker != null)
-				{
-					_tracker.Dispose();
-					_tracker = null;
-				}
+				_tracker?.Dispose();
+				_tracker = null;
 
-				if (_events != null)
-				{
-					_events.Dispose();
-					_events = null;
-				}
+				_events?.Dispose();
+				_events = null;
 
 				if (_flyoutController != null)
 				{
@@ -223,8 +217,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 			EffectUtilities.RegisterEffectControlProvider(this, oldElement, element);
 
-			if (element != null)
-				element.SendViewInitialized(NativeView);
+			element?.SendViewInitialized(NativeView);
 		}
 
 		public void SetElementSize(Size size)
@@ -338,7 +331,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 			switch (flyoutDetailPage.FlyoutLayoutBehavior)
 			{
-#pragma warning disable CA1416 // TODO:  UISplitViewControllerDisplayMode.AllVisible, PrimaryHidden is unsupported on: 'ios' 14.0 and late
+#pragma warning disable CA1416, CA1422 // TODO:  UISplitViewControllerDisplayMode.AllVisible, PrimaryHidden is unsupported on: 'ios' 14.0 and late
 				case FlyoutLayoutBehavior.Split:
 					PreferredDisplayMode = UISplitViewControllerDisplayMode.AllVisible;
 					break;
@@ -351,7 +344,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 				case FlyoutLayoutBehavior.SplitOnLandscape:
 					PreferredDisplayMode = (!isPortrait) ? UISplitViewControllerDisplayMode.AllVisible : UISplitViewControllerDisplayMode.PrimaryHidden;
 					break;
-#pragma warning restore CA1416
+#pragma warning restore CA1416, CA1422
 				default:
 					PreferredDisplayMode = UISplitViewControllerDisplayMode.Automatic;
 					break;

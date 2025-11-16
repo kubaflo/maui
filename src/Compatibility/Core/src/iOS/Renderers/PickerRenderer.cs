@@ -233,7 +233,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			else
 			{
 				// Using VSM color management; take whatever is in Element.PlaceholderColor
-				var color = targetColor == null ? _defaultPlaceholderColor : targetColor;
+				var color = targetColor ?? _defaultPlaceholderColor;
 				UpdateAttributedPlaceholder(formatted.ToNSAttributedString(Element.RequireFontManager(), defaultColor: color));
 			}
 
@@ -325,11 +325,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 				if (_picker != null)
 				{
-					if (_picker.Model != null)
-					{
-						_picker.Model.Dispose();
-						_picker.Model = null;
-					}
+					_picker.Model?.Dispose();
+					_picker.Model = null;
 
 					_picker.RemoveFromSuperview();
 					_picker.Dispose();

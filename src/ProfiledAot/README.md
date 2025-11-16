@@ -9,12 +9,17 @@ https://github.com/jonathanpeppers/Mono.Profiler.Android#usage-of-the-aot-profil
 Build MAUI following the instructions at [DEVELOPMENT.md][0]. Make
 sure to build with `--configuration=Release`.
 
-Run the `Record` target on each project:
+Run the `Record` target on each "type" of project template:
 
 ```bash
-$ ./bin/dotnet/dotnet build src/ProfiledAot/build.proj -p:App=maui
-$ ./bin/dotnet/dotnet build src/ProfiledAot/build.proj -p:App=maui-blazor
+./.dotnet/dotnet build src/ProfiledAot/build.proj -bl -p:App=maui
+./.dotnet/dotnet build src/ProfiledAot/build.proj -bl -p:App=maui-sc
+./.dotnet/dotnet build src/ProfiledAot/build.proj -bl -p:App=maui-blazor
 ```
+
+* `maui` is `dotnet new maui`
+* `maui-sc` is `dotnet new maui -sc` or (sample content)
+* `maui-blazor` is `dotnet new maui-blazor`
 
 You can also use `-r android-x64`, if you'd prefer an x86_64 emulator.
 
@@ -37,9 +42,9 @@ Build MAUI again with `--configuration=Release` (see
 Create a new project and run it:
 
 ```bash
-$ mkdir foo && cd foo
-$ ../bin/dotnet/dotnet new maui
-$ ../bin/dotnet/dotnet build -c Release -t:Run -f net6.0-android
+mkdir foo && cd foo
+../.dotnet/dotnet new maui
+../.dotnet/dotnet build -c Release -t:Run -f net7.0-android
 ```
 
 Run the app a few times and make sure you get good launch times:
@@ -53,11 +58,82 @@ $ adb logcat -d | grep Displayed
 
 You can also use [profile-android.ps1][1] in this repo, or [profile.ps1][2].
 
+### Troubleshooting
+
+If the resulting `*.aotprofile.txt` file is empty, review the `.binlog`
+file to see if there is a message like:
+
+```log
+Task Exec 85ms
+CommandLineArguments = "D:\.nuget\packages\mono.aotprofiler.android\9.0.0-preview1\tools\aprofutil"  -s -v -p 9999 -o "custom.aprof"
+Reading from '127.0.0.1:9999'...
+Read 19 bytes...
+Read total 19 bytes...
+Summary:
+	Modules:          0
+	Types:            0
+	Methods:          0
+Going to write the profile to 'custom.aprof'
+```
+
+Mono will print out more information to `adb logcat` if you set:
+
+```bash
+adb shell setprop debug.mono.log default,assembly,mono_log_level=debug,mono_log_mask=all
+```
+
+Be sure to comment out the line in
+`src\ProfiledAot\src\Directory.Build.targets` that sets
+`debug.mono.log` to empty.
+
+A *working* example of Mono's logging would say:
+
+```log
+05-21 11:38:30.032 28555 28555 W monodroid: Initializing profiler with options: aot:port=9999,output=/data/user/0/com.companyname.maui/files/.__override__/arm64-v8a/profile.aotprofile
+05-21 11:38:30.032 28555 28555 I monodroid-assembly: Trying to load shared library '/data/app/~~aLsIB6f0cwe4kpqTjGW6KA==/com.companyname.maui-8LChNbDvTnxGHnFnUt1vBw==/lib/arm64/libmono-profiler-aot.so'
+05-21 11:38:30.033 28555 28555 W monodroid: Looking for profiler init symbol 'mono_profiler_init_aot'? 0x7826470468
+...
+05-21 11:38:35.531 28555 28586 I mono-prof: AOT profiler data written to 'socket'
+05-21 11:38:35.534 28555 28586 E mono-prof: aot profiler data saved to the socket
+```
+
+Which could fail when loading the `libmono-profiler-aot.so` library,
+finding the `mono_profiler_init_aot` symbol, or just not return any
+data...
+
+To fix this, you will need a new build of `libmono-profiler-aot.so`.
+We usually have to ship a new version of `Mono.Profiler.Android` with
+each major .NET version.
+
+See some past examples at:
+
+* https://github.com/jonathanpeppers/Mono.Profiler.Android/pull/17
+* https://github.com/jonathanpeppers/Mono.Profiler.Android/pull/23
+
+### Notes about NuGet caches
+
+To get a clear picture of before & after, you can copy over top of the
+previous profile with a command such as:
+
+```powershell
+cp -Verbose src\Controls\src\Build.Tasks\nuget\buildTransitive\netstandard2.0\*.aotprofile ~\.nuget\packages\microsoft.maui.controls.build.tasks\9.0.100-preview.2-dev\buildTransitive\netstandard2.0\
+```
+
+Note that sometimes stale builds of MAUI can exist in your
+`%NUGET_PACKAGES%` directory, sometimes I even run a command to
+manually clear it completely of all `*-dev` directories:
+
+```powershell
+rm -r ~\.nuget\packages\*\*-dev\
+```
+
+### How to verify specific methods are AOT'd
+
 To verify what methods are AOT'd, clear the log and enable AOT logging:
 
 ```bash
-$ adb logcat -c
-$ adb shell setprop debug.mono.log default,timing=bare,assembly,mono_log_level=debug,mono_log_mask=aot
+adb logcat -c
+adb shell setprop debug.mono.log default,timing=bare,assembly,mono_log_level=debug,mono_log_mask=aot
 ```
 
 Restart the app, and you should be able to see messages like:

@@ -4,13 +4,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Android.Content;
 using Android.Graphics.Drawables;
+using Android.Widget;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Maui
 {
 	public partial class UriImageSourceService
 	{
-		public override Task<IImageSourceServiceResult?> LoadDrawableAsync(IImageSource imageSource, Android.Widget.ImageView imageView, CancellationToken cancellationToken = default)
+		public override Task<IImageSourceServiceResult?> LoadDrawableAsync(IImageSource imageSource, ImageView imageView, CancellationToken cancellationToken = default)
 		{
 			var uriImageSource = (IUriImageSource)imageSource;
 			if (!uriImageSource.IsEmpty)
@@ -19,7 +20,7 @@ namespace Microsoft.Maui
 				{
 					var callback = new ImageLoaderCallback();
 
-					PlatformInterop.LoadImageFromUri(imageView, uriImageSource.Uri.OriginalString, new Java.Lang.Boolean(uriImageSource.CachingEnabled), callback);
+					PlatformInterop.LoadImageFromUri(imageView, uriImageSource.Uri.OriginalString, uriImageSource.CachingEnabled, callback);
 
 					return callback.Result;
 				}
@@ -42,7 +43,7 @@ namespace Microsoft.Maui
 				{
 					var drawableCallback = new ImageLoaderResultCallback();
 
-					PlatformInterop.LoadImageFromUri(context, uriImageSource.Uri.OriginalString, new Java.Lang.Boolean(uriImageSource.CachingEnabled), drawableCallback);
+					PlatformInterop.LoadImageFromUri(context, uriImageSource.Uri.OriginalString, uriImageSource.CachingEnabled, drawableCallback);
 
 					return drawableCallback.Result;
 				}

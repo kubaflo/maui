@@ -14,7 +14,6 @@
   <Interfaces />
   <Docs>
     <summary>Provides access to the blend color for images on the Tizen platform.</summary>
-    <remarks>To be added.</remarks>
   </Docs>
   <Members>
     <Member MemberName="BlendColorProperty">
@@ -33,7 +32,6 @@
       </ReturnValue>
       <Docs>
         <summary>Backing store for the attached property that controls the blend color.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="FileProperty">
@@ -50,15 +48,13 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="GetBlendColor">
-      <MemberSignature Language="C#" Value="public static Microsoft.Maui.Controls.Color GetBlendColor (Microsoft.Maui.Controls.BindableObject element);" />
-      <MemberSignature Language="ILAsm" Value=".method public static hidebysig valuetype Microsoft.Maui.Controls.Color GetBlendColor(class Microsoft.Maui.Controls.BindableObject element) cil managed" />
+      <MemberSignature Language="C#" Value="public static Microsoft.Maui.Graphics.Color GetBlendColor (Microsoft.Maui.Controls.BindableObject element);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig valuetype Microsoft.Maui.Graphics.Color GetBlendColor(class Microsoft.Maui.Controls.BindableObject element) cil managed" />
       <MemberSignature Language="DocId" Value="M:Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.GetBlendColor(Microsoft.Maui.Controls.BindableObject)" />
-      <MemberSignature Language="F#" Value="static member GetBlendColor : Microsoft.Maui.Controls.BindableObject -&gt; Microsoft.Maui.Controls.Color" Usage="Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.GetBlendColor element" />
+      <MemberSignature Language="F#" Value="static member GetBlendColor : Microsoft.Maui.Controls.BindableObject -&gt; Microsoft.Maui.Graphics.Color" Usage="Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.GetBlendColor element" />
       <MemberType>Method</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
@@ -66,7 +62,7 @@
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.Color</ReturnType>
+        <ReturnType>Microsoft.Maui.Graphics.Color</ReturnType>
       </ReturnValue>
       <Parameters>
         <Parameter Name="element" Type="Microsoft.Maui.Controls.BindableObject" />
@@ -75,14 +71,13 @@
         <param name="element">The image on the Tizen platform whose back button icon to get.</param>
         <summary>Returns the blend color for the image.</summary>
         <returns>The blend color for the image.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="GetBlendColor">
-      <MemberSignature Language="C#" Value="public static Microsoft.Maui.Controls.Color GetBlendColor (this Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image&gt; config);" />
-      <MemberSignature Language="ILAsm" Value=".method public static hidebysig valuetype Microsoft.Maui.Controls.Color GetBlendColor(class Microsoft.Maui.Controls.IPlatformElementConfiguration`2&lt;class Microsoft.Maui.Controls.PlatformConfiguration.Tizen, class Microsoft.Maui.Controls.Image&gt; config) cil managed" />
+      <MemberSignature Language="C#" Value="public static Microsoft.Maui.Graphics.Color GetBlendColor (this Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image&gt; config);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig valuetype Microsoft.Maui.Graphics.Color GetBlendColor(class Microsoft.Maui.Controls.IPlatformElementConfiguration`2&lt;class Microsoft.Maui.Controls.PlatformConfiguration.Tizen, class Microsoft.Maui.Controls.Image&gt; config) cil managed" />
       <MemberSignature Language="DocId" Value="M:Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.GetBlendColor(Microsoft.Maui.Controls.IPlatformElementConfiguration{Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image})" />
-      <MemberSignature Language="F#" Value="static member GetBlendColor : Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen, Microsoft.Maui.Controls.Image&gt; -&gt; Microsoft.Maui.Controls.Color" Usage="Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.GetBlendColor config" />
+      <MemberSignature Language="F#" Value="static member GetBlendColor : Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen, Microsoft.Maui.Controls.Image&gt; -&gt; Microsoft.Maui.Graphics.Color" Usage="Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.GetBlendColor config" />
       <MemberType>Method</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
@@ -90,7 +85,7 @@
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.Color</ReturnType>
+        <ReturnType>Microsoft.Maui.Graphics.Color</ReturnType>
       </ReturnValue>
       <Parameters>
         <Parameter Name="config" Type="Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image&gt;" RefType="this" />
@@ -99,7 +94,6 @@
         <param name="config">The platform configuration for the image on the Tizen platform whose blend color to get.</param>
         <summary>Returns the blend color for the image.</summary>
         <returns>The blend color for the image.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="GetFile">
@@ -120,9 +114,6 @@
       </Parameters>
       <Docs>
         <param name="element">To be added.</param>
-        <summary>To be added.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="GetFile">
@@ -143,16 +134,13 @@
       </Parameters>
       <Docs>
         <param name="config">To be added.</param>
-        <summary>To be added.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="SetBlendColor">
-      <MemberSignature Language="C#" Value="public static void SetBlendColor (Microsoft.Maui.Controls.BindableObject element, Microsoft.Maui.Controls.Color color);" />
-      <MemberSignature Language="ILAsm" Value=".method public static hidebysig void SetBlendColor(class Microsoft.Maui.Controls.BindableObject element, valuetype Microsoft.Maui.Controls.Color color) cil managed" />
-      <MemberSignature Language="DocId" Value="M:Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.SetBlendColor(Microsoft.Maui.Controls.BindableObject,Microsoft.Maui.Controls.Color)" />
-      <MemberSignature Language="F#" Value="static member SetBlendColor : Microsoft.Maui.Controls.BindableObject * Microsoft.Maui.Controls.Color -&gt; unit" Usage="Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.SetBlendColor (element, color)" />
+      <MemberSignature Language="C#" Value="public static void SetBlendColor (Microsoft.Maui.Controls.BindableObject element, Microsoft.Maui.Graphics.Color color);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig void SetBlendColor(class Microsoft.Maui.Controls.BindableObject element, valuetype Microsoft.Maui.Graphics.Color color) cil managed" />
+      <MemberSignature Language="DocId" Value="M:Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.SetBlendColor(Microsoft.Maui.Controls.BindableObject,Microsoft.Maui.Graphics.Color)" />
+      <MemberSignature Language="F#" Value="static member SetBlendColor : Microsoft.Maui.Controls.BindableObject * Microsoft.Maui.Graphics.Color -&gt; unit" Usage="Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.SetBlendColor (element, color)" />
       <MemberType>Method</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
@@ -164,20 +152,19 @@
       </ReturnValue>
       <Parameters>
         <Parameter Name="element" Type="Microsoft.Maui.Controls.BindableObject" />
-        <Parameter Name="color" Type="Microsoft.Maui.Controls.Color" />
+        <Parameter Name="color" Type="Microsoft.Maui.Graphics.Color" />
       </Parameters>
       <Docs>
         <param name="element">To be added.</param>
         <param name="color">The new blend color value.</param>
         <summary>Sets the blend color.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="SetBlendColor">
-      <MemberSignature Language="C#" Value="public static Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image&gt; SetBlendColor (this Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image&gt; config, Microsoft.Maui.Controls.Color color);" />
-      <MemberSignature Language="ILAsm" Value=".method public static hidebysig class Microsoft.Maui.Controls.IPlatformElementConfiguration`2&lt;class Microsoft.Maui.Controls.PlatformConfiguration.Tizen, class Microsoft.Maui.Controls.Image&gt; SetBlendColor(class Microsoft.Maui.Controls.IPlatformElementConfiguration`2&lt;class Microsoft.Maui.Controls.PlatformConfiguration.Tizen, class Microsoft.Maui.Controls.Image&gt; config, valuetype Microsoft.Maui.Controls.Color color) cil managed" />
-      <MemberSignature Language="DocId" Value="M:Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.SetBlendColor(Microsoft.Maui.Controls.IPlatformElementConfiguration{Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image},Microsoft.Maui.Controls.Color)" />
-      <MemberSignature Language="F#" Value="static member SetBlendColor : Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen, Microsoft.Maui.Controls.Image&gt; * Microsoft.Maui.Controls.Color -&gt; Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen, Microsoft.Maui.Controls.Image&gt;" Usage="Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.SetBlendColor (config, color)" />
+      <MemberSignature Language="C#" Value="public static Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image&gt; SetBlendColor (this Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image&gt; config, Microsoft.Maui.Graphics.Color color);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig class Microsoft.Maui.Controls.IPlatformElementConfiguration`2&lt;class Microsoft.Maui.Controls.PlatformConfiguration.Tizen, class Microsoft.Maui.Controls.Image&gt; SetBlendColor(class Microsoft.Maui.Controls.IPlatformElementConfiguration`2&lt;class Microsoft.Maui.Controls.PlatformConfiguration.Tizen, class Microsoft.Maui.Controls.Image&gt; config, valuetype Microsoft.Maui.Graphics.Color color) cil managed" />
+      <MemberSignature Language="DocId" Value="M:Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.SetBlendColor(Microsoft.Maui.Controls.IPlatformElementConfiguration{Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image},Microsoft.Maui.Graphics.Color)" />
+      <MemberSignature Language="F#" Value="static member SetBlendColor : Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen, Microsoft.Maui.Controls.Image&gt; * Microsoft.Maui.Graphics.Color -&gt; Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen, Microsoft.Maui.Controls.Image&gt;" Usage="Microsoft.Maui.Controls.PlatformConfiguration.TizenSpecific.Image.SetBlendColor (config, color)" />
       <MemberType>Method</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
@@ -189,14 +176,13 @@
       </ReturnValue>
       <Parameters>
         <Parameter Name="config" Type="Microsoft.Maui.Controls.IPlatformElementConfiguration&lt;Microsoft.Maui.Controls.PlatformConfiguration.Tizen,Microsoft.Maui.Controls.Image&gt;" RefType="this" />
-        <Parameter Name="color" Type="Microsoft.Maui.Controls.Color" />
+        <Parameter Name="color" Type="Microsoft.Maui.Graphics.Color" />
       </Parameters>
       <Docs>
         <param name="config">The platform configuration for the image on the Tizen platform whose blend color to set.</param>
         <param name="color">The new blend color value.</param>
         <summary>Sets the blend color.</summary>
         <returns>A fluent object on which the developer may make further method calls.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="SetFile">
@@ -219,8 +205,6 @@
       <Docs>
         <param name="element">To be added.</param>
         <param name="file">To be added.</param>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="SetFile">
@@ -243,9 +227,6 @@
       <Docs>
         <param name="config">To be added.</param>
         <param name="file">To be added.</param>
-        <summary>To be added.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
   </Members>

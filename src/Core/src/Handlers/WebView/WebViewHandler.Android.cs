@@ -11,9 +11,6 @@ namespace Microsoft.Maui.Handlers
 	{
 		internal const string AssetBaseUrl = "file:///android_asset/";
 
-		WebViewClient? _webViewClient;
-		MauiWebChromeClient? _webChromeClient;
-
 		bool _firstRun = true;
 		readonly HashSet<string> _loadedCookies = new HashSet<string>();
 
@@ -25,12 +22,17 @@ namespace Microsoft.Maui.Handlers
 		{
 			var platformView = new MauiWebView(this, Context!)
 			{
-				LayoutParameters = new LayoutParams(LayoutParams.MatchParent, LayoutParams.WrapContent)
+				LayoutParameters = new LayoutParams(LayoutParams.MatchParent, LayoutParams.MatchParent)
 			};
 
 			platformView.Settings.JavaScriptEnabled = true;
 			platformView.Settings.DomStorageEnabled = true;
 			platformView.Settings.SetSupportMultipleWindows(true);
+
+			if (OperatingSystem.IsAndroidVersionAtLeast(23) && Context?.ApplicationInfo?.Flags.HasFlag(global::Android.Content.PM.ApplicationInfoFlags.HardwareAccelerated) == false)
+			{
+				platformView.SetLayerType(global::Android.Views.LayerType.Software, null);
+			}
 
 			return platformView;
 		}
@@ -52,10 +54,19 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void DisconnectHandler(AWebView platformView)
 		{
-			platformView.StopLoading();
+			if (OperatingSystem.IsAndroidVersionAtLeast(26))
+			{
+				if (platformView.WebViewClient is MauiWebViewClient webViewClient)
+					webViewClient.Disconnect();
 
-			_webViewClient?.Dispose();
-			_webChromeClient?.Dispose();
+				if (platformView.WebChromeClient is MauiWebChromeClient webChromeClient)
+					webChromeClient.Disconnect();
+			}
+
+			platformView.SetWebViewClient(null!);
+			platformView.SetWebChromeClient(null);
+
+			platformView.StopLoading();
 
 			base.DisconnectHandler(platformView);
 		}
@@ -65,16 +76,21 @@ namespace Microsoft.Maui.Handlers
 			ProcessSourceWhenReady(handler, webView);
 		}
 
+		public static void MapUserAgent(IWebViewHandler handler, IWebView webView)
+		{
+			handler.PlatformView.UpdateUserAgent(webView);
+		}
+
 		public static void MapWebViewClient(IWebViewHandler handler, IWebView webView)
 		{
 			if (handler is WebViewHandler platformHandler)
-				handler.PlatformView.SetWebViewClient(platformHandler._webViewClient ??= new MauiWebViewClient(platformHandler));
+				handler.PlatformView.SetWebViewClient(new MauiWebViewClient(platformHandler));
 		}
 
 		public static void MapWebChromeClient(IWebViewHandler handler, IWebView webView)
 		{
 			if (handler is WebViewHandler platformHandler)
-				handler.PlatformView.SetWebChromeClient(platformHandler._webChromeClient ??= new MauiWebChromeClient(platformHandler));
+				handler.PlatformView.SetWebChromeClient(new MauiWebChromeClient(platformHandler));
 		}
 
 		public static void MapWebViewSettings(IWebViewHandler handler, IWebView webView)
@@ -135,12 +151,15 @@ namespace Microsoft.Maui.Handlers
 			if (VirtualView == null || string.IsNullOrWhiteSpace(url))
 				return true;
 
-			if (url == AssetBaseUrl)
-				return false;
-
-			// TODO: Sync Cookies
+			SyncPlatformCookies(url);
 			bool cancel = VirtualView.Navigating(CurrentNavigationEvent, url);
+
+			// if the user disconnects from the handler we want to exit
+			if (!PlatformView.IsAlive())
+				return true;
+
 			PlatformView?.UpdateCanGoBackForward(VirtualView);
+
 			UrlCanceled = cancel ? null : url;
 
 			return cancel;
@@ -267,7 +286,7 @@ namespace Microsoft.Maui.Handlers
 			}
 		}
 
-		CookieCollection? GetCookiesFromPlatformStore(string url)
+		static CookieCollection? GetCookiesFromPlatformStore(string url)
 		{
 			CookieContainer existingCookies = new CookieContainer();
 			var cookieManager = CookieManager.Instance;

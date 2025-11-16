@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using CoreGraphics;
 using Foundation;
@@ -14,10 +15,15 @@ namespace Microsoft.Maui.Platform
 		const float OpenSwipeThresholdPercentage = 0.6f; // 60%
 		const double SwipeAnimationDuration = 0.2;
 
+		readonly SwipeRecognizerProxy _proxy;
 		readonly Dictionary<ISwipeItem, object> _swipeItems;
-		UITapGestureRecognizer _tapGestureRecognizer;
-		UIPanGestureRecognizer _panGestureRecognizer;
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
+		readonly UITapGestureRecognizer _tapGestureRecognizer;
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
+		readonly UIPanGestureRecognizer _panGestureRecognizer;
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
 		UIView _contentView;
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
 		UIStackView _actionView;
 		SwipeTransitionMode _swipeTransitionMode;
 		SwipeDirection? _swipeDirection;
@@ -33,33 +39,33 @@ namespace Microsoft.Maui.Platform
 		bool _isResettingSwipe;
 		bool _isOpen;
 		OpenSwipeItem _previousOpenSwipeItem;
-		internal ISwipeView? Element { get; set; }
+
+		internal ISwipeView? Element => CrossPlatformLayout as ISwipeView;
 
 		public MauiSwipeView()
 		{
+			_proxy = new(this);
 			_swipeItemsRect = new List<CGRect>();
 			_contentView = new UIView();
 			_actionView = new UIStackView();
 			_swipeItems = new Dictionary<ISwipeItem, object>();
 			_isScrollEnabled = true;
 
-			_tapGestureRecognizer = new UITapGestureRecognizer(HandleTap)
+			_tapGestureRecognizer = new UITapGestureRecognizer(_proxy.HandleTap)
 			{
 				CancelsTouchesInView = false,
 				DelaysTouchesBegan = false,
-				DelaysTouchesEnded = false
+				DelaysTouchesEnded = false,
+				ShouldReceiveTouch = _proxy.OnShouldReceiveTouch,
 			};
 
-			_tapGestureRecognizer.ShouldReceiveTouch = OnShouldReceiveTouch;
-
-			_panGestureRecognizer = new UIPanGestureRecognizer(HandlePan)
+			_panGestureRecognizer = new UIPanGestureRecognizer(_proxy.HandlePan)
 			{
 				CancelsTouchesInView = false,
 				DelaysTouchesBegan = false,
-				DelaysTouchesEnded = false
+				DelaysTouchesEnded = false,
+				ShouldRecognizeSimultaneously = (recognizer, gestureRecognizer) => true,
 			};
-
-			_panGestureRecognizer.ShouldRecognizeSimultaneously = (recognizer, gestureRecognizer) => true;
 
 			AddGestureRecognizer(_tapGestureRecognizer);
 			AddGestureRecognizer(_panGestureRecognizer);
@@ -74,6 +80,11 @@ namespace Microsoft.Maui.Platform
 
 			if (_contentView != null && _contentView.Frame.IsEmpty)
 				_contentView.Frame = Bounds;
+
+			if (_isOpen)
+			{
+				Swipe(animated: false);
+			}
 		}
 
 		public override void TouchesEnded(NSSet touches, UIEvent? evt)
@@ -132,7 +143,7 @@ namespace Microsoft.Maui.Platform
 				if (subview.UserInteractionEnabled)
 				{
 					CGPoint subPoint = subview.ConvertPointFromView(point, this);
-					UIView result = subview.HitTest(subPoint, uievent);
+					UIView? result = subview.HitTest(subPoint, uievent);
 
 					if (result != null)
 					{
@@ -142,11 +153,6 @@ namespace Microsoft.Maui.Platform
 			}
 
 			return null;
-		}
-
-		bool OnShouldReceiveTouch(UIGestureRecognizer recognizer, UITouch touch)
-		{
-			return _swipeOffset != 0;
 		}
 
 		internal void UpdateContent(ISwipeView swipeView, IMauiContext mauiContext)
@@ -171,68 +177,82 @@ namespace Microsoft.Maui.Platform
 				BringSubviewToFront(_contentView);
 		}
 
-		void HandleTap()
+		class SwipeRecognizerProxy
 		{
-			if (_tapGestureRecognizer == null)
-				return;
+			readonly WeakReference<MauiSwipeView> _view;
 
-			if (_isSwiping)
-				return;
+			public SwipeRecognizerProxy(MauiSwipeView view) => _view = new(view);
 
-			var state = _tapGestureRecognizer.State;
-
-			if (state != UIGestureRecognizerState.Cancelled)
+			public bool OnShouldReceiveTouch(UIGestureRecognizer recognizer, UITouch touch)
 			{
-				if (_contentView == null)
+				return _view.TryGetTarget(out var view) && view._swipeOffset != 0;
+			}
+
+			public void HandleTap(UITapGestureRecognizer recognizer)
+			{
+				if (!_view.TryGetTarget(out var view))
 					return;
 
-				var point = _tapGestureRecognizer.LocationInView(this);
+				if (view._isSwiping)
+					return;
 
-				if (_isOpen)
+				var state = recognizer.State;
+				if (state != UIGestureRecognizerState.Cancelled)
 				{
-					if (!TouchInsideContent(point))
-						ProcessTouchSwipeItems(point);
-					else
-						ResetSwipe();
+					if (view._contentView == null)
+						return;
+
+					var point = recognizer.LocationInView(view);
+
+					if (view._isOpen)
+					{
+						if (!view.TouchInsideContent(point))
+							view.ProcessTouchSwipeItems(point);
+						else
+							view.ResetSwipe();
+					}
 				}
 			}
-		}
 
-		void HandlePan(UIPanGestureRecognizer panGestureRecognizer)
-		{
-			if (_isSwipeEnabled && panGestureRecognizer != null)
+			public void HandlePan(UIPanGestureRecognizer panGestureRecognizer)
 			{
-				CGPoint point = panGestureRecognizer.LocationInView(this);
-				var navigationController = GetUINavigationController(GetViewController());
+				if (!_view.TryGetTarget(out var view))
+					return;
 
-				switch (panGestureRecognizer.State)
+				if (view._isSwipeEnabled && panGestureRecognizer != null)
 				{
-					case UIGestureRecognizerState.Began:
-						if (navigationController != null)
-							navigationController.InteractivePopGestureRecognizer.Enabled = false;
+					CGPoint point = panGestureRecognizer.LocationInView(view);
+					var navigationController = GetUINavigationController(view.GetViewController());
 
-						HandleTouchInteractions(GestureStatus.Started, point);
-						break;
-					case UIGestureRecognizerState.Changed:
-						HandleTouchInteractions(GestureStatus.Running, point);
-						break;
-					case UIGestureRecognizerState.Ended:
-						if (navigationController != null)
-							navigationController.InteractivePopGestureRecognizer.Enabled = true;
+					switch (panGestureRecognizer.State)
+					{
+						case UIGestureRecognizerState.Began:
+							if (navigationController != null)
+								navigationController.InteractivePopGestureRecognizer.Enabled = false;
 
-						HandleTouchInteractions(GestureStatus.Completed, point);
-						break;
-					case UIGestureRecognizerState.Cancelled:
-						if (navigationController != null)
-							navigationController.InteractivePopGestureRecognizer.Enabled = true;
+							view.HandleTouchInteractions(GestureStatus.Started, point);
+							break;
+						case UIGestureRecognizerState.Changed:
+							view.HandleTouchInteractions(GestureStatus.Running, point);
+							break;
+						case UIGestureRecognizerState.Ended:
+							if (navigationController != null)
+								navigationController.InteractivePopGestureRecognizer.Enabled = true;
 
-						HandleTouchInteractions(GestureStatus.Canceled, point);
-						break;
+							view.HandleTouchInteractions(GestureStatus.Completed, point);
+							break;
+						case UIGestureRecognizerState.Cancelled:
+							if (navigationController != null)
+								navigationController.InteractivePopGestureRecognizer.Enabled = true;
+
+							view.HandleTouchInteractions(GestureStatus.Canceled, point);
+							break;
+					}
 				}
 			}
 		}
 
-		UIView CreateEmptyContent()
+		static UIView CreateEmptyContent()
 		{
 			var emptyContentView = new UIView
 			{
@@ -259,9 +279,9 @@ namespace Microsoft.Maui.Platform
 			return _swipeDirection == SwipeDirection.Left || _swipeDirection == SwipeDirection.Right;
 		}
 
-		bool IsValidSwipeItems(ISwipeItems? swipeItems)
+		static bool IsValidSwipeItems(ISwipeItems? swipeItems)
 		{
-			return swipeItems != null && swipeItems.Where(s => GetIsVisible(s)).Count() > 0;
+			return swipeItems != null && swipeItems.Any(GetIsVisible);
 		}
 
 		void UpdateSwipeItems()
@@ -387,7 +407,7 @@ namespace Microsoft.Maui.Platform
 			_swipeTransitionMode = swipeTransitionMode;
 		}
 
-		void UpdateSwipeItemInsets(UIButton button, float spacing = 0.0f)
+		static void UpdateSwipeItemInsets(UIButton button, float spacing = 0.0f)
 		{
 			if (button.ImageView?.Image == null)
 				return;
@@ -399,7 +419,9 @@ namespace Microsoft.Maui.Platform
 
 			var titleEdgeInsets = new UIEdgeInsets(spacing, -imageSize.Width, -imageSize.Height, 0.0f);
 #pragma warning disable CA1416 // TODO: 'TitleEdgeInsets', 'ImageEdgeInsets' has [UnsupportedOSPlatform("ios15.0")]
+#pragma warning disable CA1422 // Validate platform compatibility
 			button.TitleEdgeInsets = titleEdgeInsets;
+
 
 			var labelString = button.TitleLabel.Text ?? string.Empty;
 
@@ -408,6 +430,7 @@ namespace Microsoft.Maui.Platform
 #pragma warning restore BI1234 // Type or member is obsolete
 			var imageEdgeInsets = new UIEdgeInsets(-(titleSize.Height + spacing), 0.0f, 0.0f, -titleSize.Width);
 			button.ImageEdgeInsets = imageEdgeInsets;
+#pragma warning restore CA1422 // Validate platform compatibility
 #pragma warning restore CA1416
 		}
 
@@ -499,7 +522,7 @@ namespace Microsoft.Maui.Platform
 		{
 			var swipeThresholdPercent = MinimumOpenSwipeThresholdPercentage * GetSwipeThreshold();
 
-			if (Math.Abs(_swipeOffset) < swipeThresholdPercent)
+			if (!scrollEnabled && Math.Abs(_swipeOffset) < swipeThresholdPercent)
 				return;
 
 			if (scrollEnabled == _isScrollEnabled)
@@ -518,17 +541,7 @@ namespace Microsoft.Maui.Platform
 			if (_contentView == null)
 				return false;
 
-			bool touchContent = TouchInsideContent(_contentView.Frame.Left, _contentView.Frame.Top, _contentView.Frame.Width, _contentView.Frame.Height, point.X, point.Y);
-
-			return touchContent;
-		}
-
-		bool TouchInsideContent(double x1, double y1, double x2, double y2, double x, double y)
-		{
-			if (x > x1 && x < (x1 + x2) && y > y1 && y < (y1 + y2))
-				return true;
-
-			return false;
+			return _contentView.Frame.Contains(point);
 		}
 
 		ISwipeItems? GetSwipeItemsByDirection()
@@ -573,7 +586,7 @@ namespace Microsoft.Maui.Platform
 
 			if (_swipeTransitionMode == SwipeTransitionMode.Reveal)
 			{
-				Animate(swipeAnimationDuration, 0.0, UIViewAnimationOptions.CurveEaseOut, () =>
+				void SetFrame()
 				{
 					switch (_swipeDirection)
 					{
@@ -590,7 +603,16 @@ namespace Microsoft.Maui.Platform
 							_contentView.Frame = new CGRect(_originalBounds.X, _originalBounds.Y + offset, _originalBounds.Width, _originalBounds.Height);
 							break;
 					}
-				}, null);
+				}
+
+				if (animated)
+				{
+					Animate(swipeAnimationDuration, 0.0, UIViewAnimationOptions.CurveEaseOut, SetFrame, () => { });
+				}
+				else
+				{
+					SetFrame();
+				}
 			}
 
 			if (_swipeTransitionMode == SwipeTransitionMode.Drag)
@@ -623,7 +645,7 @@ namespace Microsoft.Maui.Platform
 							_actionView.Frame = new CGRect(actionBounds.X, -actionSize + Math.Abs(offset), actionBounds.Width, actionBounds.Height);
 							break;
 					}
-				}, null);
+				}, () => { });
 			}
 		}
 
@@ -686,15 +708,9 @@ namespace Microsoft.Maui.Platform
 			_swipeOffset = 0;
 			_originalBounds = CGRect.Empty;
 
-			if (_actionView != null)
-			{
-				_actionView.RemoveFromSuperview();
-			}
+			_actionView?.RemoveFromSuperview();
 
-			if (_swipeItemsRect != null)
-			{
-				_swipeItemsRect.Clear();
-			}
+			_swipeItemsRect?.Clear();
 
 			UpdateIsOpen(false);
 		}
@@ -760,7 +776,7 @@ namespace Microsoft.Maui.Platform
 					foreach (var swipeItem in swipeItems)
 					{
 						if (GetIsVisible(swipeItem))
-							ExecuteSwipeItem(swipeItem);
+							MauiSwipeView.ExecuteSwipeItem(swipeItem);
 					}
 
 					if (swipeItems.SwipeBehaviorOnInvoked != SwipeBehaviorOnInvoked.RemainOpen)
@@ -851,7 +867,7 @@ namespace Microsoft.Maui.Platform
 			}
 
 		}
-		bool GetIsVisible(ISwipeItem swipeItem)
+		static bool GetIsVisible(ISwipeItem swipeItem)
 		{
 			if (swipeItem is IView view)
 				return view.Visibility == Maui.Visibility.Visible;
@@ -978,7 +994,7 @@ namespace Microsoft.Maui.Platform
 				return false;
 
 			var swipeItems = GetSwipeItemsByDirection();
-			return IsValidSwipeItems(swipeItems);
+			return MauiSwipeView.IsValidSwipeItems(swipeItems);
 		}
 
 		double GetSwipeOffset(CGPoint initialPoint, CGPoint endPoint)
@@ -1021,9 +1037,9 @@ namespace Microsoft.Maui.Platform
 					var swipeItemX = swipeItemRect.Left;
 					var swipeItemY = swipeItemRect.Top;
 
-					if (TouchInsideContent(swipeItemX, swipeItemY, swipeItemRect.Width, swipeItemRect.Height, point.X, point.Y))
+					if (swipeItemRect.Contains(point))
 					{
-						ExecuteSwipeItem(swipeItem);
+						MauiSwipeView.ExecuteSwipeItem(swipeItem);
 
 						if (swipeItems.SwipeBehaviorOnInvoked != SwipeBehaviorOnInvoked.RemainOpen)
 							ResetSwipe();
@@ -1049,7 +1065,7 @@ namespace Microsoft.Maui.Platform
 			return viewController;
 		}
 
-		UINavigationController? GetUINavigationController(UIViewController? controller)
+		static UINavigationController? GetUINavigationController(UIViewController? controller)
 		{
 			if (controller != null)
 			{
@@ -1058,9 +1074,9 @@ namespace Microsoft.Maui.Platform
 					return (controller as UINavigationController);
 				}
 
-				if (controller.ChildViewControllers.Any())
+				if (controller.ChildViewControllers.Length != 0)
 				{
-					var childs = controller.ChildViewControllers.Count();
+					var childs = controller.ChildViewControllers.Length;
 
 					for (int i = 0; i < childs; i++)
 					{
@@ -1077,7 +1093,7 @@ namespace Microsoft.Maui.Platform
 			return null;
 		}
 
-		void ExecuteSwipeItem(ISwipeItem item)
+		static void ExecuteSwipeItem(ISwipeItem item)
 		{
 			if (item == null)
 				return;
@@ -1099,10 +1115,8 @@ namespace Microsoft.Maui.Platform
 			if (Element == null)
 				return;
 
-			Element.IsOpen = true;
+			Element.IsOpen = isOpen;
 		}
-
-
 
 		internal void ProgrammaticallyOpenSwipeItem(OpenSwipeItem openSwipeItem, bool animated)
 		{
@@ -1134,13 +1148,21 @@ namespace Microsoft.Maui.Platform
 
 			var swipeItems = GetSwipeItemsByDirection();
 
-			if (swipeItems == null || swipeItems.Where(s => GetIsVisible(s)).Count() == 0)
+			if (swipeItems is null || !swipeItems.Any(GetIsVisible))
 				return;
+
+			UpdateIsOpen(true);
+			UpdateSwipeItems();
 
 			var swipeThreshold = GetSwipeThreshold();
 			UpdateOffset(swipeThreshold);
 
-			UpdateSwipeItems();
+			// Set the background on the swipe view, we need to update the layout.
+			if (_contentView is WrapperView)
+			{
+				LayoutIfNeeded();
+			}
+
 			Swipe(animated);
 
 			_swipeOffset = Math.Abs(_swipeOffset);

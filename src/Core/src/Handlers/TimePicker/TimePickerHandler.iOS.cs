@@ -1,49 +1,32 @@
 ﻿using System;
-using UIKit;
 
 namespace Microsoft.Maui.Handlers
 {
 #if IOS && !MACCATALYST
 	public partial class TimePickerHandler : ViewHandler<ITimePicker, MauiTimePicker>
 	{
+		readonly MauiTimePickerProxy _proxy = new();
+
 		protected override MauiTimePicker CreatePlatformView()
 		{
-			return new MauiTimePicker(() =>
-			{
-				SetVirtualViewTime();
-				PlatformView?.ResignFirstResponder();
-			});
+			return new MauiTimePicker(_proxy.OnDateSelected);
 		}
+
+		internal bool UpdateImmediately { get; set; }
 
 		protected override void ConnectHandler(MauiTimePicker platformView)
 		{
 			base.ConnectHandler(platformView);
 
-			if (platformView != null)
-			{
-				platformView.EditingDidBegin += OnStarted;
-				platformView.EditingDidEnd += OnEnded;
-				platformView.ValueChanged += OnValueChanged;
-				platformView.DateSelected += OnDateSelected;
-				platformView.UpdateTime(VirtualView.Time);
-			}
+			_proxy.Connect(this, VirtualView, platformView);
+			platformView.UpdateTime(VirtualView.Time);
 		}
 
 		protected override void DisconnectHandler(MauiTimePicker platformView)
 		{
 			base.DisconnectHandler(platformView);
 
-			if (platformView != null)
-			{
-				platformView.RemoveFromSuperview();
-
-				platformView.EditingDidBegin -= OnStarted;
-				platformView.EditingDidEnd -= OnEnded;
-				platformView.ValueChanged -= OnValueChanged;
-				platformView.DateSelected -= OnDateSelected;
-
-				platformView.Dispose();
-			}
+			_proxy.Disconnect(platformView);
 		}
 
 		public static void MapFormat(ITimePickerHandler handler, ITimePicker timePicker)
@@ -79,26 +62,9 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView?.UpdateTextAlignment(timePicker);
 		}
 
-		void OnStarted(object? sender, EventArgs eventArgs)
+		internal static void MapIsOpen(ITimePickerHandler handler, ITimePicker timePicker)
 		{
-			if (VirtualView != null)
-				VirtualView.IsFocused = true;
-		}
-
-		void OnEnded(object? sender, EventArgs eventArgs)
-		{
-			if (VirtualView != null)
-				VirtualView.IsFocused = false;
-		}
-
-		void OnValueChanged(object? sender, EventArgs e)
-		{
-			SetVirtualViewTime();
-		}
-
-		void OnDateSelected(object? sender, EventArgs e)
-		{
-			SetVirtualViewTime();
+			handler.PlatformView?.UpdateIsOpen(timePicker);
 		}
 
 		void SetVirtualViewTime()
@@ -108,6 +74,63 @@ namespace Microsoft.Maui.Handlers
 
 			var datetime = PlatformView.Date.ToDateTime();
 			VirtualView.Time = new TimeSpan(datetime.Hour, datetime.Minute, 0);
+		}
+
+		class MauiTimePickerProxy
+		{
+			WeakReference<TimePickerHandler>? _handler;
+			WeakReference<ITimePicker>? _virtualView;
+
+			ITimePicker? VirtualView => _virtualView is not null && _virtualView.TryGetTarget(out var v) ? v : null;
+
+			public void Connect(TimePickerHandler handler, ITimePicker virtualView, MauiTimePicker platformView)
+			{
+				_handler = new(handler);
+				_virtualView = new(virtualView);
+
+				platformView.EditingDidBegin += OnStarted;
+				platformView.EditingDidEnd += OnEnded;
+				platformView.ValueChanged += OnValueChanged;
+				platformView.Picker.ValueChanged += OnValueChanged;
+			}
+
+			public void Disconnect(MauiTimePicker platformView)
+			{
+				_virtualView = null;
+
+				platformView.EditingDidBegin -= OnStarted;
+				platformView.EditingDidEnd -= OnEnded;
+				platformView.ValueChanged -= OnValueChanged;
+				platformView.Picker.ValueChanged -= OnValueChanged;
+				platformView.RemoveFromSuperview();
+			}
+
+			void OnStarted(object? sender, EventArgs eventArgs)
+			{
+				if (VirtualView is not null)
+					VirtualView.IsFocused = VirtualView.IsOpen = true;
+			}
+
+			void OnEnded(object? sender, EventArgs eventArgs)
+			{
+				if (VirtualView is not null)
+					VirtualView.IsFocused = VirtualView.IsOpen = false;
+			}
+
+			void OnValueChanged(object? sender, EventArgs e)
+			{
+				if (_handler is not null && _handler.TryGetTarget(out var handler) && handler.UpdateImmediately)  // Platform Specific
+					handler.SetVirtualViewTime();
+			}
+
+			public void OnDateSelected()
+			{
+				if (_handler is not null && _handler.TryGetTarget(out var handler))
+				{
+					handler.SetVirtualViewTime();
+					handler.PlatformView?.ResignFirstResponder();
+				}
+			}
 		}
 	}
 #endif

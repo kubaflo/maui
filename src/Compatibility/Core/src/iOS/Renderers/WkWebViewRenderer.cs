@@ -126,8 +126,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			if (Element != null && !string.IsNullOrEmpty(Element.AutomationId))
 				AccessibilityIdentifier = Element.AutomationId;
 
-			if (element != null)
-				element.SendViewInitialized(this);
+			element?.SendViewInitialized(this);
 		}
 
 		public void SetElementSize(Size size)
@@ -358,7 +357,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 				}
 			}
 
-			_initialCookiesLoaded = _initialCookiesLoaded ?? new NSHttpCookie[0];
+			_initialCookiesLoaded = _initialCookiesLoaded ?? Array.Empty<NSHttpCookie>();
 
 			List<NSHttpCookie> existingCookies = new List<NSHttpCookie>();
 			string domain = CreateUriForCookies(url).Host;
@@ -589,8 +588,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			if (_ignoreSourceChanges)
 				return;
 
-			if (((WebView)Element).Source != null)
-				((WebView)Element).Source.Load(this);
+			((WebView)Element).Source?.Load(this);
 
 			UpdateCanGoBackForward();
 		}

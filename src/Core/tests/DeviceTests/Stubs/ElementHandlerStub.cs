@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.Maui.DeviceTests.Stubs;
+using Microsoft.Maui.Handlers;
 
 namespace Microsoft.Maui.DeviceTests
 {
@@ -11,5 +12,7 @@ namespace Microsoft.Maui.DeviceTests
 		}
 
 		protected override object CreatePlatformElement() => new Object();
+
+		public override void SetVirtualView(IElement view) => base.SetVirtualView(view);
 	}
 }

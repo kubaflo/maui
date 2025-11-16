@@ -5,6 +5,8 @@ using System.Reflection;
 namespace Microsoft.Maui.Controls.Xaml
 {
 	[ContentProperty(nameof(Key))]
+	[RequireService([typeof(IXmlLineInfoProvider), typeof(IProvideParentValues), typeof(IRootObjectProvider)])]
+	[ProvideCompiled("Microsoft.Maui.Controls.Build.Tasks.StaticResourceExtension")]
 	public sealed class StaticResourceExtension : IMarkupExtension
 	{
 		public string Key { get; set; }
@@ -22,7 +24,16 @@ namespace Microsoft.Maui.Controls.Xaml
 				&& !TryGetApplicationLevelResource(Key, out resource, out resourceDictionary))
 			{
 				var xmlLineInfo = serviceProvider.GetService(typeof(IXmlLineInfoProvider)) is IXmlLineInfoProvider xmlLineInfoProvider ? xmlLineInfoProvider.XmlLineInfo : null;
-				throw new XamlParseException($"StaticResource not found for key {Key}", xmlLineInfo);
+				if (Controls.Internals.ResourceLoader.ExceptionHandler2 is var ehandler && ehandler != null)
+				{
+					var ex = new XamlParseException($"StaticResource not found for key {Key}", xmlLineInfo);
+					var rootObjectProvider = (IRootObjectProvider)serviceProvider.GetService(typeof(IRootObjectProvider));
+					var root = rootObjectProvider.RootObject;
+					ehandler.Invoke((ex, XamlFilePathAttribute.GetFilePathForObject(root)));
+					return null;
+				}
+				else
+					throw new XamlParseException($"StaticResource not found for key {Key}", xmlLineInfo);
 			}
 
 			Diagnostics.ResourceDictionaryDiagnostics.OnStaticResourceResolved(resourceDictionary, Key, valueProvider.TargetObject, valueProvider.TargetProperty);
@@ -35,14 +46,16 @@ namespace Microsoft.Maui.Controls.Xaml
 		{
 			var bp = targetProperty as BindableProperty;
 			var pi = targetProperty as PropertyInfo;
+
 			Type valueType = value.GetType();
 			var propertyType = bp?.ReturnType ?? pi?.PropertyType;
 			if (propertyType is null || propertyType.IsAssignableFrom(valueType))
 				return value;
-			var implicit_op = valueType.GetImplicitConversionOperator(fromType: valueType, toType: propertyType)
-							?? propertyType.GetImplicitConversionOperator(fromType: valueType, toType: propertyType);
-			if (implicit_op != null)
-				return implicit_op.Invoke(value, new[] { value });
+
+			if (TypeConversionHelper.TryConvert(value, propertyType, out var convertedValue))
+			{
+				return convertedValue;
+			}
 
 			return value;
 		}

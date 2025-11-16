@@ -8,11 +8,9 @@ namespace Microsoft.Maui.Devices.Sensors
 {
 	partial class BarometerImplementation : IBarometer
 	{
-		static SensorManager? _sensorManager;
 		static Sensor? _sensor;
 
-		static SensorManager? SensorManager =>
-			_sensorManager ??= Application.Context.GetSystemService(Context.SensorService) as SensorManager;
+		static SensorManager? SensorManager => Application.Context.GetSystemService(Context.SensorService) as SensorManager;
 
 		static Sensor? Sensor =>
 			_sensor ??= SensorManager?.GetDefaultSensor(SensorType.Pressure);
@@ -37,11 +35,18 @@ namespace Microsoft.Maui.Devices.Sensors
 
 	class BarometerListener : Java.Lang.Object, ISensorEventListener, IDisposable
 	{
+		/// <summary>
+		/// Initializes a new instance of the <see cref="BarometerListener"/> class.
+		/// </summary>
+		/// <param name="changeHandler">The handler that is invoked when a change in the barometer reading is detected.</param>
 		public BarometerListener(Action<BarometerData> changeHandler)
 		{
 			ChangeHandler = changeHandler;
 		}
 
+		/// <summary>
+		/// A reference to the action that invoked when a change in the barometer reading has been detected.
+		/// </summary>
 		public readonly Action<BarometerData> ChangeHandler;
 
 		void ISensorEventListener.OnAccuracyChanged(Sensor? sensor, SensorStatus accuracy)

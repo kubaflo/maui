@@ -9,6 +9,8 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 #if __ANDROID__
 			// android emulates the accelerometer
 			true;
+#elif MACCATALYST
+			false;
 #elif __IOS__
 			// all iOS devices (and only devices) have an accelerometer
 			DeviceInfo.DeviceType == DeviceType.Physical;
@@ -21,6 +23,8 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 #if __ANDROID__
 			// android emulates the magnetometer
 			true;
+#elif MACCATALYST
+			false;
 #elif __IOS__
 			// all iOS devices (and only devices) have a magnetometer
 			DeviceInfo.DeviceType == DeviceType.Physical;
@@ -32,8 +36,10 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 		public static bool HasGyroscope =>
 #if __ANDROID__
 			// Android emulators and devices have gyros
-			Android.App.Application.Context.GetSystemService(Android.Content.Context.SensorService) is Android.Hardware.SensorManager sensorManager &&
-			sensorManager.GetDefaultSensor(Android.Hardware.SensorType.Gyroscope) is not null;
+			global::Android.App.Application.Context.GetSystemService(global::Android.Content.Context.SensorService) is global::Android.Hardware.SensorManager sensorManager &&
+			sensorManager.GetDefaultSensor(global::Android.Hardware.SensorType.Gyroscope) is not null;
+#elif MACCATALYST
+			false;
 #elif __IOS__
 			// all iOS devices (and only devices) have a gyroscope
 			DeviceInfo.DeviceType == DeviceType.Physical;
@@ -46,6 +52,8 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 #if __ANDROID__
 			// android emulates the compass
 			true;
+#elif MACCATALYST
+			false;
 #elif __IOS__
 			// all iOS devices (and only devices) have a compass
 			DeviceInfo.DeviceType == DeviceType.Physical;
@@ -70,7 +78,9 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 		public static bool HasFlash =>
 #if __ANDROID__
 			// TODO: android emulates the lamp, I think...
-			PlatformUtils.HasSystemFeature(Android.Content.PM.PackageManager.FeatureCameraFlash);
+			PlatformUtils.HasSystemFeature(global::Android.Content.PM.PackageManager.FeatureCameraFlash);
+#elif MACCATALYST
+			false;
 #elif __IOS__
 			// all iOS devices (and only devices) have a camera
 			DeviceInfo.DeviceType == DeviceType.Physical;
@@ -82,6 +92,8 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 		public static bool HasBarometer =>
 #if __ANDROID__
 			true;
+#elif MACCATALYST
+			false;
 #elif __IOS__
 			// iphone 6 and never have a barometer. looking in how to test this.
 			DeviceInfo.DeviceType == DeviceType.Physical;

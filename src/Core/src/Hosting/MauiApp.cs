@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Maui.Hosting
 {
-	public sealed class MauiApp : IDisposable
+	/// <summary>
+	/// A .NET MAUI application with registered services and configuration data.
+	/// </summary>
+	public sealed class MauiApp : IDisposable, IAsyncDisposable
 	{
 		private readonly IServiceProvider _services;
 
@@ -33,11 +37,32 @@ namespace Microsoft.Maui.Hosting
 		/// <inheritdoc />
 		public void Dispose()
 		{
+			DisposeConfiguration();
+
+			(_services as IDisposable)?.Dispose();
+		}
+
+		/// <inheritdoc />
+		public async ValueTask DisposeAsync()
+		{
+			DisposeConfiguration();
+
+			if (_services is IAsyncDisposable asyncDisposable)
+			{
+				// Fire and forget because this is called from a sync context
+				await asyncDisposable.DisposeAsync();
+			}
+			else
+			{
+				(_services as IDisposable)?.Dispose();
+			}
+		}
+
+		private void DisposeConfiguration()
+		{
 			// Explicitly dispose the Configuration, since it is added as a singleton object that the ServiceProvider
 			// won't dispose.
 			(Configuration as IDisposable)?.Dispose();
-
-			(_services as IDisposable)?.Dispose();
 		}
 	}
 }

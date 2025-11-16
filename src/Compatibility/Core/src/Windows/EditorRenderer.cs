@@ -1,19 +1,19 @@
 using System;
 using System.ComponentModel;
-using Windows.UI.Text;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.Maui.Controls.Internals;
-using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
-using WBrush = Microsoft.UI.Xaml.Media.Brush;
+using Windows.UI.Text;
 using Specifics = Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific.InputView;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
+using WBrush = Microsoft.UI.Xaml.Media.Brush;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class EditorRenderer : ViewRenderer<Editor, FormsTextBox>
+	public partial class EditorRenderer : ViewRenderer<Editor, FormsTextBox>
 	{
 		bool _fontApplied;
 		WBrush _backgroundColorFocusedDefaultBrush;
@@ -205,8 +205,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		{
 			FormsTextBox child = Control;
 
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 			if (Children.Count == 0 || child == null)
 				return new SizeRequest();
+#pragma warning restore RS0030 // Do not use banned APIs
 
 			var constraint = new global::Windows.Foundation.Size(widthConstraint, heightConstraint);
 			child.Measure(constraint);
@@ -281,7 +283,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		{
 			Control.CharacterSpacing = Element.CharacterSpacing.ToEm();
 		}
-	
+
 		[PortHandler]
 		void UpdateText()
 		{

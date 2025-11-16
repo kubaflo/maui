@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Foundation;
+using Microsoft.Maui.Graphics.Platform;
 using Photos;
 using UIKit;
 
@@ -14,7 +15,7 @@ namespace Microsoft.Maui.Storage
 		public static async Task<FileResult[]> EnsurePhysicalFileResultsAsync(params NSUrl[] urls)
 		{
 			if (urls == null || urls.Length == 0)
-				return Array.Empty<FileResult>();
+				return null;
 
 			var opts = NSFileCoordinatorReadingOptions.WithoutChanges;
 			var intents = urls.Select(x => NSFileAccessIntent.CreateReadingIntent(x, opts)).ToArray();
@@ -192,7 +193,7 @@ namespace Microsoft.Maui.Storage
 
 		internal override Task<Stream> PlatformOpenReadAsync()
 		{
-			data ??= uiImage.AsPNG();
+			data ??= uiImage.NormalizeOrientation().AsPNG();
 
 			return Task.FromResult(data.AsStream());
 		}

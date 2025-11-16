@@ -1,28 +1,29 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 
 namespace Microsoft.Maui.Controls
 {
 
-	/// <include file="../../docs/Microsoft.Maui.Controls/TemplatedPage.xml" path="Type[@FullName='Microsoft.Maui.Controls.TemplatedPage']/Docs" />
+	/// <include file="../../docs/Microsoft.Maui.Controls/TemplatedPage.xml" path="Type[@FullName='Microsoft.Maui.Controls.TemplatedPage']/Docs/*" />
 	public class TemplatedPage : Page, IControlTemplated
 	{
-		/// <include file="../../docs/Microsoft.Maui.Controls/TemplatedPage.xml" path="//Member[@MemberName='ControlTemplateProperty']/Docs" />
+		/// <summary>Bindable property for <see cref="ControlTemplate"/>.</summary>
 		public static readonly BindableProperty ControlTemplateProperty = BindableProperty.Create(nameof(ControlTemplate), typeof(ControlTemplate), typeof(TemplatedPage), null,
 			propertyChanged: TemplateUtilities.OnControlTemplateChanged);
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/TemplatedPage.xml" path="//Member[@MemberName='ControlTemplate']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/TemplatedPage.xml" path="//Member[@MemberName='ControlTemplate']/Docs/*" />
 		public ControlTemplate ControlTemplate
 		{
 			get { return (ControlTemplate)GetValue(ControlTemplateProperty); }
 			set { SetValue(ControlTemplateProperty, value); }
 		}
 
-		IList<Element> IControlTemplated.InternalChildren => InternalChildren;
+		IReadOnlyList<Element> IControlTemplated.InternalChildren => InternalChildren;
 
 		Element IControlTemplated.TemplateRoot { get; set; }
 
-		internal override void ComputeConstraintForView(View view)
+		protected override LayoutConstraint ComputeConstraintForView(View view)
 		{
 			LayoutOptions vOptions = view.VerticalOptions;
 			LayoutOptions hOptions = view.HorizontalOptions;
@@ -33,7 +34,7 @@ namespace Microsoft.Maui.Controls
 			if (hOptions.Alignment == LayoutAlignment.Fill)
 				result |= LayoutConstraint.HorizontallyFixed;
 
-			view.ComputedConstraint = result;
+			return result;
 		}
 
 		internal override void SetChildInheritedBindingContext(Element child, object context)
@@ -58,6 +59,11 @@ namespace Microsoft.Maui.Controls
 
 		protected virtual void OnApplyTemplate()
 		{
+			OnApplyTemplateImpl();
+		}
+		void OnApplyTemplateImpl()
+		{
+			Handler?.UpdateValue(nameof(IContentView.Content));
 		}
 
 		protected override void OnChildRemoved(Element child, int oldLogicalIndex)
@@ -67,5 +73,26 @@ namespace Microsoft.Maui.Controls
 		}
 
 		protected object GetTemplateChild(string name) => TemplateUtilities.GetTemplateChild(this, name);
+
+		bool IControlTemplated.RemoveAt(int index)
+		{
+			var ct = (IControlTemplated)this;
+			var view = ct.InternalChildren[index];
+			if (InternalChildren.Contains(view))
+			{
+				InternalChildren.Remove(view);
+				return true;
+			}
+
+			return RemoveLogicalChild(ct.InternalChildren[index], index);
+		}
+
+		void IControlTemplated.AddLogicalChild(Element element)
+		{
+			if (!InternalChildren.Contains(element))
+			{
+				InternalChildren.Add(element);
+			}
+		}
 	}
 }

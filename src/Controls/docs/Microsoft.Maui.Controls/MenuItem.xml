@@ -21,7 +21,6 @@
   </Interfaces>
   <Docs>
     <summary>Class that presents a menu item and associates it with a command.</summary>
-    <remarks>To be added.</remarks>
   </Docs>
   <Members>
     <Member MemberName=".ctor">
@@ -40,28 +39,9 @@
       <Parameters />
       <Docs>
         <summary>Intitializes a new <see cref="T:Microsoft.Maui.Controls.MenuItem" /> instance.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
-    <Member MemberName="AcceleratorProperty">
-      <MemberSignature Language="C#" Value="public static readonly Microsoft.Maui.Controls.BindableProperty AcceleratorProperty;" />
-      <MemberSignature Language="ILAsm" Value=".field public static initonly class Microsoft.Maui.Controls.BindableProperty AcceleratorProperty" />
-      <MemberSignature Language="DocId" Value="F:Microsoft.Maui.Controls.MenuItem.AcceleratorProperty" />
-      <MemberSignature Language="F#" Value=" staticval mutable AcceleratorProperty : Microsoft.Maui.Controls.BindableProperty" Usage="Microsoft.Maui.Controls.MenuItem.AcceleratorProperty" />
-      <MemberType>Field</MemberType>
-      <AssemblyInfo>
-        <AssemblyVersion>0.0.0.0</AssemblyVersion>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
-        <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
-      </AssemblyInfo>
-      <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
-      </ReturnValue>
-      <Docs>
-        <summary>Backing store for the accelerator attached property.</summary>
-        <remarks>To be added.</remarks>
-      </Docs>
-    </Member>
+
     <Member MemberName="class">
       <MemberSignature Language="C#" Value="public System.Collections.Generic.IList&lt;string&gt; class { get; set; }" />
       <MemberSignature Language="ILAsm" Value=".property instance class System.Collections.Generic.IList`1&lt;string&gt; class" />
@@ -74,16 +54,13 @@
       </AssemblyInfo>
       <Attributes>
         <Attribute>
-          <AttributeName>Microsoft.Maui.Controls.TypeConverter(typeof(Microsoft.Maui.Controls.ListStringTypeConverter))</AttributeName>
+          <AttributeName>System.ComponentModel.TypeConverter(typeof(Microsoft.Maui.Controls.ListStringTypeConverter))</AttributeName>
         </Attribute>
       </Attributes>
       <ReturnValue>
         <ReturnType>System.Collections.Generic.IList&lt;System.String&gt;</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Clicked">
@@ -105,7 +82,6 @@
       </ReturnValue>
       <Docs>
         <summary>Event that is raised when the menu item is clicked.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Command">
@@ -127,8 +103,6 @@
       </ReturnValue>
       <Docs>
         <summary>Gets or sets the command that is run when the menu is clicked.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="CommandParameter">
@@ -150,8 +124,6 @@
       </ReturnValue>
       <Docs>
         <summary>Gets or sets the parameter that is passed to the command.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="CommandParameterProperty">
@@ -173,7 +145,6 @@
       </ReturnValue>
       <Docs>
         <summary>Identifies the command parameter bound property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="CommandProperty">
@@ -195,33 +166,9 @@
       </ReturnValue>
       <Docs>
         <summary>Identifies the command bound property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
-    <Member MemberName="GetAccelerator">
-      <MemberSignature Language="C#" Value="public static Microsoft.Maui.Controls.Accelerator GetAccelerator (Microsoft.Maui.Controls.BindableObject bindable);" />
-      <MemberSignature Language="ILAsm" Value=".method public static hidebysig class Microsoft.Maui.Controls.Accelerator GetAccelerator(class Microsoft.Maui.Controls.BindableObject bindable) cil managed" />
-      <MemberSignature Language="DocId" Value="M:Microsoft.Maui.Controls.MenuItem.GetAccelerator(Microsoft.Maui.Controls.BindableObject)" />
-      <MemberSignature Language="F#" Value="static member GetAccelerator : Microsoft.Maui.Controls.BindableObject -&gt; Microsoft.Maui.Controls.Accelerator" Usage="Microsoft.Maui.Controls.MenuItem.GetAccelerator bindable" />
-      <MemberType>Method</MemberType>
-      <AssemblyInfo>
-        <AssemblyVersion>0.0.0.0</AssemblyVersion>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
-        <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
-      </AssemblyInfo>
-      <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.Accelerator</ReturnType>
-      </ReturnValue>
-      <Parameters>
-        <Parameter Name="bindable" Type="Microsoft.Maui.Controls.BindableObject" />
-      </Parameters>
-      <Docs>
-        <param name="bindable">The bindable object for which to retrieve the accelerator keys.</param>
-        <summary>Gets the accelerator for the specified bindable object.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
-      </Docs>
-    </Member>
+
     <Member MemberName="Icon">
       <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.FileImageSource Icon { get; set; }" />
       <MemberSignature Language="ILAsm" Value=".property instance class Microsoft.Maui.Controls.FileImageSource Icon" />
@@ -249,8 +196,6 @@
       </ReturnValue>
       <Docs>
         <summary>Gets or sets the icon for the menu item.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IconImageSource">
@@ -267,9 +212,6 @@
         <ReturnType>Microsoft.Maui.Controls.ImageSource</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IconImageSourceProperty">
@@ -286,8 +228,6 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IconProperty">
@@ -317,7 +257,6 @@
       </ReturnValue>
       <Docs>
         <summary>Identfies the icon bound property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IsDestructive">
@@ -371,7 +310,6 @@
       </ReturnValue>
       <Docs>
         <summary>Identifies the IsDestructive bound property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IsEnabled">
@@ -398,8 +336,6 @@
       </ReturnValue>
       <Docs>
         <summary>For internal use by the Microsoft.Maui.Controls platform.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IsEnabledProperty">
@@ -418,7 +354,6 @@
       </ReturnValue>
       <Docs>
         <summary>For internal use by the Microsoft.Maui.Controls platform.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IsEnabledPropertyName">
@@ -443,9 +378,6 @@
         <ReturnType>System.String</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="OnClicked">
@@ -468,34 +400,9 @@
       <Parameters />
       <Docs>
         <summary>When overridden by an app dev, implements behavior when the menu item is clicked.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
-    <Member MemberName="SetAccelerator">
-      <MemberSignature Language="C#" Value="public static void SetAccelerator (Microsoft.Maui.Controls.BindableObject bindable, Microsoft.Maui.Controls.Accelerator value);" />
-      <MemberSignature Language="ILAsm" Value=".method public static hidebysig void SetAccelerator(class Microsoft.Maui.Controls.BindableObject bindable, class Microsoft.Maui.Controls.Accelerator value) cil managed" />
-      <MemberSignature Language="DocId" Value="M:Microsoft.Maui.Controls.MenuItem.SetAccelerator(Microsoft.Maui.Controls.BindableObject,Microsoft.Maui.Controls.Accelerator)" />
-      <MemberSignature Language="F#" Value="static member SetAccelerator : Microsoft.Maui.Controls.BindableObject * Microsoft.Maui.Controls.Accelerator -&gt; unit" Usage="Microsoft.Maui.Controls.MenuItem.SetAccelerator (bindable, value)" />
-      <MemberType>Method</MemberType>
-      <AssemblyInfo>
-        <AssemblyVersion>0.0.0.0</AssemblyVersion>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
-        <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
-      </AssemblyInfo>
-      <ReturnValue>
-        <ReturnType>System.Void</ReturnType>
-      </ReturnValue>
-      <Parameters>
-        <Parameter Name="bindable" Type="Microsoft.Maui.Controls.BindableObject" />
-        <Parameter Name="value" Type="Microsoft.Maui.Controls.Accelerator" />
-      </Parameters>
-      <Docs>
-        <param name="bindable">The bindable object for which to set the accelerator keys.</param>
-        <param name="value">The new accelerator for the object.</param>
-        <summary>Sets the accelerator for the specified bindable object.</summary>
-        <remarks>To be added.</remarks>
-      </Docs>
-    </Member>
+
     <Member MemberName="StyleClass">
       <MemberSignature Language="C#" Value="public System.Collections.Generic.IList&lt;string&gt; StyleClass { get; set; }" />
       <MemberSignature Language="ILAsm" Value=".property instance class System.Collections.Generic.IList`1&lt;string&gt; StyleClass" />
@@ -508,7 +415,7 @@
       </AssemblyInfo>
       <Attributes>
         <Attribute>
-          <AttributeName>Microsoft.Maui.Controls.TypeConverter(typeof(Microsoft.Maui.Controls.ListStringTypeConverter))</AttributeName>
+          <AttributeName>System.ComponentModel.TypeConverter(typeof(Microsoft.Maui.Controls.ListStringTypeConverter))</AttributeName>
         </Attribute>
       </Attributes>
       <ReturnValue>
@@ -516,8 +423,6 @@
       </ReturnValue>
       <Docs>
         <summary>Sets the StyleClass of the generated <see cref="T:Microsoft.Maui.Controls.FlyoutItem" /> when used with <see cref="T:Microsoft.Maui.Controls.Shell" /></summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Text">
@@ -539,8 +444,6 @@
       </ReturnValue>
       <Docs>
         <summary>The text of the menu item.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="TextProperty">
@@ -562,7 +465,6 @@
       </ReturnValue>
       <Docs>
         <summary>Identifies the text bound property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Microsoft.Maui.Controls.IMenuItemController.Activate">
@@ -588,8 +490,6 @@
       </ReturnValue>
       <Parameters />
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
   </Members>

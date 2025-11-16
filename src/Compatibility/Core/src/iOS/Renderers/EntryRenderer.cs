@@ -286,6 +286,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			}
 		}
 
+		[PortHandler]
 		void UpdateAdjustsFontSizeToFitWidth()
 		{
 			Control.AdjustsFontSizeToFitWidth = Element.OnThisPlatform().AdjustsFontSizeToFitWidth();
@@ -297,9 +298,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			if (initialSize == CGSize.Empty)
 			{
 				NSString testString = new NSString("Tj");
-#pragma warning disable CA1416 // TODO: API has [UnsupportedOSPlatform("ios7.0")]
+#pragma warning disable CA1416, CA1422 // TODO: API has [UnsupportedOSPlatform("ios7.0")]
 				initialSize = testString.StringSize(Control.Font);
-#pragma warning restore CA1416
+#pragma warning restore CA1416, CA1422
 			}
 
 			Control.Font = Element.ToUIFont();
@@ -361,7 +362,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			else
 			{
 				// Using VSM color management; take whatever is in Element.PlaceholderColor
-				var color = targetColor == null ? _defaultPlaceholderColor : targetColor;
+				var color = targetColor ?? _defaultPlaceholderColor;
 				UpdateAttributedPlaceholder(formatted.ToNSAttributedString(Element.RequireFontManager(), defaultColor: color));
 			}
 
@@ -511,6 +512,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			return start;
 		}
 
+		[PortHandler]
 		void UpdateCursorColor()
 		{
 			var control = Control;

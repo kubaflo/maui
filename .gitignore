@@ -3,10 +3,8 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-.nuspec/**/*.dll
-.nuspec/**/*.dylib
-.nuspec/**/*.so
-.XamarinFormsVersionFile.txt
+.nuspec/
+.buildtasks/
 templatesTest/
 
 # User-specific files
@@ -15,6 +13,8 @@ templatesTest/
 *.user
 *.userosscache
 *.sln.docstates
+/src/Controls/tests/TestCases.HostApp/MauiProgram.user.cs
+SandboxAppium/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -45,6 +45,7 @@ bld/
 
 # Visual Studio 2017 auto generated files
 Generated\ Files/
+Generated/
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
@@ -187,9 +188,6 @@ publish/
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml
-# Note: Comment the next line if you want to checkin your web deploy settings,
-# but database connection strings (with potential passwords) will be unencrypted
-*.pubxml
 *.publishproj
 
 # Microsoft Azure Web App publish settings. Comment the next line if you want to
@@ -372,3 +370,16 @@ FodyWeavers.xsd
 .gradle/
 .idea/
 local.properties
+
+# Directory Build overrides for local setups
+Directory.Build.Override.props
+
+# Only the "snapshots" directory should be added to Git, not the "snapshots-diff" directory
+snapshots-diff/
+
+#install of dotnet version
+/.dotnet
+.dotnet
+temp
+.packages
+/src/Templates/.tempTemplateOutput

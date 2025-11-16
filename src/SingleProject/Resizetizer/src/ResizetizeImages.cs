@@ -4,20 +4,25 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Text;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
+using Microsoft.Maui.Resizetizer.Resources;
 
 namespace Microsoft.Maui.Resizetizer
 {
 	public class ResizetizeImages : MauiAsyncTask, ILogger
 	{
-		internal bool AllowVectorAdaptiveIcons = false;
-
 		[Required]
 		public string PlatformType { get; set; } = "android";
 
 		[Required]
 		public string IntermediateOutputPath { get; set; }
+
+		public bool ThrowsErrorOnDuplicateOutput { get; set; } = true;
+
+		public string DuplicateOutputErrorMessage { get; set; }
 
 		public string InputsFile { get; set; }
 
@@ -32,9 +37,8 @@ namespace Microsoft.Maui.Resizetizer
 
 		public override System.Threading.Tasks.Task ExecuteAsync()
 		{
-			Svg.SvgDocument.SkipGdiPlusCapabilityCheck = true;
-
-			var images = ResizeImageInfo.Parse(Images);
+			var inputImages = ResizeImageInfo.Parse(Images);
+			var images = RemoveDuplicates(inputImages);
 
 			var dpis = DpiPath.GetDpis(PlatformType);
 
@@ -85,23 +89,23 @@ namespace Microsoft.Maui.Resizetizer
 				}
 				catch (Exception ex)
 				{
-					LogWarning("MAUI0000", ex.ToString());
-
-					throw;
+					LogCodedError(ErrorCodes.ImageFilenameProcessingCode, ErrorMessages.ImageProcessing, string.Format(ErrorMessages.ImageFilenameProcessingError, img.Filename, ex.ToString()));
 				}
 			});
 
 			if (PlatformType == "tizen")
 			{
 				var tizenResourceXmlGenerator = new TizenResourceXmlGenerator(IntermediateOutputPath, Logger);
-				tizenResourceXmlGenerator.Generate();
+				var r = tizenResourceXmlGenerator.Generate();
+				if (r is not null)
+					resizedImages.Add(r);
 			}
 
 			var copiedResources = new List<TaskItem>();
 
 			foreach (var img in resizedImages)
 			{
-				var attr = new Dictionary<string, string>();
+				var attr = new Dictionary<string, string>(StringComparer.Ordinal);
 				string itemSpec = Path.GetFullPath(img.Filename);
 
 				// Fix the item spec to be relative for mac
@@ -113,11 +117,49 @@ namespace Microsoft.Maui.Resizetizer
 				attr.Add("_ResizetizerDpiScale", img.Dpi.Scale.ToString("0.0", CultureInfo.InvariantCulture));
 
 				copiedResources.Add(new TaskItem(itemSpec, attr));
+				// Make sure the file is not readonly
+				Utils.SetWriteable(itemSpec);
+				// force the date time so we never update an image if its not changed.
+				File.SetLastWriteTimeUtc(itemSpec, DateTime.UtcNow);
 			}
 
 			CopiedResources = copiedResources.ToArray();
 
 			return System.Threading.Tasks.Task.CompletedTask;
+		}
+
+		IEnumerable<ResizeImageInfo> RemoveDuplicates(IEnumerable<ResizeImageInfo> inputImages)
+		{
+			var imagesPairs = new Dictionary<string, ResizeImageInfo>();
+
+			var builder = new StringBuilder();
+			builder.Append(DuplicateOutputErrorMessage);
+
+			var hasDuplicates = false;
+			foreach (var image in inputImages)
+			{
+				if (imagesPairs.ContainsKey(image.OutputName))
+				{
+					if (hasDuplicates)
+						builder.Append(", ");
+
+					builder.Append($"{image.OutputName} ({image.ItemSpec})");
+
+					hasDuplicates = true;
+				}
+
+				imagesPairs[image.OutputName] = image;
+			}
+
+			if (hasDuplicates)
+			{
+				if (ThrowsErrorOnDuplicateOutput)
+					Log.LogError(builder.ToString());
+				else
+					Log.LogMessage(builder.ToString());
+			}
+
+			return imagesPairs.Values;
 		}
 
 		void ProcessAppIcon(ResizeImageInfo img, ConcurrentBag<ResizedImageInfo> resizedImages)
@@ -136,7 +178,7 @@ namespace Microsoft.Maui.Resizetizer
 
 				appIconName = appIconName.ToLowerInvariant();
 
-				var adaptiveIconGen = new AndroidAdaptiveIconGenerator(img, appIconName, IntermediateOutputPath, this, AllowVectorAdaptiveIcons);
+				var adaptiveIconGen = new AndroidAdaptiveIconGenerator(img, appIconName, IntermediateOutputPath, this);
 				var iconsGenerated = adaptiveIconGen.Generate();
 
 				foreach (var iconGenerated in iconsGenerated)
@@ -161,11 +203,6 @@ namespace Microsoft.Maui.Resizetizer
 
 				resizedImages.Add(windowsIconGen.Generate());
 			}
-			else if (PlatformType == "tizen")
-			{
-				var updator = new TizenIconManifestUpdater(appIconName, appIconDpis, this);
-				updator.Update();
-			}
 
 			LogDebugMessage($"Generating App Icon Bitmaps for DPIs");
 
@@ -177,12 +214,22 @@ namespace Microsoft.Maui.Resizetizer
 			{
 				LogDebugMessage($"App Icon: " + dpi);
 
-				var destination = Resizer.GetFileDestination(img, dpi, IntermediateOutputPath)
+				var destination = Resizer.GetRasterFileDestination(img, dpi, IntermediateOutputPath)
 					.Replace("{name}", appIconName);
+				var (sourceExists, sourceModified) = Utils.FileExists(img.Filename);
+				var (destinationExists, destinationModified) = Utils.FileExists(destination);
 
 				LogDebugMessage($"App Icon Destination: " + destination);
 
-				appTool.Resize(dpi, Path.ChangeExtension(destination, ".png"));
+				if (destinationModified > sourceModified)
+				{
+					Logger.Log($"Skipping `{img.Filename}` => `{destination}` file is up to date.");
+					resizedImages.Add(new ResizedImageInfo() { Dpi = dpi, Filename = destination });
+					continue;
+				}
+
+				var r = appTool.Resize(dpi, destination);
+				resizedImages.Add(r);
 			}
 		}
 
@@ -207,7 +254,7 @@ namespace Microsoft.Maui.Resizetizer
 
 			LogDebugMessage($"Copying {img.Filename}");
 
-			var r = resizer.CopyFile(originalScaleDpi, InputsFile, PlatformType.Equals("android", StringComparison.OrdinalIgnoreCase));
+			var r = resizer.CopyFile(originalScaleDpi, InputsFile);
 			resizedImages.Add(r);
 
 			LogDebugMessage($"Copied {img.Filename}");

@@ -24,6 +24,9 @@ namespace Maui.Controls.Sample.ViewModels
 			new SectionModel(typeof(ClipPage), "Clip",
 				"Defines the outline of the contents of an element."),
 
+			new SectionModel(typeof(ContextFlyoutPage), "ContextFlyout",
+				"Right-click context menu for controls."),
+
 			new SectionModel(typeof(ContentPageGallery), "ContentPage",
 				"Demonstrates using a Content Page."),
 
@@ -42,17 +45,14 @@ namespace Maui.Controls.Sample.ViewModels
 			new SectionModel(typeof(FocusPage), "Focus Management",
 				"Focus and onfocus views, detect when a view gains focus and more."),
 
-			new SectionModel(typeof(FocusPage), "Focus Management",
-				"Focus and onfocus views, detect when a view gains focus and more."),
-
 			new SectionModel(typeof(GesturesPage), "Gestures",
-				"Use tap, pinch, pan, swipe, and drag and drop gestures on View instances."),
+				"Use tap, pinch, pan, swipe, drag and drop, and pointer gestures on View instances."),
 
 			new SectionModel(typeof(InputTransparentPage), "InputTransparent",
 				"Manage whether a view participates in the user interaction cycle."),
 
 			new SectionModel(typeof(MenuBarPage), "MenuBar",
-				"Allows you to push and pop Modal Pages."),
+				"Menu Bar is a horizontal bar that shows menu items."),
 
 			new SectionModel(typeof(ModalPage), "Modal",
 				"Allows you to push and pop Modal Pages."),
@@ -69,8 +69,14 @@ namespace Maui.Controls.Sample.ViewModels
 			new SectionModel(typeof(ShadowPage), "Shadows",
  				"Shadow is one way a user perceives elevation. Light above an elevated object creates a shadow on the surface below. The higher the object, the larger and softer the shadow becomes."),
 
+			new SectionModel(typeof(ToolbarPage), "Toolbar",
+				"Toolbar items are buttons that are typically displayed in the navigation bar."),
+
 			new SectionModel(typeof(TransformationsPage), "Transformations",
 				"Apply scale transformations, rotation, etc. to a View."),
+
+			new SectionModel(typeof(WindowTitleBar), "Window Title Bar",
+				"Window Title Bar."),
 		};
 	}
 }

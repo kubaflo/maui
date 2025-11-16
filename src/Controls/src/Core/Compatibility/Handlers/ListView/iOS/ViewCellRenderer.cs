@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.ComponentModel;
 using Microsoft.Maui.Controls.Compatibility;
@@ -16,11 +17,13 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		{
 		}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		public override UITableViewCell GetCell(Cell item, UITableViewCell reusableCell, UITableView tv)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
-			Performance.Start(out string reference);
-
+#pragma warning disable CS0618 // Type or member is obsolete
 			var viewCell = (ViewCell)item;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			var cell = reusableCell as ViewTableCell;
 			if (cell == null)
@@ -30,21 +33,20 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			SetRealCell(item, cell);
 
-			WireUpForceUpdateSizeRequested(item, cell, tv);
-
 			UpdateBackground(cell, item);
 
 			SetAccessibility(cell, item);
 
-			Performance.Stop(reference);
 			return cell;
 		}
 
-		internal class ViewTableCell : UITableViewCell, INativeElementView
+		internal sealed class ViewTableCell : UITableViewCell, INativeElementView
 		{
-			IMauiContext MauiContext => _viewCell.FindMauiContext();
+			IMauiContext MauiContext => ViewCell?.FindMauiContext();
 			WeakReference<IPlatformViewHandler> _rendererRef;
-			ViewCell _viewCell;
+#pragma warning disable CS0618 // Type or member is obsolete
+			WeakReference<ViewCell> _viewCell;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			Element INativeElementView.Element => ViewCell;
 			internal bool SupressSeparator { get; set; }
@@ -54,15 +56,19 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			public ViewCell ViewCell
+#pragma warning restore CS0618 // Type or member is obsolete
 			{
-				get { return _viewCell; }
+				get => _viewCell?.GetTargetOrDefault();
 				set
 				{
-					if (_viewCell == value)
-						return;
-
-					_viewCell?.Handler?.DisconnectHandler();
+					if (_viewCell is not null)
+					{
+						if (_viewCell.TryGetTarget(out var viewCell) && viewCell == value)
+							return;
+						viewCell?.Handler?.DisconnectHandler();
+					}
 					UpdateCell(value);
 				}
 			}
@@ -70,31 +76,35 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			void UpdateIsEnabled(bool isEnabled)
 			{
 				UserInteractionEnabled = isEnabled;
-#pragma warning disable CA1416 // TODO: TextLabel is unsupported on: 'ios' 14.0 and later
+#pragma warning disable CA1416, CA1422 // TODO: TextLabel is unsupported on: 'ios' 14.0 and later
 				TextLabel.Enabled = isEnabled;
-#pragma warning restore C1416
+#pragma warning restore C1416, CA1422
 			}
 
 			void ViewCellPropertyChanged(object sender, PropertyChangedEventArgs e)
 			{
+#pragma warning disable CS0618 // Type or member is obsolete
 				var viewCell = (ViewCell)sender;
+#pragma warning restore CS0618 // Type or member is obsolete
 				var realCell = (ViewTableCell)GetRealCell(viewCell);
 
+#pragma warning disable CS0618 // Type or member is obsolete
 				if (e.PropertyName == Cell.IsEnabledProperty.PropertyName)
-					UpdateIsEnabled(_viewCell.IsEnabled);
+					UpdateIsEnabled(viewCell.IsEnabled);
+#pragma warning restore CS0618 // Type or member is obsolete
 			}
 
 			public override void LayoutSubviews()
 			{
-				Performance.Start(out string reference);
-
 				//This sets the content views frame.
 				base.LayoutSubviews();
 
 				//TODO: Determine how best to hide the separator line when there is an accessory on the cell
 				if (SupressSeparator && Accessory == UITableViewCellAccessory.None)
 				{
+#pragma warning disable CS0618 // Type or member is obsolete
 					var oldFrame = Frame;
+#pragma warning restore CS0618 // Type or member is obsolete
 					ContentView.Bounds = new RectangleF(oldFrame.Location, new SizeF(oldFrame.Width, oldFrame.Height + 0.5f));
 				}
 
@@ -106,14 +116,10 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					var contentFrame = ContentView.Frame;
 					handler.LayoutVirtualView(new RectangleF(0, 0, contentFrame.Width, contentFrame.Height));
 				}
-
-				Performance.Stop(reference);
 			}
 
 			public override SizeF SizeThatFits(SizeF size)
 			{
-				Performance.Start(out string reference);
-
 				if (!_rendererRef.TryGetTarget(out IPlatformViewHandler handler))
 					return base.SizeThatFits(size);
 
@@ -128,8 +134,6 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 				// make sure to add in the separator if needed
 				var finalheight = (float)result.Value.Height + (SupressSeparator ? 0f : 1f) / UIScreen.MainScreen.Scale;
-
-				Performance.Stop(reference);
 
 				return new SizeF(size.Width, finalheight);
 			}
@@ -148,12 +152,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 						_rendererRef = null;
 					}
 
-					if (_viewCell != null)
+#pragma warning disable CS0618 // Type or member is obsolete
+					if (ViewCell is ViewCell viewCell)
 					{
-						_viewCell.PropertyChanged -= ViewCellPropertyChanged;
-						_viewCell.View.MeasureInvalidated -= OnMeasureInvalidated;
-						SetRealCell(_viewCell, null);
+						viewCell.PropertyChanged -= ViewCellPropertyChanged;
+						viewCell.View.MeasureInvalidated -= OnMeasureInvalidated;
+						SetRealCell(viewCell, null);
 					}
+#pragma warning restore CS0618 // Type or member is obsolete
 					_viewCell = null;
 				}
 
@@ -164,42 +170,55 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			IPlatformViewHandler GetNewRenderer()
 			{
-				if (_viewCell.View == null)
-					throw new InvalidOperationException($"ViewCell must have a {nameof(_viewCell.View)}");
+#pragma warning disable CS0618 // Type or member is obsolete
+				if (ViewCell is not ViewCell viewCell || viewCell.View == null)
+					throw new InvalidOperationException($"ViewCell must have a {nameof(viewCell.View)}");
+#pragma warning restore CS0618 // Type or member is obsolete
 
-				var newRenderer = _viewCell.View.ToHandler(_viewCell.View.FindMauiContext());
+				var newRenderer = viewCell.View.ToHandler(viewCell.View.FindMauiContext());
 				_rendererRef = new WeakReference<IPlatformViewHandler>(newRenderer);
-				ContentView.AddSubview(newRenderer.PlatformView);
+				ContentView.ClearSubviews();
+				ContentView.AddSubview(newRenderer.VirtualView.ToPlatform());
 				return (IPlatformViewHandler)newRenderer;
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			void UpdateCell(ViewCell cell)
+#pragma warning restore CS0618 // Type or member is obsolete
 			{
-				Performance.Start(out string reference);
-
-				var oldCell = _viewCell;
-				if (oldCell != null)
+#pragma warning disable CS0618 // Type or member is obsolete
+				if (ViewCell is ViewCell oldCell)
 				{
 					BeginInvokeOnMainThread(oldCell.SendDisappearing);
 					oldCell.PropertyChanged -= ViewCellPropertyChanged;
 					oldCell.View.MeasureInvalidated -= OnMeasureInvalidated;
 				}
+#pragma warning restore CS0618 // Type or member is obsolete
 
-				_viewCell = cell;
-				_viewCell.PropertyChanged += ViewCellPropertyChanged;
-				BeginInvokeOnMainThread(_viewCell.SendAppearing);
+				if (cell is null)
+				{
+					_viewCell = null;
+					_rendererRef = null;
+					ContentView.ClearSubviews();
+					return;
+				}
+
+				_viewCell = new(cell);
+
+				cell.PropertyChanged += ViewCellPropertyChanged;
+				BeginInvokeOnMainThread(cell.SendAppearing);
 
 				IPlatformViewHandler renderer;
 				if (_rendererRef == null || !_rendererRef.TryGetTarget(out renderer))
 					renderer = GetNewRenderer();
 				else
 				{
-					var viewHandlerType = MauiContext.Handlers.GetHandlerType(_viewCell.View.GetType());
+					var viewHandlerType = MauiContext.Handlers.GetHandlerType(cell.View.GetType());
 					var reflectableType = renderer as System.Reflection.IReflectableType;
 					var rendererType = reflectableType != null ? reflectableType.GetTypeInfo().AsType() : (renderer != null ? renderer.GetType() : typeof(System.Object));
 
 					if (rendererType == viewHandlerType/* || (renderer is Platform.DefaultRenderer && type == null)*/)
-						renderer.SetVirtualView(this._viewCell.View);
+						renderer.SetVirtualView(cell.View);
 					else
 					{
 						//when cells are getting reused the element could be already set to another cell
@@ -209,9 +228,8 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					}
 				}
 
-				UpdateIsEnabled(_viewCell.IsEnabled);
-				_viewCell.View.MeasureInvalidated += OnMeasureInvalidated;
-				Performance.Stop(reference);
+				UpdateIsEnabled(cell.IsEnabled);
+				cell.View.MeasureInvalidated += OnMeasureInvalidated;
 			}
 
 			void OnMeasureInvalidated(object sender, EventArgs e)

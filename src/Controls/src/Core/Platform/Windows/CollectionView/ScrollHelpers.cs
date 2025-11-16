@@ -1,10 +1,11 @@
+#nullable disable
 using System;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Threading.Tasks;
-using Windows.Media.PlayTo;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Media.PlayTo;
 using UWPPoint = Windows.Foundation.Point;
 using UWPSize = Windows.Foundation.Size;
 
@@ -36,7 +37,7 @@ namespace Microsoft.Maui.Controls.Platform
 				return AdjustToEndVertical(point, itemSize, scrollViewer);
 			}
 
-			if (point.Y >= scrollViewer.VerticalOffset 
+			if (point.Y >= scrollViewer.VerticalOffset
 				&& point.Y < (scrollViewer.VerticalOffset + scrollViewer.ViewportHeight - itemSize.Height))
 			{
 				// The target is already in the viewport, no reason to scroll at all
@@ -53,7 +54,7 @@ namespace Microsoft.Maui.Controls.Platform
 				return AdjustToEndHorizontal(point, itemSize, scrollViewer);
 			}
 
-			if (point.X >= scrollViewer.HorizontalOffset 
+			if (point.X >= scrollViewer.HorizontalOffset
 				&& point.X < (scrollViewer.HorizontalOffset + scrollViewer.ViewportWidth - itemSize.Width))
 			{
 				// The target is already in the viewport, no reason to scroll at all
@@ -183,9 +184,16 @@ namespace Microsoft.Maui.Controls.Platform
 			return transform.TransformPoint(Zero);
 		}
 
-		internal static void JumpToIndexAsync(ListViewBase list, int index, ScrollToPosition scrollToPosition) 
+		internal static void JumpToIndexAsync(ListViewBase list, int index, ScrollToPosition scrollToPosition)
 		{
 			var scrollViewer = list.GetFirstDescendant<ScrollViewer>();
+
+			if (scrollViewer is null)
+			{
+				// If ScrollViewer is not found, do nothing.
+				return;
+			}
+
 			var con = list.ContainerFromIndex(index);
 			if (con is UIElement uIElement)
 			{
@@ -200,7 +208,24 @@ namespace Microsoft.Maui.Controls.Platform
 
 		public static async Task JumpToItemAsync(ListViewBase list, object targetItem, ScrollToPosition scrollToPosition)
 		{
+			if (!list.IsLoaded)
+			{
+				list.OnLoaded(async () =>
+				{
+					// If the ListView is not loaded, wait for it to load and reinvoke the JumpToItem.
+					await JumpToItemAsync(list, targetItem, scrollToPosition);
+				});
+
+				return;
+			}
+
 			var scrollViewer = list.GetFirstDescendant<ScrollViewer>();
+
+			if (scrollViewer is null)
+			{
+				// If ScrollViewer is not found, do nothing.
+				return;
+			}
 
 			var tcs = new TaskCompletionSource<object>();
 			Func<Task> adjust = null;
@@ -222,10 +247,11 @@ namespace Microsoft.Maui.Controls.Platform
 
 				tcs.TrySetResult(null);
 			}
-			
+
 			try
 			{
-				scrollViewer.ViewChanged += ViewChanged;
+				if (scrollViewer != null)
+					scrollViewer.ViewChanged += ViewChanged;
 
 				switch (scrollToPosition)
 				{
@@ -249,7 +275,8 @@ namespace Microsoft.Maui.Controls.Platform
 			}
 			finally
 			{
-				scrollViewer.ViewChanged -= ViewChanged;
+				if (scrollViewer != null)
+					scrollViewer.ViewChanged -= ViewChanged;
 			}
 		}
 
@@ -268,6 +295,17 @@ namespace Microsoft.Maui.Controls.Platform
 
 		public static async Task AnimateToItemAsync(ListViewBase list, object targetItem, ScrollToPosition scrollToPosition)
 		{
+			if (!list.IsLoaded)
+			{
+				list.OnLoaded(async () =>
+				{
+					// If the ListView is not loaded, wait for it to load and reinvoke the AnimateToItem.
+					await AnimateToItemAsync(list, targetItem, scrollToPosition);
+				});
+
+				return;
+			}
+
 			var scrollViewer = list.GetFirstDescendant<ScrollViewer>();
 
 			if (scrollViewer == null)

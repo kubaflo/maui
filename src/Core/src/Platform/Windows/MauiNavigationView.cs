@@ -1,15 +1,9 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
-using Windows.Foundation;
-using WBrush = Microsoft.UI.Xaml.Media.Brush;
 using WGridLength = Microsoft.UI.Xaml.GridLength;
 using WThickness = Microsoft.UI.Xaml.Thickness;
-using WRectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
-using System.Collections.Generic;
-using Microsoft.UI.Xaml.Media;
-using System.Collections;
 
 namespace Microsoft.Maui.Platform
 {
@@ -18,6 +12,8 @@ namespace Microsoft.Maui.Platform
 	[Microsoft.UI.Xaml.Data.Bindable]
 	public partial class MauiNavigationView : NavigationView
 	{
+		private int _currentFlyoutBehavior = -1;
+
 		internal StackPanel? TopNavArea { get; private set; }
 		internal ItemsRepeater? TopNavMenuItemsHost { get; private set; }
 		internal Grid? PaneContentGrid { get; private set; }
@@ -69,6 +65,15 @@ namespace Microsoft.Maui.Platform
 			}
 		}
 
+		[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields, typeof(ScrollViewer))]
+		[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields, typeof(Grid))]
+		[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields, typeof(StackPanel))]
+		[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields, typeof(SplitView))]
+		[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields, typeof(ItemsRepeater))]
+		[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields, typeof(Button))]
+		[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields, typeof(ColumnDefinition))]
+		[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields, typeof(RowDefinition))]
+		[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields, typeof(ContentControl))]
 		protected override void OnApplyTemplate()
 		{
 			base.OnApplyTemplate();
@@ -93,7 +98,6 @@ namespace Microsoft.Maui.Platform
 			PaneHeaderContentBorderRow = (RowDefinition)GetTemplateChild("PaneHeaderContentBorderRow");
 
 			UpdateNavigationBackButtonSize();
-			UpdateNavigationViewContentMargin();
 			UpdateNavigationViewBackButtonMargin();
 			UpdateNavigationViewButtonHolderGridMargin();
 			OnApplyTemplateCore();
@@ -130,6 +134,12 @@ namespace Microsoft.Maui.Platform
 			// It causes the content to not be flush up against the title bar
 			PaneContentGrid.Margin = new WThickness(0, 0, 0, 0);
 			UpdateMenuItemsContainerHeight();
+			RootSplitView.CornerRadius = new UI.Xaml.CornerRadius(0);
+			CornerRadius = new UI.Xaml.CornerRadius(0);
+
+			// On WinAppSDK 1.7, it seems that if the PaneContentGrid width is not explicitly set,
+			// it takes on the desired width of its child.
+			PaneContentGrid.Width = OpenPaneLength;
 		}
 
 
@@ -158,6 +168,39 @@ namespace Microsoft.Maui.Platform
 
 		private protected virtual void OnApplyTemplateCore()
 		{
+		}
+
+		internal void UpdatePaneDisplayModeFromFlyoutBehavior(FlyoutBehavior flyoutBehavior)
+		{
+			if (_currentFlyoutBehavior == (int)flyoutBehavior)
+			{
+				return;
+			}
+
+			_currentFlyoutBehavior = (int)flyoutBehavior;
+			switch (flyoutBehavior)
+			{
+				case FlyoutBehavior.Flyout:
+					IsPaneToggleButtonVisible = true;
+					// WinUI bug: Setting PaneDisplayMode to the same value and updating SelectedItem during navigation
+					// causes the selection and selected item indicator to not update correctly.
+					// Workaround: Only set PaneDisplayMode when the value actually changes.
+					// Related: https://github.com/microsoft/microsoft-ui-xaml/issues/9812
+					if (PaneDisplayMode != NavigationViewPaneDisplayMode.LeftMinimal)
+					{
+						PaneDisplayMode = NavigationViewPaneDisplayMode.LeftMinimal;
+					}
+					break;
+				case FlyoutBehavior.Locked:
+					PaneDisplayMode = NavigationViewPaneDisplayMode.Left;
+					IsPaneToggleButtonVisible = false;
+					break;
+				case FlyoutBehavior.Disabled:
+					PaneDisplayMode = NavigationViewPaneDisplayMode.LeftMinimal;
+					IsPaneToggleButtonVisible = false;
+					IsPaneOpen = false;
+					break;
+			}
 		}
 
 		#region Toolbar
@@ -227,31 +270,9 @@ namespace Microsoft.Maui.Platform
 		}
 		#endregion
 
-		#region NavigationViewContentMargin
-		internal static readonly DependencyProperty NavigationViewContentMarginProperty
-			= DependencyProperty.Register(nameof(NavigationViewContentMargin), typeof(WThickness), typeof(MauiNavigationView),
-				new PropertyMetadata(new WThickness(), OnNavigationViewContentMarginChanged));
-
-		internal WThickness NavigationViewContentMargin
-		{
-			get => (WThickness)GetValue(NavigationViewContentMarginProperty);
-			set => SetValue(NavigationViewContentMarginProperty, value);
-		}
-
-		static void OnNavigationViewContentMarginChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-		{
-			((MauiNavigationView)d).UpdateNavigationViewContentMargin();
-		}
-
-		void UpdateNavigationViewContentMargin()
-		{
-			if (ContentGrid != null)
-				ContentGrid.Margin = NavigationViewContentMargin;
-		}
-		#endregion
-
 		#region NavigationBackButtonHeight/Width
-		internal static double DefaultNavigationBackButtonHeight => (double)Application.Current.Resources["NavigationBackButtonHeight"];
+		// Note: this value is normaly 36, but we're using 32 to match the default titlebar height
+		internal static double DefaultNavigationBackButtonHeight => 32; // (double)Application.Current.Resources["NavigationBackButtonHeight"];
 		internal static double DefaultNavigationBackButtonWidth => (double)Application.Current.Resources["NavigationBackButtonWidth"];
 
 		internal static readonly DependencyProperty NavigationBackButtonHeightProperty
@@ -317,7 +338,8 @@ namespace Microsoft.Maui.Platform
 		#endregion
 
 		#region PaneToggleButton
-		internal static double DefaultPaneToggleButtonHeight => (double)Application.Current.Resources["PaneToggleButtonHeight"];
+		// Note: this value is normaly 36, but we're using 32 to match the default titlebar height
+		internal static double DefaultPaneToggleButtonHeight => 32; // (double)Application.Current.Resources["PaneToggleButtonHeight"];
 
 		// The resource is set to 40 but it appears that the NavigationView manually sets the width to 48
 		internal static double DefaultPaneToggleButtonWidth => 48;//(double)Application.Current.Resources["PaneToggleButtonWidth"];

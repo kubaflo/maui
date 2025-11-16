@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using Android.OS;
 using Android.Runtime;
@@ -5,8 +6,10 @@ using Android.Views;
 using Android.Views.Animations;
 using AndroidX.AppCompat.Widget;
 using AndroidX.CoordinatorLayout.Widget;
+using AndroidX.Core.View;
 using AndroidX.Fragment.App;
 using Google.Android.Material.AppBar;
+using Microsoft.Maui.Platform;
 using AndroidAnimation = Android.Views.Animations.Animation;
 using AnimationSet = Android.Views.Animations.AnimationSet;
 using AToolbar = AndroidX.AppCompat.Widget.Toolbar;
@@ -64,13 +67,13 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		IShellToolbarAppearanceTracker _appearanceTracker;
 		Page _page;
 		IPlatformViewHandler _viewhandler;
-		AView _root;
+		CoordinatorLayout _root;
 		ShellPageContainer _shellPageContainer;
 		ShellContent _shellContent;
 		AToolbar _toolbar;
 		IShellToolbarTracker _toolbarTracker;
 		bool _disposed;
-		IMauiContext MauiContext => _shellContext.Shell.Handler.MauiContext;
+		bool _destroyed;
 
 		public ShellContentFragment(IShellContext shellContext, ShellContent shellContent)
 		{
@@ -112,7 +115,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			// This is very strange what we are about to do. For whatever reason if you take this animation
 			// and wrap it into an animation set it will have a 1 frame glitch at the start where the
-			// fragment shows at the final position. That sucks. So instead we reach into the returned
+			// fragment shows at the final position. So instead we reach into the returned
 			// set and hook up to the first item. This means any animation we use depends on the first item
 			// finishing at the end of the animation.
 
@@ -133,7 +136,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			_root = inflater.Inflate(Controls.Resource.Layout.shellcontent, null).JavaCast<CoordinatorLayout>();
 
-			var shellContentMauiContext = MauiContext.MakeScoped(layoutInflater: inflater, fragmentManager: ChildFragmentManager);
+			MauiWindowInsetListener.SetupViewWithLocalListener(_root);
+
+			var shellContentMauiContext = _shellContext.Shell.Handler.MauiContext.MakeScoped(layoutInflater: inflater, fragmentManager: ChildFragmentManager);
 
 			Maui.IElement parentElement = (_shellContent as Maui.IElement) ?? _page;
 			var shellToolbar = new Toolbar(parentElement);
@@ -167,7 +172,24 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		void Destroy()
 		{
-			((IShellController)_shellContext.Shell).RemoveAppearanceObserver(this);
+			if (_destroyed)
+				return;
+
+			_destroyed = true;
+
+			// If the user taps very quickly on back button multiple times to pop a page,
+			// the app enters background state in the middle of the animation causing the fragment to be destroyed without completing the animation.
+			// That'll cause `IAnimationListener.onAnimationEnd` to not be called, so we need to call it manually if something is still subscribed to the event
+			// to avoid the navigation `TaskCompletionSource` to be stuck forever.
+			AnimationFinished?.Invoke(this, EventArgs.Empty);
+
+			// Clean up the coordinator layout and local listener first
+			if (_root is not null)
+			{
+				MauiWindowInsetListener.RemoveViewWithLocalListener(_root);
+			}
+
+			(_shellContext?.Shell as IShellController)?.RemoveAppearanceObserver(this);
 
 			if (_shellContent != null)
 			{

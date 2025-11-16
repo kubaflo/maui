@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Rocks;
@@ -9,61 +8,65 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 {
 	class TypeRefComparer : IEqualityComparer<TypeReference>
 	{
-		static string GetAssembly(TypeReference typeRef)
-		{
-			if (typeRef.Scope is ModuleDefinition md)
-				return md.Assembly.FullName;
-			if (typeRef.Scope is AssemblyNameReference anr)
-				return anr.FullName;
-			throw new ArgumentOutOfRangeException(nameof(typeRef));
-		}
-
 		public bool Equals(TypeReference x, TypeReference y)
 		{
-			if (x == null)
-				return y == null;
-			if (y == null)
-				return x == null;
+			if (x == null && y == null)
+				return true;
+			if (x == null || y == null)
+				return false;
 
-			//strip the leading `&` as byref typered fullnames have a `&`
+			//strip the leading `&` as byref typeref fullnames have a `&`
 			var xname = x.FullName.EndsWith("&", StringComparison.InvariantCulture) ? x.FullName.Substring(0, x.FullName.Length - 1) : x.FullName;
 			var yname = y.FullName.EndsWith("&", StringComparison.InvariantCulture) ? y.FullName.Substring(0, y.FullName.Length - 1) : y.FullName;
 			if (xname != yname)
 				return false;
-			var xasm = GetAssembly(x);
-			var yasm = GetAssembly(y);
+			var xasm = GetAssemblyName(x);
+			var yasm = GetAssemblyName(y);
 
 			//standard types comes from either mscorlib. System.Runtime or netstandard. Assume they are equivalent
-			if ((xasm.StartsWith("System.Runtime", StringComparison.Ordinal)
-					|| xasm.StartsWith("System", StringComparison.Ordinal)
-					|| xasm.StartsWith("mscorlib", StringComparison.Ordinal)
-					|| xasm.StartsWith("netstandard", StringComparison.Ordinal)
-					|| xasm.StartsWith("System.Xml", StringComparison.Ordinal))
-				&& (yasm.StartsWith("System.Runtime", StringComparison.Ordinal)
-					|| yasm.StartsWith("System", StringComparison.Ordinal)
-					|| yasm.StartsWith("mscorlib", StringComparison.Ordinal)
-					|| yasm.StartsWith("netstandard", StringComparison.Ordinal)
-					|| yasm.StartsWith("System.Xml", StringComparison.Ordinal)))
+			if (IsSystemAssembly(xasm) && IsSystemAssembly(yasm))
 				return true;
 			return xasm == yasm;
 		}
 
 		public int GetHashCode(TypeReference obj)
 		{
-			return $"{GetAssembly(obj)}//{obj.FullName}".GetHashCode();
+			var assemblyName = GetAssemblyName(obj);
+			if (IsSystemAssembly(assemblyName))
+				return obj.FullName.GetHashCode();
+			return assemblyName.GetHashCode() ^ obj.FullName.GetHashCode();
+		}
+
+		static string GetAssemblyName(TypeReference typeRef)
+		{
+			if (typeRef.Scope is ModuleDefinition md)
+				return md.Assembly.Name.Name;
+			if (typeRef.Scope is AssemblyNameReference anr)
+				return anr.Name;
+			throw new ArgumentOutOfRangeException(nameof(typeRef));
+		}
+
+		bool IsSystemAssembly(string assemblyName)
+		{
+			return assemblyName.StartsWith("System", StringComparison.Ordinal)
+				|| assemblyName.StartsWith("mscorlib", StringComparison.Ordinal)
+				|| assemblyName.StartsWith("netstandard", StringComparison.Ordinal)
+				|| assemblyName.StartsWith("System.Runtime", StringComparison.Ordinal)
+				|| assemblyName.StartsWith("System.Xml", StringComparison.Ordinal)
+				|| assemblyName.StartsWith("System.Private.CoreLib", StringComparison.Ordinal);
 		}
 
 		static TypeRefComparer s_default;
-		public static TypeRefComparer Default => s_default ?? (s_default = new TypeRefComparer());
+		public static TypeRefComparer Default => s_default ??= new TypeRefComparer();
 	}
 
 	static class TypeReferenceExtensions
 	{
-		public static PropertyDefinition GetProperty(this TypeReference typeRef, Func<PropertyDefinition, bool> predicate,
+		public static PropertyDefinition GetProperty(this TypeReference typeRef, XamlCache cache, Func<PropertyDefinition, bool> predicate,
 			out TypeReference declaringTypeRef)
 		{
 			declaringTypeRef = typeRef;
-			var typeDef = typeRef.ResolveCached();
+			var typeDef = typeRef.ResolveCached(cache);
 			var properties = typeDef.Properties.Where(predicate);
 			if (properties.Any())
 				return properties.Single();
@@ -71,7 +74,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			{
 				foreach (var face in typeDef.Interfaces)
 				{
-					var p = face.InterfaceType.ResolveGenericParameters(typeRef).GetProperty(predicate, out var interfaceDeclaringTypeRef);
+					var p = face.InterfaceType.ResolveGenericParameters(typeRef).GetProperty(cache, predicate, out var interfaceDeclaringTypeRef);
 					if (p != null)
 					{
 						declaringTypeRef = interfaceDeclaringTypeRef;
@@ -81,27 +84,27 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			}
 			if (typeDef.BaseType == null || typeDef.BaseType.FullName == "System.Object")
 				return null;
-			return typeDef.BaseType.ResolveGenericParameters(typeRef).GetProperty(predicate, out declaringTypeRef);
+			return typeDef.BaseType.ResolveGenericParameters(typeRef).GetProperty(cache, predicate, out declaringTypeRef);
 		}
 
-		public static EventDefinition GetEvent(this TypeReference typeRef, Func<EventDefinition, bool> predicate,
+		public static EventDefinition GetEvent(this TypeReference typeRef, XamlCache cache, Func<EventDefinition, bool> predicate,
 			out TypeReference declaringTypeRef)
 		{
 			declaringTypeRef = typeRef;
-			var typeDef = typeRef.ResolveCached();
+			var typeDef = typeRef.ResolveCached(cache);
 			var events = typeDef.Events.Where(predicate);
 			if (events.Any())
 			{
 				var ev = events.Single();
-				return ev.ResolveGenericEvent(declaringTypeRef);
+				return ev.ResolveGenericEvent(cache, declaringTypeRef);
 			}
 			if (typeDef.BaseType == null || typeDef.BaseType.FullName == "System.Object")
 				return null;
-			return typeDef.BaseType.ResolveGenericParameters(typeRef).GetEvent(predicate, out declaringTypeRef);
+			return typeDef.BaseType.ResolveGenericParameters(typeRef).GetEvent(cache, predicate, out declaringTypeRef);
 		}
 
 		//this resolves generic eventargs (https://bugzilla.xamarin.com/show_bug.cgi?id=57574)
-		static EventDefinition ResolveGenericEvent(this EventDefinition eventDef, TypeReference declaringTypeRef)
+		static EventDefinition ResolveGenericEvent(this EventDefinition eventDef, XamlCache cache, TypeReference declaringTypeRef)
 		{
 			if (eventDef == null)
 				throw new ArgumentNullException(nameof(eventDef));
@@ -109,7 +112,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 				throw new ArgumentNullException(nameof(declaringTypeRef));
 			if (!eventDef.EventType.IsGenericInstance)
 				return eventDef;
-			if (eventDef.EventType.ResolveCached().FullName != "System.EventHandler`1")
+			if (eventDef.EventType.ResolveCached(cache).FullName != "System.EventHandler`1")
 				return eventDef;
 
 			var git = eventDef.EventType as GenericInstanceType;
@@ -121,37 +124,37 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			return eventDef;
 
 		}
-		public static FieldDefinition GetField(this TypeReference typeRef, Func<FieldDefinition, bool> predicate,
+		public static FieldDefinition GetField(this TypeReference typeRef, XamlCache cache, Func<FieldDefinition, bool> predicate,
 			out TypeReference declaringTypeRef)
 		{
 			declaringTypeRef = typeRef;
-			var typeDef = typeRef.ResolveCached();
+			var typeDef = typeRef.ResolveCached(cache);
 			var bp = typeDef.Fields.Where
 				(predicate);
 			if (bp.Any())
 				return bp.Single();
 			if (typeDef.BaseType == null || typeDef.BaseType.FullName == "System.Object")
 				return null;
-			return typeDef.BaseType.ResolveGenericParameters(typeRef).GetField(predicate, out declaringTypeRef);
+			return typeDef.BaseType.ResolveGenericParameters(typeRef).GetField(cache, predicate, out declaringTypeRef);
 		}
 
-		public static bool ImplementsInterface(this TypeReference typeRef, TypeReference @interface)
+		public static bool ImplementsInterface(this TypeReference typeRef, XamlCache cache, TypeReference @interface)
 		{
-			var typeDef = typeRef.ResolveCached();
+			var typeDef = typeRef.ResolveCached(cache);
 			if (typeDef.Interfaces.Any(tr => tr.InterfaceType.FullName == @interface.FullName))
 				return true;
 			var baseTypeRef = typeDef.BaseType;
 			if (baseTypeRef != null && baseTypeRef.FullName != "System.Object")
-				return baseTypeRef.ImplementsInterface(@interface);
+				return baseTypeRef.ImplementsInterface(cache, @interface);
 			return false;
 		}
 
-		public static bool ImplementsGenericInterface(this TypeReference typeRef, string @interface,
+		public static bool ImplementsGenericInterface(this TypeReference typeRef, XamlCache cache, string @interface,
 			out GenericInstanceType interfaceReference, out IList<TypeReference> genericArguments)
 		{
 			interfaceReference = null;
 			genericArguments = null;
-			var typeDef = typeRef.ResolveCached();
+			var typeDef = typeRef.ResolveCached(cache);
 			InterfaceImplementation iface;
 			if ((iface = typeDef.Interfaces.FirstOrDefault(tr =>
 							tr.InterfaceType.FullName.StartsWith(@interface, StringComparison.Ordinal) &&
@@ -163,7 +166,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			}
 			var baseTypeRef = typeDef.BaseType;
 			if (baseTypeRef != null && baseTypeRef.FullName != "System.Object")
-				return baseTypeRef.ResolveGenericParameters(typeRef).ImplementsGenericInterface(@interface, out interfaceReference, out genericArguments);
+				return baseTypeRef.ResolveGenericParameters(typeRef).ImplementsGenericInterface(cache, @interface, out interfaceReference, out genericArguments);
 			return false;
 		}
 
@@ -184,26 +187,26 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			"System.Collections.Generic.IReadOnlyList`1",
 		};
 
-		public static bool InheritsFromOrImplements(this TypeReference typeRef, TypeReference baseClass)
+		public static bool InheritsFromOrImplements(this TypeReference typeRef, XamlCache cache, TypeReference baseClass)
 		{
 			if (typeRef is GenericInstanceType genericInstance)
 			{
 				if (baseClass is GenericInstanceType genericInstanceBaseClass &&
 						TypeRefComparer.Default.Equals(genericInstance.ElementType, genericInstanceBaseClass.ElementType))
 				{
-					foreach (var parameter in genericInstanceBaseClass.ElementType.ResolveCached().GenericParameters)
+					foreach (var parameter in genericInstanceBaseClass.ElementType.ResolveCached(cache).GenericParameters)
 					{
 						var argument = genericInstance.GenericArguments[parameter.Position];
 						var baseClassArgument = genericInstanceBaseClass.GenericArguments[parameter.Position];
 
 						if (parameter.IsCovariant)
 						{
-							if (!argument.InheritsFromOrImplements(baseClassArgument))
+							if (!argument.InheritsFromOrImplements(cache, baseClassArgument))
 								return false;
 						}
 						else if (parameter.IsContravariant)
 						{
-							if (!baseClassArgument.InheritsFromOrImplements(argument))
+							if (!baseClassArgument.InheritsFromOrImplements(cache, argument))
 								return false;
 						}
 						else if (!TypeRefComparer.Default.Equals(argument, baseClassArgument))
@@ -223,11 +226,11 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 				if (typeRef.IsArray)
 				{
 					var array = (ArrayType)typeRef;
-					var arrayType = typeRef.ResolveCached();
+					var arrayType = typeRef.ResolveCached(cache);
 					if (arrayInterfaces.Contains(baseClass.FullName))
 						return true;
 					if (array.IsVector &&  //generic interfaces are not implemented on multidimensional arrays
-						arrayGenericInterfaces.Contains(baseClass.ResolveCached().FullName) &&
+						arrayGenericInterfaces.Contains(baseClass.ResolveCached(cache).FullName) &&
 						baseClass.IsGenericInstance &&
 						TypeRefComparer.Default.Equals((baseClass as GenericInstanceType).GenericArguments[0], arrayType))
 						return true;
@@ -235,49 +238,48 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 				}
 			}
 
-			if (typeRef.IsValueType)
-				return false;
-
 			if (typeRef.FullName == "System.Object")
 				return false;
-			var typeDef = typeRef.ResolveCached();
-			if (typeDef.Interfaces.Any(ir => ir.InterfaceType.ResolveGenericParameters(typeRef).InheritsFromOrImplements(baseClass)))
+			var typeDef = typeRef.ResolveCached(cache);
+			if (typeDef.Interfaces.Any(ir => ir.InterfaceType.ResolveGenericParameters(typeRef).InheritsFromOrImplements(cache, baseClass)))
 				return true;
 			if (typeDef.BaseType == null)
 				return false;
 
 			typeRef = typeDef.BaseType.ResolveGenericParameters(typeRef);
-			return typeRef.InheritsFromOrImplements(baseClass);
+			return typeRef.InheritsFromOrImplements(cache, baseClass);
 		}
 
-		static CustomAttribute GetCustomAttribute(this TypeReference typeRef, TypeReference attribute)
+		static CustomAttribute GetCustomAttribute(this TypeReference typeRef, XamlCache cache, TypeReference attribute)
 		{
-			var typeDef = typeRef.ResolveCached();
+			var typeDef = cache.Resolve(typeRef);
 			//FIXME: avoid string comparison. make sure the attribute TypeRef is the same one
 			var attr = typeDef.CustomAttributes.SingleOrDefault(ca => ca.AttributeType.FullName == attribute.FullName);
 			if (attr != null)
 				return attr;
 			var baseTypeRef = typeDef.BaseType;
 			if (baseTypeRef != null && baseTypeRef.FullName != "System.Object")
-				return baseTypeRef.GetCustomAttribute(attribute);
+				return baseTypeRef.GetCustomAttribute(cache, attribute);
 			return null;
 		}
 
-		public static CustomAttribute GetCustomAttribute(this TypeReference typeRef, ModuleDefinition module, (string assemblyName, string clrNamespace, string typeName) attributeType)
+		public static CustomAttribute GetCustomAttribute(this TypeReference typeRef, XamlCache cache, ModuleDefinition module, (string assemblyName, string clrNamespace, string typeName) attributeType)
 		{
-			return typeRef.GetCustomAttribute(module.ImportReference(attributeType));
+			return typeRef.GetCustomAttribute(cache, module.ImportReference(cache, attributeType));
 		}
 
-		public static IEnumerable<Tuple<MethodDefinition, TypeReference>> GetMethods(this TypeReference typeRef,
+		public static IEnumerable<Tuple<MethodDefinition, TypeReference>> GetMethods(this TypeReference typeRef, XamlCache cache,
 			Func<MethodDefinition, bool> predicate, ModuleDefinition module)
 		{
-			return typeRef.GetMethods((md, tr) => predicate(md), module);
+			return typeRef.GetMethods(cache, (md, tr) => predicate(md), module);
 		}
 
-		public static IEnumerable<Tuple<MethodDefinition, TypeReference>> GetMethods(this TypeReference typeRef,
+		public static IEnumerable<Tuple<MethodDefinition, TypeReference>> GetMethods(this TypeReference typeRef, XamlCache cache,
 			Func<MethodDefinition, TypeReference, bool> predicate, ModuleDefinition module)
 		{
-			var typeDef = typeRef.ResolveCached();
+			var typeDef = typeRef.ResolveCached(cache);
+			if (typeDef is null)
+				yield break;
 			foreach (var method in typeDef.Methods.Where(md => predicate(md, typeRef)))
 				yield return new Tuple<MethodDefinition, TypeReference>(method, typeRef);
 			if (typeDef.IsInterface)
@@ -290,7 +292,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 						foreach (var arg in ((GenericInstanceType)typeRef).GenericArguments)
 							((GenericInstanceType)face.InterfaceType).GenericArguments[i++] = module.ImportReference(arg);
 					}
-					foreach (var tuple in face.InterfaceType.GetMethods(predicate, module))
+					foreach (var tuple in face.InterfaceType.GetMethods(cache, predicate, module))
 						yield return tuple;
 				}
 				yield break;
@@ -298,20 +300,20 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			if (typeDef.BaseType == null || typeDef.BaseType.FullName == "System.Object")
 				yield break;
 			var baseType = typeDef.BaseType.ResolveGenericParameters(typeRef);
-			foreach (var tuple in baseType.GetMethods(predicate, module))
+			foreach (var tuple in baseType.GetMethods(cache, predicate, module))
 				yield return tuple;
 		}
 
-		public static MethodReference GetImplicitOperatorTo(this TypeReference fromType, TypeReference toType, ModuleDefinition module)
+		public static MethodReference GetImplicitOperatorTo(this TypeReference fromType, XamlCache cache, TypeReference toType, ModuleDefinition module)
 		{
 			if (TypeRefComparer.Default.Equals(fromType, toType))
 				return null;
 
-			var implicitOperatorsOnFromType = fromType.GetMethods(md => md.IsPublic
+			var implicitOperatorsOnFromType = fromType.GetMethods(cache, md => md.IsPublic
 																		&& md.IsStatic
 																		&& md.IsSpecialName
 																		&& md.Name == "op_Implicit", module);
-			var implicitOperatorsOnToType = toType.GetMethods(md => md.IsPublic
+			var implicitOperatorsOnToType = toType.GetMethods(cache, md => md.IsPublic
 																	&& md.IsStatic
 																	&& md.IsSpecialName
 																	&& md.Name == "op_Implicit", module);
@@ -327,10 +329,10 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 					var returnType = castDef.ReturnType;
 					if (returnType.IsGenericParameter)
 						returnType = ((GenericInstanceType)opDeclTypeRef).GenericArguments[((GenericParameter)returnType).Position];
-					if (!returnType.InheritsFromOrImplements(toType))
+					if (!returnType.InheritsFromOrImplements(cache, toType))
 						continue;
 					var paramType = cast.Parameters[0].ParameterType.ResolveGenericParameters(castDef);
-					if (!fromType.InheritsFromOrImplements(paramType))
+					if (!fromType.InheritsFromOrImplements(cache, paramType))
 						continue;
 					return castDef;
 				}
@@ -412,8 +414,9 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			List<TypeReference> args = new List<TypeReference>();
 			for (var i = 0; i < self.GenericArguments.Count; i++)
 			{
-				var genericParameter = self.GenericArguments[i] as GenericParameter;
-				if (genericParameter == null)
+				if (self.GenericArguments[i] is ArrayType arrayType && arrayType.ElementType is GenericParameter arrayGenericParameter)
+					args.Add(declaringTypeReference.GenericArguments[arrayGenericParameter.Position].MakeArrayType());
+				else if (self.GenericArguments[i] is not GenericParameter genericParameter)
 					args.Add(self.GenericArguments[i].ResolveGenericParameters(declaringTypeReference));
 				else if (genericParameter.Type == GenericParameterType.Type)
 					args.Add(declaringTypeReference.GenericArguments[genericParameter.Position]);
@@ -421,12 +424,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			return self.ElementType.MakeGenericInstanceType(args.ToArray());
 		}
 
-		static Dictionary<TypeReference, TypeDefinition> resolves = new Dictionary<TypeReference, TypeDefinition>();
-		public static TypeDefinition ResolveCached(this TypeReference typeReference)
-		{
-			if (resolves.TryGetValue(typeReference, out var typeDefinition))
-				return typeDefinition;
-			return (resolves[typeReference] = typeReference.Resolve());
-		}
+		public static TypeDefinition ResolveCached(this TypeReference typeReference, XamlCache cache) => cache.Resolve(typeReference);
+
 	}
 }

@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,7 +14,7 @@ namespace Microsoft.Maui.Controls
 		public ObservableWrapper(ObservableCollection<TTrack> list)
 		{
 			if (list == null)
-				throw new ArgumentNullException("list");
+				throw new ArgumentNullException(nameof(list));
 
 			_list = list;
 
@@ -23,7 +24,7 @@ namespace Microsoft.Maui.Controls
 		public void Add(TRestrict item)
 		{
 			if (item == null)
-				throw new ArgumentNullException("item");
+				throw new ArgumentNullException(nameof(item));
 			if (IsReadOnly)
 				throw new NotSupportedException("The collection is read-only.");
 
@@ -87,7 +88,7 @@ namespace Microsoft.Maui.Controls
 		public bool Remove(TRestrict item)
 		{
 			if (item == null)
-				throw new ArgumentNullException("item");
+				throw new ArgumentNullException(nameof(item));
 			if (IsReadOnly)
 				throw new NotSupportedException("The collection is read-only.");
 
@@ -129,7 +130,7 @@ namespace Microsoft.Maui.Controls
 		public void Insert(int index, TRestrict item)
 		{
 			if (item == null)
-				throw new ArgumentNullException("item");
+				throw new ArgumentNullException(nameof(item));
 			if (IsReadOnly)
 				throw new NotSupportedException("The collection is read-only.");
 

@@ -1,16 +1,24 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.Maui.Devices.Sensors;
 
 namespace Microsoft.Maui.Controls.Maps
 {
+	/// <summary>
+	/// Event arguments that are associated with a click/tap event that occurs on the map control.
+	/// </summary>
 	public class MapClickedEventArgs
 	{
-		public Position Position { get; }
+		/// <summary>
+		/// Gets the location of the click/tap.
+		/// </summary>
+		public Location Location { get; }
 
-		public MapClickedEventArgs(Position position)
+		/// <summary>
+		/// Initializes a new instance of the <see cref="MapClickedEventArgs"/> class with a location.
+		/// </summary>
+		/// <param name="location">The location data associated with this event.</param>
+		public MapClickedEventArgs(Location location)
 		{
-			Position = position;
+			Location = location;
 		}
 	}
 }

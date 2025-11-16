@@ -16,9 +16,6 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 	[SupportedOSPlatform("ios11.0")]
 	internal class DragAndDropDelegate : NSObject, IUIDragInteractionDelegate, IUIDropInteractionDelegate
 	{
-		#region UIDragInteractionDelegate
-
-
 		[Export("dragInteraction:session:willEndWithOperation:")]
 		[Preserve(Conditional = true)]
 		public void SessionWillEnd(UIDragInteraction interaction, IUIDragSession session, UIDropOperation operation)
@@ -37,9 +34,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			if (interaction.View is IVisualElementRenderer renderer && renderer.Element is View view)
 				return HandleDragStarting(view, renderer);
 
-			return new UIDragItem[0];
+			return Array.Empty<UIDragItem>();
 		}
-		#endregion
 
 		[Export("dropInteraction:canHandleSession:")]
 		[Preserve(Conditional = true)]
@@ -151,8 +147,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 				if (args.Cancel)
 					return;
-
+#pragma warning disable CS0618 // Type or member is obsolete
 				if (!args.Handled)
+#pragma warning restore CS0618 // Type or member is obsolete
 				{
 					UIImage uIImage = null;
 					string clipDescription = String.Empty;
@@ -196,7 +193,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			},
 			element);
 
-			return returnValue ?? new UIDragItem[0];
+			return returnValue ?? Array.Empty<UIDragItem>();
 		}
 
 		void HandleDropCompleted(View element)

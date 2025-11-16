@@ -1,11 +1,12 @@
+#nullable disable
+using System;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Threading;
 
 namespace Microsoft.Maui.Controls.Platform
 {
-	internal class GroupedItemTemplateCollection : ObservableCollection<GroupTemplateContext>
+	internal class GroupedItemTemplateCollection : ObservableCollection<GroupTemplateContext>, IDisposable
 	{
 		readonly IEnumerable _itemsSource;
 		readonly DataTemplate _itemTemplate;
@@ -14,8 +15,13 @@ namespace Microsoft.Maui.Controls.Platform
 		readonly BindableObject _container;
 		readonly IMauiContext _mauiContext;
 		readonly IList _groupList;
+		readonly NotifyCollectionChangedEventHandler _collectionChanged;
+		readonly WeakNotifyCollectionChangedProxy _proxy = new();
+		bool _disposedValue;
 
-		public GroupedItemTemplateCollection(IEnumerable itemsSource, DataTemplate itemTemplate, 
+		~GroupedItemTemplateCollection() => _proxy?.Unsubscribe();
+
+		public GroupedItemTemplateCollection(IEnumerable itemsSource, DataTemplate itemTemplate,
 			DataTemplate groupHeaderTemplate, DataTemplate groupFooterTemplate, BindableObject container, IMauiContext mauiContext = null)
 		{
 			_itemsSource = itemsSource;
@@ -34,8 +40,28 @@ namespace Microsoft.Maui.Controls.Platform
 			if (_itemsSource is IList groupList && _itemsSource is INotifyCollectionChanged incc)
 			{
 				_groupList = groupList;
-				incc.CollectionChanged += GroupsChanged;
+
+				_collectionChanged = GroupsChanged;
+				_proxy.Subscribe(incc, _collectionChanged);
 			}
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!_disposedValue)
+			{
+				if (disposing)
+				{
+					_proxy?.Unsubscribe();
+				}
+				_disposedValue = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
 		}
 
 		GroupTemplateContext CreateGroupTemplateContext(object group)

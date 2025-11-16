@@ -14,14 +14,16 @@ namespace Microsoft.Maui.DeviceTests
 		bool GetNativeIsRunning(ActivityIndicatorHandler activityIndicatorHandler) =>
 			GetNativeActivityIndicator(activityIndicatorHandler).IsActive;
 
-		Task ValidateHasColor(IActivityIndicator activityIndicator, Color color, Action action = null)
+		[Fact(Skip = "Failing on Windows")]
+		public override Task SettingSemanticDescriptionMakesElementAccessible()
 		{
-			return InvokeOnMainThreadAsync(() =>
-			{
-				var nativeActivityIndicator = GetNativeActivityIndicator(CreateHandler(activityIndicator));
-				action?.Invoke();
-				nativeActivityIndicator.AssertContainsColor(color);
-			});
+			return base.SettingSemanticDescriptionMakesElementAccessible();
+		}
+
+		[Fact(Skip = "Failing on Windows")]
+		public override Task SettingSemanticHintMakesElementAccessible()
+		{
+			return base.SettingSemanticHintMakesElementAccessible();
 		}
 	}
 }

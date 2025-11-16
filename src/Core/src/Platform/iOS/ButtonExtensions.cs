@@ -9,7 +9,7 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateStrokeColor(this UIButton platformButton, IButtonStroke buttonStroke)
 		{
-			if (buttonStroke.StrokeColor != null)
+			if (buttonStroke.StrokeColor is not null)
 				platformButton.Layer.BorderColor = buttonStroke.StrokeColor.ToCGColor();
 		}
 
@@ -30,21 +30,25 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateTextColor(this UIButton platformButton, ITextStyle button)
 		{
-			if (button.TextColor != null)
-			{
-				var color = button.TextColor.ToPlatform();
+			if (button.TextColor is null)
+				return;
 
-				platformButton.SetTitleColor(color, UIControlState.Normal);
-				platformButton.SetTitleColor(color, UIControlState.Highlighted);
-				platformButton.SetTitleColor(color, UIControlState.Disabled);
+			var color = button.TextColor.ToPlatform();
 
-				platformButton.TintColor = color;
-			}
+			platformButton.SetTitleColor(color, UIControlState.Normal);
+			platformButton.SetTitleColor(color, UIControlState.Highlighted);
+			platformButton.SetTitleColor(color, UIControlState.Disabled);
+
+			platformButton.TintColor = color;
 		}
 
 		public static void UpdateCharacterSpacing(this UIButton platformButton, ITextStyle textStyle)
 		{
-			platformButton.TitleLabel.UpdateCharacterSpacing(textStyle);
+			var attributedText = platformButton?.TitleLabel.AttributedText?.WithCharacterSpacing(textStyle.CharacterSpacing);
+			if (textStyle.TextColor != null)
+				attributedText = attributedText?.WithTextColor(textStyle.TextColor);
+
+			platformButton?.SetAttributedTitle(attributedText, UIControlState.Normal);
 		}
 
 		public static void UpdateFont(this UIButton platformButton, ITextStyle textStyle, IFontManager fontManager)
@@ -60,6 +64,35 @@ namespace Microsoft.Maui.Platform
 			if (padding.IsNaN)
 				padding = defaultPadding ?? Thickness.Zero;
 
+			int additionalPadding = (int)platformButton.Layer.BorderWidth;
+			padding = new Thickness(padding.Left + additionalPadding, padding.Top + additionalPadding, padding.Right + additionalPadding, padding.Bottom + additionalPadding);
+
+			// top and bottom insets reset to a "default" if they are exactly 0
+			// however, internally they are floor-ed, so there is no actual fractions
+			var top = padding.Top;
+			if (top == 0.0)
+				top = AlmostZero;
+			var bottom = padding.Bottom;
+			if (bottom == 0.0)
+				bottom = AlmostZero;
+
+			// The downside of using the ContentEdgeInsets is that in non-UIButtonConfiguration instances, it will truncate the title for buttons with images on top or bottom more than necessary.
+#pragma warning disable CA1416 // TODO: 'UIButton.ContentEdgeInsets' is unsupported on: 'ios' 15.0 and later.
+#pragma warning disable CA1422 // Validate platform compatibility
+			platformButton.ContentEdgeInsets = new UIEdgeInsets(
+				(float)top,
+				(float)padding.Left,
+				(float)bottom,
+				(float)padding.Right);
+#pragma warning restore CA1422 // Validate platform compatibility
+#pragma warning restore CA1416
+		}
+
+		internal static void UpdateContentEdgeInsets(this UIButton platformButton, IButton button, Thickness? defaultPadding = null) =>
+			UpdateContentEdgeInsets(platformButton, button.Padding, defaultPadding);
+
+		internal static void UpdateContentEdgeInsets(this UIButton platformButton, Thickness padding, Thickness? defaultPadding = null)
+		{
 			// top and bottom insets reset to a "default" if they are exactly 0
 			// however, internally they are floor-ed, so there is no actual fractions
 			var top = padding.Top;
@@ -70,14 +103,14 @@ namespace Microsoft.Maui.Platform
 				bottom = AlmostZero;
 
 #pragma warning disable CA1416 // TODO: 'UIButton.ContentEdgeInsets' is unsupported on: 'ios' 15.0 and later.
+#pragma warning disable CA1422 // Validate platform compatibility
 			platformButton.ContentEdgeInsets = new UIEdgeInsets(
 				(float)top,
 				(float)padding.Left,
 				(float)bottom,
 				(float)padding.Right);
+#pragma warning restore CA1422 // Validate platform compatibility
 #pragma warning restore CA1416
 		}
-
-
 	}
 }

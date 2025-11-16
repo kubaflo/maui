@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-using UIKit;
-
+﻿using System;
 
 namespace Microsoft.Maui.Handlers
 {
@@ -24,51 +21,36 @@ namespace Microsoft.Maui.Handlers
 			throw new InvalidOperationException($"PageViewController.View must be a {nameof(ContentView)}");
 		}
 
-		protected override void ConnectHandler(ContentView nativeView)
+		public static void MapBackground(IPageHandler handler, IContentView page)
 		{
-			var uiTapGestureRecognizer = new UITapGestureRecognizer(a => nativeView?.EndEditing(true));
-
-			uiTapGestureRecognizer.ShouldRecognizeSimultaneously = (recognizer, gestureRecognizer) => true;
-			uiTapGestureRecognizer.ShouldReceiveTouch = OnShouldReceiveTouch;
-			uiTapGestureRecognizer.DelaysTouchesBegan =
-				uiTapGestureRecognizer.DelaysTouchesEnded = uiTapGestureRecognizer.CancelsTouchesInView = false;
-			nativeView.AddGestureRecognizer(uiTapGestureRecognizer);
-
-			base.ConnectHandler(nativeView);
+			if (handler is IPlatformViewHandler platformViewHandler && platformViewHandler.ViewController is not null)
+			{
+				var provider = handler.GetRequiredService<IImageSourceServiceProvider>();
+				platformViewHandler.ViewController.View?.UpdateBackground(page, provider);
+			}
 		}
 
-		protected override void DisconnectHandler(ContentView nativeView)
+		internal static void MapHomeIndicatorAutoHidden(IPageHandler handler, IContentView page)
 		{
-			base.DisconnectHandler(nativeView);
+			if (handler is IPlatformViewHandler platformViewHandler && platformViewHandler.ViewController is not null)
+			{
+				platformViewHandler.ViewController.SetNeedsUpdateOfHomeIndicatorAutoHidden();
+			}
+		}
+
+		internal static void MapPrefersStatusBarHiddenMode(IPageHandler handler, IContentView page)
+		{
+			if (handler is IPlatformViewHandler platformViewHandler && platformViewHandler.ViewController is not null)
+			{
+				platformViewHandler.ViewController.SetNeedsStatusBarAppearanceUpdate();
+			}
 		}
 
 		public static void MapTitle(IPageHandler handler, IContentView page)
 		{
-			if (handler is IPlatformViewHandler invh && invh.ViewController != null)
+			if (handler is IPlatformViewHandler platformViewHandler && platformViewHandler.ViewController is not null)
 			{
-				if (page is ITitledElement titled)
-				{
-					invh.ViewController.Title = titled.Title;
-				}
-			}
-		}
-
-		bool OnShouldReceiveTouch(UIGestureRecognizer recognizer, UITouch touch)
-		{
-			foreach (UIView v in ViewAndSuperviewsOfView(touch.View))
-			{
-				if (v != null && (v is UITableView || v is UITableViewCell || v.CanBecomeFirstResponder))
-					return false;
-			}
-			return true;
-		}
-
-		IEnumerable<UIView> ViewAndSuperviewsOfView(UIView view)
-		{
-			while (view != null)
-			{
-				yield return view;
-				view = view.Superview;
+				platformViewHandler.ViewController.UpdateTitle(page);
 			}
 		}
 	}

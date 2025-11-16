@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
 using Microsoft.UI.Xaml;
@@ -16,11 +15,11 @@ namespace Microsoft.Maui.Controls.Platform
 		internal static void Cleanup(this Element self)
 		{
 			if (self == null)
-				throw new ArgumentNullException("self");
+				throw new ArgumentNullException(nameof(self));
 
 			foreach (Element element in self.Descendants())
 			{
-				if(element is Maui.IElement mauiElement)
+				if (element is Maui.IElement mauiElement)
 					mauiElement.Handler?.DisconnectHandler();
 			}
 

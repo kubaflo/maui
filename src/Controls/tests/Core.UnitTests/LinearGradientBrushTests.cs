@@ -1,26 +1,21 @@
-using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+﻿using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Platform;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
 	public class LinearGradientBrushTests : BaseTestFixture
 	{
-		[SetUp]
-		public override void Setup()
-		{
-			base.Setup();
-		}
-
-		[Test]
+		[Fact]
 		public void TestConstructor()
 		{
 			LinearGradientBrush linearGradientBrush = new LinearGradientBrush();
 
-			Assert.AreEqual(1.0d, linearGradientBrush.EndPoint.X, "EndPoint.X");
-			Assert.AreEqual(1.0d, linearGradientBrush.EndPoint.Y, "EndPoint.Y");
+			Assert.Equal(1.0d, linearGradientBrush.EndPoint.X);
+			Assert.Equal(1.0d, linearGradientBrush.EndPoint.Y);
 		}
 
-		[Test]
+		[Fact]
 		public void TestConstructorUsingGradientStopCollection()
 		{
 			var gradientStops = new GradientStopCollection
@@ -31,16 +26,16 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			LinearGradientBrush linearGradientBrush = new LinearGradientBrush(gradientStops, new Point(0, 0), new Point(0, 1));
 
-			Assert.AreNotEqual(0, linearGradientBrush.GradientStops.Count, "GradientStops");
-			Assert.AreEqual(0.0d, linearGradientBrush.EndPoint.X, "EndPoint.X");
-			Assert.AreEqual(1.0d, linearGradientBrush.EndPoint.Y, "EndPoint.Y");
+			Assert.NotEmpty(linearGradientBrush.GradientStops);
+			Assert.Equal(0.0d, linearGradientBrush.EndPoint.X);
+			Assert.Equal(1.0d, linearGradientBrush.EndPoint.Y);
 		}
 
-		[Test]
+		[Fact]
 		public void TestEmptyLinearGradientBrush()
 		{
 			LinearGradientBrush nullLinearGradientBrush = new LinearGradientBrush();
-			Assert.AreEqual(true, nullLinearGradientBrush.IsEmpty, "IsEmpty");
+			Assert.True(nullLinearGradientBrush.IsEmpty);
 
 			LinearGradientBrush linearGradientBrush = new LinearGradientBrush
 			{
@@ -53,17 +48,17 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				}
 			};
 
-			Assert.AreEqual(false, linearGradientBrush.IsEmpty, "IsEmpty");
+			Assert.False(linearGradientBrush.IsEmpty);
 		}
 
-		[Test]
+		[Fact]
 		public void TestNullOrEmptyLinearGradientBrush()
 		{
 			LinearGradientBrush nullLinearGradientBrush = null;
-			Assert.AreEqual(true, Brush.IsNullOrEmpty(nullLinearGradientBrush), "IsNullOrEmpty");
+			Assert.True(Brush.IsNullOrEmpty(nullLinearGradientBrush));
 
 			LinearGradientBrush emptyLinearGradientBrush = new LinearGradientBrush();
-			Assert.AreEqual(true, Brush.IsNullOrEmpty(emptyLinearGradientBrush), "IsNullOrEmpty");
+			Assert.True(Brush.IsNullOrEmpty(emptyLinearGradientBrush));
 
 			LinearGradientBrush linearGradientBrush = new LinearGradientBrush
 			{
@@ -76,10 +71,68 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				}
 			};
 
-			Assert.AreEqual(false, Brush.IsNullOrEmpty(linearGradientBrush), "IsNullOrEmpty");
+			Assert.False(Brush.IsNullOrEmpty(linearGradientBrush));
 		}
 
-		[Test]
+		[Fact]
+		public void TestNullOrEmptyLinearGradientPaintWithEmptyGradientStop()
+		{
+			LinearGradientBrush linearGradientBrush = new LinearGradientBrush
+			{
+				StartPoint = new Point(0, 0),
+				EndPoint = new Point(1, 0),
+				GradientStops = new GradientStopCollection
+				{
+					new GradientStop(),
+					new GradientStop()
+				}
+			};
+
+			Paint linearGradientPaint = linearGradientBrush;
+
+			Assert.True(linearGradientPaint.IsNullOrEmpty());
+		}
+
+		[Fact]
+		public void TestNullOrEmptyLinearGradientPaintWithNullGradientStop()
+		{
+			LinearGradientBrush linearGradientBrush = new LinearGradientBrush
+			{
+				StartPoint = new Point(0, 0),
+				EndPoint = new Point(1, 0),
+				GradientStops = new GradientStopCollection
+				{
+					null,
+					null
+				}
+			};
+
+			Paint linearGradientPaint = linearGradientBrush;
+
+			Assert.True(linearGradientPaint.IsNullOrEmpty());
+		}
+
+		[Fact]
+		public void TestNullGradientStopLinearGradientPaint()
+		{
+			LinearGradientBrush linearGradientBrush = new LinearGradientBrush
+			{
+				StartPoint = new Point(0, 0),
+				EndPoint = new Point(1, 0),
+				GradientStops = new GradientStopCollection
+				{
+					new GradientStop { Color = Colors.Red, Offset = 0.1f },
+					null,
+					new GradientStop { Color = Colors.Blue, Offset = 1.0f }
+				}
+			};
+
+			Paint linearGradientPaint = linearGradientBrush;
+
+			Assert.False(linearGradientPaint.IsNullOrEmpty());
+		}
+
+		[Fact]
 		public void TestLinearGradientBrushPoints()
 		{
 			LinearGradientBrush linearGradientBrush = new LinearGradientBrush
@@ -88,14 +141,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				EndPoint = new Point(1, 0)
 			};
 
-			Assert.AreEqual(0, linearGradientBrush.StartPoint.X);
-			Assert.AreEqual(0, linearGradientBrush.StartPoint.Y);
+			Assert.Equal(0, linearGradientBrush.StartPoint.X);
+			Assert.Equal(0, linearGradientBrush.StartPoint.Y);
 
-			Assert.AreEqual(1, linearGradientBrush.EndPoint.X);
-			Assert.AreEqual(0, linearGradientBrush.EndPoint.Y);
+			Assert.Equal(1, linearGradientBrush.EndPoint.X);
+			Assert.Equal(0, linearGradientBrush.EndPoint.Y);
 		}
 
-		[Test]
+		[Fact]
 		public void TestLinearGradientBrushOnlyOneGradientStop()
 		{
 			LinearGradientBrush linearGradientBrush = new LinearGradientBrush
@@ -108,10 +161,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				EndPoint = new Point(1, 0)
 			};
 
-			Assert.IsNotNull(linearGradientBrush);
+			Assert.NotNull(linearGradientBrush);
 		}
 
-		[Test]
+		[Fact]
 		public void TestLinearGradientBrushGradientStops()
 		{
 			LinearGradientBrush linearGradientBrush = new LinearGradientBrush
@@ -125,7 +178,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				EndPoint = new Point(1, 0)
 			};
 
-			Assert.AreEqual(2, linearGradientBrush.GradientStops.Count);
+			Assert.Equal(2, linearGradientBrush.GradientStops.Count);
 		}
 	}
 }

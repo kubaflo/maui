@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using Android.Content;
@@ -12,10 +10,17 @@ namespace Microsoft.Maui.Controls.Platform
 	class TapAndPanGestureDetector : GestureDetector
 	{
 		InnerGestureListener? _listener;
+		PointerGestureHandler? _pointerGestureHandler;
+
 		public TapAndPanGestureDetector(Context context, InnerGestureListener listener) : base(context, listener)
 		{
 			_listener = listener;
 			UpdateLongPressSettings();
+		}
+
+		public void SetPointerGestureHandler(PointerGestureHandler pointerGestureHandler)
+		{
+			_pointerGestureHandler = pointerGestureHandler;
 		}
 
 		public void UpdateLongPressSettings()
@@ -33,10 +38,16 @@ namespace Microsoft.Maui.Controls.Platform
 			IsLongpressEnabled = _listener.EnableLongPressGestures;
 		}
 
-		public override bool OnTouchEvent(MotionEvent? ev)
+		public override bool OnTouchEvent(MotionEvent ev)
 		{
 			if (base.OnTouchEvent(ev))
 				return true;
+
+			if (_pointerGestureHandler != null && ev?.Action is
+				MotionEventActions.Up or MotionEventActions.Down or MotionEventActions.Cancel)
+			{
+				_pointerGestureHandler.OnTouch(ev);
+			}
 
 			if (_listener != null && ev?.Action == MotionEventActions.Up)
 				_listener.EndScrolling();
@@ -55,6 +66,7 @@ namespace Microsoft.Maui.Controls.Platform
 					_listener.Dispose();
 					_listener = null;
 				}
+				_pointerGestureHandler = null;
 			}
 		}
 	}

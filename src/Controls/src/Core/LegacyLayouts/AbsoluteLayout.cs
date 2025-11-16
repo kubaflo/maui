@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,10 +11,13 @@ using Microsoft.Maui.Layouts;
 namespace Microsoft.Maui.Controls.Compatibility
 {
 	[ContentProperty(nameof(Children))]
+	[Obsolete("Use Microsoft.Maui.Controls.AbsoluteLayout instead. For more information, see https://learn.microsoft.com/dotnet/maui/migration/layouts")]
 	public class AbsoluteLayout : Layout<View>, IElementConfiguration<AbsoluteLayout>
 	{
+		/// <summary>Bindable property for attached property <c>LayoutFlags</c>.</summary>
 		public static readonly BindableProperty LayoutFlagsProperty = BindableProperty.CreateAttached("LayoutFlags", typeof(AbsoluteLayoutFlags), typeof(AbsoluteLayout), AbsoluteLayoutFlags.None);
 
+		/// <summary>Bindable property for attached property <c>LayoutBounds</c>.</summary>
 		public static readonly BindableProperty LayoutBoundsProperty = BindableProperty.CreateAttached("LayoutBounds", typeof(Rect), typeof(AbsoluteLayout), new Rect(0, 0, AutoSize, AutoSize));
 
 		readonly AbsoluteElementCollection _children;
@@ -27,6 +31,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 				new PlatformConfigurationRegistry<AbsoluteLayout>(this));
 		}
 
+		/// <inheritdoc/>
 		public IPlatformElementConfiguration<T, AbsoluteLayout> On<T>() where T : IConfigPlatform
 		{
 			return _platformConfigurationRegistry.Value.On<T>();
@@ -60,7 +65,9 @@ namespace Microsoft.Maui.Controls.Compatibility
 			bindable.SetValue(LayoutFlagsProperty, flags);
 		}
 
+#pragma warning disable CS0672 // Member overrides obsolete member
 		protected override void LayoutChildren(double x, double y, double width, double height)
+#pragma warning restore CS0672 // Member overrides obsolete member
 		{
 			foreach (View child in LogicalChildrenInternal)
 			{
@@ -84,6 +91,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 			base.OnChildRemoved(child, oldLogicalIndex);
 		}
 
+		[Obsolete("Use MeasureOverride instead")]
 		protected override SizeRequest OnMeasure(double widthConstraint, double heightConstraint)
 		{
 			var bestFitSize = new Size();
@@ -101,7 +109,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 			return new SizeRequest(bestFitSize, minimum);
 		}
 
-		internal override void ComputeConstraintForView(View view)
+		protected override LayoutConstraint ComputeConstraintForView(View view)
 		{
 			AbsoluteLayoutFlags layoutFlags = GetLayoutFlags(view);
 
@@ -109,9 +117,9 @@ namespace Microsoft.Maui.Controls.Compatibility
 			{
 				if (view.VerticalOptions.Alignment == LayoutAlignment.Fill &&
 					view.HorizontalOptions.Alignment == LayoutAlignment.Fill)
-					view.ComputedConstraint = Constraint;
+					return Constraint;
 
-				return;
+				return LayoutConstraint.None;
 			}
 
 			var result = LayoutConstraint.None;
@@ -138,7 +146,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 					result |= LayoutConstraint.VerticallyFixed;
 			}
 
-			view.ComputedConstraint = result;
+			return result;
 		}
 
 		void ChildOnPropertyChanged(object sender, PropertyChangedEventArgs e)

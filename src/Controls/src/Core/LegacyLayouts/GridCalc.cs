@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -8,7 +9,10 @@ namespace Microsoft.Maui.Controls.Compatibility
 {
 	public partial class Grid
 	{
+
+#pragma warning disable CS0672 // Member overrides obsolete member
 		protected override void LayoutChildren(double x, double y, double width, double height)
+#pragma warning restore CS0672 // Member overrides obsolete member
 		{
 			if (!InternalChildren.Any())
 				return;
@@ -45,7 +49,9 @@ namespace Microsoft.Maui.Controls.Compatibility
 			}
 		}
 
+#pragma warning disable CS0672 // Member overrides obsolete member
 		protected override SizeRequest OnMeasure(double widthConstraint, double heightConstraint)
+#pragma warning restore CS0672 // Member overrides obsolete member
 		{
 			if (!InternalChildren.Any())
 				return new SizeRequest(new Size(0, 0));

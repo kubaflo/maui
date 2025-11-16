@@ -5,7 +5,7 @@ using UIKit;
 
 namespace Microsoft.Maui.DeviceTests.Stubs
 {
-	class CustomImageSourceServiceStub : IImageSourceService<ICustomImageSourceStub>
+	public class CustomImageSourceServiceStub : IImageSourceService<ICustomImageSourceStub>
 	{
 		readonly CustomImageCacheStub _cache;
 
@@ -17,15 +17,15 @@ namespace Microsoft.Maui.DeviceTests.Stubs
 		public Task<IImageSourceServiceResult<UIImage>> GetImageAsync(IImageSource imageSource, float scale = 1, CancellationToken cancellationToken = default) =>
 			GetImageAsync((ICustomImageSourceStub)imageSource, scale, cancellationToken);
 
-		public Task<IImageSourceServiceResult<UIImage>> GetImageAsync(ICustomImageSourceStub imageSource, float scale = 1, CancellationToken cancellationToken = default)
+		public async Task<IImageSourceServiceResult<UIImage>> GetImageAsync(ICustomImageSourceStub imageSource, float scale = 1, CancellationToken cancellationToken = default)
 		{
 			var color = imageSource.Color;
 
-			var drawable = _cache.Get(color);
+			var drawable = await _cache.Get(color);
 
 			var result = new ImageSourceServiceResult(drawable, () => _cache.Return(color));
 
-			return Task.FromResult<IImageSourceServiceResult<UIImage>>(result);
+			return result;
 		}
 	}
 }

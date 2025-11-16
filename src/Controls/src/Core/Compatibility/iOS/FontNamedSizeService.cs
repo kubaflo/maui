@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
@@ -71,7 +72,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 #endif
 				default:
-					throw new ArgumentOutOfRangeException("size");
+					throw new ArgumentOutOfRangeException(nameof(size));
 			}
 		}
 	}

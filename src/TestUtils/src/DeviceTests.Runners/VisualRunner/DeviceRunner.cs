@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Controls.Xaml;
+using Microsoft.Maui.Storage;
 using Xunit;
 
 [assembly: XamlCompilation(XamlCompilationOptions.Compile)]
@@ -65,7 +66,7 @@ namespace Microsoft.Maui.TestUtils.DeviceTests.Runners.VisualRunner
 						: runInfos.FirstOrDefault()?.TestCases.FirstOrDefault()?.DisplayName;
 				}
 
-				_logger.LogTestStart(message);
+				_logger.LogTestsStart(message);
 
 				try
 				{
@@ -73,7 +74,7 @@ namespace Microsoft.Maui.TestUtils.DeviceTests.Runners.VisualRunner
 				}
 				finally
 				{
-					_logger.LogTestComplete();
+					_logger.LogTestsComplete();
 				}
 			}
 		}
@@ -111,13 +112,12 @@ namespace Microsoft.Maui.TestUtils.DeviceTests.Runners.VisualRunner
 				foreach (var assm in TestAssemblies)
 				{
 #if WINDOWS
-					var location = global::Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
 					var nameWithoutExt = assm.GetName().Name;
-					var assemblyFileName = Path.Combine(location, $"{nameWithoutExt}.dll");
+					var assemblyFileName = FileSystemUtils.PlatformGetFullAppPackageFilePath($"{nameWithoutExt}.dll");
 #elif ANDROID
 					// this is required to exist, but is not used
 					var assemblyFileName = assm.GetName().Name + ".dll";
-					assemblyFileName = Path.Combine(Android.App.Application.Context.CacheDir.AbsolutePath, assemblyFileName);
+					assemblyFileName = Path.Combine(global::Android.App.Application.Context.CacheDir.AbsolutePath, assemblyFileName);
 					if (!File.Exists(assemblyFileName))
 						File.Create(assemblyFileName).Close();
 #else
@@ -175,7 +175,7 @@ namespace Microsoft.Maui.TestUtils.DeviceTests.Runners.VisualRunner
 		static Stream GetConfigurationStreamForAssembly(string assemblyName)
 		{
 #if __ANDROID__
-			var assets = Android.App.Application.Context.Assets;
+			var assets = global::Android.App.Application.Context.Assets;
 			var allAssets = assets.List(string.Empty);
 
 			if (allAssets.Contains($"{assemblyName}.xunit.runner.json"))
@@ -284,11 +284,22 @@ namespace Microsoft.Maui.TestUtils.DeviceTests.Runners.VisualRunner
 
 			var diagSink = new DiagnosticMessageSink(d => context.Post(_ => OnDiagnosticMessage?.Invoke(d), null), runInfo.AssemblyFileName, executionOptions.GetDiagnosticMessagesOrDefault());
 
-			var deviceExecSink = new DeviceExecutionSink(xunitTestCases, this, context);
+			var deviceExecSink = new DeviceExecutionSink(xunitTestCases, this, _logger, context);
 
-			IExecutionSink resultsSink = new DelegatingExecutionSummarySink(deviceExecSink, () => cancelled);
+			IExecutionSink resultsSink = new ExecutionSink(deviceExecSink, new ExecutionSinkOptions
+			{
+				CancelThunk = () => cancelled
+			});
+
 			if (longRunningSeconds > 0)
-				resultsSink = new DelegatingLongRunningTestDetectionSink(resultsSink, TimeSpan.FromSeconds(longRunningSeconds), diagSink);
+			{
+				resultsSink = new ExecutionSink(resultsSink, new ExecutionSinkOptions
+				{
+					CancelThunk = () => cancelled,
+					DiagnosticMessageSink = diagSink,
+					LongRunningTestTime = TimeSpan.FromSeconds(longRunningSeconds)
+				});
+			}
 
 			var assm = new XunitProjectAssembly() { AssemblyFilename = runInfo.AssemblyFileName };
 			deviceExecSink.OnMessage(new TestAssemblyExecutionStarting(assm, executionOptions));

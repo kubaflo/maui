@@ -1,8 +1,8 @@
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using Android.Content;
 using Android.Content.Res;
-using Android.OS;
 using Android.Util;
 using Android.Views;
 using Android.Views.InputMethods;
@@ -22,7 +22,7 @@ namespace Microsoft.Maui.Platform
 	{
 		// Caching this display density here means that all pixel calculations are going to be based on the density
 		// of the first Context these extensions are run against. That's probably fine, but if we run into a 
-		// situation where subsequent activities can be launched with a different display density from the intial
+		// situation where subsequent activities can be launched with a different display density from the initial
 		// activity, we'll need to remove this cached value or cache it in a Dictionary<Context, float>
 		static float s_displayDensity = float.MinValue;
 
@@ -32,11 +32,29 @@ namespace Microsoft.Maui.Platform
 		// TODO FromPixels/ToPixels is both not terribly descriptive and also possibly sort of inaccurate?
 		// These need better names. It's really To/From Device-Independent, but that doesn't exactly roll off the tongue.
 
+		internal static double FromPixels(this View view, double pixels)
+		{
+			EnsureMetrics(view);
+
+			return FromPixelsUsingMetrics(pixels);
+		}
+
 		public static double FromPixels(this Context? self, double pixels)
 		{
 			EnsureMetrics(self);
 
+			return FromPixelsUsingMetrics(pixels);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		static double FromPixelsUsingMetrics(double pixels)
+		{
 			return pixels / s_displayDensity;
+		}
+
+		internal static Size FromPixels(this View view, double width, double height)
+		{
+			return new Size(view.FromPixels(width), view.FromPixels(height));
 		}
 
 		public static Size FromPixels(this Context context, double width, double height)
@@ -50,6 +68,20 @@ namespace Microsoft.Maui.Platform
 				context.FromPixels(thickness.Top),
 				context.FromPixels(thickness.Right),
 				context.FromPixels(thickness.Bottom));
+
+		public static Rect FromPixels(this Context context, Rect rect) =>
+			new Rect(
+				context.FromPixels(rect.X),
+				context.FromPixels(rect.Y),
+				context.FromPixels(rect.Width),
+				context.FromPixels(rect.Height));
+
+		internal static Rect FromPixels(this Context context, global::Android.Graphics.Rect rect) =>
+			new Rect(
+				context.FromPixels(rect.Left),
+				context.FromPixels(rect.Top),
+				context.FromPixels(rect.Width()),
+				context.FromPixels(rect.Height()));
 
 		public static void HideKeyboard(this Context self, global::Android.Views.View view)
 		{
@@ -65,11 +97,40 @@ namespace Microsoft.Maui.Platform
 				service.ShowSoftInput(view, ShowFlags.Implicit);
 		}
 
+		internal static float ToPixels(this View view, double dp)
+		{
+			EnsureMetrics(view);
+
+			return ToPixelsUsingMetrics(dp);
+		}
+
 		public static float ToPixels(this Context? self, double dp)
 		{
 			EnsureMetrics(self);
 
-			return (float)Math.Ceiling(dp * s_displayDensity);
+			return ToPixelsUsingMetrics(dp);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		static float ToPixelsUsingMetrics(double dp)
+		{
+			// Layout arrangement in DP can cause rounding issues when converting to pixels.
+			// While rounding up ensures the content is fully displayed, we must avoid rounding up unnecessarily, 
+			// especially for values very close to the lower integer.
+			// For example 112.00000000000001dp * 2.625 = 294.000000000000026px incorrectly rounded to 295px. 
+			// To address this, we subtract a small Epsilon 0.0000000001px before ceiling.
+			return (float)Math.Ceiling((dp * s_displayDensity) - GeometryUtil.Epsilon);
+		}
+
+		internal static (int left, int top, int right, int bottom) ToPixels(this View view, Graphics.Rect rectangle)
+		{
+			return
+			(
+				(int)view.ToPixels(rectangle.Left),
+				(int)view.ToPixels(rectangle.Top),
+				(int)view.ToPixels(rectangle.Right),
+				(int)view.ToPixels(rectangle.Bottom)
+			);
 		}
 
 		public static (int left, int top, int right, int bottom) ToPixels(this Context context, Graphics.Rect rectangle)
@@ -198,10 +259,19 @@ namespace Microsoft.Maui.Platform
 			if (s_displayDensity != float.MinValue)
 				return;
 
-			context ??= Android.App.Application.Context;
+			context ??= global::Android.App.Application.Context;
 
 			using (DisplayMetrics? metrics = context.Resources?.DisplayMetrics)
 				s_displayDensity = metrics != null ? metrics.Density : 1;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		static void EnsureMetrics(View view)
+		{
+			if (s_displayDensity != float.MinValue)
+				return;
+
+			EnsureMetrics(view.Context);
 		}
 
 		public static AActivity? GetActivity(this Context context)
@@ -271,10 +341,14 @@ namespace Microsoft.Maui.Platform
 			if (platformWindow is null)
 				return null;
 
-			foreach (var window in MauiApplication.Current.Application.Windows)
+			var windows = WindowExtensions.GetWindows();
+			foreach (var window in windows)
 			{
-				if (window?.Handler?.PlatformView == platformWindow)
-					return window;
+				if (window.Handler?.PlatformView is AActivity activity)
+				{
+					if (activity == platformWindow)
+						return window;
+				}
 			}
 
 			return null;
@@ -341,7 +415,7 @@ namespace Microsoft.Maui.Platform
 			return _navigationBarHeight ?? 0;
 		}
 
-		internal static int CreateMeasureSpec(this Context context, double constraint, double explicitSize, double maximumSize)
+		internal static int CreateMeasureSpec(this Context context, double constraint, double explicitSize, double minimumSize, double maximumSize)
 		{
 			var mode = MeasureSpecMode.AtMost;
 
@@ -349,9 +423,16 @@ namespace Microsoft.Maui.Platform
 			{
 				// We have a set value (i.e., a Width or Height)
 				mode = MeasureSpecMode.Exactly;
-				constraint = explicitSize;
+
+				// Since the mode is "Exactly", we have to return the exact final value clamped to the minimum/maximum.
+				constraint = Math.Max(explicitSize, ResolveMinimum(minimumSize));
+
+				if (IsMaximumSet(maximumSize))
+				{
+					constraint = Math.Min(constraint, maximumSize);
+				}
 			}
-			else if (IsMaximumSet(maximumSize))
+			else if (IsMaximumSet(maximumSize) && maximumSize < constraint)
 			{
 				mode = MeasureSpecMode.AtMost;
 				constraint = maximumSize;
@@ -369,8 +450,12 @@ namespace Microsoft.Maui.Platform
 			return mode.MakeMeasureSpec(deviceConstraint);
 		}
 
-		public static float GetDisplayDensity(this Context context) =>
-			context.Resources?.DisplayMetrics?.Density ?? 1.0f;
+		public static float GetDisplayDensity(this Context? context)
+		{
+			EnsureMetrics(context);
+
+			return s_displayDensity;
+		}
 
 		public static Rect ToCrossPlatformRectInReferenceFrame(this Context context, int left, int top, int right, int bottom)
 		{
@@ -381,6 +466,37 @@ namespace Microsoft.Maui.Platform
 
 			return Rect.FromLTRB(0, 0,
 				deviceIndependentRight - deviceIndependentLeft, deviceIndependentBottom - deviceIndependentTop);
+		}
+
+		internal static bool IsDestroyed(this Context? context)
+		{
+			if (context == null)
+				return true;
+
+			if (context.GetActivity() is FragmentActivity fa)
+			{
+				if (fa.IsDisposed())
+					return true;
+
+				var stateCheck = AndroidX.Lifecycle.Lifecycle.State.Destroyed;
+
+				if (stateCheck != null &&
+					fa.Lifecycle.CurrentState == stateCheck)
+				{
+					return true;
+				}
+
+				if (fa.IsDestroyed)
+					return true;
+			}
+
+			return context.IsDisposed();
+		}
+
+		internal static bool IsPlatformContextDestroyed(this IElementHandler? handler)
+		{
+			var context = handler?.MauiContext?.Context;
+			return context.IsDestroyed();
 		}
 	}
 }

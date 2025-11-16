@@ -5,8 +5,8 @@ using PlatformView = Android.Views.View;
 #elif WINDOWS
 using PlatformView = Microsoft.UI.Xaml.Controls.SwipeItem;
 #elif TIZEN
-using PlatformView = ElmSharp.EvasObject;
-#elif NETSTANDARD || (NET6_0 && !IOS && !ANDROID && !TIZEN)
+using PlatformView = Tizen.UIExtensions.NUI.Button;
+#elif (NETSTANDARD || !PLATFORM) || (NET6_0_OR_GREATER && !IOS && !ANDROID && !TIZEN)
 using PlatformView = System.Object;
 #endif
 
@@ -16,5 +16,10 @@ namespace Microsoft.Maui.Handlers
 	{
 		new ISwipeItemMenuItem VirtualView { get; }
 		new PlatformView PlatformView { get; }
+#if NETSTANDARD2_0
+		ImageSourcePartLoader? SourceLoader { get; }
+#else
+		ImageSourcePartLoader? SourceLoader => null;
+#endif
 	}
 }

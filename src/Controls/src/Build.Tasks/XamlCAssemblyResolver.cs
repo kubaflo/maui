@@ -1,4 +1,3 @@
-using System;
 using Mono.Cecil;
 
 namespace Microsoft.Maui.Controls.Build.Tasks
@@ -19,6 +18,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 				return assembly;
 			if (IsMscorlib(name)
 				&& (TryResolve(AssemblyNameReference.Parse("mscorlib"), out assembly)
+				   || TryResolve(AssemblyNameReference.Parse("System.Private.CoreLib"), out assembly)
 				   || TryResolve(AssemblyNameReference.Parse("netstandard"), out assembly)
 				   || TryResolve(AssemblyNameReference.Parse("System.Runtime"), out assembly)))
 				return assembly;
@@ -42,6 +42,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 		static bool IsMscorlib(AssemblyNameReference name)
 		{
 			return name.Name == "mscorlib"
+				   || name.Name == "System.Private.CoreLib"
 				   || name.Name == "System.Runtime"
 				   || name.Name == "netstandard";
 		}

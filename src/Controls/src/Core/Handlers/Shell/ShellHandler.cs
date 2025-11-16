@@ -1,4 +1,5 @@
-﻿#if WINDOWS
+﻿#nullable disable
+#if WINDOWS || TIZEN
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -20,6 +21,7 @@ namespace Microsoft.Maui.Controls.Handlers
 					[nameof(IFlyoutView.FlyoutWidth)] = MapFlyoutWidth,
 					[nameof(Shell.FlyoutBackground)] = MapFlyoutBackground,
 					[nameof(Shell.FlyoutBackgroundColor)] = MapFlyoutBackground,
+					[nameof(Shell.FlyoutContent)] = MapFlyout,
 					[nameof(Shell.CurrentItem)] = MapCurrentItem,
 					[nameof(Shell.FlyoutBackdrop)] = MapFlyoutBackdrop,
 					[nameof(Shell.FlyoutFooter)] = MapFlyoutFooter,
@@ -29,6 +31,13 @@ namespace Microsoft.Maui.Controls.Handlers
 					[nameof(Shell.FlyoutHeaderBehavior)] = MapFlyoutHeaderBehavior,
 					[nameof(Shell.Items)] = MapItems,
 					[nameof(Shell.FlyoutItems)] = MapFlyoutItems,
+#if WINDOWS
+					[nameof(Shell.FlyoutIcon)] = MapFlyoutIcon,
+					[nameof(Shell.FlyoutContentTemplate)] = MapFlyout,
+					[nameof(Shell.FlowDirection)] = MapFlowDirection,
+					[nameof(Shell.FlyoutBackgroundImage)] = MapFlyoutBackgroundImage,
+					[nameof(Shell.FlyoutBackgroundImageAspect)] = MapFlyoutBackgroundImage,
+#endif
 				};
 
 		public static CommandMapper<Shell, ShellHandler> CommandMapper =

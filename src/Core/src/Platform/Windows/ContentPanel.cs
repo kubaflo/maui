@@ -1,159 +1,213 @@
-﻿#nullable enable
-using System;
+﻿using System;
+using System.Numerics;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Maui.Graphics;
+#if MAUI_GRAPHICS_WIN2D
 using Microsoft.Maui.Graphics.Win2D;
+#else
+using Microsoft.Maui.Graphics.Platform;
+#endif
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Hosting;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 
 namespace Microsoft.Maui.Platform
 {
-	public class ContentPanel : Panel
+	public partial class ContentPanel : MauiPanel
 	{
 		readonly Path? _borderPath;
-		IShape? _borderShape;
+		IBorderStroke? _borderStroke;
 		FrameworkElement? _content;
 
 		internal Path? BorderPath => _borderPath;
-
+		internal IBorderStroke? BorderStroke => _borderStroke;
 		internal FrameworkElement? Content
 		{
 			get => _content;
 			set
 			{
+				var children = CachedChildren;
+
+				// Remove the previous content if it exists
+				if (_content is not null && children.Contains(_content) && value != _content)
+				{
+					children.Remove(_content);
+				}
+
 				_content = value;
-				AddContent(_content);
+
+				if (_content is null)
+				{
+					return;
+				}
+
+				if (!children.Contains(_content))
+				{
+					children.Add(_content);
+				}
 			}
 		}
 
-		internal Func<double, double, Size>? CrossPlatformMeasure { get; set; }
-		internal Func<Graphics.Rect, Size>? CrossPlatformArrange { get; set; }
-
-		protected override global::Windows.Foundation.Size MeasureOverride(global::Windows.Foundation.Size availableSize)
-		{
-			if (CrossPlatformMeasure == null || (availableSize.Width * availableSize.Height == 0))
-			{
-				return base.MeasureOverride(availableSize);
-			}
-
-			var measure = CrossPlatformMeasure(availableSize.Width, availableSize.Height);
-
-			return measure.ToPlatform();
-		}
+		internal bool IsInnerPath { get; private set; }
 
 		protected override global::Windows.Foundation.Size ArrangeOverride(global::Windows.Foundation.Size finalSize)
 		{
-			if (CrossPlatformArrange == null)
-			{
-				return base.ArrangeOverride(finalSize);
-			}
-
-			var width = finalSize.Width;
-			var height = finalSize.Height;
-
-			var actual = CrossPlatformArrange(new Graphics.Rect(0, 0, width, height));
+			var actual = base.ArrangeOverride(finalSize);
 
 			_borderPath?.Arrange(new global::Windows.Foundation.Rect(0, 0, finalSize.Width, finalSize.Height));
 
-			return new global::Windows.Foundation.Size(actual.Width, actual.Height);
+			var size = new global::Windows.Foundation.Size(Math.Max(0, actual.Width), Math.Max(0, actual.Height));
+
+			// We need to update the clip since the content's position might have changed
+			UpdateClip(_borderStroke?.Shape, size.Width, size.Height);
+
+			return size;
 		}
 
 		public ContentPanel()
 		{
 			_borderPath = new Path();
-			EnsureBorderPath();
+			EnsureBorderPath(containsCheck: false);
 
 			SizeChanged += ContentPanelSizeChanged;
 		}
 
-		void ContentPanelSizeChanged(object sender, UI.Xaml.SizeChangedEventArgs e)
+		void ContentPanelSizeChanged(object sender, SizeChangedEventArgs e)
 		{
-			if (_borderPath == null)
+			if (_borderPath is null)
+			{
 				return;
+			}
 
-			_borderPath.UpdatePath(_borderShape, ActualWidth, ActualHeight);
-			UpdateContent();
-			UpdateClip(_borderShape);
+			var width = e.NewSize.Width;
+			var height = e.NewSize.Height;
+
+			if (width <= 0 || height <= 0)
+			{
+				return;
+			}
+
+			_borderPath.UpdatePath(_borderStroke?.Shape, width, height);
+			UpdateClip(_borderStroke?.Shape, width, height);
 		}
 
-		internal void EnsureBorderPath()
+		internal void EnsureBorderPath(bool containsCheck = true)
 		{
-			if (!Children.Contains(_borderPath))
+			if (containsCheck)
 			{
-				Children.Add(_borderPath);
+				var children = CachedChildren;
+
+				if (!children.Contains(_borderPath))
+				{
+					children.Add(_borderPath);
+				}
+			}
+			else
+			{
+				CachedChildren.Add(_borderPath);
 			}
 		}
 
 		public void UpdateBackground(Paint? background)
 		{
-			if (_borderPath == null)
+			if (_borderPath is null)
+			{
 				return;
+			}
 
 			_borderPath.UpdateBackground(background);
 		}
 
+		[Obsolete("Use Microsoft.Maui.Platform.UpdateBorderStroke instead")]
 		public void UpdateBorderShape(IShape borderShape)
 		{
-			_borderShape = borderShape;
-
-			if (_borderPath == null)
-				return;
-
-			_borderPath.UpdateBorderShape(_borderShape, ActualWidth, ActualHeight);
-			UpdateContent();
-			UpdateClip(_borderShape);
+			UpdateBorder(borderShape);
 		}
 
-		void AddContent(FrameworkElement? content)
+		internal void UpdateBorderStroke(IBorderStroke borderStroke)
 		{
-			if (content == null)
+			if (borderStroke is null)
+			{
 				return;
+			}
 
-			if (!Children.Contains(_content))
-				Children.Add(_content);
+			_borderStroke = borderStroke;
+
+			if (_borderStroke is null)
+			{
+				return;
+			}
+
+			UpdateBorder(_borderStroke.Shape);
 		}
 
-		void UpdateContent()
+		void UpdateBorder(IShape? strokeShape)
 		{
-			if (Content == null || _borderPath == null)
+			if (strokeShape is null || _borderPath is null)
+			{
 				return;
+			}
 
-			var strokeThickness = _borderPath.StrokeThickness;
+			_borderPath.UpdateBorderShape(strokeShape, ActualWidth, ActualHeight);
 
-			Content.RenderTransform = new TranslateTransform() { X = -strokeThickness, Y = -strokeThickness };
+			var width = ActualWidth;
+			var height = ActualHeight;
+
+			if (width <= 0 || height <= 0)
+			{
+				return;
+			}
+
+			UpdateClip(strokeShape, width, height);
 		}
 
-		void UpdateClip(IShape? borderShape)
+		void UpdateClip(IShape? borderShape, double width, double height)
 		{
-			if (Content == null)
+			if (Content is null)
+			{
 				return;
+			}
+
+			if (height <= 0 && width <= 0)
+			{
+				return;
+			}
 
 			var clipGeometry = borderShape;
 
-			if (clipGeometry == null)
+			if (clipGeometry is null)
+			{
 				return;
-
-			double width = Content.ActualWidth;
-			double height = Content.ActualHeight;
-
-			if (height <= 0 && width <= 0)
-				return;
+			}
 
 			var visual = ElementCompositionPreview.GetElementVisual(Content);
 			var compositor = visual.Compositor;
 
-			var pathSize = new Graphics.Rect(0, 0, width, height);
-			var clipPath = clipGeometry.PathForBounds(pathSize);
+			PathF? clipPath;
+			float strokeThickness = (float)(_borderPath?.StrokeThickness ?? 0);
+			// The path size should consider the space taken by the border (top and bottom, left and right)
+			var pathSize = new Rect(0, 0, width - strokeThickness * 2, height - strokeThickness * 2);
+
+			if (clipGeometry is IRoundRectangle roundedRectangle)
+			{
+				clipPath = roundedRectangle.InnerPathForBounds(pathSize, strokeThickness / 2);
+				IsInnerPath = true;
+			}
+			else
+			{
+				clipPath = clipGeometry.PathForBounds(pathSize);
+				IsInnerPath = false;
+			}
+
 			var device = CanvasDevice.GetSharedDevice();
 			var geometry = clipPath.AsPath(device);
-
 			var path = new CompositionPath(geometry);
 			var pathGeometry = compositor.CreatePathGeometry(path);
 			var geometricClip = compositor.CreateGeometricClip(pathGeometry);
+
+			// The clip needs to consider the content's offset in case it is in a different position because of a different alignment.
+			geometricClip.Offset = new Vector2(strokeThickness - Content.ActualOffset.X, strokeThickness - Content.ActualOffset.Y);
 
 			visual.Clip = geometricClip;
 		}

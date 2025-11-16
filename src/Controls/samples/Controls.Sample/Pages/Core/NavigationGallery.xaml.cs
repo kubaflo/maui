@@ -13,7 +13,7 @@ namespace Maui.Controls.Sample.Pages
 	{
 		static int pageCount = 0;
 
-		static List<Page> _currentNavStack;
+		static List<Page>? _currentNavStack;
 		public NavigationGallery()
 		{
 			InitializeComponent();
@@ -80,16 +80,22 @@ namespace Maui.Controls.Sample.Pages
 			if (_currentNavStack == null)
 			{
 				_currentNavStack = Navigation.NavigationStack.ToList();
-				(Parent as IStackNavigationView).RequestNavigation(
-				new NavigationRequest(
-					new List<NavigationGallery>
-					{
-						new NavigationGallery()
-					}, false));
+
+				var stackNavigationView = Parent as IStackNavigationView;
+
+				if (stackNavigationView == null && Parent is FlyoutPage fp)
+					stackNavigationView = fp.Detail as IStackNavigationView;
+
+				stackNavigationView!.RequestNavigation(
+					new NavigationRequest(
+						new List<NavigationGallery>
+						{
+							new NavigationGallery()
+						}, false));
 			}
 			else
 			{
-				(Parent as IStackNavigationView).RequestNavigation(
+				((IStackNavigationView)Parent).RequestNavigation(
 				   new NavigationRequest(_currentNavStack, true));
 
 				_currentNavStack = null;

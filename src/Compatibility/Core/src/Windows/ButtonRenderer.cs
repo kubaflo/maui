@@ -1,27 +1,27 @@
+using System;
 using System.ComponentModel;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.Maui.Controls.Internals;
+using Microsoft.UI.Xaml.Media.Imaging;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
 using WImage = Microsoft.UI.Xaml.Controls.Image;
 using WStretch = Microsoft.UI.Xaml.Media.Stretch;
 using WThickness = Microsoft.UI.Xaml.Thickness;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
-using System;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class ButtonRenderer : ViewRenderer<Button, FormsButton>
+	public partial class ButtonRenderer : ViewRenderer<Button, FormsButton>
 	{
 		bool _fontApplied;
 		TextBlock _textBlock = null;
 
 		FormsButton _button;
-		PointerEventHandler _pointerPressedHandler;		
+		PointerEventHandler _pointerPressedHandler;
 
 		protected override void OnElementChanged(ElementChangedEventArgs<Button> e)
 		{
@@ -118,7 +118,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			{
 				UpdateTextColor();
 			}
-			else if (   e.PropertyName == FontElement.FontAttributesProperty.PropertyName
+			else if (e.PropertyName == FontElement.FontAttributesProperty.PropertyName
 					 || e.PropertyName == FontElement.FontAutoScalingEnabledProperty.PropertyName
 					 || e.PropertyName == FontElement.FontFamilyProperty.PropertyName
 					 || e.PropertyName == FontElement.FontSizeProperty.PropertyName)
@@ -274,27 +274,42 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				case Button.ButtonContentLayout.ImagePosition.Top:
 					container.Orientation = Orientation.Vertical;
 					image.Margin = WinUIHelpers.CreateThickness(0, 0, 0, spacing);
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 					container.Children.Add(image);
 					container.Children.Add(textBlock);
+#pragma warning restore RS0030 // Do not use banned APIs
+
 					break;
 				case Button.ButtonContentLayout.ImagePosition.Bottom:
 					container.Orientation = Orientation.Vertical;
 					image.Margin = WinUIHelpers.CreateThickness(0, spacing, 0, 0);
+
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 					container.Children.Add(textBlock);
 					container.Children.Add(image);
+#pragma warning restore RS0030 // Do not use banned APIs
+
 					break;
 				case Button.ButtonContentLayout.ImagePosition.Right:
 					container.Orientation = Orientation.Horizontal;
 					image.Margin = WinUIHelpers.CreateThickness(spacing, 0, 0, 0);
+
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 					container.Children.Add(textBlock);
 					container.Children.Add(image);
+#pragma warning restore RS0030 // Do not use banned APIs
+
 					break;
 				default:
 					// Defaults to image on the left
 					container.Orientation = Orientation.Horizontal;
 					image.Margin = WinUIHelpers.CreateThickness(0, 0, spacing, 0);
+
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 					container.Children.Add(image);
 					container.Children.Add(textBlock);
+#pragma warning restore RS0030 // Do not use banned APIs
+
 					break;
 			}
 
@@ -343,7 +358,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			{
 				_button.Click -= OnButtonClick;
 				_button.RemoveHandler(PointerPressedEvent, _pointerPressedHandler);
-				_button.Loaded -= ButtonOnLoaded;				
+				_button.Loaded -= ButtonOnLoaded;
 
 				_pointerPressedHandler = null;
 			}

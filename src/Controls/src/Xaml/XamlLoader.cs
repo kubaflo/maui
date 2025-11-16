@@ -29,16 +29,20 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Xml;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.Xaml.Diagnostics;
 
 namespace Microsoft.Maui.Controls.Xaml
 {
+	[RequiresUnreferencedCode(TrimmerConstants.XamlRuntimeParsingNotSupportedWarning)]
+#if !NETSTANDARD
+	[RequiresDynamicCode(TrimmerConstants.XamlRuntimeParsingNotSupportedWarning)]
+#endif
 	static partial class XamlLoader
 	{
 		public static void Load(object view, Type callingType)
@@ -55,8 +59,29 @@ namespace Microsoft.Maui.Controls.Xaml
 
 		public static void Load(object view, string xaml, Assembly rootAssembly, bool useDesignProperties)
 		{
+			rootAssembly ??= view.GetType().Assembly;
+
+			if (XamlParser.s_xmlnsPrefixes == null)
+				XamlParser.GatherXmlnsDefinitionAndXmlnsPrefixAttributes(rootAssembly);
+			if (!XamlParser.s_allowImplicitXmlns.TryGetValue(rootAssembly, out var allowImplicitXmlns))
+			{
+				allowImplicitXmlns = rootAssembly.CustomAttributes.Any(a =>
+				   		a.AttributeType.FullName == "Microsoft.Maui.Controls.Xaml.Internals.AllowImplicitXmlnsDeclarationAttribute"
+					&& (a.ConstructorArguments.Count == 0 || a.ConstructorArguments[0].Value is bool b && b));
+				XamlParser.s_allowImplicitXmlns.Add(rootAssembly, allowImplicitXmlns);
+			}
+
+			var nsmgr = new XmlNamespaceManager(new NameTable());
+			if (allowImplicitXmlns)
+			{
+				nsmgr.AddNamespace("", XamlParser.DefaultImplicitUri);
+				foreach (var xmlnsPrefix in XamlParser.s_xmlnsPrefixes)
+					nsmgr.AddNamespace(xmlnsPrefix.Prefix, xmlnsPrefix.XmlNamespace);
+			}
 			using (var textReader = new StringReader(xaml))
-			using (var reader = XmlReader.Create(textReader))
+			using (var reader = XmlReader.Create(textReader,
+										new XmlReaderSettings { ConformanceLevel = allowImplicitXmlns ? ConformanceLevel.Fragment : ConformanceLevel.Document },
+										new XmlParserContext(nsmgr.NameTable, nsmgr, null, XmlSpace.None)))
 			{
 				while (reader.Read())
 				{
@@ -78,7 +103,7 @@ namespace Microsoft.Maui.Controls.Xaml
 					Visit(rootnode, new HydrationContext
 					{
 						RootElement = view,
-						RootAssembly = rootAssembly ?? view.GetType().Assembly,
+						RootAssembly = rootAssembly,
 						ExceptionHandler = doNotThrow ? ehandler : (Action<Exception>)null
 					}, useDesignProperties);
 
@@ -157,7 +182,7 @@ namespace Microsoft.Maui.Controls.Xaml
 					//the root is set to null, and not to rootView, on purpose as we don't want to erase the current Resources of the view
 					RootNode rootNode = new RuntimeRootNode(new XmlType(reader.NamespaceURI, reader.Name, null), null, (IXmlNamespaceResolver)reader) { LineNumber = ((IXmlLineInfo)reader).LineNumber, LinePosition = ((IXmlLineInfo)reader).LinePosition };
 					XamlParser.ParseXaml(rootNode, reader);
-					var rNode = (IElementNode)rootNode;
+					var rNode = (ElementNode)rootNode;
 					if (!rNode.Properties.TryGetValue(new XmlName(XamlParser.MauiUri, "Resources"), out var resources))
 						return null;
 
@@ -187,6 +212,7 @@ namespace Microsoft.Maui.Controls.Xaml
 					resources.Accept(new NamescopingVisitor(visitorContext), null); //set namescopes for {x:Reference}
 					resources.Accept(new CreateValuesVisitor(visitorContext), null);
 					resources.Accept(new RegisterXNamesVisitor(visitorContext), null);
+					resources.Accept(new SimplifyTypeExtensionVisitor(), null);
 					resources.Accept(new FillResourceDictionariesVisitor(visitorContext), null);
 					resources.Accept(new ApplyPropertiesVisitor(visitorContext, true), null);
 
@@ -206,6 +232,7 @@ namespace Microsoft.Maui.Controls.Xaml
 			rootnode.Accept(new NamescopingVisitor(visitorContext), null); //set namescopes for {x:Reference}
 			rootnode.Accept(new CreateValuesVisitor(visitorContext), null);
 			rootnode.Accept(new RegisterXNamesVisitor(visitorContext), null);
+			rootnode.Accept(new SimplifyTypeExtensionVisitor(), null);
 			rootnode.Accept(new FillResourceDictionariesVisitor(visitorContext), null);
 			rootnode.Accept(new ApplyPropertiesVisitor(visitorContext, true), null);
 		}
@@ -353,12 +380,85 @@ namespace Microsoft.Maui.Controls.Xaml
 
 				var xaml = reader.ReadToEnd();
 
-				var pattern = $"x:Class *= *\"{type.FullName}\"";
-				var regex = new Regex(pattern, RegexOptions.ECMAScript);
-				if (regex.IsMatch(xaml) || xaml.IndexOf($"x:Class=\"{type.FullName}\"") != -1)
+				if (ContainsXClass(xaml, type.FullName))
+				{
 					return xaml;
+				}
 			}
 			return null;
+
+			// Equivalent to regex $"x:Class *= *\"{fullName}\""
+			static bool ContainsXClass(string xaml, string fullName)
+			{
+				int index = 0;
+				while (index >= 0 && index < xaml.Length)
+				{
+					if (FindNextXClass()
+						&& SkipWhitespaces()
+						&& NextCharacter('=')
+						&& SkipWhitespaces()
+						&& NextCharacter('"')
+						&& NextFullName()
+						&& NextCharacter('"'))
+					{
+						return true;
+					}
+				}
+
+				return false;
+
+				bool FindNextXClass()
+				{
+					const string xClass = "x:Class";
+
+					index = xaml.IndexOf(xClass, startIndex: index);
+					if (index < 0)
+					{
+						return false;
+					}
+
+					index += xClass.Length;
+					return true;
+				}
+
+				bool SkipWhitespaces()
+				{
+					while (index < xaml.Length && xaml[index] == ' ')
+					{
+						index++;
+					}
+
+					return true;
+				}
+
+				bool NextCharacter(char character)
+				{
+					if (index < xaml.Length && xaml[index] != character)
+					{
+						return false;
+					}
+
+					index++;
+					return true;
+				}
+
+				bool NextFullName()
+				{
+					if (index >= xaml.Length - fullName.Length)
+					{
+						return false;
+					}
+
+					var slice = xaml.AsSpan().Slice(index, fullName.Length);
+					if (!MemoryExtensions.Equals(slice, fullName.AsSpan(), StringComparison.Ordinal))
+					{
+						return false;
+					}
+
+					index += fullName.Length;
+					return true;
+				}
+			}
 		}
 	}
 }

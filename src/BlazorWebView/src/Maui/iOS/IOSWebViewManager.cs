@@ -1,12 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.Encodings.Web;
+using CoreFoundation;
 using Foundation;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Platform;
+using ObjCRuntime;
 using UIKit;
 using WebKit;
 
@@ -19,6 +23,7 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 	internal class IOSWebViewManager : WebViewManager
 	{
 		private readonly BlazorWebViewHandler _blazorMauiWebViewHandler;
+		private readonly ILogger _logger;
 		private readonly WKWebView _webview;
 		private readonly string _contentRootRelativeToAppRoot;
 
@@ -33,10 +38,14 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 		/// <param name="jsComponents">Describes configuration for adding, removing, and updating root components from JavaScript code.</param>
 		/// <param name="contentRootRelativeToAppRoot">Path to the directory containing application content files.</param>
 		/// <param name="hostPageRelativePath">Path to the host page within the fileProvider.</param>
+		/// <param name="logger">Logger to send log messages to.</param>
 
-		public IOSWebViewManager(BlazorWebViewHandler blazorMauiWebViewHandler!!, WKWebView webview!!, IServiceProvider provider, Dispatcher dispatcher, IFileProvider fileProvider, JSComponentConfigurationStore jsComponents, string contentRootRelativeToAppRoot, string hostPageRelativePath)
+		public IOSWebViewManager(BlazorWebViewHandler blazorMauiWebViewHandler, WKWebView webview, IServiceProvider provider, Dispatcher dispatcher, IFileProvider fileProvider, JSComponentConfigurationStore jsComponents, string contentRootRelativeToAppRoot, string hostPageRelativePath, ILogger logger)
 			: base(provider, dispatcher, BlazorWebViewHandler.AppOriginUri, fileProvider, jsComponents, hostPageRelativePath)
 		{
+			ArgumentNullException.ThrowIfNull(blazorMauiWebViewHandler);
+			ArgumentNullException.ThrowIfNull(webview);
+
 			if (provider.GetService<MauiBlazorMarkerService>() is null)
 			{
 				throw new InvalidOperationException(
@@ -44,6 +53,7 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 					$"Please add all the required services by calling '{nameof(IServiceCollection)}.{nameof(BlazorWebViewServiceCollectionExtensions.AddMauiBlazorWebView)}' in the application startup code.");
 			}
 
+			_logger = logger;
 			_blazorMauiWebViewHandler = blazorMauiWebViewHandler;
 			_webview = webview;
 			_contentRootRelativeToAppRoot = contentRootRelativeToAppRoot;
@@ -54,6 +64,7 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 		/// <inheritdoc />
 		protected override void NavigateCore(Uri absoluteUri)
 		{
+			_logger.NavigatingToUri(absoluteUri);
 			using var nsUrl = new NSUrl(absoluteUri.ToString());
 			using var request = new NSUrlRequest(nsUrl);
 			_webview.LoadRequest(request);
@@ -72,7 +83,7 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			var messageJSStringLiteral = JavaScriptEncoder.Default.Encode(message);
 			_webview.EvaluateJavaScript(
 				javascript: $"__dispatchMessageCallback(\"{messageJSStringLiteral}\")",
-				completionHandler: (NSObject result, NSError error) => { });
+				completionHandler: (NSObject? result, NSError? error) => { });
 		}
 
 		internal void MessageReceivedInternal(Uri uri, string message)
@@ -97,7 +108,6 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 				_webView = webView ?? throw new ArgumentNullException(nameof(webView));
 			}
 
-
 			public override void RunJavaScriptAlertPanel(WKWebView webView, string message, WKFrameInfo frame, Action completionHandler)
 			{
 				PresentAlertController(
@@ -117,15 +127,22 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 				);
 			}
 
-			public override void RunJavaScriptTextInputPanel(
-				WKWebView webView, string prompt, string? defaultText, WKFrameInfo frame, Action<string> completionHandler)
+			// TODO: this should be an override but requires XAMCORE_5_0: https://github.com/dotnet/macios/issues/15728
+			[Export("webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:")]
+			public void RunJavaScriptTextInputPanelWithPrompt(
+				WKWebView webView,
+				string prompt,
+				string? defaultText,
+				WKFrameInfo frame,
+				IntPtr completionHandlerBlock)
 			{
+				var completionHandler = ActionStringTrampolineBlock.Create(completionHandlerBlock);
 				PresentAlertController(
 					webView,
 					prompt,
 					defaultText: defaultText,
-					okAction: x => completionHandler(x.TextFields[0].Text!),
-					cancelAction: _ => completionHandler(null!)
+					okAction: x => completionHandler?.Invoke(x.TextFields[0].Text),
+					cancelAction: _ => completionHandler?.Invoke(null)
 				);
 			}
 
@@ -173,10 +190,8 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 				if (cancelAction != null)
 					AddCancelAction(controller, () => cancelAction(controller));
 
-#pragma warning disable CA1416 // TODO:  'UIApplication.Windows' is unsupported on: 'ios' 15.0 and later
-				GetTopViewController(UIApplication.SharedApplication.Windows.FirstOrDefault(m => m.IsKeyWindow)?.RootViewController)?
+				GetTopViewController(UIApplication.SharedApplication.GetKeyWindow()?.RootViewController)?
 					.PresentViewController(controller, true, null);
-#pragma warning restore CA1416
 			}
 
 			private static UIViewController? GetTopViewController(UIViewController? viewController)
@@ -191,6 +206,43 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 					return GetTopViewController(viewController.PresentedViewController);
 
 				return viewController;
+			}
+
+			// TODO: Remove after XAMCORE_5_0 is live: 
+			//       https://github.com/dotnet/macios/issues/15728
+			//       https://github.com/dotnet/macios/pull/22199
+			sealed class ActionStringTrampolineBlock : TrampolineBlockBase
+			{
+				[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+				[UserDelegateType(typeof(Action<string?>))]
+				delegate void Invoker(IntPtr block, NativeHandle obj);
+
+				Invoker invoker;
+
+				public unsafe ActionStringTrampolineBlock(BlockLiteral* block)
+					: base(block)
+				{
+					invoker = block->GetDelegateForBlock<Invoker>();
+				}
+
+				[Preserve(Conditional = true)]
+				public unsafe static Action<string?>? Create(IntPtr block)
+				{
+					if (block == IntPtr.Zero)
+					{
+						return null;
+					}
+
+					var del = (Action<string?>)GetExistingManagedDelegate(block);
+					return del ?? new ActionStringTrampolineBlock((BlockLiteral*)block).Invoke;
+				}
+
+				void Invoke(string? obj)
+				{
+					var nsobj = CFString.CreateNative(obj);
+					invoker(BlockPointer, nsobj);
+					CFString.ReleaseNative(nsobj);
+				}
 			}
 		}
 
@@ -214,6 +266,8 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			public override void DecidePolicy(WKWebView webView, WKNavigationAction navigationAction, Action<WKNavigationActionPolicy> decisionHandler)
 			{
 				var requestUrl = navigationAction.Request.Url;
+				var uri = new Uri(requestUrl.ToString());
+
 				UrlLoadingStrategy strategy;
 
 				// TargetFrame is null for navigation to a new window (`_blank`)
@@ -225,17 +279,24 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 				else
 				{
 					// Invoke the UrlLoading event to allow overriding the default link handling behavior
-					var uri = new Uri(requestUrl.ToString());
 					var callbackArgs = UrlLoadingEventArgs.CreateWithDefaultLoadingStrategy(uri, BlazorWebViewHandler.AppOriginUri);
 					_webView.UrlLoading(callbackArgs);
+					_webView.Logger.NavigationEvent(uri, callbackArgs.UrlLoadingStrategy);
+
 					strategy = callbackArgs.UrlLoadingStrategy;
 				}
 
 				if (strategy == UrlLoadingStrategy.OpenExternally)
 				{
-#pragma warning disable CA1416 // TODO: OpenUrl(...) has [UnsupportedOSPlatform("ios10.0")]
-					UIApplication.SharedApplication.OpenUrl(requestUrl);
-#pragma warning restore CA1416
+					_webView.Logger.LaunchExternalBrowser(uri);
+
+					UIApplication.SharedApplication.OpenUrl(requestUrl, new UIApplicationOpenUrlOptions(), (success) =>
+					{
+						if (!success)
+						{
+							_webView.Logger.LogError($"There was an error trying to open URL: {requestUrl}");
+						}
+					});
 				}
 
 				if (strategy != UrlLoadingStrategy.OpenInWebView)
@@ -263,8 +324,11 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 					var uri = _currentUri;
 					_currentUri = null;
 					_currentNavigation = null;
-					var request = new NSUrlRequest(uri);
-					webView.LoadRequest(request);
+					if (uri is not null)
+					{
+						var request = new NSUrlRequest(new NSUrl(uri.AbsoluteUri));
+						webView.LoadRequest(request);
+					}
 				}
 			}
 

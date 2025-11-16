@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // Type or member is obsolete
 #nullable enable
 using System;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using Microsoft.Maui.ApplicationModel;
 
 namespace Microsoft.Maui.Devices.Sensors
 {
-	class GeocodingImplementation: IGeocoding
+	class GeocodingImplementation : IGeocoding
 	{
 		public string? MapServiceToken { get; set; }
 

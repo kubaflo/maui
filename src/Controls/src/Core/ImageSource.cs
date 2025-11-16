@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.IO;
 using System.Reflection;
@@ -6,22 +7,25 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="Type[@FullName='Microsoft.Maui.Controls.ImageSource']/Docs" />
+	/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="Type[@FullName='Microsoft.Maui.Controls.ImageSource']/Docs/*" />
 	[System.ComponentModel.TypeConverter(typeof(ImageSourceConverter))]
 	public abstract partial class ImageSource : Element
 	{
-		readonly object _synchandle = new object();
+		readonly SemaphoreSlim _cancellationTokenSourceLock = new(1, 1);
 		CancellationTokenSource _cancellationTokenSource;
 
 		TaskCompletionSource<bool> _completionSource;
 
 		readonly WeakEventManager _weakEventManager = new WeakEventManager();
 
+		internal readonly MergedStyle _mergedStyle;
+
 		protected ImageSource()
 		{
+			_mergedStyle = new MergedStyle(GetType(), this);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='IsEmpty']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='IsEmpty']/Docs/*" />
 		public virtual bool IsEmpty => false;
 
 		public static bool IsNullOrEmpty(ImageSource imageSource) =>
@@ -34,8 +38,7 @@ namespace Microsoft.Maui.Controls
 			{
 				if (_cancellationTokenSource == value)
 					return;
-				if (_cancellationTokenSource != null)
-					_cancellationTokenSource.Cancel();
+				_cancellationTokenSource?.Cancel();
 				_cancellationTokenSource = value;
 			}
 		}
@@ -45,37 +48,35 @@ namespace Microsoft.Maui.Controls
 			get { return _cancellationTokenSource != null; }
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='Cancel']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='Cancel']/Docs/*" />
 		public virtual Task<bool> Cancel()
 		{
 			if (!IsLoading)
 				return Task.FromResult(false);
 
-			var tcs = new TaskCompletionSource<bool>();
-			TaskCompletionSource<bool> original = Interlocked.CompareExchange(ref _completionSource, tcs, null);
-			if (original == null)
+			TaskCompletionSource<bool> original = Interlocked.CompareExchange(ref _completionSource, new TaskCompletionSource<bool>(), null);
+			if (original is null)
 			{
 				_cancellationTokenSource.Cancel();
+				return Task.FromResult(false);
 			}
-			else
-				tcs = original;
 
-			return tcs.Task;
+			return original.Task;
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromFile']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromFile']/Docs/*" />
 		public static ImageSource FromFile(string file)
 		{
 			return new FileImageSource { File = file };
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromResource'][2]/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromResource'][2]/Docs/*" />
 		public static ImageSource FromResource(string resource, Type resolvingType)
 		{
 			return FromResource(resource, resolvingType.Assembly);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromResource'][1]/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromResource'][1]/Docs/*" />
 		public static ImageSource FromResource(string resource, Assembly sourceAssembly = null)
 		{
 			sourceAssembly = sourceAssembly ?? Assembly.GetCallingAssembly();
@@ -83,19 +84,19 @@ namespace Microsoft.Maui.Controls
 			return FromStream(() => sourceAssembly.GetManifestResourceStream(resource));
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromStream'][1]/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromStream'][1]/Docs/*" />
 		public static ImageSource FromStream(Func<Stream> stream)
 		{
 			return new StreamImageSource { Stream = token => Task.Run(stream, token) };
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromStream'][2]/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromStream'][2]/Docs/*" />
 		public static ImageSource FromStream(Func<CancellationToken, Task<Stream>> stream)
 		{
 			return new StreamImageSource { Stream = stream };
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromUri']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ImageSource.xml" path="//Member[@MemberName='FromUri']/Docs/*" />
 		public static ImageSource FromUri(Uri uri)
 		{
 			if (!uri.IsAbsoluteUri)
@@ -119,26 +120,35 @@ namespace Microsoft.Maui.Controls
 			return FromUri(uri);
 		}
 
-		private protected void OnLoadingCompleted(bool cancelled)
+		private protected async Task OnLoadingCompleted(bool cancelled)
 		{
 			if (!IsLoading || _completionSource == null)
 				return;
 
 			TaskCompletionSource<bool> tcs = Interlocked.Exchange(ref _completionSource, null);
-			if (tcs != null)
-				tcs.SetResult(cancelled);
+			tcs?.SetResult(cancelled);
 
-			lock (_synchandle)
+			await _cancellationTokenSourceLock.WaitAsync();
+			try
 			{
 				CancellationTokenSource = null;
 			}
+			finally
+			{
+				_cancellationTokenSourceLock.Release();
+			}
 		}
 
-		private protected void OnLoadingStarted()
+		private protected async Task OnLoadingStarted()
 		{
-			lock (_synchandle)
+			await _cancellationTokenSourceLock.WaitAsync();
+			try
 			{
 				CancellationTokenSource = new CancellationTokenSource();
+			}
+			finally
+			{
+				_cancellationTokenSourceLock.Release();
 			}
 		}
 

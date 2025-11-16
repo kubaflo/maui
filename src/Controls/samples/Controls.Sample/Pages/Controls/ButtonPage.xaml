@@ -2,9 +2,19 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     x:Class="Maui.Controls.Sample.Pages.ButtonPage"
+    xmlns:converters="clr-namespace:Controls.Sample.Converters"
     xmlns:views="clr-namespace:Maui.Controls.Sample.Pages.Base"
     xmlns:local="clr-namespace:Maui.Controls.Sample"
     Title="Button">
+    <views:BasePage.Resources>
+        <ResourceDictionary>
+            <converters:BoolToCustomValueConverter 
+                x:Key="BoolToColorConverter"
+                ValueIfTrue="Green"
+                ValueIfFalse="Red"/>
+
+        </ResourceDictionary>
+    </views:BasePage.Resources>
     <views:BasePage.Content>
         <ScrollView>
             <VerticalStackLayout Margin="12" Spacing="6">
@@ -13,6 +23,9 @@
                     Style="{StaticResource Headline}"/>
                 <Button
                     Text="Button"/>
+                <Button
+                    Text="Button with Tooltip" 
+                    ToolTipProperties.Text="This is a tooltip!" />
                 <Label
                     Text="Disabled"
                     Style="{StaticResource Headline}"/>
@@ -38,10 +51,27 @@
                     BackgroundColor="Blue"
                     Text="Button"/>
                 <Label
+                     Text="BackgroundColor (Binding)"
+                     Style="{StaticResource Headline}" />
+                 <Button 
+                     Text="Button"
+                     BackgroundColor="{Binding ButtonBackground}" />
+                <Label
+                    Text="Changing BackgroundColor from Converter"
+                    Style="{StaticResource Headline}"/>
+                <CheckBox 
+                    IsChecked="{Binding ChangeButtonColor, Mode=TwoWay}"/>
+                <Button 
+                    Text="Button"
+                    BackgroundColor="{Binding ChangeButtonColor, Converter={StaticResource BoolToColorConverter}}" />
+                <Label
                     Text="Background"
                     Style="{StaticResource Headline}" />
                 <Button 
-                    Text="Background">
+                    x:Name="BackgroundButton"
+                    Text="Background"
+                    HorizontalOptions="Center"
+                    Clicked="OnBackgroundButtonClicked">
                     <Button.Background>
                         <LinearGradientBrush EndPoint="1,0">
                             <GradientStop Color="Yellow"
@@ -51,6 +81,16 @@
                         </LinearGradientBrush>
                     </Button.Background>
                 </Button>
+                <Label
+                    Text="Changing SolidColorBrush to LinearGradientBrush"
+                    Style="{StaticResource Headline}"/>
+                <Button 
+                    x:Name="ChangeBrushButton"
+                    Text="Background"
+                    CornerRadius="12"
+                    BorderColor="Yellow"
+                    BorderWidth="4"
+                    Clicked="OnChangeBrushButtonClicked"/>
                 <Label
                     Text="TextColor"
                     Style="{StaticResource Headline}"/>
@@ -98,11 +138,27 @@
                     CharacterSpacing="20"
                     Text="Button"/>
                 <Label
+                    Text="Character Spacing with Text Color"
+                    Style="{StaticResource Headline}"/>
+                <Button
+                    CharacterSpacing="20"
+                    TextColor="HotPink"
+                    Text="Button"/>
+                <Label
+                    Text="Actual Image"
+                    Style="{StaticResource Headline}"/>
+                <Grid>
+                    <Image
+                        Background="Black" Source="settings.png" 
+                        HorizontalOptions="Center" VerticalOptions="Center" />
+                </Grid>
+                <Label
                     Text="Image Source"
                     Style="{StaticResource Headline}"/>
-                <Button 
+                <Button
+                    x:Name="ImageSourceButton"
                     ContentLayout="Top" TextColor="White" Background="Black" 
-                    ImageSource="settings.png" />
+                    ImageSource="settings.png" Clicked="Button_Clicked" />
                 <Label
                     Text="Image Source with Positioning"
                     Style="{StaticResource Headline}"/>
@@ -119,11 +175,11 @@
                     ContentLayout="Right" TextColor="White" Background="Black" 
                     ImageSource="settings.png" Text="settings" />
                 <Label
-                    Text="Click To Change Positionng"
+                    Text="Click To Change Positioning"
                     Style="{StaticResource Headline}"/>
                 <Button 
                     x:Name="positionChange" ContentLayout="Top" TextColor="White" Background="Black" 
-                    ImageSource="settings.png" Text="settings" />
+                    ImageSource="settings.png" Text="settings" Clicked="OnPositionChange" />
                 <Button 
                     WidthRequest="200"  HorizontalOptions="Fill" x:Name="decreaseSpacing" Text="Decrease Spacing" 
                     Clicked="OnDecreaseSpacing" TextColor="White" Background="Black" ></Button>
@@ -136,7 +192,7 @@
                 <Button
                     Text="Button"
                     HorizontalOptions="Start"
-                    Background="LightGrey"
+                    Background="LightGray"
                     Padding="NaN"/>
                 <Label
                     Text="Padding = 0"
@@ -144,7 +200,7 @@
                 <Button
                     Text="Button"
                     HorizontalOptions="Start"
-                    Background="LightGrey"
+                    Background="LightGray"
                     Padding="0"/>
                 <Label
                     Text="Padding"
@@ -156,13 +212,18 @@
                 <Button
                     Text="Button"
                     HorizontalOptions="Start"
-                    Background="LightGrey"
+                    Background="LightGray"
                     Padding="{Binding Text, Source={Reference paddingEntry}, Converter={StaticResource ThicknessConverter}}"/>
                 <Label
                     Text="LineBreakMode"
                     Style="{StaticResource Headline}"/>
                 <Button 
                     x:Name="LineBreakModeButton"
+                    Text="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."/>
+                <Button
+                    x:Name="ImageLineBreakModeButton"
+                    ContentLayout="Right" 
+                    ImageSource="coffee.png"
                     Text="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."/>
                 <Button
                     Text="Update LineBreakMode"
@@ -172,6 +233,32 @@
                     Style="{StaticResource Headline}"/>
                 <local:CustomButton
                     Text="Custom Button" />
+                <Label
+                    Text="HorizontalOptions"
+                    Style="{StaticResource Headline}"/>
+                <Button
+                    Text="Start"
+                    HorizontalOptions="Start" />
+                <Button
+                    Text="Center"
+                    HorizontalOptions="Center" />
+                <Button
+                    Text="End"
+                    HorizontalOptions="End" />
+                 <Label
+                    Text="Slide to change the Border Width:"
+                    Style="{StaticResource Headline}"/>
+                <Button
+                    Text="BorderWidth Changing"
+                    ImageSource="settings.png"
+                    HorizontalOptions="Center"
+                    BackgroundColor="Green"
+                    BorderWidth="{Binding Source={x:Reference BorderWidthSlider}, Path=Value}" />
+                <Slider
+                    x:Name="BorderWidthSlider"
+                    Minimum="0"
+                    Maximum="100"
+                    Value ="0"/>
             </VerticalStackLayout>
         </ScrollView>
     </views:BasePage.Content>

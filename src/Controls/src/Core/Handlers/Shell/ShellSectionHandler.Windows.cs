@@ -1,7 +1,6 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Text;
 using Microsoft.Maui.Controls.Internals;
 using WFrame = Microsoft.UI.Xaml.Controls.Frame;
@@ -14,6 +13,7 @@ namespace Microsoft.Maui.Controls.Handlers
 		public static PropertyMapper<ShellSection, ShellSectionHandler> Mapper =
 				new PropertyMapper<ShellSection, ShellSectionHandler>(ElementMapper)
 				{
+					[nameof(ShellSection.Title)] = MapTitle,
 					[nameof(ShellSection.CurrentItem)] = MapCurrentItem,
 				};
 
@@ -25,6 +25,7 @@ namespace Microsoft.Maui.Controls.Handlers
 				};
 
 		StackNavigationManager? _navigationManager;
+		WeakReference? _lastShell;
 
 		public ShellSectionHandler() : base(Mapper, CommandMapper)
 		{
@@ -35,10 +36,16 @@ namespace Microsoft.Maui.Controls.Handlers
 			_navigationManager = CreateNavigationManager();
 			return new WFrame();
 		}
+		public static void MapTitle(ShellSectionHandler handler, ShellSection item)
+		{
+			var shellItem = item.Parent as ShellItem;
+			var shellItemHandler = shellItem?.Handler as ShellItemHandler;
+			shellItemHandler?.UpdateTitle();
+		}
 
 		public static void MapCurrentItem(ShellSectionHandler handler, ShellSection item)
 		{
-			handler.SyncNavigationStack(false);
+			handler.SyncNavigationStack(false, null);
 		}
 
 		ShellSection? _shellSection;
@@ -47,7 +54,14 @@ namespace Microsoft.Maui.Controls.Handlers
 			if (_shellSection != null)
 			{
 				((IShellSectionController)_shellSection).NavigationRequested -= OnNavigationRequested;
-				((IShellController)_shellSection.FindParentOfType<Shell>()!).RemoveAppearanceObserver(this);
+
+				((IShellSectionController)_shellSection).ItemsCollectionChanged -= OnItemsCollectionChanged;
+
+				if (_lastShell?.Target is IShellController shell)
+				{
+					shell.RemoveAppearanceObserver(this);
+				}
+				_lastShell = null;
 			}
 
 			// If we've already connected to the navigation manager
@@ -70,25 +84,59 @@ namespace Microsoft.Maui.Controls.Handlers
 			if (_shellSection != null)
 			{
 				((IShellSectionController)_shellSection).NavigationRequested += OnNavigationRequested;
-				((IShellController)_shellSection.FindParentOfType<Shell>()!).AddAppearanceObserver(this, _shellSection);
+
+				((IShellSectionController)_shellSection).ItemsCollectionChanged += OnItemsCollectionChanged;
+
+				var shell = _shellSection.FindParentOfType<Shell>() as IShellController;
+				if (shell != null)
+				{
+					_lastShell = new WeakReference(shell);
+					shell.AddAppearanceObserver(this, _shellSection);
+				}
 			}
 		}
 
 		void OnNavigationRequested(object? sender, NavigationRequestedEventArgs e)
 		{
-			SyncNavigationStack(e.Animated);
+			SyncNavigationStack(e.Animated, e);
 		}
 
-		void SyncNavigationStack(bool animated)
+		void OnItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
 		{
+			if (_shellSection is null)
+				return;
+
+			if (_shellSection.Parent is ShellItem shellItem && shellItem.Handler is ShellItemHandler shellItemHandler)
+			{
+				shellItemHandler.MapMenuItems();
+			}
+		}
+
+		void SyncNavigationStack(bool animated, NavigationRequestedEventArgs? e)
+		{
+			// Current Item might transition to null while visibility is adjusting on shell
+			// so we just ignore this and eventually when shell knows
+			// the next current item it will request to sync again
+			if (VirtualView.CurrentItem == null || MauiContext is null)
+				return;
+
+			// This is used to assign the ShellContentHandler to ShellContent
+			_ = VirtualView.CurrentItem.ToPlatform(MauiContext);
+
 			List<IView> pageStack = new List<IView>()
 			{
 				(VirtualView.CurrentItem as IShellContentController).GetOrCreateContent()
 			};
 
-			for (var i = 1; i < VirtualView.Navigation.NavigationStack.Count; i++)
+			// PopToRoot in the xplat code fires before the navigation stack has been updated
+			// Once we get shell all converted over to newer navigation APIs this will all be a bit
+			// less leaky
+			if (e?.RequestType != NavigationRequestType.PopToRoot)
 			{
-				pageStack.Add(VirtualView.Navigation.NavigationStack[i]);
+				for (var i = 1; i < VirtualView.Navigation.NavigationStack.Count; i++)
+				{
+					pageStack.Add(VirtualView.Navigation.NavigationStack[i]);
+				}
 			}
 
 			// The point of this is to push the shell navigation over to using the INavigationStack

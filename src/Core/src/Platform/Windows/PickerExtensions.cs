@@ -1,7 +1,7 @@
 ﻿#nullable enable
 using Microsoft.Maui.Graphics;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using WBrush = Microsoft.UI.Xaml.Media.Brush;
 
 namespace Microsoft.Maui.Platform
 {
@@ -9,12 +9,11 @@ namespace Microsoft.Maui.Platform
 	{
 		public static void UpdateTitle(this ComboBox nativeComboBox, IPicker picker)
 		{
-			nativeComboBox.Header = null;
+			nativeComboBox.Header = string.IsNullOrEmpty(picker.Title) ? null : picker;
 
-			nativeComboBox.HeaderTemplate = string.IsNullOrEmpty(picker.Title) ? null : 
+			nativeComboBox.HeaderTemplate = string.IsNullOrEmpty(picker.Title) ? null :
 				(UI.Xaml.DataTemplate)UI.Xaml.Application.Current.Resources["ComboBoxHeader"];
 
-			nativeComboBox.DataContext = picker;
 		}
 
 		public static void UpdateBackground(this ComboBox nativeComboBox, IPicker picker)
@@ -22,16 +21,14 @@ namespace Microsoft.Maui.Platform
 			var platformBrush = picker.Background?.ToPlatform();
 
 			if (platformBrush == null)
-			{
-				nativeComboBox.Resources.RemoveKeys(_backgroundColorResourceKeys);
-			}
+				nativeComboBox.Resources.RemoveKeys(BackgroundColorResourceKeys);
 			else
-			{
-				nativeComboBox.Resources.SetValueForAllKey(_backgroundColorResourceKeys, platformBrush);
-			}
+				nativeComboBox.Resources.SetValueForAllKey(BackgroundColorResourceKeys, platformBrush);
+
+			nativeComboBox.RefreshThemeResources();
 		}
 
-		static readonly string[] _backgroundColorResourceKeys =
+		static readonly string[] BackgroundColorResourceKeys =
 		{
 			"ComboBoxBackground",
 			"ComboBoxBackgroundPointerOver",
@@ -44,20 +41,27 @@ namespace Microsoft.Maui.Platform
 		public static void UpdateTextColor(this ComboBox nativeComboBox, IPicker picker)
 		{
 			var platformBrush = picker.TextColor?.ToPlatform();
+
 			if (platformBrush == null)
 			{
-				nativeComboBox.Resources.RemoveKeys(_textColorResourceKeys);
+				nativeComboBox.Resources.RemoveKeys(TextColorResourceKeys);
+				nativeComboBox.ClearValue(ComboBox.ForegroundProperty);
 			}
 			else
 			{
-				nativeComboBox.Resources.SetValueForAllKey(_textColorResourceKeys, platformBrush);
+				nativeComboBox.Resources.SetValueForAllKey(TextColorResourceKeys, platformBrush);
 				nativeComboBox.Foreground = platformBrush;
 			}
+
+			nativeComboBox.RefreshThemeResources();
 		}
 
-		static readonly string[] _textColorResourceKeys =
+		// ResourceKeys controlling the foreground color of the ComboBox.
+		// https://docs.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.combobox?view=windows-app-sdk-1.1
+		static readonly string[] TextColorResourceKeys =
 		{
 			"ComboBoxForeground",
+			"ComboBoxForegroundPointerOver",
 			"ComboBoxForegroundDisabled",
 			"ComboBoxForegroundFocused",
 			"ComboBoxForegroundFocusedPressed",
@@ -74,8 +78,8 @@ namespace Microsoft.Maui.Platform
 		}
 
 		public static void UpdateFont(this ComboBox nativeComboBox, IPicker picker, IFontManager fontManager) =>
-			nativeComboBox.UpdateFont(picker.Font, fontManager); 
-		
+			nativeComboBox.UpdateFont(picker.Font, fontManager);
+
 		public static void UpdateHorizontalTextAlignment(this ComboBox nativeComboBox, IPicker picker)
 		{
 			nativeComboBox.HorizontalContentAlignment = picker.HorizontalTextAlignment.ToPlatformHorizontalAlignment();
@@ -84,6 +88,23 @@ namespace Microsoft.Maui.Platform
 		public static void UpdateVerticalTextAlignment(this ComboBox nativeComboBox, IPicker picker)
 		{
 			nativeComboBox.VerticalContentAlignment = picker.VerticalTextAlignment.ToPlatformVerticalAlignment();
+		}
+
+		internal static void UpdateIsOpen(this ComboBox nativeComboBox, IPicker picker)
+		{
+			if (!nativeComboBox.IsLoaded)
+			{
+				RoutedEventHandler? onLoaded = null;
+				onLoaded = (s, e) =>
+				{
+					nativeComboBox.Loaded -= onLoaded;
+					UpdateIsOpen(nativeComboBox, picker);
+				};
+				nativeComboBox.Loaded += onLoaded;
+				return;
+			}
+
+			nativeComboBox.IsDropDownOpen = picker.IsOpen;
 		}
 	}
 }

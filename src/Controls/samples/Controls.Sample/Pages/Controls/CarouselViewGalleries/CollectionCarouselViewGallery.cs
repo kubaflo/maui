@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.Maui;
@@ -13,6 +14,7 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 	[Preserve(AllMembers = true)]
 	public class CollectionCarouselViewGallery : ContentPage
 	{
+		[RequiresUnreferencedCode("CollectionCarouselViewGallery may require unreferenced code for data binding")]
 		public CollectionCarouselViewGallery()
 		{
 			Title = "Working with ObservableCollections and CarouselView";
@@ -135,10 +137,9 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 
 				grid.Children.Add(info);
 
-				var frame = new Frame
+				var frame = new Border
 				{
-					Content = grid,
-					HasShadow = false
+					Content = grid
 				};
 
 				frame.SetBinding(BackgroundColorProperty, new Binding("Color"));
@@ -152,14 +153,14 @@ namespace Maui.Controls.Sample.Pages.CollectionViewGalleries.CarouselViewGalleri
 	public class CollectionCarouselViewGalleryViewModel : BindableObject
 	{
 		readonly Random _random;
-		ObservableCollection<CarouselData> _items;
+		ObservableCollection<CarouselData>? _items;
 
 		public CollectionCarouselViewGalleryViewModel()
 		{
 			_random = new Random();
 		}
 
-		public ObservableCollection<CarouselData> Items
+		public ObservableCollection<CarouselData>? Items
 		{
 			get { return _items; }
 			set

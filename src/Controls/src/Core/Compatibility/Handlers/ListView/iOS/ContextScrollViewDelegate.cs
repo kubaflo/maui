@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using ObjCRuntime;
@@ -8,7 +9,7 @@ using RectangleF = CoreGraphics.CGRect;
 
 namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
-	internal class iOS7ButtonContainer : UIView
+	internal sealed class iOS7ButtonContainer : UIView
 	{
 		readonly nfloat _buttonWidth;
 
@@ -20,7 +21,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		public override void LayoutSubviews()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			var width = Frame.Width;
+#pragma warning restore CS0618 // Type or member is obsolete
 			nfloat takenSpace = 0;
 
 			for (var i = 0; i < Subviews.Length; i++)
@@ -36,7 +39,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		}
 	}
 
-	internal class ContextScrollViewDelegate : UIScrollViewDelegate
+	internal sealed class ContextScrollViewDelegate : UIScrollViewDelegate
 	{
 		readonly nfloat _finalButtonSize;
 		UIView _backgroundView;

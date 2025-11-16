@@ -192,17 +192,11 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android.FastRenderers
 				}
 
 				BackgroundManager.Dispose(this);
-				if (_visualElementTracker != null)
-				{
-					_visualElementTracker.Dispose();
-					_visualElementTracker = null;
-				}
+				_visualElementTracker?.Dispose();
+				_visualElementTracker = null;
 
-				if (_visualElementRenderer != null)
-				{
-					_visualElementRenderer.Dispose();
-					_visualElementRenderer = null;
-				}
+				_visualElementRenderer?.Dispose();
+				_visualElementRenderer = null;
 
 				_spannableString?.Dispose();
 
@@ -402,7 +396,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android.FastRenderers
 				switch (Element.TextType)
 				{
 					case TextType.Html:
-						if (Forms.IsNougatOrNewer)
+						if (OperatingSystem.IsAndroidVersionAtLeast(24))
 							Control.SetText(Html.FromHtml(Element.Text ?? string.Empty, FromHtmlOptions.ModeCompact), BufferType.Spannable);
 						else
 #pragma warning disable CS0618 // Type or member is obsolete

@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.UI;
@@ -7,7 +8,7 @@ using WSolidColorBrush = Microsoft.UI.Xaml.Media.SolidColorBrush;
 
 namespace Microsoft.Maui.Controls.Platform.Compatibility
 {
-	public sealed class ColorConverter : Microsoft.UI.Xaml.Data.IValueConverter
+	public sealed partial class ColorConverter : Microsoft.UI.Xaml.Data.IValueConverter
 	{
 		public object Convert(object value, Type targetType, object parameter, string language)
 		{

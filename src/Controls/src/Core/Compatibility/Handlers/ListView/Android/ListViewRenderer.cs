@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.ComponentModel;
 using Android.Content;
@@ -15,13 +16,19 @@ using AView = Android.Views.View;
 
 namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
+#pragma warning disable CS0618 // Type or member is obsolete
 	public class ListViewRenderer : ViewRenderer<ListView, AListView>
+#pragma warning restore CS0618 // Type or member is obsolete
 	{
-		public static PropertyMapper<ListView, ListViewRenderer> Mapper =	
+#pragma warning disable CS0618 // Type or member is obsolete
+		public static PropertyMapper<ListView, ListViewRenderer> Mapper =
 			new PropertyMapper<ListView, ListViewRenderer>(VisualElementRendererMapper);
+#pragma warning restore CS0618 // Type or member is obsolete
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		public static CommandMapper<ListView, ListViewRenderer> CommandMapper =
 			new CommandMapper<ListView, ListViewRenderer>(VisualElementRendererCommandMapper);
+#pragma warning restore CS0618 // Type or member is obsolete
 
 		ListViewAdapter _adapter;
 		IPlatformViewHandler _headerRenderer;
@@ -29,11 +36,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		Container _headerView;
 		Container _footerView;
 		bool _isAttached;
+		bool _reattached;
 		ScrollToRequestedEventArgs _pendingScrollTo;
 
 		SwipeRefreshLayout _refresh;
 		IListViewController Controller => Element;
+#pragma warning disable CS0618 // Type or member is obsolete
 		ITemplatedItemsView<Cell> TemplatedItemsView => Element;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 		ScrollBarVisibility _defaultHorizontalScrollVisibility = 0;
 		ScrollBarVisibility _defaultVerticalScrollVisibility = 0;
@@ -61,13 +71,29 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			_isAttached = true;
 			_adapter.IsAttachedToWindow = _isAttached;
 			UpdateIsRefreshing(isInitialValue: true);
+
+			// There might be a better way to go about doing this but from what I can tell 
+			// once you detach and then reattach a ListView the cells become unselectable 
+			// and the Android.ListView in general is left in an odd state.
+			// We didn't have to do this in XF because in XF there's an extra measure call that happens
+			// when the listview is reattached that essentially does the exact same thing.
+			// You can see this by adding back the legacy renderers and setting a breakpoint on the 
+			// adapter.GetView call. In MAUI this never gets called when navigating back vs XF it does
+			if (!_reattached)
+			{
+				_reattached = true;
+			}
+			else
+			{
+				Control?.InvalidateViews();
+			}
 		}
 
 		protected override void OnDetachedFromWindow()
 		{
 			base.OnDetachedFromWindow();
-
 			_isAttached = false;
+			_adapter.CloseContextActions();
 			_adapter.IsAttachedToWindow = _isAttached;
 		}
 
@@ -102,7 +128,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		//		oldParent?.AddView(ContainerView);
 		//}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		protected override void OnElementChanged(ElementChangedEventArgs<ListView> e)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 			base.OnElementChanged(e);
 
@@ -117,11 +145,8 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					Control.SetOnScrollListener(null);
 				}
 
-				if (_adapter != null)
-				{
-					_adapter.Dispose();
-					_adapter = null;
-				}
+				_adapter?.Dispose();
+				_adapter = null;
 			}
 
 			if (e.NewElement != null)
@@ -147,7 +172,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				nativeListView.DividerHeight = 0;
 				nativeListView.Focusable = false;
 				nativeListView.DescendantFocusability = DescendantFocusability.AfterDescendants;
+#pragma warning disable CS0618 // Type or member is obsolete
 				nativeListView.Adapter = _adapter = e.NewElement.IsGroupingEnabled && e.NewElement.OnThisPlatform().IsFastScrollEnabled() ? new GroupedListViewAdapter(Context, nativeListView, e.NewElement) : new ListViewAdapter(Context, nativeListView, e.NewElement);
+#pragma warning restore CS0618 // Type or member is obsolete
 				_adapter.HeaderView = _headerView;
 				_adapter.FooterView = _footerView;
 				_adapter.IsAttachedToWindow = _isAttached;
@@ -173,7 +200,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			var position = Control.GetPositionForView(viewCell);
 			var id = Control.GetItemIdAtPosition(position);
 
+#pragma warning disable CA1416 // Introduced in API 23: https://developer.android.com/reference/android/view/HapticFeedbackConstants#CONTEXT_CLICK
 			viewCell.PerformHapticFeedback(FeedbackConstants.ContextClick);
+#pragma warning restore CA1416
 			_adapter.OnItemClick(Control, viewCell, position, id);
 		}
 
@@ -187,7 +216,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			var position = Control.GetPositionForView(viewCell);
 			var id = Control.GetItemIdAtPosition(position);
 
+#pragma warning disable CA1416 // Introduced in API 23: https://developer.android.com/reference/android/view/HapticFeedbackConstants#CONTEXT_CLICK
 			viewCell.PerformHapticFeedback(FeedbackConstants.ContextClick);
+#pragma warning restore CA1416
 			_adapter.OnItemLongClick(Control, viewCell, position, id);
 		}
 
@@ -199,16 +230,22 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				UpdateHeader();
 			else if (e.PropertyName == "FooterElement")
 				UpdateFooter();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == "RefreshAllowed")
 				UpdateIsSwipeToRefreshEnabled();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == ListView.IsPullToRefreshEnabledProperty.PropertyName)
 				UpdateIsSwipeToRefreshEnabled();
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == ListView.IsRefreshingProperty.PropertyName)
 				UpdateIsRefreshing();
 			else if (e.PropertyName == ListView.SeparatorColorProperty.PropertyName || e.PropertyName == ListView.SeparatorVisibilityProperty.PropertyName)
 				_adapter.NotifyDataSetChanged();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == PlatformConfiguration.AndroidSpecific.ListView.IsFastScrollEnabledProperty.PropertyName)
 				UpdateFastScrollEnabled();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == ListView.SelectionModeProperty.PropertyName)
 				UpdateSelectionMode();
 			else if (e.PropertyName == ListView.RefreshControlColorProperty.PropertyName)
@@ -217,6 +254,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				UpdateHorizontalScrollBarVisibility();
 			else if (e.PropertyName == ScrollView.VerticalScrollBarVisibilityProperty.PropertyName)
 				UpdateVerticalScrollBarVisibility();
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		/*
@@ -230,7 +273,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		 * This will most likely cause the user to be frustrated that the ListView doesn't scroll :-) but at least now
 		 * it's consistent between platforms and for cases where it doesn't need to scroll (TableView).
 		 * */
+#pragma warning disable CS0618 // Type or member is obsolete
 		public override SizeRequest GetDesiredSize(double widthConstraint, double heightConstraint)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 			if (double.IsInfinity(heightConstraint))
 			{
@@ -255,11 +300,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 						// that in as the convert view so that GetView doesn't create
 						// an additional ConditionalFocusLayout
 						// We're basically faking re-use to the GetView call
-						AView currentParent = null;
-						if (cell.Handler?.PlatformView is AView aView)
-							currentParent = aView.Parent as AView;
-
-						currentParent ??= _adapter.GetConvertViewForMeasuringInfiniteHeight(i);
+						AView currentParent = _adapter.GetConvertViewForMeasuringInfiniteHeight(i);
 						AView listItem = _adapter.GetView(i, currentParent, Control);
 						int widthSpec;
 
@@ -299,7 +340,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				return;
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			Cell cell;
+#pragma warning restore CS0618 // Type or member is obsolete
 			int scrollPosition;
 			var scrollArgs = (ITemplatedItemsListScrollToRequestedEventArgs)e;
 
@@ -478,7 +521,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		{
 			if (Control != null)
 			{
+#pragma warning disable CS0618 // Type or member is obsolete
 				Control.FastScrollEnabled = Element.OnThisPlatform().IsFastScrollEnabled();
+#pragma warning restore CS0618 // Type or member is obsolete
 			}
 		}
 
@@ -534,9 +579,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			Control.VerticalScrollBarEnabled = newVerticalScrollVisibility == ScrollBarVisibility.Always;
 		}
 
-		internal class Container : ViewGroup
+		internal sealed class Container : ViewGroup
 		{
 			IPlatformViewHandler _child;
+
+			AView _platformView => _child?.ToPlatform() ?? _child?.PlatformView;
 
 			public Container(Context context) : base(context)
 			{
@@ -547,35 +594,35 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				set
 				{
 					if (_child != null)
-						RemoveView(_child.PlatformView);
+						RemoveView(_platformView);
 
 					_child = value;
 
 					if (value != null)
-						AddView(value.PlatformView);
+						AddView(_platformView);
 				}
 			}
 
 			protected override void OnLayout(bool changed, int l, int t, int r, int b)
 			{
-				if (_child?.PlatformView == null)
+				if (_platformView == null)
 				{
 					return;
 				}
 
-				_child.PlatformView.Layout(l, t, r, b);
+				_platformView.Layout(0, 0, r - l, b - t);
 			}
 
 			protected override void OnMeasure(int widthMeasureSpec, int heightMeasureSpec)
 			{
-				if (_child?.PlatformView == null)
+				if (_platformView == null)
 				{
 					SetMeasuredDimension(0, 0);
 					return;
 				}
 
-				_child.PlatformView.Measure(widthMeasureSpec, heightMeasureSpec);
-				SetMeasuredDimension(_child.PlatformView.MeasuredWidth, _child.PlatformView.MeasuredHeight);
+				_platformView.Measure(widthMeasureSpec, heightMeasureSpec);
+				SetMeasuredDimension(_platformView.MeasuredWidth, _platformView.MeasuredHeight);
 			}
 		}
 
@@ -705,7 +752,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				}
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			readonly ListView _element;
+#pragma warning restore CS0618 // Type or member is obsolete
 			readonly float _density;
 			int _contentOffset;
 

@@ -1,10 +1,11 @@
+#nullable disable
 using System;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.UI.Xaml.Input;
 
 namespace Microsoft.Maui.Controls.Platform.Compatibility
 {
-	public class KeyboardConverter : Microsoft.UI.Xaml.Data.IValueConverter
+	public partial class KeyboardConverter : Microsoft.UI.Xaml.Data.IValueConverter
 	{
 		public object Convert(object value, Type targetType, object parameter, string language)
 		{

@@ -1,10 +1,11 @@
+#nullable disable
 using Android.Content;
 using Android.Views;
 using Android.Widget;
 
 namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
-	internal class ConditionalFocusLayout : LinearLayout, global::Android.Views.View.IOnTouchListener
+	internal sealed class ConditionalFocusLayout : LinearLayout, global::Android.Views.View.IOnTouchListener
 	{
 		public ConditionalFocusLayout(System.IntPtr p, global::Android.Runtime.JniHandleOwnership o) : base(p, o)
 		{
@@ -23,14 +24,18 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			return false;
 		}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		internal void ApplyTouchListenersToSpecialCells(Cell item)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 			DescendantFocusability = DescendantFocusability.BlockDescendants;
 
 			global::Android.Views.View aView = GetChildAt(0);
 			(aView as EntryCellView)?.EditText.SetOnTouchListener(this);
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			var viewCell = item as ViewCell;
+#pragma warning restore CS0618 // Type or member is obsolete
 			if (viewCell?.View == null)
 				return;
 

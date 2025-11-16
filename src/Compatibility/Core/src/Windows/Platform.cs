@@ -2,18 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Foundation.Metadata;
 using Windows.UI.Core;
-using Microsoft.Maui.Controls.Internals;
 using NativeAutomationProperties = Microsoft.UI.Xaml.Automation.AutomationProperties;
 using WFlowDirection = Microsoft.UI.Xaml.FlowDirection;
 using WImage = Microsoft.UI.Xaml.Controls.Image;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
 using WVisibility = Microsoft.UI.Xaml.Visibility;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
@@ -148,7 +148,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			UpdateBounds();
 
 			InitializeStatusBar();
-				
+
 			// https://docs.microsoft.com/en-us/windows/winui/api/microsoft.ui.xaml.window.current?view=winui-3.0
 			// The currently activated window for UWP apps. Null for Desktop apps.
 			if (Microsoft.UI.Xaml.Window.Current != null)
@@ -331,7 +331,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				};
 
 				Canvas.SetZIndex(_busyIndicator, 1);
+
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 				_container.Children.Add(_busyIndicator);
+#pragma warning restore RS0030 // Do not use banned APIs
 			}
 
 			return _busyIndicator;
@@ -430,13 +433,14 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			if (_container == null || page == null)
 				return;
 
-			if (_modalBackgroundPage != null)
-				_modalBackgroundPage.GetCurrentPage()?.SendAppearing();
+			_modalBackgroundPage?.GetCurrentPage()?.SendAppearing();
 
 			IVisualElementRenderer pageRenderer = GetRenderer(page);
 
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 			if (_container.Children.Contains(pageRenderer.ContainerElement))
 				_container.Children.Remove(pageRenderer.ContainerElement);
+#pragma warning restore RS0030 // Do not use banned APIs
 		}
 
 		void AddPage(Page page)
@@ -444,15 +448,16 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			if (_container == null || page == null)
 				return;
 
-			if (_modalBackgroundPage != null)
-				_modalBackgroundPage.GetCurrentPage()?.SendDisappearing();
+			_modalBackgroundPage?.GetCurrentPage()?.SendDisappearing();
 
 
 
 			IVisualElementRenderer pageRenderer = page.GetOrCreateRenderer();
 
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 			if (!_container.Children.Contains(pageRenderer.ContainerElement))
 				_container.Children.Add(pageRenderer.ContainerElement);
+#pragma warning restore RS0030 // Do not use banned APIs
 
 			pageRenderer.ContainerElement.Width = _container.ActualWidth;
 			pageRenderer.ContainerElement.Height = _container.ActualHeight;

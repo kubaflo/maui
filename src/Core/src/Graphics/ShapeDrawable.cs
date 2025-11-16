@@ -1,9 +1,11 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Numerics;
 
 namespace Microsoft.Maui.Graphics
 {
 	public class ShapeDrawable : IDrawable
 	{
+		WeakReference<IShapeView>? _shapeView;
 		public ShapeDrawable()
 		{
 
@@ -14,7 +16,21 @@ namespace Microsoft.Maui.Graphics
 			UpdateShapeView(shape);
 		}
 
-		internal IShapeView? ShapeView { get; set; }
+		internal IShapeView? ShapeView
+		{
+			get => _shapeView is not null && _shapeView.TryGetTarget(out var d) ? d : null;
+			set
+			{
+				if (value is null)
+				{
+					_shapeView = null;
+					return;
+				}
+
+				_shapeView = new(value);
+			}
+		}
+
 		internal WindingMode WindingMode { get; set; }
 		internal Matrix3x2? RenderTransform { get; set; }
 
@@ -49,8 +65,9 @@ namespace Microsoft.Maui.Graphics
 
 			ApplyTransform(path);
 
-			DrawStrokePath(canvas, rect, path);
+			// Draw fill first, then stroke on top to ensure stroke is fully visible
 			DrawFillPath(canvas, rect, path);
+			DrawStrokePath(canvas, rect, path);
 		}
 
 		void DrawStrokePath(ICanvas canvas, RectF dirtyRect, PathF path)
@@ -101,9 +118,6 @@ namespace Microsoft.Maui.Graphics
 			if (ShapeView == null || ShapeView.Shape == null)
 				return;
 
-			if (!path.Closed)
-				return;
-
 			canvas.SaveState();
 
 			canvas.FillColor = Colors.Transparent;
@@ -111,7 +125,7 @@ namespace Microsoft.Maui.Graphics
 			ClipPath(canvas, path);
 
 			// Set Fill
-			var fillPaint = ShapeView.Fill;
+			var fillPaint = ShapeView.Fill ?? ShapeView.Background;
 
 			if (fillPaint != null)
 				canvas.SetFillPaint(fillPaint, dirtyRect);

@@ -1,6 +1,8 @@
 ﻿#nullable disable
 
 using System;
+using System.Diagnostics.CodeAnalysis;
+using Microsoft.Maui.Graphics;
 using ObjCRuntime;
 using UIKit;
 using RectangleF = CoreGraphics.CGRect;
@@ -8,9 +10,20 @@ using SizeF = CoreGraphics.CGSize;
 
 namespace Microsoft.Maui.Platform
 {
-	public class MauiLabel : UILabel
+	public class MauiLabel : UILabel, IUIViewLifeCycleEvents
 	{
+		UIControlContentVerticalAlignment _verticalAlignment = UIControlContentVerticalAlignment.Center;
+
 		public UIEdgeInsets TextInsets { get; set; }
+		internal UIControlContentVerticalAlignment VerticalAlignment
+		{
+			get => _verticalAlignment;
+			set
+			{
+				_verticalAlignment = value;
+				SetNeedsDisplay();
+			}
+		}
 
 		public MauiLabel(RectangleF frame) : base(frame)
 		{
@@ -20,31 +33,70 @@ namespace Microsoft.Maui.Platform
 		{
 		}
 
-		public override void DrawText(RectangleF rect) =>
-			base.DrawText(TextInsets.InsetRect(rect));
-
-		public override void InvalidateIntrinsicContentSize()
+		public override void DrawText(RectangleF rect)
 		{
-			base.InvalidateIntrinsicContentSize();
+			rect = TextInsets.InsetRect(rect);
 
-			if (Frame.Width == 0 && Frame.Height == 0)
+			if (_verticalAlignment != UIControlContentVerticalAlignment.Center
+				&& _verticalAlignment != UIControlContentVerticalAlignment.Fill)
 			{
-				// The Label hasn't actually been laid out on screen yet; no reason to request a layout
-				return;
+				rect = AlignVertical(rect);
 			}
 
-			if (!Frame.Size.IsCloseTo(AddInsets(IntrinsicContentSize), (nfloat)0.001))
-			{
-				// The text or its attributes have changed enough that the size no longer matches the set Frame. It's possible
-				// that the Label needs to be laid out again at a different size, so we request that the parent do so. 
-				Superview?.SetNeedsLayout();
-			}
+			base.DrawText(rect);
 		}
 
-		public override SizeF SizeThatFits(SizeF size) => AddInsets(base.SizeThatFits(size));
+		RectangleF AlignVertical(RectangleF rect)
+		{
+			var availableSize = rect.Size;
+			var requiredHeight = Lines == 1 ? Font.LineHeight : base.SizeThatFits(rect.Size).Height;
+
+			if (requiredHeight < availableSize.Height)
+			{
+				if (_verticalAlignment == UIControlContentVerticalAlignment.Top)
+				{
+					rect.Height = requiredHeight;
+				}
+				else if (_verticalAlignment == UIControlContentVerticalAlignment.Bottom)
+				{
+					rect = new RectangleF(rect.X, rect.Bottom - requiredHeight, rect.Width, requiredHeight);
+				}
+			}
+
+			return rect;
+		}
+
+		public override SizeF SizeThatFits(SizeF size)
+		{
+			// Prior to calculating the text size, reduce the padding, and then add the padding back in the AddInsets method.
+			var adjustedWidth = size.Width - TextInsets.Left - TextInsets.Right;
+			var adjustedHeight = size.Height - TextInsets.Top - TextInsets.Bottom;
+			var requestedSize = base.SizeThatFits(new SizeF(adjustedWidth, adjustedHeight));
+
+			// Let's be sure the label is not larger than the container
+			return AddInsets(new Size
+			{
+				Width = nfloat.Min(requestedSize.Width, size.Width),
+				Height = nfloat.Min(requestedSize.Height, size.Height),
+			});
+		}
 
 		SizeF AddInsets(SizeF size) => new SizeF(
 			width: size.Width + TextInsets.Left + TextInsets.Right,
 			height: size.Height + TextInsets.Top + TextInsets.Bottom);
+
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = IUIViewLifeCycleEvents.UnconditionalSuppressMessage)]
+		EventHandler _movedToWindow;
+		event EventHandler IUIViewLifeCycleEvents.MovedToWindow
+		{
+			add => _movedToWindow += value;
+			remove => _movedToWindow -= value;
+		}
+
+		public override void MovedToWindow()
+		{
+			base.MovedToWindow();
+			_movedToWindow?.Invoke(this, EventArgs.Empty);
+		}
 	}
 }

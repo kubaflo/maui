@@ -94,8 +94,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 			EffectUtilities.RegisterEffectControlProvider(this, oldElement, element);
 
-			if (element != null)
-				element.SendViewInitialized(NativeView);
+			element?.SendViewInitialized(NativeView);
 		}
 
 		public void SetElementSize(Size size)
@@ -174,17 +173,11 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 				Element.SizeChanged -= PageOnSizeChanged;
 				Element.PropertyChanged -= HandlePropertyChanged;
 
-				if (_tracker != null)
-				{
-					_tracker.Dispose();
-					_tracker = null;
-				}
+				_tracker?.Dispose();
+				_tracker = null;
 
-				if (_events != null)
-				{
-					_events.Dispose();
-					_events = null;
-				}
+				_events?.Dispose();
+				_events = null;
 
 				if (_tapGesture != null)
 				{
@@ -294,11 +287,11 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 				var view = _detailController.View;
 				view.Frame = target;
 				detailView.Layer.Opacity = (float)opacity;
-#pragma warning disable CA1416 // TODO: SetAnimationCurve(...), SetAnimationDuration(250), CommitAnimations() is unsupported on: 'ios' 13.0 and later
+#pragma warning disable CA1416, CA1422// TODO: SetAnimationCurve(...), SetAnimationDuration(250), CommitAnimations() is unsupported on: 'ios' 13.0 and later
 				UIView.SetAnimationCurve(UIViewAnimationCurve.EaseOut);
 				UIView.SetAnimationDuration(250);
 				UIView.CommitAnimations();
-#pragma warning restore CA1416
+#pragma warning restore CA1416, CA1422
 			}
 			else
 			{

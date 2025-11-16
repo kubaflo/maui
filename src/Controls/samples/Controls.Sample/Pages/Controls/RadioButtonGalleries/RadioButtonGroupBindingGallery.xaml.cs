@@ -15,25 +15,30 @@ namespace Maui.Controls.Sample.Pages.RadioButtonGalleries
 			BindingContext = _viewModel;
 		}
 
-		private void Button_Clicked(object sender, System.EventArgs e)
+		private void Set_Button_Clicked(object sender, System.EventArgs e)
 		{
 			_viewModel.Selection = "B";
+		}
+
+		private void Clear_Button_Clicked(object sender, System.EventArgs e)
+		{
+			_viewModel.Selection = null;
 		}
 	}
 
 	public class RadioButtonGroupBindingModel : INotifyPropertyChanged
 	{
-		private string _groupName;
-		private object _selection;
+		private string? _groupName;
+		private object? _selection;
 
-		public event PropertyChangedEventHandler PropertyChanged;
+		public event PropertyChangedEventHandler? PropertyChanged;
 
 		void OnPropertyChanged(string propertyName)
 		{
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 		}
 
-		public string GroupName
+		public string? GroupName
 		{
 			get => _groupName;
 			set
@@ -43,7 +48,7 @@ namespace Maui.Controls.Sample.Pages.RadioButtonGalleries
 			}
 		}
 
-		public object Selection
+		public object? Selection
 		{
 			get => _selection;
 			set

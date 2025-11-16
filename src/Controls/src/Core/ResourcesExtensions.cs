@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 
@@ -13,7 +14,7 @@ namespace Microsoft.Maui.Controls
 				var ve = element as IResourcesProvider;
 				if (ve != null && ve.IsResourcesCreated)
 				{
-					resources = resources ?? new Dictionary<string, object>();
+					resources = resources ?? new(StringComparer.Ordinal);
 					foreach (KeyValuePair<string, object> res in ve.Resources.MergedResources)
 					{
 						// If a MergedDictionary value is overridden for a DynamicResource, 
@@ -32,7 +33,7 @@ namespace Microsoft.Maui.Controls
 				var app = element as Application;
 				if (app != null && app.SystemResources != null)
 				{
-					resources = resources ?? new Dictionary<string, object>(8);
+					resources = resources ?? new Dictionary<string, object>(8, StringComparer.Ordinal);
 					foreach (KeyValuePair<string, object> res in app.SystemResources)
 						if (!resources.ContainsKey(res.Key))
 							resources.Add(res.Key, res.Value);
@@ -43,6 +44,12 @@ namespace Microsoft.Maui.Controls
 							resources[res.Key] = mergedClassStyles;
 						}
 				}
+				if (app != null)
+				{
+					resources = resources ?? new(StringComparer.Ordinal);
+					resources[AppThemeBinding.AppThemeResource] = app.RequestedTheme;
+				}
+
 				element = element.Parent;
 			}
 			return resources;

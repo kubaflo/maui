@@ -209,11 +209,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 			if (ContentCell != nativeCell)
 			{
-				if (ContentCell != null)
-				{
-					ContentCell.RemoveFromSuperview();
-					ContentCell = null;
-				}
+				ContentCell?.RemoveFromSuperview();
+				ContentCell = null;
 
 				ContentCell = nativeCell;
 
@@ -275,11 +272,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 				_tableView = null;
 
-				if (_moreButton != null)
-				{
-					_moreButton.Dispose();
-					_moreButton = null;
-				}
+				_moreButton?.Dispose();
+				_moreButton = null;
 
 				for (var i = 0; i < _buttons.Count; i++)
 					_buttons[i].Dispose();
@@ -345,15 +339,18 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			if (controller == null)
 				throw new InvalidOperationException("No UIViewController found to present.");
 
-			if (UIDevice.CurrentDevice.UserInterfaceIdiom == UIUserInterfaceIdiom.Phone)
+			if (UIDevice.CurrentDevice.UserInterfaceIdiom == UIUserInterfaceIdiom.Phone || (UIDevice.CurrentDevice.UserInterfaceIdiom == UIUserInterfaceIdiom.Pad && actionSheet.PopoverPresentationController == null))
 			{
 				var cancel = UIAlertAction.Create(StringResources.Cancel, UIAlertActionStyle.Cancel, null);
 				actionSheet.AddAction(cancel);
 			}
 			else
 			{
-				actionSheet.PopoverPresentationController.SourceView = _tableView;
-				actionSheet.PopoverPresentationController.SourceRect = sourceRect;
+				if (actionSheet.PopoverPresentationController != null)
+				{
+					actionSheet.PopoverPresentationController.SourceView = _tableView;
+					actionSheet.PopoverPresentationController.SourceRect = sourceRect;
+				}
 			}
 
 			controller.PresentViewController(actionSheet, true, null);
@@ -386,9 +383,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 				button.SetBackgroundImage(DestructiveBackground, UIControlState.Normal);
 
 			button.SetTitle(item.Text, UIControlState.Normal);
-#pragma warning disable CA1416 // TODO: 'UIButton.TitleEdgeInsets.set' is unsupported on: 'ios' 15.0 and later
+#pragma warning disable CA1416, CA1422  // TODO: 'UIButton.TitleEdgeInsets.set' is unsupported on: 'ios' 15.0 and later
 			button.TitleEdgeInsets = new UIEdgeInsets(0, 15, 0, 15);
-#pragma warning restore CA1416
+#pragma warning restore CA1416, CA1422
 
 			button.Enabled = item.IsEnabled;
 
@@ -557,9 +554,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 				var button = new UIButton(new RectangleF(0, 0, largestWidth, height));
 				button.SetBackgroundImage(NormalBackground, UIControlState.Normal);
-#pragma warning disable CA1416 // TODO: 'UIButton.TitleEdgeInsets.set' is unsupported on: 'ios' 15.0 and later
+#pragma warning disable CA1416, CA1422  // TODO: 'UIButton.TitleEdgeInsets.set' is unsupported on: 'ios' 15.0 and later
 				button.TitleEdgeInsets = new UIEdgeInsets(0, 15, 0, 15);
-#pragma warning restore CA1416
+#pragma warning restore CA1416, CA1422
 				button.SetTitle(StringResources.More, UIControlState.Normal);
 
 				var moreWidth = button.TitleLabel.SizeThatFits(new SizeF(width, height)).Width + 30;

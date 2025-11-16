@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -8,146 +9,150 @@ using Flex = Microsoft.Maui.Layouts.Flex;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="Type[@FullName='Microsoft.Maui.Controls.FlexLayout']/Docs" />
+	/// <summary>A Flexbox-like layout that lays out child elements in optionally wrappable rows or columns of child elements.</summary>
 	[ContentProperty(nameof(Children))]
 	public class FlexLayout : Layout, IFlexLayout
 	{
 		Flex.Item _root;
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='DirectionProperty']/Docs" />
+		/// <summary>Bindable property for attached property <see cref="Direction"/>.</summary>
 		public static readonly BindableProperty DirectionProperty =
 			BindableProperty.Create(nameof(Direction), typeof(FlexDirection), typeof(FlexLayout), FlexDirection.Row,
 									propertyChanged: OnDirectionPropertyChanged);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='JustifyContentProperty']/Docs" />
+		/// <summary>Bindable property for attached property <see cref="JustifyContent"/>.</summary>
 		public static readonly BindableProperty JustifyContentProperty =
 			BindableProperty.Create(nameof(JustifyContent), typeof(FlexJustify), typeof(FlexLayout), FlexJustify.Start,
 									propertyChanged: OnJustifyContentPropertyChanged);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='AlignContentProperty']/Docs" />
+		/// <summary>Bindable property for attached property <see cref="AlignContent"/>.</summary>
 		public static readonly BindableProperty AlignContentProperty =
 			BindableProperty.Create(nameof(AlignContent), typeof(FlexAlignContent), typeof(FlexLayout), FlexAlignContent.Stretch,
 									propertyChanged: OnAlignContentPropertyChanged);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='AlignItemsProperty']/Docs" />
+		/// <summary>Bindable property for attached property <see cref="AlignItems"/>.</summary>
 		public static readonly BindableProperty AlignItemsProperty =
 			BindableProperty.Create(nameof(AlignItems), typeof(FlexAlignItems), typeof(FlexLayout), FlexAlignItems.Stretch,
 									propertyChanged: OnAlignItemsPropertyChanged);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='PositionProperty']/Docs" />
+		/// <summary>Bindable property for attached property <see cref="Position"/>.</summary>
 		public static readonly BindableProperty PositionProperty =
 			BindableProperty.Create(nameof(Position), typeof(FlexPosition), typeof(FlexLayout), FlexPosition.Relative,
 									propertyChanged: OnPositionPropertyChanged);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='WrapProperty']/Docs" />
+		/// <summary>Bindable property for attached property <see cref="Wrap"/>.</summary>
 		public static readonly BindableProperty WrapProperty =
 			BindableProperty.Create(nameof(Wrap), typeof(FlexWrap), typeof(FlexLayout), FlexWrap.NoWrap,
 									propertyChanged: OnWrapPropertyChanged);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='OrderProperty']/Docs" />
+		/// <summary>Bindable property for attached property <c>Order</c>.</summary>
 		public static readonly BindableProperty OrderProperty =
 			BindableProperty.CreateAttached("Order", typeof(int), typeof(FlexLayout), default(int),
 											propertyChanged: OnOrderPropertyChanged);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GrowProperty']/Docs" />
+		/// <summary>Bindable property for attached property <c>Grow</c>.</summary>
 		public static readonly BindableProperty GrowProperty =
 			BindableProperty.CreateAttached("Grow", typeof(float), typeof(FlexLayout), default(float),
 											propertyChanged: OnGrowPropertyChanged, validateValue: (bindable, value) => (float)value >= 0);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='ShrinkProperty']/Docs" />
+		/// <summary>Bindable property for attached property <c>Shrink</c>.</summary>
 		public static readonly BindableProperty ShrinkProperty =
 			BindableProperty.CreateAttached("Shrink", typeof(float), typeof(FlexLayout), 1f,
 											propertyChanged: OnShrinkPropertyChanged, validateValue: (bindable, value) => (float)value >= 0);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='AlignSelfProperty']/Docs" />
+		/// <summary>Bindable property for attached property <c>AlignSelf</c>.</summary>
 		public static readonly BindableProperty AlignSelfProperty =
 			BindableProperty.CreateAttached("AlignSelf", typeof(FlexAlignSelf), typeof(FlexLayout), FlexAlignSelf.Auto,
 											propertyChanged: OnAlignSelfPropertyChanged);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='BasisProperty']/Docs" />
+		/// <summary>Bindable property for attached property <c>Basis</c>.</summary>
 		public static readonly BindableProperty BasisProperty =
 			BindableProperty.CreateAttached("Basis", typeof(FlexBasis), typeof(FlexLayout), FlexBasis.Auto,
 											propertyChanged: OnBasisPropertyChanged);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='Direction']/Docs" />
+		/// <summary>Gets or sets the flex direction for child elements within this layout.</summary>
+		/// <remarks>The following image shows the options for</remarks>
 		public FlexDirection Direction
 		{
 			get => (FlexDirection)GetValue(DirectionProperty);
 			set => SetValue(DirectionProperty, value);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='JustifyContent']/Docs" />
+		/// <summary>Gets or sets a value that that describes how child elements are justified when there is extra space around them.</summary>
+		/// <remarks>The following image shows options for</remarks>
 		public FlexJustify JustifyContent
 		{
 			get => (FlexJustify)GetValue(JustifyContentProperty);
 			set => SetValue(JustifyContentProperty, value);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='AlignContent']/Docs" />
+		/// <summary>Gets or sets a value that controls how multiple rows or columns of child elements are aligned.</summary>
+		/// <remarks>This property behaves similarly to</remarks>
 		public FlexAlignContent AlignContent
 		{
 			get => (FlexAlignContent)GetValue(AlignContentProperty);
 			set => SetValue(AlignContentProperty, value);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='AlignItems']/Docs" />
+		/// <summary>Gets or sets a value that controls how child elements are arranged within their row or column.</summary>
+		/// <remarks>The following image shows the options for</remarks>
 		public FlexAlignItems AlignItems
 		{
 			get => (FlexAlignItems)GetValue(AlignItemsProperty);
 			set => SetValue(AlignItemsProperty, value);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='Position']/Docs" />
+		/// <summary>Gets or sets a value that controls whether the coordinates of child elements are specified in absolute or relative terms. This is a bindable property.</summary>
 		public FlexPosition Position
 		{
 			get => (FlexPosition)GetValue(PositionProperty);
 			set => SetValue(PositionProperty, value);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='Wrap']/Docs" />
+		/// <summary>Gets or sets a value that controls whether and how child elements within this layout wrap. This is a bindable property.</summary>
 		public FlexWrap Wrap
 		{
 			get => (FlexWrap)GetValue(WrapProperty);
 			set => SetValue(WrapProperty, value);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetOrder'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetOrder'][1]/Docs/*" />
 		public static int GetOrder(BindableObject bindable)
 			=> (int)bindable.GetValue(OrderProperty);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetOrder'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetOrder'][1]/Docs/*" />
 		public static void SetOrder(BindableObject bindable, int value)
 			=> bindable.SetValue(OrderProperty, value);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetGrow'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetGrow'][1]/Docs/*" />
 		public static float GetGrow(BindableObject bindable)
 			=> (float)bindable.GetValue(GrowProperty);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetGrow'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetGrow'][1]/Docs/*" />
 		public static void SetGrow(BindableObject bindable, float value)
 			=> bindable.SetValue(GrowProperty, value);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetShrink'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetShrink'][1]/Docs/*" />
 		public static float GetShrink(BindableObject bindable)
 			=> (float)bindable.GetValue(ShrinkProperty);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetShrink'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetShrink'][1]/Docs/*" />
 		public static void SetShrink(BindableObject bindable, float value)
 			=> bindable.SetValue(ShrinkProperty, value);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetAlignSelf'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetAlignSelf'][1]/Docs/*" />
 		public static FlexAlignSelf GetAlignSelf(BindableObject bindable)
 			=> (FlexAlignSelf)bindable.GetValue(AlignSelfProperty);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetAlignSelf'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetAlignSelf'][1]/Docs/*" />
 		public static void SetAlignSelf(BindableObject bindable, FlexAlignSelf value)
 			=> bindable.SetValue(AlignSelfProperty, value);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetBasis'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetBasis'][1]/Docs/*" />
 		public static FlexBasis GetBasis(BindableObject bindable)
 			=> (FlexBasis)bindable.GetValue(BasisProperty);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetBasis'][1]/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetBasis'][1]/Docs/*" />
 		public static void SetBasis(BindableObject bindable, FlexBasis value)
 			=> bindable.SetValue(BasisProperty, value);
 
@@ -264,7 +269,6 @@ namespace Microsoft.Maui.Controls
 			public Flex.Item FlexItem { get; set; }
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetOrder'][2]/Docs" />
 		public int GetOrder(IView view)
 		{
 			return view switch
@@ -274,7 +278,6 @@ namespace Microsoft.Maui.Controls
 			};
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetOrder'][2]/Docs" />
 		public void SetOrder(IView view, int order)
 		{
 			switch (view)
@@ -288,7 +291,6 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetGrow'][2]/Docs" />
 		public float GetGrow(IView view)
 		{
 			return view switch
@@ -298,7 +300,6 @@ namespace Microsoft.Maui.Controls
 			};
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetGrow'][2]/Docs" />
 		public void SetGrow(IView view, float grow)
 		{
 			switch (view)
@@ -312,7 +313,6 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetShrink'][2]/Docs" />
 		public float GetShrink(IView view)
 		{
 			return view switch
@@ -322,7 +322,6 @@ namespace Microsoft.Maui.Controls
 			};
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetShrink'][2]/Docs" />
 		public void SetShrink(IView view, float shrink)
 		{
 			switch (view)
@@ -336,7 +335,6 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetAlignSelf'][2]/Docs" />
 		public FlexAlignSelf GetAlignSelf(IView view)
 		{
 			return view switch
@@ -346,7 +344,6 @@ namespace Microsoft.Maui.Controls
 			};
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetAlignSelf'][2]/Docs" />
 		public void SetAlignSelf(IView view, FlexAlignSelf alignSelf)
 		{
 			switch (view)
@@ -360,7 +357,6 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetBasis'][2]/Docs" />
 		public FlexBasis GetBasis(IView view)
 		{
 			return view switch
@@ -370,7 +366,6 @@ namespace Microsoft.Maui.Controls
 			};
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='SetBasis'][2]/Docs" />
 		public void SetBasis(IView view, FlexBasis basis)
 		{
 			switch (view)
@@ -460,10 +455,9 @@ namespace Microsoft.Maui.Controls
 			item.Height = height < 0 ? float.NaN : (float)height;
 			item.IsVisible = GetIsVisible(view);
 
-			// TODO ezhart The Core layout interfaces don't have the padding property yet; when that's available, we should add a check for it here
-			if (view is FlexLayout && view is Controls.Layout layout)
+			if (view is IPadding viewWithPadding)
 			{
-				var (pleft, ptop, pright, pbottom) = (Thickness)layout.GetValue(Compatibility.Layout.PaddingProperty);
+				var (pleft, ptop, pright, pbottom) = viewWithPadding.Padding;
 				item.PaddingLeft = (float)pleft;
 				item.PaddingTop = (float)ptop;
 				item.PaddingRight = (float)pright;
@@ -471,26 +465,72 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		void AddFlexItem(IView child)
+		// Until we can rewrite the FlexLayout engine to handle measurement properly (without the "in measure mode" hacks)
+		// we need to replace the default implementation of CrossPlatformMeasure.
+		// And we need to disable the public API analyzer briefly, because it doesn't understand hiding.
+		new public Graphics.Size CrossPlatformMeasure(double widthConstraint, double heightConstraint)
+		{
+			var layoutManager = _layoutManager ??= CreateLayoutManager();
+
+			InMeasureMode = true;
+			var result = layoutManager.Measure(widthConstraint, heightConstraint);
+			InMeasureMode = false;
+
+			return result;
+		}
+
+		internal bool InMeasureMode { get; set; }
+
+		void AddFlexItem(int index, IView child)
 		{
 			if (_root == null)
 				return;
+
+			if (child is not BindableObject)
+			{
+				// If this is a pure Core IView, we need to track all the flex properties
+				// locally because we don't have attached properties for them
+				_viewInfo.Add(child, new FlexInfo());
+			}
+
 			var item = (child as FlexLayout)?._root ?? new Flex.Item();
 			InitItemProperties(child, item);
-			if (!(child is FlexLayout))
-			{ //inner layouts don't get measured
-				item.SelfSizing = (Flex.Item it, ref float w, ref float h) =>
+			if (child is not FlexLayout)
+			{
+				item.SelfSizing = (Flex.Item it, ref float w, ref float h, bool inMeasureMode) =>
 				{
-					var sizeConstraints = item.GetConstraints();
-					sizeConstraints.Width = (sizeConstraints.Width == 0) ? double.PositiveInfinity : sizeConstraints.Width;
-					sizeConstraints.Height = (sizeConstraints.Height == 0) ? double.PositiveInfinity : sizeConstraints.Height;
-					var request = child.Measure(sizeConstraints.Width, sizeConstraints.Height);
+					Size request;
+
+					if (inMeasureMode)
+					{
+						var sizeConstraints = item.GetConstraints();
+
+						sizeConstraints.Width = (inMeasureMode && sizeConstraints.Width == 0) ? double.PositiveInfinity : sizeConstraints.Width;
+						sizeConstraints.Height = (inMeasureMode && sizeConstraints.Height == 0) ? double.PositiveInfinity : sizeConstraints.Height;
+
+						if (child is Image)
+						{
+							// This is a hack to get FlexLayout to behave like it did in Forms
+							// Forms always did its initial image measure unconstrained, which would return
+							// the intrinsic size of the image (no scaling or aspect ratio adjustments)
+
+							sizeConstraints.Width = double.PositiveInfinity;
+							sizeConstraints.Height = double.PositiveInfinity;
+						}
+
+						request = child.Measure(sizeConstraints.Width, sizeConstraints.Height);
+					}
+					else
+					{
+						// Arrange pass, do not ever run a measure here!
+						request = child.DesiredSize;
+					}
 					w = (float)request.Width;
 					h = (float)request.Height;
 				};
 			}
 
-			_root.InsertAt(Children.IndexOf(child), item);
+			_root.InsertAt(index, item);
 			SetFlexItem(child, item);
 		}
 
@@ -518,24 +558,41 @@ namespace Microsoft.Maui.Controls
 			return new FlexLayoutManager(this);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='GetFlexFrame']/Docs" />
-		public Graphics.Rect GetFlexFrame(IView view)
+		public Graphics.Rect GetFlexFrame(IView view) =>
+			GetFlexItem(view).GetFrame();
+
+		void EnsureFlexItemPropertiesUpdated()
 		{
-			return view switch
+			for (int n = 0; n < this.Count; n++)
 			{
-				BindableObject bo => ((Flex.Item)bo.GetValue(FlexItemProperty)).GetFrame(),
-				_ => _viewInfo[view].FlexItem.GetFrame(),
-			};
+				var child = this[n];
+				var flexItem = GetFlexItem(child);
+
+				InitItemProperties(child, flexItem);
+			}
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/FlexLayout.xml" path="//Member[@MemberName='Layout']/Docs" />
 		public void Layout(double width, double height)
 		{
 			if (_root.Parent != null)   //Layout is only computed at root level
 				return;
+
+			var useMeasureHack = NeedsMeasureHack(width, height);
+			if (useMeasureHack)
+			{
+				PrepareMeasureHack();
+			}
+
+			EnsureFlexItemPropertiesUpdated();
+
 			_root.Width = !double.IsPositiveInfinity((width)) ? (float)width : 0;
 			_root.Height = !double.IsPositiveInfinity((height)) ? (float)height : 0;
-			_root.Layout();
+			_root.Layout(InMeasureMode);
+
+			if (useMeasureHack)
+			{
+				RestoreValues();
+			}
 		}
 
 		protected override void OnParentSet()
@@ -550,8 +607,10 @@ namespace Microsoft.Maui.Controls
 		void PopulateLayout()
 		{
 			InitLayoutProperties(_root = new Flex.Item());
-			foreach (var child in Children)
-				AddFlexItem(child);
+			for (var i = 0; i < Children.Count; i++)
+			{
+				AddFlexItem(i, Children[i]);
+			}
 		}
 
 		void ClearLayout()
@@ -572,21 +631,21 @@ namespace Microsoft.Maui.Controls
 
 		protected override void OnAdd(int index, IView view)
 		{
+			AddFlexItem(index, view);
 			base.OnAdd(index, view);
-			AddFlexItem(view);
 		}
 
 		protected override void OnInsert(int index, IView view)
 		{
+			AddFlexItem(index, view);
 			base.OnInsert(index, view);
-			AddFlexItem(view);
 		}
 
 		protected override void OnUpdate(int index, IView view, IView oldView)
 		{
-			base.OnUpdate(index, view, oldView);
 			RemoveFlexItem(oldView);
-			AddFlexItem(view);
+			AddFlexItem(index, view);
+			base.OnUpdate(index, view, oldView);
 		}
 
 		protected override void OnRemove(int index, IView view)
@@ -602,31 +661,12 @@ namespace Microsoft.Maui.Controls
 			PopulateLayout();
 		}
 
-		protected override Size MeasureOverride(double widthConstraint, double heightConstraint)
-		{
-			var useMeasureHack = NeedsMeasureHack(widthConstraint, heightConstraint);
-
-			if (useMeasureHack)
-			{
-				PrepareMeasureHack();
-			}
-
-			var result =  base.MeasureOverride(widthConstraint, heightConstraint);
-			
-			if (useMeasureHack)
-			{
-				RestoreValues();
-			}
-
-			return result;
-		}
-
-		static bool NeedsMeasureHack(double widthConstraint, double heightConstraint) 
+		static bool NeedsMeasureHack(double widthConstraint, double heightConstraint)
 		{
 			return double.IsInfinity(widthConstraint) || double.IsInfinity(heightConstraint);
 		}
 
-		void PrepareMeasureHack() 
+		void PrepareMeasureHack()
 		{
 			// FlexLayout's Shrink and Stretch features require a fixed area to measure/layout correctly;
 			// when the dimensions they are working in are infinite, they don't really make sense. We can
@@ -643,7 +683,7 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		void RestoreValues() 
+		void RestoreValues()
 		{
 			// If we had to modify the Shrink and Stretch values of the FlexItems for measurement, we 
 			// restore them to their original values.
@@ -653,7 +693,7 @@ namespace Microsoft.Maui.Controls
 				if (GetFlexItem(child) is Flex.Item item)
 				{
 					item.Shrink = GetShrink(child);
-					item.AlignSelf =  (Flex.AlignSelf)GetAlignSelf(child);
+					item.AlignSelf = (Flex.AlignSelf)GetAlignSelf(child);
 				}
 			}
 		}

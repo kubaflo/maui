@@ -12,8 +12,7 @@ namespace Microsoft.Maui.Handlers
 
 			return new ContentView
 			{
-				CrossPlatformMeasure = VirtualView.CrossPlatformMeasure,
-				CrossPlatformArrange = VirtualView.CrossPlatformArrange
+				CrossPlatformLayout = VirtualView
 			};
 		}
 
@@ -24,8 +23,7 @@ namespace Microsoft.Maui.Handlers
 			_ = VirtualView ?? throw new InvalidOperationException($"{nameof(VirtualView)} should have been set by base class.");
 
 			PlatformView.View = view;
-			PlatformView.CrossPlatformMeasure = VirtualView.CrossPlatformMeasure;
-			PlatformView.CrossPlatformArrange = VirtualView.CrossPlatformArrange;
+			PlatformView.CrossPlatformLayout = VirtualView;
 		}
 
 		static void UpdateContent(IContentViewHandler handler)
@@ -38,12 +36,31 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView.ClearSubviews();
 
 			if (handler.VirtualView.PresentedContent is IView view)
-				handler.PlatformView.AddSubview(view.ToPlatform(handler.MauiContext));
+			{
+				var platformView = view.ToPlatform(handler.MauiContext);
+				handler.PlatformView.AddSubview(platformView);
+
+				if (view.FlowDirection == FlowDirection.MatchParent)
+				{
+					platformView.UpdateFlowDirection(view);
+				}
+
+				// we need to trigger an invalidation of ancestor measures after the view has been added
+				// so that it can walk up the hierarchy
+				platformView.InvalidateAncestorsMeasures();
+			}
 		}
 
-		public static void MapContent(IContentViewHandler handler, IContentView page)
+		public static partial void MapContent(IContentViewHandler handler, IContentView page)
 		{
 			UpdateContent(handler);
+		}
+
+		protected override void DisconnectHandler(ContentView platformView)
+		{
+			platformView.CrossPlatformLayout = null;
+			platformView.RemoveFromSuperview();
+			base.DisconnectHandler(platformView);
 		}
 	}
 }

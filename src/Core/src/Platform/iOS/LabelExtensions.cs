@@ -33,13 +33,19 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateHorizontalTextAlignment(this UILabel platformLabel, ILabel label)
 		{
-			platformLabel.TextAlignment = label.HorizontalTextAlignment.ToPlatformHorizontal(label);
+			platformLabel.TextAlignment = label.HorizontalTextAlignment.ToPlatformHorizontal(platformLabel.EffectiveUserInterfaceLayoutDirection);
 		}
 
+		// Don't use this method, it doesn't work. But we can't remove it.
 		public static void UpdateVerticalTextAlignment(this UILabel platformLabel, ILabel label)
 		{
 			if (!platformLabel.Bounds.IsEmpty)
 				platformLabel.InvalidateMeasure(label);
+		}
+
+		internal static void UpdateVerticalTextAlignment(this MauiLabel platformLabel, ILabel label)
+		{
+			platformLabel.VerticalAlignment = label.VerticalTextAlignment.ToPlatformVertical();
 		}
 
 		public static void UpdatePadding(this MauiLabel platformLabel, ILabel label)
@@ -67,19 +73,32 @@ namespace Microsoft.Maui.Platform
 				platformLabel.AttributedText = modAttrText;
 		}
 
-		internal static void UpdateTextHtml(this UILabel platformLabel, ILabel label)
+		internal static void UpdateTextHtml(this UILabel platformLabel, string text)
 		{
-			string text = label.Text ?? string.Empty;
-
 			var attr = new NSAttributedStringDocumentAttributes
 			{
 				DocumentType = NSDocumentType.HTML,
+#if IOS17_5_OR_GREATER || MACCATALYST17_5_OR_GREATER
+				CharacterEncoding = NSStringEncoding.UTF8
+#else
 				StringEncoding = NSStringEncoding.UTF8
+#endif
 			};
 
-			NSError? nsError = null;
+			NSError nsError = new();
 
+			// NOTE: Sometimes this will crash with some sort of consistency error.
+			// https://github.com/dotnet/maui/issues/25946
+			// The caller should ensure that this extension is dispatched. We cannot
+			// do it here as we need to re-apply the formatting and we cannot call
+			// into Controls from Core.
+			// This is observed with CarouselView 1 but not with 2, so hopefully this
+			// will be just disappear once we switch.
+#pragma warning disable CS8601
+#pragma warning disable CS0618
 			platformLabel.AttributedText = new NSAttributedString(text, attr, ref nsError);
+#pragma warning restore CS0618
+#pragma warning restore CS8601
 		}
 
 		internal static void UpdateTextPlainText(this UILabel platformLabel, IText label)

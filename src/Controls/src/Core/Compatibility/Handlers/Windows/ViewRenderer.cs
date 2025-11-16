@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using PlatformView = Microsoft.UI.Xaml.FrameworkElement;
@@ -16,7 +14,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		}
 
-		internal ViewRenderer(IPropertyMapper mapper, CommandMapper? commandMapper = null)
+		protected ViewRenderer(IPropertyMapper mapper, CommandMapper? commandMapper = null)
 			: base(mapper, commandMapper)
 		{
 		}

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Microsoft.Maui.ApplicationModel;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
@@ -14,6 +15,8 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 		public string Property { get; set; } = "Default";
 
+		public AppTheme UserAppTheme { get; set; }
+
 		public IWindow CreateWindow(IActivationState activationState)
 		{
 			throw new System.NotImplementedException();
@@ -28,6 +31,8 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 		{
 			_windows.Remove(window);
 		}
+
+		public void ActivateWindow(IWindow window) { }
 
 		public void ThemeChanged() { }
 	}

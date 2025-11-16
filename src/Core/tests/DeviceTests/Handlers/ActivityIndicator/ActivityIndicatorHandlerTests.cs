@@ -1,13 +1,11 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.Maui.DeviceTests.Stubs;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Handlers;
 using Xunit;
 
 namespace Microsoft.Maui.DeviceTests
 {
 	[Category(TestCategory.ActivityIndicator)]
-	public partial class ActivityIndicatorHandlerTests : HandlerTestBase<ActivityIndicatorHandler, ActivityIndicatorStub>
+	public partial class ActivityIndicatorHandlerTests : CoreHandlerTestBase<ActivityIndicatorHandler, ActivityIndicatorStub>
 	{
 		[Theory(DisplayName = "IsRunning Initializes Correctly")]
 		[InlineData(true)]
@@ -22,15 +20,40 @@ namespace Microsoft.Maui.DeviceTests
 			await ValidatePropertyInitValue(activityIndicator, () => activityIndicator.IsRunning, GetNativeIsRunning, activityIndicator.IsRunning);
 		}
 
-		[Fact(DisplayName = "Background Updates Correctly")]
-		public async Task BackgroundUpdatesCorrectly()
+		[Theory(DisplayName = "Background Updates Correctly")]
+		[InlineData(0xFFFF0000)]
+		[InlineData(0xFF00FF00)]
+		[InlineData(0xFF0000FF)]
+		public async Task BackgroundUpdatesCorrectly(uint color)
 		{
+			var expected = Color.FromUint(color);
+
 			var activityIndicator = new ActivityIndicatorStub()
 			{
+				Background = new SolidPaintStub(Color.FromUint(0xFF888888)),
 				IsRunning = true
 			};
 
-			await ValidateHasColor(activityIndicator, Colors.Yellow, () => activityIndicator.Background = new SolidPaintStub(Colors.Yellow));
+			await ValidateHasColor(activityIndicator, expected, () => activityIndicator.Background = new SolidPaintStub(expected), nameof(activityIndicator.Background));
 		}
+
+#if WINDOWS
+		[Theory(DisplayName = "Foreground Updates Correctly")]
+		[InlineData(0xFFFF0000)]
+		[InlineData(0xFF00FF00)]
+		[InlineData(0xFF0000FF)]
+		public async Task ForegroundUpdatesCorrectly(uint color)
+		{
+			var expected = Color.FromUint(color);
+
+			var activityIndicator = new ActivityIndicatorStub()
+			{
+				Color = Color.FromUint(0xFF888888),
+				IsRunning = true
+			};
+
+			await ValidateHasColor(activityIndicator, expected, () => activityIndicator.Color = expected, nameof(activityIndicator.Color));
+		}
+#endif
 	}
 }

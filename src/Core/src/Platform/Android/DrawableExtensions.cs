@@ -1,5 +1,6 @@
 using System;
 using Android.Graphics;
+using Android.Graphics.Drawables;
 using AColor = Android.Graphics.Color;
 using AColorFilter = Android.Graphics.ColorFilter;
 using ADrawable = Android.Graphics.Drawables.Drawable;
@@ -20,22 +21,6 @@ namespace Microsoft.Maui.Platform
 					return BlendMode.Multiply;
 				case FilterMode.SrcAtop:
 					return BlendMode.SrcAtop;
-			}
-
-			throw new Exception("Invalid Mode");
-		}
-
-		[Obsolete]
-		static PorterDuff.Mode? GetFilterModePre29(FilterMode mode)
-		{
-			switch (mode)
-			{
-				case FilterMode.SrcIn:
-					return PorterDuff.Mode.SrcIn;
-				case FilterMode.Multiply:
-					return PorterDuff.Mode.Multiply;
-				case FilterMode.SrcAtop:
-					return PorterDuff.Mode.SrcAtop;
 			}
 
 			throw new Exception("Invalid Mode");
@@ -71,27 +56,22 @@ namespace Microsoft.Maui.Platform
 
 		public static void SetColorFilter(this ADrawable drawable, AColor color, FilterMode mode)
 		{
-			if (drawable == null)
-				return;
+			if (drawable is not null)
+				PlatformInterop.SetColorFilter(drawable, color, (int)mode);
+		}
 
-			if (OperatingSystem.IsAndroidVersionAtLeast(29))
-			{
-				BlendMode? filterMode29 = GetFilterMode(mode);
+		internal static IAnimatable? AsAnimatable(this ADrawable? drawable)
+		{
+			if (drawable is null)
+				return null;
 
-				if (filterMode29 != null)
-					drawable.SetColorFilter(new BlendModeColorFilter(color, filterMode29));
-			}
-			else
-			{
-#pragma warning disable CS0612 // Type or member is obsolete
-				PorterDuff.Mode? filterModePre29 = GetFilterModePre29(mode);
-#pragma warning restore CS0612 // Type or member is obsolete
+			if (drawable is IAnimatable animatable)
+				return animatable;
 
-				if (filterModePre29 != null)
-#pragma warning disable CS0618 // Type or member is obsolete
-					drawable.SetColorFilter(color, filterModePre29);
-#pragma warning restore CS0618 // Type or member is obsolete
-			}
+			if (PlatformInterop.GetAnimatable(drawable) is IAnimatable javaAnimatable)
+				return javaAnimatable;
+
+			return null;
 		}
 	}
 }

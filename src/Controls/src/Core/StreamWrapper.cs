@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.IO;
 using System.Net.Http;
@@ -20,7 +21,7 @@ namespace Microsoft.Maui.Controls
 		public StreamWrapper(Stream wrapped, IDisposable additionalDisposable)
 		{
 			if (wrapped == null)
-				throw new ArgumentNullException("wrapped");
+				throw new ArgumentNullException(nameof(wrapped));
 
 			_wrapped = wrapped;
 			_additionalDisposable = additionalDisposable;

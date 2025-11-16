@@ -2,11 +2,16 @@
 using System.Globalization;
 using System.IO;
 using System.Runtime.Versioning;
+using System.Threading.Tasks;
 using Foundation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Maui;
 using Microsoft.Maui.Dispatching;
 using Microsoft.Maui.Handlers;
+using Microsoft.Maui.Platform;
 using UIKit;
 using WebKit;
 using RectangleF = CoreGraphics.CGRect;
@@ -20,8 +25,8 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 	{
 		private IOSWebViewManager? _webviewManager;
 
-		internal const string AppOrigin = "app://" + BlazorWebView.AppHostAddress + "/";
-		internal static readonly Uri AppOriginUri = new(AppOrigin);
+		internal static string AppOrigin { get; } = "app://" + BlazorWebView.AppHostAddress + "/";
+		internal static Uri AppOriginUri { get; } = new(AppOrigin);
 		private const string BlazorInitScript = @"
 			window.__receiveMessageCallbacks = [];
 			window.__dispatchMessageCallback = function(message) {
@@ -47,18 +52,35 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			})();
 		";
 
+		private ILogger? _logger;
+		internal ILogger Logger => _logger ??= Services!.GetService<ILogger<BlazorWebViewHandler>>() ?? NullLogger<BlazorWebViewHandler>.Instance;
+
 		/// <inheritdoc />
 		[SupportedOSPlatform("ios11.0")]
 		protected override WKWebView CreatePlatformView()
 		{
+			Logger.CreatingWebKitWKWebView();
+
 			var config = new WKWebViewConfiguration();
+
+			// By default, setting inline media playback to allowed, including autoplay
+			// and picture in picture, since these things MUST be set during the webview
+			// creation, and have no effect if set afterwards.
+			// A custom handler factory delegate could be set to disable these defaults
+			// but if we do not set them here, they cannot be changed once the
+			// handler's platform view is created, so erring on the side of wanting this
+			// capability by default.
+			if (OperatingSystem.IsMacCatalystVersionAtLeast(10) || OperatingSystem.IsIOSVersionAtLeast(10))
+			{
+				config.AllowsPictureInPictureMediaPlayback = true;
+				config.AllowsInlineMediaPlayback = true;
+				config.MediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypes.None;
+			}
 
 			VirtualView.BlazorWebViewInitializing(new BlazorWebViewInitializingEventArgs()
 			{
 				Configuration = config
 			});
-
-			config.Preferences.SetValueForKey(NSObject.FromObject(DeveloperTools.Enabled), new NSString("developerExtrasEnabled"));
 
 			config.UserContentController.AddScriptMessageHandler(new WebViewScriptMessageHandler(MessageReceived), "webwindowinterop");
 			config.UserContentController.AddUserScript(new WKUserScript(
@@ -73,10 +95,32 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 				AutosizesSubviews = true
 			};
 
+			if (DeveloperTools.Enabled)
+			{
+				// Legacy Developer Extras setting.
+				config.Preferences.SetValueForKey(NSObject.FromObject(true), new NSString("developerExtrasEnabled"));
+
+				if (OperatingSystem.IsIOSVersionAtLeast(16, 4) || OperatingSystem.IsMacCatalystVersionAtLeast(16, 6))
+				{
+					// Enable Developer Extras for iOS builds for 16.4+ and Mac Catalyst builds for 16.6 (macOS 13.5)+
+					webview.SetValueForKey(NSObject.FromObject(true), new NSString("inspectable"));
+				}
+			}
+
 			VirtualView.BlazorWebViewInitialized(new BlazorWebViewInitializedEventArgs
 			{
 				WebView = webview
 			});
+
+			// Disable bounce scrolling to make Blazor apps feel more native
+			if (webview.ScrollView != null)
+			{
+				webview.ScrollView.Bounces = false;
+				webview.ScrollView.AlwaysBounceVertical = false;
+				webview.ScrollView.AlwaysBounceHorizontal = false;
+			}
+
+			Logger.CreatedWebKitWKWebView();
 
 			return webview;
 		}
@@ -93,13 +137,24 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 
 			if (_webviewManager != null)
 			{
-				// Dispose this component's contents and block on completion so that user-written disposal logic and
-				// Blazor disposal logic will complete.
-				_webviewManager?
+				// Start the disposal...
+				var disposalTask = _webviewManager?
 					.DisposeAsync()
-					.AsTask()
-					.GetAwaiter()
-					.GetResult();
+					.AsTask()!;
+
+				if (IsBlockingDisposalEnabled)
+				{
+					// If the app is configured to block on dispose via an AppContext switch,
+					// we'll synchronously wait for the disposal to complete. This can cause a deadlock.
+					disposalTask
+						.GetAwaiter()
+						.GetResult();
+				}
+				else
+				{
+					// Otherwise, by default, we'll fire-and-forget the disposal task.
+					disposalTask.FireAndForget(_logger);
+				}
 
 				_webviewManager = null;
 			}
@@ -127,6 +182,8 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			var contentRootDir = Path.GetDirectoryName(HostPage!) ?? string.Empty;
 			var hostPageRelativePath = Path.GetRelativePath(contentRootDir, HostPage!);
 
+			Logger.CreatingFileProvider(contentRootDir, hostPageRelativePath);
+
 			var fileProvider = VirtualView.CreateFileProvider(contentRootDir);
 
 			_webviewManager = new IOSWebViewManager(
@@ -137,7 +194,8 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 				fileProvider,
 				VirtualView.JSComponents,
 				contentRootDir,
-				hostPageRelativePath);
+				hostPageRelativePath,
+				Logger);
 
 			StaticContentHotReloadManager.AttachToWebViewManagerIfEnabled(_webviewManager);
 
@@ -145,17 +203,37 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			{
 				foreach (var rootComponent in RootComponents)
 				{
+					Logger.AddingRootComponent(rootComponent.ComponentType?.FullName ?? string.Empty, rootComponent.Selector ?? string.Empty, rootComponent.Parameters?.Count ?? 0);
+
 					// Since the page isn't loaded yet, this will always complete synchronously
 					_ = rootComponent.AddToWebViewManagerAsync(_webviewManager);
 				}
 			}
 
-			_webviewManager.Navigate("/");
+			Logger.StartingInitialNavigation(VirtualView.StartPath);
+			_webviewManager.Navigate(VirtualView.StartPath);
 		}
 
 		internal IFileProvider CreateFileProvider(string contentRootDir)
 		{
 			return new iOSMauiAssetFileProvider(contentRootDir);
+		}
+
+		/// <summary>
+		/// Calls the specified <paramref name="workItem"/> asynchronously and passes in the scoped services available to Razor components.
+		/// </summary>
+		/// <param name="workItem">The action to call.</param>
+		/// <returns>Returns a <see cref="Task"/> representing <c>true</c> if the <paramref name="workItem"/> was called, or <c>false</c> if it was not called because Blazor is not currently running.</returns>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="workItem"/> is <c>null</c>.</exception>
+		public virtual async Task<bool> TryDispatchAsync(Action<IServiceProvider> workItem)
+		{
+			ArgumentNullException.ThrowIfNull(workItem);
+			if (_webviewManager is null)
+			{
+				return false;
+			}
+
+			return await _webviewManager.TryDispatchAsync(workItem);
 		}
 
 		private sealed class WebViewScriptMessageHandler : NSObject, IWKScriptMessageHandler
@@ -190,27 +268,57 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			[SupportedOSPlatform("ios11.0")]
 			public void StartUrlSchemeTask(WKWebView webView, IWKUrlSchemeTask urlSchemeTask)
 			{
-				var responseBytes = GetResponseBytes(urlSchemeTask.Request.Url.AbsoluteString, out var contentType, statusCode: out var statusCode);
+				var url = urlSchemeTask.Request.Url.AbsoluteString;
+				if (string.IsNullOrEmpty(url))
+				{
+					return;
+				}
+
+				var logger = _webViewHandler.Logger;
+
+				logger.LogDebug("Intercepting request for {Url}.", url);
+
+				// 1. First check if the app wants to modify or override the request.
+				if (WebRequestInterceptingWebView.TryInterceptResponseStream(_webViewHandler, webView, urlSchemeTask, url, logger))
+				{
+					return;
+				}
+
+				// 2. If this is an app request, then assume the request is for a Blazor resource.
+				var responseBytes = GetResponseBytes(url, out var contentType, statusCode: out var statusCode);
 				if (statusCode == 200)
 				{
 					using (var dic = new NSMutableDictionary<NSString, NSString>())
 					{
-						dic.Add((NSString)"Content-Length", (NSString)(responseBytes.Length.ToString(CultureInfo.InvariantCulture)));
+						dic.Add((NSString)"Content-Length", (NSString)responseBytes.Length.ToString(CultureInfo.InvariantCulture));
 						dic.Add((NSString)"Content-Type", (NSString)contentType);
 						// Disable local caching. This will prevent user scripts from executing correctly.
 						dic.Add((NSString)"Cache-Control", (NSString)"no-cache, max-age=0, must-revalidate, no-store");
-						using var response = new NSHttpUrlResponse(urlSchemeTask.Request.Url, statusCode, "HTTP/1.1", dic);
-						urlSchemeTask.DidReceiveResponse(response);
+						if (urlSchemeTask.Request.Url != null)
+						{
+							using var response = new NSHttpUrlResponse(urlSchemeTask.Request.Url, statusCode, "HTTP/1.1", dic);
+							urlSchemeTask.DidReceiveResponse(response);
+						}
+
 					}
 					urlSchemeTask.DidReceiveData(NSData.FromArray(responseBytes));
 					urlSchemeTask.DidFinish();
 				}
+
+				// 3. If the request is not handled by the app nor is it a local source, then we let the WKWebView
+				//    handle the request as it would normally do. This means that it will try to load the resource
+				//    from the internet or from the local cache.
+
+				logger.LogDebug("Request for {Url} was not handled.", url);
 			}
 
-			private byte[] GetResponseBytes(string url, out string contentType, out int statusCode)
+			private byte[] GetResponseBytes(string? url, out string contentType, out int statusCode)
 			{
 				var allowFallbackOnHostPage = AppOriginUri.IsBaseOfPage(url);
 				url = QueryStringHelper.RemovePossibleQueryString(url);
+
+				_webViewHandler.Logger.HandlingWebRequest(url);
+
 				if (_webViewHandler._webviewManager!.TryGetResponseContentInternal(url, allowFallbackOnHostPage, out statusCode, out var statusMessage, out var content, out var headers))
 				{
 					statusCode = 200;
@@ -221,10 +329,14 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 
 					contentType = headers["Content-Type"];
 
+					_webViewHandler?.Logger.ResponseContentBeingSent(url, statusCode);
+
 					return ms.ToArray();
 				}
 				else
 				{
+					_webViewHandler?.Logger.ResponseContentNotFound(url);
+
 					statusCode = 404;
 					contentType = string.Empty;
 					return Array.Empty<byte>();

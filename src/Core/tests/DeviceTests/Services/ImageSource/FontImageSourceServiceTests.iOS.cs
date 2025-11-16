@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.DeviceTests.Stubs;
@@ -16,7 +17,7 @@ namespace Microsoft.Maui.DeviceTests
 		[InlineData(typeof(FileImageSourceStub))]
 		[InlineData(typeof(StreamImageSourceStub))]
 		[InlineData(typeof(UriImageSourceStub))]
-		public async Task ThrowsForIncorrectTypes(Type type)
+		public async Task ThrowsForIncorrectTypes([DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type type)
 		{
 			var service = new FontImageSourceService(null);
 
@@ -52,7 +53,7 @@ namespace Microsoft.Maui.DeviceTests
 
 			var uiimage = Assert.IsType<UIImage>(drawable.Value);
 
-			uiimage.AssertContainsColor(expectedColor.ToPlatform());
+			await uiimage.AssertContainsColor(expectedColor.ToPlatform()).ConfigureAwait(false);
 		}
 
 		[Fact]
@@ -80,7 +81,7 @@ namespace Microsoft.Maui.DeviceTests
 
 			var uiimage = Assert.IsType<UIImage>(drawable.Value);
 
-			uiimage.AssertContainsColor(Colors.Red.ToPlatform());
+			await uiimage.AssertContainsColor(Colors.Red.ToPlatform()).ConfigureAwait(false);
 		}
 	}
 }

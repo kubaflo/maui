@@ -1,10 +1,11 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace Microsoft.Maui.Controls.Platform
 {
-	public class IconConverter : Microsoft.UI.Xaml.Data.IValueConverter
+	public partial class IconConverter : Microsoft.UI.Xaml.Data.IValueConverter
 	{
 		public object Convert(object value, Type targetType, object parameter, string language)
 		{

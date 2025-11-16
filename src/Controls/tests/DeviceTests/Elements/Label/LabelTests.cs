@@ -1,15 +1,70 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.ComponentModel;
+using System.Threading.Tasks;
+#if __IOS__
+using Foundation;
+#endif
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Handlers;
+using Microsoft.Maui.Hosting;
+using Microsoft.Maui.Platform;
 using Xunit;
+using System.Diagnostics;
 
 namespace Microsoft.Maui.DeviceTests
 {
 	[Category(TestCategory.Label)]
-	public partial class LabelTests : HandlerTestBase
+	public partial class LabelTests : ControlsHandlerTestBase
 	{
+		void SetupBuilder()
+		{
+			EnsureHandlerCreated(builder =>
+			{
+				builder.ConfigureMauiHandlers(handlers =>
+				{
+					handlers.AddHandler<Label, LabelHandler>();
+					handlers.AddHandler<Layout, LayoutHandler>();
+				});
+			});
+		}
+
+		[Fact(DisplayName = "Does Not Leak"
+#if IOS || MACCATALYST
+		, Skip = "failing on dnceng"
+#endif
+		)]
+		public async Task DoesNotLeak()
+		{
+			SetupBuilder();
+
+			WeakReference viewReference = null;
+			WeakReference platformViewReference = null;
+			WeakReference handlerReference = null;
+
+			await InvokeOnMainThreadAsync(() =>
+			{
+				var layout = new Grid();
+
+				var label = new Label
+				{
+					Text = "Test"
+				};
+
+				layout.Add(label);
+				var handler = CreateHandler<LayoutHandler>(layout);
+				viewReference = new WeakReference(label);
+				handlerReference = new WeakReference(label.Handler);
+				platformViewReference = new WeakReference(label.Handler.PlatformView);
+			});
+
+			await AssertionExtensions.WaitForGC(viewReference, handlerReference, platformViewReference);
+			Assert.False(viewReference.IsAlive, "Label should not be alive!");
+			Assert.False(handlerReference.IsAlive, "Handler should not be alive!");
+			Assert.False(platformViewReference.IsAlive, "PlatformView should not be alive!");
+		}
+
 		[Theory]
 		[ClassData(typeof(TextTransformCases))]
 		public async Task InitialTextTransformApplied(string text, TextTransform transform, string expected)
@@ -71,10 +126,10 @@ namespace Microsoft.Maui.DeviceTests
 
 		string TextForHandler(LabelHandler handler)
 		{
-#if __IOS__
+#if IOS || MACCATALYST
 			return handler.PlatformView.AttributedText?.Value;
-#elif __ANDROID__
-				return handler.PlatformView.TextFormatted.ToString();
+#elif ANDROID
+			return handler.PlatformView.TextFormatted.ToString();
 #elif WINDOWS
 			return handler.PlatformView.Text;
 #endif
@@ -187,6 +242,32 @@ namespace Microsoft.Maui.DeviceTests
 			}));
 		}
 
+		[Fact(DisplayName = "LineBreakMode TailTruncation does not affect MaxLines")]
+		public async Task TailTruncationDoesNotAffectMaxLines()
+		{
+			var label = new Label()
+			{
+				Text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+				MaxLines = 3,
+				LineBreakMode = LineBreakMode.TailTruncation,
+			};
+
+			var handler = await CreateHandlerAsync<LabelHandler>(label);
+			var platformLabel = GetPlatformLabel(handler);
+
+			await InvokeOnMainThreadAsync(() =>
+			{
+				Assert.Equal(3, GetPlatformMaxLines(handler));
+				Assert.Equal(LineBreakMode.TailTruncation.ToPlatform(), GetPlatformLineBreakMode(handler));
+
+				label.LineBreakMode = LineBreakMode.CharacterWrap;
+				platformLabel.UpdateLineBreakMode(label);
+
+				Assert.Equal(3, GetPlatformMaxLines(handler));
+				Assert.Equal(LineBreakMode.CharacterWrap.ToPlatform(), GetPlatformLineBreakMode(handler));
+			});
+		}
+
 		[Fact(DisplayName = "MaxLines Initializes Correctly")]
 		public async Task MaxLinesInitializesCorrectly()
 		{
@@ -225,9 +306,48 @@ namespace Microsoft.Maui.DeviceTests
 			Assert.Equal(expectedLines, platformValue);
 		}
 
+		[Fact]
+		public async Task ChangingTextTypeWithFormattedTextSwitchesTextSource()
+		{
+			SetupBuilder();
+
+			Label label;
+			var layout = new VerticalStackLayout
+			{
+				(label = new Label
+				{
+					WidthRequest = 200,
+					HeightRequest = 100,
+					BackgroundColor = Colors.Blue,
+					FormattedText = new FormattedString
+					{
+						Spans =
+						{
+							new Span { Text = "short", TextColor = Colors.Red, FontSize = 20 },
+							new Span { Text = " long second string"}
+						}
+					},
+				})
+			};
+
+			await AttachAndRun(layout, async (handler) =>
+			{
+				var platformView = handler.ToPlatform();
+				await platformView.AssertContainsColor(Colors.Red, MauiContext);
+
+				label.TextType = TextType.Html;
+
+				// We need to delay here because platformLabel.UpdateTextHtml(label) and label.InvalidateMeasure()
+				// are dispatched asynchronously to the main thread and may not complete immediately.
+				// https://github.com/dotnet/maui/pull/26153
+				await Task.Delay(100);
+				await platformView.AssertDoesNotContainColor(Colors.Red, MauiContext);
+			});
+		}
+
 		[Theory(
-#if IOS
-			Skip = "Not able to debug iOS right now"
+#if WINDOWS
+		Skip = "Fails on Windows"
 #endif
 		)]
 		[InlineData(TextAlignment.Center)]
@@ -261,12 +381,451 @@ namespace Microsoft.Maui.DeviceTests
 			await InvokeOnMainThreadAsync(async () =>
 			{
 				var formattedHandler = CreateHandler<LabelHandler>(formattedLabel);
-				var formattedBitmap = await formattedHandler.PlatformView.ToBitmap();
+				var formattedBitmap = await formattedHandler.PlatformView.ToBitmap(MauiContext);
 
 				var normalHandler = CreateHandler<LabelHandler>(normalLabel);
-				var normalBitmap = await normalHandler.PlatformView.ToBitmap();
+				var normalBitmap = await normalHandler.PlatformView.ToBitmap(MauiContext);
 
-				await normalBitmap.AssertEqual(formattedBitmap);
+				await normalBitmap.AssertEqualAsync(formattedBitmap);
+			});
+		}
+
+		[Theory(
+#if IOS || MACCATALYST
+			Skip = "iOS has issues with null graphics contexts."
+#endif
+		)]
+		[InlineData(10)]
+		[InlineData(20)]
+		[InlineData(30)]
+		public async Task UpdatingFormattedTextResultsInTheSameLayout(double fontSize)
+		{
+			var initialLabel = new Label
+			{
+				WidthRequest = 200,
+				HeightRequest = 60,
+				FontSize = fontSize,
+				FormattedText = GetFormattedString(),
+			};
+
+			var updatedLabel = new Label
+			{
+				WidthRequest = 200,
+				HeightRequest = 60,
+				FontSize = fontSize,
+			};
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var initialHandler = CreateHandler<LabelHandler>(initialLabel);
+				var initialBitmap = await initialHandler.PlatformView.ToBitmap(MauiContext);
+
+				var updatedHandler = CreateHandler<LabelHandler>(updatedLabel);
+
+				updatedLabel.FormattedText = GetFormattedString();
+
+				var updatedBitmap = await updatedHandler.PlatformView.ToBitmap(MauiContext);
+
+				await updatedBitmap.AssertEqualAsync(initialBitmap);
+			});
+
+			static FormattedString GetFormattedString() =>
+				new FormattedString
+				{
+					Spans =
+					{
+						new Span { Text = "first" },
+						new Span { Text = "\n"},
+						new Span { Text = "second"},
+					}
+				};
+		}
+
+		[Theory(
+#if ANDROID
+			Skip = "Android does not have the exact same layout with a string vs spans."
+#elif WINDOWS
+			Skip = "Fails on Windows"
+#endif
+		)]
+		[InlineData(10)]
+		[InlineData(20)]
+		[InlineData(30)]
+		public async Task InitialFormattedTextMatchesText(double fontSize)
+		{
+			var formattedLabel = new Label
+			{
+				WidthRequest = 200,
+				HeightRequest = 60,
+				FontSize = fontSize,
+				FormattedText = new FormattedString
+				{
+					Spans =
+					{
+						new Span { Text = "first" },
+						new Span { Text = "\n"},
+						new Span { Text = "second"},
+					}
+				},
+			};
+
+			var normalLabel = new Label
+			{
+				WidthRequest = 200,
+				HeightRequest = 60,
+				FontSize = fontSize,
+				Text = "first\nsecond"
+			};
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var formattedHandler = CreateHandler<LabelHandler>(formattedLabel);
+				var formattedBitmap = await formattedHandler.PlatformView.ToBitmap(MauiContext);
+
+				var normalHandler = CreateHandler<LabelHandler>(normalLabel);
+				var normalBitmap = await normalHandler.PlatformView.ToBitmap(MauiContext);
+
+				await normalBitmap.AssertEqualAsync(formattedBitmap);
+			});
+		}
+
+		[Fact]
+		public async Task TextColorAppliesEvenInHtmlMode()
+		{
+			// Note: this is specifically a Controls-level rule that's inherited from Forms
+			// There's no reason other SDKs need to force a TextColor property when dealing 
+			// with HTML text (since HTML text has its own color handling)
+
+			var label = new Label
+			{
+				TextType = TextType.Html,
+				TextColor = Colors.Red,
+				Text = "<p>Test</p>"
+			};
+
+			await InvokeOnMainThreadAsync(() =>
+			{
+				var handler = CreateHandler<LabelHandler>(label);
+				Assert.Equal(Colors.Red, TextColor(handler));
+			});
+		}
+
+		[Fact]
+		public async Task FontStuffAppliesEvenInHtmlMode()
+		{
+			// Note: this is specifically a Controls-level rule that's inherited from Forms
+			// There's no reason other SDKs need to force font properties when dealing 
+			// with HTML text (since HTML can do that on its own)
+
+			var label = new Label
+			{
+				TextType = TextType.Html,
+				FontSize = 64,
+				FontFamily = "Baskerville",
+				Text = "<p>Test</p>"
+			};
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var handler = CreateHandler<LabelHandler>(label);
+				// We need to delay here because platformLabel.UpdateTextHtml(label) and label.InvalidateMeasure()
+				// are dispatched asynchronously to the main thread and may not complete immediately.
+				// https://github.com/dotnet/maui/pull/26153
+				await Task.Delay(100);
+				AssertEquivalentFont(handler, label.ToFont());
+			});
+		}
+
+		[Fact]
+		public async Task FormattedStringSpanTextHasCorrectColorWhenChanges()
+		{
+			var formattedLabel = new Label
+			{
+				WidthRequest = 200,
+				HeightRequest = 50,
+				FontSize = 16,
+				FormattedText = new FormattedString
+				{
+					Spans =
+					{
+						new Span { Text = "short" },
+						new Span { Text = " long second string" },
+						new Span { Text = " blue string", TextColor = Colors.Blue },
+					}
+				},
+			};
+
+			formattedLabel.TextColor = Colors.Red;
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var handler = CreateHandler<LabelHandler>(formattedLabel);
+
+				await handler.PlatformView.AssertContainsColor(Colors.Blue, MauiContext);
+				await handler.PlatformView.AssertContainsColor(Colors.Red, MauiContext);
+			});
+		}
+
+		[Fact]
+		public async Task FormattedStringSpanTextHasCorrectColorWhenChangedAfterCreation()
+		{
+			var formattedLabel = new Label
+			{
+				WidthRequest = 200,
+				HeightRequest = 50,
+				FontSize = 16,
+				FormattedText = new FormattedString
+				{
+					Spans =
+					{
+						new Span { Text = "short" },
+						new Span { Text = " long second string" },
+						new Span { Text = " blue string", TextColor = Colors.Blue },
+					}
+				},
+			};
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var handler = CreateHandler<LabelHandler>(formattedLabel);
+
+				await handler.PlatformView.AssertContainsColor(Colors.Blue, MauiContext);
+				await handler.PlatformView.AssertDoesNotContainColor(Colors.Red, MauiContext);
+
+				formattedLabel.TextColor = Colors.Red;
+
+				await handler.PlatformView.AssertContainsColor(Colors.Blue, MauiContext);
+				await handler.PlatformView.AssertContainsColor(Colors.Red, MauiContext);
+			});
+		}
+
+		[Theory]
+#if !WINDOWS
+		// TODO fix these, failing on Windows
+		[InlineData(TextAlignment.Start, LineBreakMode.HeadTruncation)]
+		[InlineData(TextAlignment.Start, LineBreakMode.MiddleTruncation)]
+		[InlineData(TextAlignment.Start, LineBreakMode.TailTruncation)]
+		[InlineData(TextAlignment.Center, LineBreakMode.HeadTruncation)]
+		[InlineData(TextAlignment.Center, LineBreakMode.MiddleTruncation)]
+		[InlineData(TextAlignment.Center, LineBreakMode.TailTruncation)]
+		[InlineData(TextAlignment.End, LineBreakMode.HeadTruncation)]
+		[InlineData(TextAlignment.End, LineBreakMode.MiddleTruncation)]
+		[InlineData(TextAlignment.End, LineBreakMode.TailTruncation)]
+#endif
+		[InlineData(TextAlignment.Start, LineBreakMode.NoWrap)]
+		[InlineData(TextAlignment.Center, LineBreakMode.NoWrap)]
+		[InlineData(TextAlignment.End, LineBreakMode.NoWrap)]
+		public async Task LabelTruncatesCorrectly(TextAlignment textAlignment, LineBreakMode lineBreakMode)
+		{
+			EnsureHandlerCreated(builder =>
+			{
+				builder.ConfigureMauiHandlers(handlers =>
+				{
+					handlers.AddHandler<VerticalStackLayout, LayoutHandler>();
+					handlers.AddHandler<Label, LabelHandler>();
+				});
+			});
+
+			var labelStart = new Label
+			{
+				HorizontalOptions = LayoutOptions.Start,
+				LineBreakMode = lineBreakMode,
+				HorizontalTextAlignment = textAlignment,
+				Text = LoremIpsum,
+			};
+
+			var labelCenter = new Label
+			{
+				HorizontalOptions = LayoutOptions.Center,
+				LineBreakMode = lineBreakMode,
+				HorizontalTextAlignment = textAlignment,
+				Text = LoremIpsum,
+			};
+
+			var labelEnd = new Label
+			{
+				HorizontalOptions = LayoutOptions.End,
+				LineBreakMode = lineBreakMode,
+				HorizontalTextAlignment = textAlignment,
+				Text = LoremIpsum,
+			};
+
+			var labelFill = new Label
+			{
+				HorizontalOptions = LayoutOptions.Fill,
+				LineBreakMode = lineBreakMode,
+				HorizontalTextAlignment = textAlignment,
+				Text = LoremIpsum,
+			};
+
+			var layout = new VerticalStackLayout()
+				{
+					labelStart,
+					labelCenter,
+					labelEnd,
+					labelFill,
+				};
+
+			layout.HeightRequest = 300;
+			layout.WidthRequest = 100;
+
+#if WINDOWS
+			await AttachAndRun(layout, (handler) =>
+			{
+				var layoutPlatWidth = handler.PlatformView.Width;
+				Assert.Equal(labelStart.Width, layoutPlatWidth);
+				Assert.Equal(labelCenter.Width, layoutPlatWidth);
+				Assert.Equal(labelEnd.Width, layoutPlatWidth);
+				Assert.Equal(double.Round(labelFill.Width, 5), double.Round(layoutPlatWidth, 5));
+			});
+
+#else
+			await AttachAndRun(layout, (handler) =>
+			{
+				Assert.Equal(double.Round(labelStart.Width, 5), double.Round(layout.Width, 5));
+				Assert.Equal(double.Round(labelCenter.Width, 5), double.Round(layout.Width, 5));
+				Assert.Equal(double.Round(labelEnd.Width, 5), double.Round(layout.Width, 5));
+				Assert.Equal(double.Round(labelFill.Width, 5), double.Round(layout.Width, 5));
+			});
+#endif
+		}
+
+		static readonly string LoremIpsum = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.";
+
+		[Fact]
+		public async Task TextTypeAfterFontStuffIsCorrect()
+		{
+			// Note: this is specifically a Controls-level rule that's inherited from Forms
+			// There's no reason other SDKs need to force font properties when dealing 
+			// with HTML text (since HTML can do that on its own)
+
+			var label = new Label
+			{
+				FontSize = 64,
+				FontFamily = "Baskerville",
+				Text = "<p>Test</p>"
+			};
+
+			await InvokeOnMainThreadAsync(() =>
+			{
+				var handler = CreateHandler<LabelHandler>(label);
+				label.TextType = TextType.Html;
+				AssertEquivalentFont(handler, label.ToFont());
+			});
+		}
+
+		[Fact]
+		public async Task FontStuffAfterTextTypeIsCorrect()
+		{
+			// Note: this is specifically a Controls-level rule that's inherited from Forms
+			// There's no reason other SDKs need to force font properties when dealing 
+			// with HTML text (since HTML can do that on its own)
+
+			var label = new Label
+			{
+				TextType = TextType.Html,
+				Text = "<p>Test</p>"
+			};
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var handler = CreateHandler<LabelHandler>(label);
+				// We need to delay here because platformLabel.UpdateTextHtml(label) and label.InvalidateMeasure()
+				// are dispatched asynchronously to the main thread and may not complete immediately.
+				// https://github.com/dotnet/maui/pull/26153
+				await Task.Delay(100);
+				label.FontFamily = "Baskerville";
+				label.FontSize = 64;
+				AssertEquivalentFont(handler, label.ToFont());
+			});
+		}
+
+		[Fact]
+		[Description("The BackgroundColor of a Label should match with native background color")]
+		public async Task LabelBackgroundColorConsistent()
+		{
+			var expected = Colors.AliceBlue;
+			var label = new Label()
+			{
+				BackgroundColor = expected,
+				HeightRequest = 100,
+				WidthRequest = 200
+			};
+
+			await ValidateHasColor(label, expected, typeof(LabelHandler));
+		}
+
+		[Fact]
+		[Description("The Opacity property of a Label should match with native Opacity")]
+		public async Task VerifyLabelOpacityProperty()
+		{
+			var label = new Label
+			{
+				Opacity = 0.35f
+			};
+			var expectedValue = label.Opacity;
+
+			var handler = await CreateHandlerAsync<LabelHandler>(label);
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var nativeOpacityValue = await GetPlatformOpacity(handler);
+				Assert.Equal(expectedValue, nativeOpacityValue);
+			});
+		}
+		Color TextColor(LabelHandler handler)
+		{
+#if __IOS__
+			return GetPlatformLabel(handler).TextColor.ToColor();
+#elif __ANDROID__
+			return ((uint)GetPlatformLabel(handler).CurrentTextColor).ToColor();
+#elif WINDOWS
+			return (GetPlatformLabel(handler).Foreground as UI.Xaml.Media.SolidColorBrush).Color.ToColor();
+#endif
+		}
+
+		static void AssertEquivalentFont(LabelHandler handler, Font font)
+		{
+			var fontManager = (IFontManager)handler.MauiContext.Services.GetService(typeof(IFontManager));
+
+#if __IOS__
+			var targetTypeface = fontManager.GetFont(font);
+			var platformTypeface = handler.PlatformView.AttributedText.GetUIKitAttributes(0, out NSRange range).Font;
+			var targetFontSize = fontManager.GetFont(font).PointSize;
+
+			Assert.Equal(targetTypeface, platformTypeface);
+			Assert.Equal(targetFontSize, platformTypeface.PointSize);
+#elif __ANDROID__
+			var targetTypeface = fontManager.GetTypeface(font);
+			var targetFontSize = handler.MauiContext.Context.ToPixels(fontManager.GetFontSize(font).Value);
+			var platformTypeface = handler.PlatformView.Typeface;
+			var platformFontSize = handler.PlatformView.TextSize;
+
+			Assert.Equal(targetTypeface, platformTypeface);
+			Assert.Equal(targetFontSize, platformFontSize);
+#elif WINDOWS
+			var targetFontStyle = font.ToFontStyle();
+			var targetFontWeight = font.ToFontWeight();
+			var platformFontStyle = handler.PlatformView.FontStyle;
+			var platformFontWeight = handler.PlatformView.FontWeight;
+
+			Assert.Equal(targetFontStyle, platformFontStyle);
+			Assert.Equal(targetFontWeight, platformFontWeight);
+#endif
+		}
+
+		[Fact]
+		[Description("The IsVisible property of a Label should match with native IsVisible")]
+		public async Task VerifyLabelIsVisibleProperty()
+		{
+			var label = new Label();
+			label.IsVisible = false;
+			var expectedValue = label.IsVisible;
+
+			var handler = await CreateHandlerAsync<LabelHandler>(label);
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var isVisible = await GetPlatformIsVisible(handler);
+				Assert.Equal(expectedValue, isVisible);
 			});
 		}
 	}

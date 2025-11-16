@@ -1,9 +1,6 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Microsoft.Maui.Controls.Build.Tasks;
 using Microsoft.Maui.Controls.Xaml;
-using Mono.Cecil;
 using Mono.Cecil.Cil;
 
 namespace Microsoft.Maui.Controls.XamlC
@@ -17,7 +14,9 @@ namespace Microsoft.Maui.Controls.XamlC
 			do
 			{
 				if (string.IsNullOrEmpty(value))
+				{
 					break;
+				}
 
 				value = value.Trim();
 
@@ -26,7 +25,7 @@ namespace Microsoft.Maui.Controls.XamlC
 				{
 					var options = parts[parts.Length - 1];
 
-					var fieldReference = module.ImportFieldReference(("Microsoft.Maui.Controls", "Microsoft.Maui.Controls", "LayoutOptions"),
+					var fieldReference = module.ImportFieldReference(context.Cache, ("Microsoft.Maui.Controls", "Microsoft.Maui.Controls", "LayoutOptions"),
 																	 fieldName: options,
 																	 isStatic: true);
 					if (fieldReference != null)

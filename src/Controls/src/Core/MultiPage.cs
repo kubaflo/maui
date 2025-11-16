@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -12,13 +13,16 @@ using Microsoft.Maui.Controls.Internals;
 namespace Microsoft.Maui.Controls
 {
 	[ContentProperty("Children")]
-	public abstract class MultiPage<[DynamicallyAccessedMembers(BindableProperty.DeclaringTypeMembers)] T> : Page, IViewContainer<T>, IPageContainer<T>, IItemsView<T>, IMultiPageController<T> where T : Page
+	public abstract class MultiPage<[DynamicallyAccessedMembers(BindableProperty.DeclaringTypeMembers | BindableProperty.ReturnTypeMembers)] T> : Page, IViewContainer<T>, IPageContainer<T>, IItemsView<T>, IMultiPageController<T> where T : Page
 	{
-		public static readonly BindableProperty ItemsSourceProperty = BindableProperty.Create("ItemsSource", typeof(IEnumerable), typeof(MultiPage<>), null);
+		/// <summary>Bindable property for <see cref="ItemsSource"/>.</summary>
+		public static readonly BindableProperty ItemsSourceProperty = BindableProperty.Create(nameof(ItemsSource), typeof(IEnumerable), typeof(MultiPage<>), null);
 
-		public static readonly BindableProperty ItemTemplateProperty = BindableProperty.Create("ItemTemplate", typeof(DataTemplate), typeof(MultiPage<>), null);
+		/// <summary>Bindable property for <see cref="ItemTemplate"/>.</summary>
+		public static readonly BindableProperty ItemTemplateProperty = BindableProperty.Create(nameof(ItemTemplate), typeof(DataTemplate), typeof(MultiPage<>), null);
 
-		public static readonly BindableProperty SelectedItemProperty = BindableProperty.Create("SelectedItem", typeof(object), typeof(MultiPage<>), null, BindingMode.TwoWay);
+		/// <summary>Bindable property for <see cref="SelectedItem"/>.</summary>
+		public static readonly BindableProperty SelectedItemProperty = BindableProperty.Create(nameof(SelectedItem), typeof(object), typeof(MultiPage<>), null, BindingMode.TwoWay);
 
 		internal static readonly BindableProperty IndexProperty = BindableProperty.Create("Index", typeof(int), typeof(Page), -1);
 
@@ -79,10 +83,15 @@ namespace Microsoft.Maui.Controls
 
 				var previousPage = _current;
 				OnPropertyChanging();
-
+ 				
 				// TODO: MAUI refine this to fire earlier
-				_current?.SendNavigatingFrom(new NavigatingFromEventArgs());
-
+				
+				// Send NavigatingFrom to the previous page or to the new page if no previous page exists
+				if (_current is not null)
+				{
+					_current.SendNavigatingFrom(new NavigatingFromEventArgs(value, NavigationType.Replace));
+				}
+				
 				_current = value;
 
 				previousPage?.SendDisappearing();
@@ -92,9 +101,10 @@ namespace Microsoft.Maui.Controls
 
 				if (HasAppeared)
 					_current?.SendAppearing();
-
-				previousPage?.SendNavigatedFrom(new NavigatedFromEventArgs(_current));
-				_current?.SendNavigatedTo(new NavigatedToEventArgs(previousPage));
+				
+				
+				previousPage?.SendNavigatedFrom(new NavigatedFromEventArgs(_current, NavigationType.Replace));
+				_current?.SendNavigatedTo(new NavigatedToEventArgs(previousPage, NavigationType.Replace));
 			}
 		}
 
@@ -174,7 +184,7 @@ namespace Microsoft.Maui.Controls
 		public static int GetIndex(T page)
 		{
 			if (page == null)
-				throw new ArgumentNullException("page");
+				throw new ArgumentNullException(nameof(page));
 
 			return (int)page.GetValue(IndexProperty);
 		}
@@ -194,7 +204,7 @@ namespace Microsoft.Maui.Controls
 		public static void SetIndex(Page page, int index)
 		{
 			if (page == null)
-				throw new ArgumentNullException("page");
+				throw new ArgumentNullException(nameof(page));
 
 			page.SetValue(IndexProperty, index);
 		}

@@ -1,16 +1,18 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Handlers;
+using Microsoft.Maui.Layouts;
 using NSubstitute;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests.Layouts
 {
-	[TestFixture, Category("Layout")]
+	[Category("Layout")]
 	public class LayoutTests : BaseTestFixture
 	{
-		[Test]
+		[Fact]
 		public void UsingIndexUpdatesParent()
 		{
 			var layout = new VerticalStackLayout();
@@ -23,16 +25,16 @@ namespace Microsoft.Maui.Controls.Core.UnitTests.Layouts
 
 			layout.Add(child0);
 
-			Assert.AreEqual(layout, child0.Parent);
+			Assert.Equal(layout, child0.Parent);
 			Assert.Null(child1.Parent);
 
 			layout[0] = child1;
 
 			Assert.Null(child0.Parent);
-			Assert.AreEqual(layout, child1.Parent);
+			Assert.Equal(layout, child1.Parent);
 		}
 
-		[Test]
+		[Fact]
 		public void ClearUpdatesParent()
 		{
 			var layout = new VerticalStackLayout();
@@ -43,8 +45,8 @@ namespace Microsoft.Maui.Controls.Core.UnitTests.Layouts
 			layout.Add(child0);
 			layout.Add(child1);
 
-			Assert.AreEqual(layout, child0.Parent);
-			Assert.AreEqual(layout, child1.Parent);
+			Assert.Equal(layout, child0.Parent);
+			Assert.Equal(layout, child1.Parent);
 
 			layout.Clear();
 
@@ -52,10 +54,11 @@ namespace Microsoft.Maui.Controls.Core.UnitTests.Layouts
 			Assert.Null(child1.Parent);
 		}
 
-		[TestCase(typeof(VerticalStackLayout))]
-		[TestCase(typeof(HorizontalStackLayout))]
-		[TestCase(typeof(Grid))]
-		[TestCase(typeof(StackLayout))]
+		[Theory]
+		[InlineData(typeof(VerticalStackLayout))]
+		[InlineData(typeof(HorizontalStackLayout))]
+		[InlineData(typeof(Grid))]
+		[InlineData(typeof(StackLayout))]
 		public void AddCallsCorrectHandlerMethod(Type TLayout)
 		{
 			var layout = CreateLayout(TLayout);
@@ -71,10 +74,11 @@ namespace Microsoft.Maui.Controls.Core.UnitTests.Layouts
 			handler.Received().Invoke(command, args);
 		}
 
-		[TestCase(typeof(VerticalStackLayout))]
-		[TestCase(typeof(HorizontalStackLayout))]
-		[TestCase(typeof(Grid))]
-		[TestCase(typeof(StackLayout))]
+		[Theory]
+		[InlineData(typeof(VerticalStackLayout))]
+		[InlineData(typeof(HorizontalStackLayout))]
+		[InlineData(typeof(Grid))]
+		[InlineData(typeof(StackLayout))]
 		public void RemoveCallsCorrectHandlerMethod(Type TLayout)
 		{
 			var layout = CreateLayout(TLayout);
@@ -91,10 +95,11 @@ namespace Microsoft.Maui.Controls.Core.UnitTests.Layouts
 			handler.Received().Invoke(command, args);
 		}
 
-		[TestCase(typeof(VerticalStackLayout))]
-		[TestCase(typeof(HorizontalStackLayout))]
-		[TestCase(typeof(Grid))]
-		[TestCase(typeof(StackLayout))]
+		[Theory]
+		[InlineData(typeof(VerticalStackLayout))]
+		[InlineData(typeof(HorizontalStackLayout))]
+		[InlineData(typeof(Grid))]
+		[InlineData(typeof(StackLayout))]
 		public void InsertCallsCorrectHandlerMethod(Type TLayout)
 		{
 			var events = new List<(string Name, LayoutHandlerUpdate? Args)>();
@@ -123,61 +128,133 @@ namespace Microsoft.Maui.Controls.Core.UnitTests.Layouts
 			return layout;
 		}
 
-		[Test]
-		public void AddRespectsCascadeInputTransparent()
+		IMauiContext SetupContext(ILayoutManagerFactory layoutManagerFactory)
 		{
-			var layout = new VerticalStackLayout()
-			{
-				InputTransparent = true,
-				CascadeInputTransparent = true
-			};
+			var services = Substitute.For<IServiceProvider>();
+			services.GetService(Arg.Any<Type>()).Returns(layoutManagerFactory);
+			var context = Substitute.For<IMauiContext>();
+			context.Services.Returns(services);
 
-			var handler = Substitute.For<IViewHandler>();
-			layout.Handler = handler;
-
-			var child0 = new Button() { InputTransparent = false };
-			layout.Add(child0);
-
-			handler.Received().UpdateValue(Arg.Is(nameof(Layout.CascadeInputTransparent)));
+			return context;
 		}
 
-		[Test]
-		public void InsertRespectsCascadeInputTransparent()
+		class AlternateLayoutManager : ILayoutManager
 		{
-			var layout = new VerticalStackLayout()
+			readonly double _width;
+			readonly double _height;
+
+			public AlternateLayoutManager(double width, double height)
 			{
-				InputTransparent = true,
-				CascadeInputTransparent = true
-			};
+				_width = width;
+				_height = height;
+			}
 
-			var handler = Substitute.For<IViewHandler>();
-			layout.Handler = handler;
+			public Size ArrangeChildren(Rect bounds)
+			{
+				throw new NotImplementedException();
+			}
 
-			var child0 = new Button() { InputTransparent = false };
-			layout.Insert(0, child0);
-
-			handler.Received().UpdateValue(Arg.Is(nameof(Layout.CascadeInputTransparent)));
+			public Size Measure(double widthConstraint, double heightConstraint)
+			{
+				return new Size(_width, _height);
+			}
 		}
 
-		[Test]
-		public void UpdateRespectsCascadeInputTransparent()
+		[Fact]
+		public void CanUseFactoryForAlternateManager()
 		{
-			var layout = new VerticalStackLayout()
-			{
-				InputTransparent = true,
-				CascadeInputTransparent = true
-			};
+			var layoutManagerFactory = Substitute.For<Controls.ILayoutManagerFactory>();
+			layoutManagerFactory.CreateLayoutManager(Arg.Any<Layout>()).Returns(new AlternateLayoutManager(8765, 4321));
+
+			var context = SetupContext(layoutManagerFactory);
 
 			var handler = Substitute.For<IViewHandler>();
+			handler.MauiContext.Returns(context);
+
+			var layout = new Grid
+			{
+				Handler = handler
+			};
+
+			var result = layout.CrossPlatformMeasure(100, 100);
+
+			Assert.Equal(8765, result.Width);
+			Assert.Equal(4321, result.Height);
+		}
+
+		class NullLayoutManagerFactory : Controls.ILayoutManagerFactory
+		{
+			public ILayoutManager? CreateLayoutManager(Layout layout)
+			{
+				return null;
+			}
+		}
+
+		[Fact]
+		public void FactoryCanPuntAndUseOriginalType()
+		{
+			var layoutManagerFactory = new NullLayoutManagerFactory();
+			var context = SetupContext(layoutManagerFactory);
+
+			var handler = Substitute.For<IViewHandler>();
+			handler.MauiContext.Returns(context);
+
+			var layout = new VerticalStackLayout();
 			layout.Handler = handler;
 
-			var child0 = new Button() { InputTransparent = false };
-			layout.Add(child0);
+			var view = new Label { Text = "a", WidthRequest = 100, HeightRequest = 100 };
+			layout.Add(view);
 
-			var child1 = new Button() { InputTransparent = false };
-			layout[0] = child1;
+			var result = layout.CrossPlatformMeasure(100, 100);
 
-			handler.Received(2).UpdateValue(Arg.Is(nameof(Layout.CascadeInputTransparent)));
+			Assert.Equal(0, result.Width);
+			Assert.Equal(0, result.Height);
+		}
+
+		class ChoosyLayoutManagerFactory : Controls.ILayoutManagerFactory
+		{
+			public ILayoutManager? CreateLayoutManager(Layout layout)
+			{
+				if (layout is AbsoluteLayout)
+				{
+					return new AlternateLayoutManager(1234, 1234);
+				}
+
+				return new AlternateLayoutManager(4567, 4567);
+			}
+		}
+
+		[Fact]
+		public void FactoryCanCustomizeBasedOnLayoutType()
+		{
+			var layoutManagerFactory = new ChoosyLayoutManagerFactory();
+			var context = SetupContext(layoutManagerFactory);
+
+			var handler = Substitute.For<IViewHandler>();
+			handler.MauiContext.Returns(context);
+
+			var absLayout = new AbsoluteLayout
+			{
+				Handler = handler
+			};
+
+			var view = new Label { Text = "a", WidthRequest = 100, HeightRequest = 100 };
+			absLayout.Add(view);
+
+			var absResult = absLayout.CrossPlatformMeasure(100, 100);
+
+			Assert.Equal(1234, absResult.Width);
+			Assert.Equal(1234, absResult.Height);
+
+			var vsl = new VerticalStackLayout
+			{
+				Handler = handler // Obviously this wouldn't be okay in a real app, but it works well enough for this test
+			};
+
+			var vslResult = vsl.CrossPlatformMeasure(100, 100);
+
+			Assert.Equal(4567, vslResult.Width);
+			Assert.Equal(4567, vslResult.Height);
 		}
 	}
 }

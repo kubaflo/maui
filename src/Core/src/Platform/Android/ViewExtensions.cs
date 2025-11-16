@@ -6,8 +6,12 @@ using Android.Graphics.Drawables;
 using Android.OS;
 using Android.Util;
 using Android.Views;
+using Android.Views.InputMethods;
 using Android.Widget;
+using AndroidX.AppCompat.Widget;
 using AndroidX.Core.Content;
+using AndroidX.Core.View;
+using Kotlin;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Primitives;
@@ -22,12 +26,8 @@ namespace Microsoft.Maui.Platform
 	{
 		public static void Initialize(this AView platformView, IView view)
 		{
-			var context = platformView.Context;
-			if (context == null)
-				return;
-
-			var pivotX = (float)(view.AnchorX * context.ToPixels(view.Frame.Width));
-			var pivotY = (float)(view.AnchorY * context.ToPixels(view.Frame.Height));
+			var pivotX = (float)(view.AnchorX * platformView.ToPixels(view.Frame.Width));
+			var pivotY = (float)(view.AnchorY * platformView.ToPixels(view.Frame.Height));
 			int visibility;
 
 			if (view is IActivityIndicator a)
@@ -43,12 +43,12 @@ namespace Microsoft.Maui.Platform
 			PlatformInterop.Set(platformView,
 				visibility: visibility,
 				layoutDirection: (int)GetLayoutDirection(view),
-				minimumHeight: (int)context.ToPixels(view.MinimumHeight),
-				minimumWidth: (int)context.ToPixels(view.MinimumWidth),
+				minimumHeight: (int)platformView.ToPixels(view.MinimumHeight),
+				minimumWidth: (int)platformView.ToPixels(view.MinimumWidth),
 				enabled: view.IsEnabled,
 				alpha: (float)view.Opacity,
-				translationX: context.ToPixels(view.TranslationX),
-				translationY: context.ToPixels(view.TranslationY),
+				translationX: platformView.ToPixels(view.TranslationX),
+				translationY: platformView.ToPixels(view.TranslationY),
 				scaleX: (float)(view.Scale * view.ScaleX),
 				scaleY: (float)(view.Scale * view.ScaleY),
 				rotation: (float)view.Rotation,
@@ -66,7 +66,12 @@ namespace Microsoft.Maui.Platform
 
 		public static void Focus(this AView platformView, FocusRequest request)
 		{
-			request.IsFocused = true;
+			platformView?.Focus(request, null);
+		}
+
+		internal static void Focus(this AView platformView, FocusRequest request, Action? focusRequested)
+		{
+			request.TrySetResult(true);
 
 			// Android does the actual focus/unfocus work on the main looper
 			// So in case we're setting the focus in response to another control's un-focusing,
@@ -85,6 +90,9 @@ namespace Microsoft.Maui.Platform
 					return;
 
 				platformView?.RequestFocus();
+
+				if (platformView?.RequestFocus() == true)
+					focusRequested?.Invoke();
 			}
 		}
 
@@ -109,6 +117,8 @@ namespace Microsoft.Maui.Platform
 			if (platformView is WrapperView wrapper)
 				wrapper.Shadow = view.Shadow;
 		}
+
+		[Obsolete("IBorder is not used and will be removed in a future release.")]
 		public static void UpdateBorder(this AView platformView, IView view)
 		{
 			if (platformView is WrapperView wrapper)
@@ -138,7 +148,7 @@ namespace Microsoft.Maui.Platform
 			{
 				if (context.Theme.ResolveAttribute(global::Android.Resource.Attribute.WindowBackground, background, true))
 				{
-					string? type = context.Resources.GetResourceTypeName(background.ResourceId)?.ToLower();
+					string? type = context.Resources.GetResourceTypeName(background.ResourceId)?.ToLowerInvariant();
 
 					if (type != null)
 					{
@@ -149,7 +159,7 @@ namespace Microsoft.Maui.Platform
 								view.SetBackgroundColor(color);
 								break;
 							case "drawable":
-								using (Drawable drawable = ContextCompat.GetDrawable(context, background.ResourceId))
+								using (Drawable? drawable = ContextCompat.GetDrawable(context, background.ResourceId))
 									view.Background = drawable;
 								break;
 						}
@@ -160,16 +170,106 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateBackground(this ContentViewGroup platformView, IBorderStroke border)
 		{
-			bool hasBorder = border.Shape != null && border.Stroke != null;
+			bool hasBorder = border.Shape != null;
 
 			if (hasBorder)
 				platformView.UpdateBorderStroke(border);
 		}
 
 		public static void UpdateBackground(this AView platformView, IView view) =>
-			platformView.UpdateBackground(view.Background);
+			platformView.UpdateBackground(view, false);
 
-		public static void UpdateBackground(this AView platformView, Paint? background)
+		internal static void UpdateBackground(this AView platformView, IView view, bool treatTransparentAsNull) =>
+			platformView.UpdateBackground(view.Background, treatTransparentAsNull);
+
+		internal static void UpdateBackground(this TextView platformView, IView view) =>
+			UpdateBackground(platformView, view, true);
+
+		internal static void UpdateBackground(this EditText platformView, IView view)
+		{
+			if (platformView is null || platformView.Context is null)
+			{
+				return;
+			}
+
+			// The user has removed the background from the platform view in platform code
+			// so we need to make sure to do absolutely nothing.
+			if (platformView.Background is null)
+			{
+				return;
+			}
+
+			// Get the current background of the edit text so we can make sure to not overwite it
+			// if it is not something that we have set in MAUI.
+			var previousDrawable = platformView.Background;
+
+			// Remove the previous MAUI background (if any).
+			if (previousDrawable is MauiDrawable || previousDrawable is MauiLayerDrawable)
+			{
+				platformView.Background = null;
+				previousDrawable.Dispose();
+				previousDrawable = null;
+			}
+
+			// Get the new background from the virtual view
+			var paint = view.Background;
+			var backgroundDrawable = paint.ToDrawable(platformView.Context);
+
+			if (backgroundDrawable is not null || previousDrawable is null)
+			{
+				// There is a new background to set, or we removed a previous background and
+				// now we have to re-apply just the default "line" background.
+
+				// Regardless of what the new background is, we will need to apply the default
+				// background "line" on top of it.
+				// If for some reason this returns null, then there is nothing we can do because
+				// AndroidX is probably broken since this is a resource from the AndroidX library.
+				var defaultBackground = ContextCompat.GetDrawable(platformView.Context, Resource.Drawable.abc_edit_text_material);
+
+				if (backgroundDrawable is not null)
+				{
+					// The user set some background, so we need to apply it below the default "line".
+					// If there is a broken AndroidX, then nothing we can do but just use ours.
+					SetBackground(platformView, defaultBackground is null
+						? new MauiLayerDrawable(backgroundDrawable)
+						: new MauiLayerDrawable(backgroundDrawable, defaultBackground));
+				}
+				else if (previousDrawable is null)
+				{
+					// The user set null in the virtual view (or did not set anything/kept the defaults)
+					// as we just removed a MAUI background from the platform view.
+					// This means we just use the default Material background (the "line").
+					SetBackground(platformView, defaultBackground);
+				}
+			}
+			else
+			{
+				// The drawable currently in use was not a MAUI drawable nor are we setting a new
+				// one so just do nothing and keep whatever the user has set in platform code.
+			}
+
+			// A helper method to set the background and re-apply the padding since
+			// Android will reset the padding when setting a Background drawable.
+			static void SetBackground(EditText platformView, Drawable? background)
+			{
+				// Cache the current padding
+				var padLeft = platformView.PaddingLeft;
+				var padTop = platformView.PaddingTop;
+				var padRight = platformView.PaddingRight;
+				var padBottom = platformView.PaddingBottom;
+
+				// Set the new background
+				platformView.Background = background;
+
+				// Apply previous padding
+				platformView.SetPadding(padLeft, padTop, padRight, padBottom);
+			}
+		}
+
+		public static void UpdateBackground(this AView platformView, Paint? background) =>
+			UpdateBackground(platformView, background, false);
+
+		internal static void UpdateBackground(this AView platformView, Paint? background, bool treatTransparentAsNull)
 		{
 			var paint = background;
 
@@ -182,7 +282,14 @@ namespace Microsoft.Maui.Platform
 					mauiDrawable.Dispose();
 				}
 
-				if (paint is SolidPaint solidPaint)
+				if (treatTransparentAsNull && paint.IsTransparent())
+				{
+					// For controls where android treats transparent as null it's more
+					// performant to just set the background to null instead of
+					// giving it a transparent color/drawable
+					platformView.Background = null;
+				}
+				else if (paint is SolidPaint solidPaint)
 				{
 					if (solidPaint.Color is Color backgroundColor)
 						platformView.SetBackgroundColor(backgroundColor.ToPlatform());
@@ -193,12 +300,15 @@ namespace Microsoft.Maui.Platform
 						platformView.Background = drawable;
 				}
 			}
+			else if (platformView is LayoutViewGroup)
+			{
+				platformView.Background = null;
+			}
 		}
 
-		public static void UpdateOpacity(this AView platformView, IView view)
-		{
-			platformView.Alpha = (float)view.Opacity;
-		}
+		public static void UpdateOpacity(this AView platformView, IView view) => platformView.UpdateOpacity(view.Opacity);
+
+		internal static void UpdateOpacity(this AView platformView, double opacity) => platformView.Alpha = (float)opacity;
 
 		public static void UpdateFlowDirection(this AView platformView, IView view)
 		{
@@ -317,6 +427,12 @@ namespace Microsoft.Maui.Platform
 			}
 		}
 
+		public static void UpdateToolTip(this AView view, ToolTip? tooltip)
+		{
+			string? text = tooltip?.Content?.ToString();
+			TooltipCompat.SetTooltipText(view, text);
+		}
+
 		public static void RemoveFromParent(this AView view)
 		{
 			if (view != null)
@@ -326,7 +442,7 @@ namespace Microsoft.Maui.Platform
 		internal static Rect GetPlatformViewBounds(this IView view)
 		{
 			var platformView = view?.ToPlatform();
-			
+
 			if (platformView?.Context == null)
 			{
 				return new Rect();
@@ -345,9 +461,26 @@ namespace Microsoft.Maui.Platform
 			return new Rect(
 				location[0],
 				location[1],
-				(int)platformView.Context.ToPixels(platformView.Width),
-				(int)platformView.Context.ToPixels(platformView.Height));
+				platformView.MeasuredWidth,
+				platformView.MeasuredHeight);
 		}
+
+		internal static Rect GetViewBounds(this View platformView)
+		{
+			if (platformView?.Context is not Context context)
+				return new Rect();
+
+			var location = new int[2];
+			platformView.GetLocationOnScreen(location);
+
+			return new Rect(
+				platformView.FromPixels(location[0]),
+				platformView.FromPixels(location[1]),
+				platformView.FromPixels(platformView.MeasuredWidth),
+				platformView.FromPixels(platformView.MeasuredHeight));
+		}
+
+		internal static Rect GetViewBounds(this IView view) => view.ToPlatform().GetViewBounds();
 
 		internal static Matrix4x4 GetViewTransform(this IView view)
 		{
@@ -404,39 +537,70 @@ namespace Microsoft.Maui.Platform
 
 		internal static Graphics.Rect GetBoundingBox(this View? platformView)
 		{
-			if (platformView == null)
+			if (platformView?.Context == null)
 				return new Rect();
 
-			var rect = new Android.Graphics.Rect();
+			var context = platformView.Context;
+			var rect = new global::Android.Graphics.Rect();
 			platformView.GetGlobalVisibleRect(rect);
-			return new Rect(rect.ExactCenterX() - (rect.Width() / 2), rect.ExactCenterY() - (rect.Height() / 2), (float)rect.Width(), (float)rect.Height());
+
+			return new Rect(
+				context.FromPixels(rect.ExactCenterX() - (rect.Width() / 2)),
+				context.FromPixels(rect.ExactCenterY() - (rect.Height() / 2)),
+				context.FromPixels((float)rect.Width()),
+				context.FromPixels((float)rect.Height()));
 		}
 
-		internal static bool IsLoaded(this View frameworkElement) =>
-			frameworkElement.IsAttachedToWindow;
-
-		internal static IDisposable OnLoaded(this View frameworkElement, Action action)
+		internal static bool IsLoaded(this View frameworkElement)
 		{
-			if (frameworkElement.IsLoaded())
+			if (frameworkElement == null)
+				return false;
+
+			if (frameworkElement.IsDisposed())
+				return false;
+
+			return frameworkElement.IsAttachedToWindow;
+		}
+
+		internal static IDisposable OnLoaded(this View view, Action action)
+		{
+			if (view.IsLoaded())
 			{
 				action();
 				return new ActionDisposable(() => { });
 			}
 
 			EventHandler<AView.ViewAttachedToWindowEventArgs>? routedEventHandler = null;
-			ActionDisposable disposable = new ActionDisposable(() =>
+			ActionDisposable? disposable = new ActionDisposable(() =>
 			{
-				if (routedEventHandler != null)
-					frameworkElement.ViewAttachedToWindow -= routedEventHandler;
+				if (routedEventHandler is not null && view.IsAlive())
+				{
+					view.ViewAttachedToWindow -= routedEventHandler;
+				}
 			});
 
 			routedEventHandler = (_, __) =>
 			{
-				disposable.Dispose();
+				if (!view.IsLoaded() && Looper.MyLooper() is Looper q)
+				{
+					new Handler(q).Post(() =>
+					{
+						if (disposable is not null)
+							action.Invoke();
+
+						disposable?.Dispose();
+						disposable = null;
+					});
+
+					return;
+				}
+
+				disposable?.Dispose();
+				disposable = null;
 				action();
 			};
 
-			frameworkElement.ViewAttachedToWindow += routedEventHandler;
+			view.ViewAttachedToWindow += routedEventHandler;
 			return disposable;
 		}
 
@@ -449,31 +613,45 @@ namespace Microsoft.Maui.Platform
 			}
 
 			EventHandler<AView.ViewDetachedFromWindowEventArgs>? routedEventHandler = null;
-			ActionDisposable disposable = new ActionDisposable(() =>
+			ActionDisposable? disposable = new ActionDisposable(() =>
 			{
-				if (routedEventHandler != null)
+				if (routedEventHandler is not null)
 					view.ViewDetachedFromWindow -= routedEventHandler;
 			});
 
-			routedEventHandler = (_, __) =>
+			routedEventHandler = (sender, args) =>
 			{
-				disposable.Dispose();
 				// This event seems to fire prior to the view actually being
 				// detached from the window
-				if (view.IsLoaded())
+				if (view.IsLoaded() && Looper.MyLooper() is Looper q)
 				{
-					var q = Looper.MyLooper();
-					if (q != null)
+					// We unsubscribe here because if we wait for the looper
+					// to schedule the work the view might get disposed by the time
+					// the unsubscribe code runs
+					if (disposable is not null)
 					{
-						new Handler(q).Post(() =>
+						if (args.DetachedView.IsAlive())
 						{
-							action.Invoke();
-						});
+							args.DetachedView.ViewDetachedFromWindow -= routedEventHandler;
+						}
 
-						return;
+						routedEventHandler = null;
 					}
+
+					new Handler(q).Post(() =>
+					{
+						if (disposable is not null)
+							action.Invoke();
+
+						disposable?.Dispose();
+						disposable = null;
+					});
+
+					return;
 				}
 
+				disposable?.Dispose();
+				disposable = null;
 				action();
 			};
 
@@ -535,24 +713,25 @@ namespace Microsoft.Maui.Platform
 			=> GetHostedWindow(view?.Handler?.PlatformView as View);
 
 		internal static IWindow? GetHostedWindow(this View? view)
-			=> GetWindowFromActivity(view?.Context?.GetActivity());
+			=> view?.Context?.GetWindow();
 
-		internal static IWindow? GetWindowFromActivity(this Android.App.Activity? activity)
+		internal static Rect GetFrameRelativeTo(this View view, View relativeTo)
 		{
-			if (activity is null)
-				return null;
+			var viewWindowLocation = view.GetLocationOnScreen();
+			var relativeToLocation = relativeTo.GetLocationOnScreen();
 
-			var windows = WindowExtensions.GetWindows();
-			foreach (var window in windows)
-			{
-				if (window.Handler?.PlatformView is Android.App.Activity active)
-				{
-					if (active == activity)
-						return window;
-				}
-			}
+			return
+				new Rect(
+						new Point(viewWindowLocation.X - relativeToLocation.X, viewWindowLocation.Y - relativeToLocation.Y),
+						new Graphics.Size(view.Context.FromPixels(view.MeasuredWidth), view.Context.FromPixels(view.MeasuredHeight))
+					);
+		}
 
-			return null;
+		internal static Rect GetFrameRelativeToWindow(this View view)
+		{
+			return
+				new Rect(view.GetLocationOnScreen(),
+				new(view.Context.FromPixels(view.MeasuredHeight), view.Context.FromPixels(view.MeasuredWidth)));
 		}
 
 		internal static Point GetLocationOnScreen(this View view)
@@ -583,6 +762,80 @@ namespace Microsoft.Maui.Platform
 				return null;
 
 			return (element.ToPlatform())?.GetLocationOnScreenPx();
+		}
+
+		internal static bool HideSoftInput(this AView inputView)
+		{
+			using var inputMethodManager = (InputMethodManager?)inputView.Context?.GetSystemService(Context.InputMethodService);
+			var windowToken = inputView.WindowToken;
+
+			if (windowToken is not null && inputMethodManager is not null)
+			{
+				return inputMethodManager.HideSoftInputFromWindow(windowToken, HideSoftInputFlags.None);
+			}
+
+			return false;
+		}
+
+		internal static bool ShowSoftInput(this TextView inputView)
+		{
+			using var inputMethodManager = (InputMethodManager?)inputView.Context?.GetSystemService(Context.InputMethodService);
+
+			// The zero value for the second parameter comes from 
+			// https://developer.android.com/reference/android/view/inputmethod/InputMethodManager#showSoftInput(android.view.View,%20int)
+			// Apparently there's no named value for zero in this case
+			return inputMethodManager?.ShowSoftInput(inputView, 0) is true;
+		}
+
+		internal static bool ShowSoftInput(this AView view) => view switch
+		{
+			TextView textView => textView.ShowSoftInput(),
+			ViewGroup viewGroup => viewGroup.GetFirstChildOfType<TextView>()?.ShowSoftInput() is true,
+			_ => false,
+		};
+
+		internal static bool IsSoftInputShowing(this AView view)
+		{
+			var insets = ViewCompat.GetRootWindowInsets(view);
+			if (insets is null)
+			{
+				return false;
+			}
+
+			var result = insets.IsVisible(WindowInsetsCompat.Type.Ime());
+			return result;
+		}
+
+		internal static void PostShowSoftInput(this AView view)
+		{
+			void ShowSoftInput()
+			{
+				// Since we're posting this on the queue, it's possible something else will have disposed of the view
+				// by the time the looper is running this, so we have to verify that the view is still usable
+				if (view.IsDisposed())
+				{
+					return;
+				}
+
+				view.ShowSoftInput();
+			}
+			;
+
+			view.Post(ShowSoftInput);
+		}
+
+		internal static bool IsConfirmKey(this Keycode keyCode)
+		{
+			switch (keyCode)
+			{
+				case Keycode.DpadCenter:
+				case Keycode.Enter:
+				case Keycode.Space:
+				case Keycode.NumpadEnter:
+					return true;
+				default:
+					return false;
+			}
 		}
 	}
 }

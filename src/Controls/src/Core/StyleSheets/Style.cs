@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -13,7 +14,7 @@ namespace Microsoft.Maui.Controls.StyleSheets
 		{
 		}
 
-		public IDictionary<string, string> Declarations { get; set; } = new Dictionary<string, string>();
+		public IDictionary<string, string> Declarations { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
 		Dictionary<KeyValuePair<string, string>, object> convertedValues = new Dictionary<KeyValuePair<string, string>, object>();
 
 		public static Style Parse(CssReader reader, char stopChar = '\0')
@@ -59,7 +60,7 @@ namespace Microsoft.Maui.Controls.StyleSheets
 			return style;
 		}
 
-		public void Apply(VisualElement styleable, bool inheriting = false)
+		public void Apply(VisualElement styleable, Selector.SelectorSpecificity selectorSpecificity = default, bool inheriting = false)
 		{
 			if (styleable == null)
 				throw new ArgumentNullException(nameof(styleable));
@@ -70,17 +71,18 @@ namespace Microsoft.Maui.Controls.StyleSheets
 				if (property == null)
 					continue;
 				if (string.Equals(decl.Value, "initial", StringComparison.OrdinalIgnoreCase))
-					styleable.ClearValue(property, fromStyle: true);
+					styleable.SetValue(property, property.DefaultValue, new SetterSpecificity(SetterSpecificity.StyleImplicit, (byte)selectorSpecificity.Id, (byte)selectorSpecificity.Class, (byte)selectorSpecificity.Type));
 				else
 				{
 					object value;
 					if (!convertedValues.TryGetValue(decl, out value))
 						convertedValues[decl] = (value = Convert(styleable, decl.Value, property));
-					styleable.SetValue(property, value, fromStyle: true);
+					//FIXME: compute distance
+					styleable.SetValue(property, value, new SetterSpecificity(SetterSpecificity.StyleImplicit, (byte)selectorSpecificity.Id, (byte)selectorSpecificity.Class, (byte)selectorSpecificity.Type));
 				}
 			}
 
-			foreach (var child in styleable.LogicalChildrenInternal)
+			foreach (var child in ((IVisualTreeElement)styleable).GetVisualChildren())
 			{
 				var ve = child as VisualElement;
 				if (ve == null)

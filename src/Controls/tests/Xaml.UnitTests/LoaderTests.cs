@@ -63,8 +63,7 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 				propertyChanged: (bindable, oldvalue, newvalue) =>
 				{
 					var label = bindable as Label;
-					if (label != null)
-						label.SetValue(Label.TextProperty, new string(((string)newvalue).Reverse().ToArray()));
+					label?.SetValue(Label.TextProperty, new string(((string)newvalue).Reverse().ToArray()));
 				});
 
 		public static string GetMessage(BindableObject bindable)
@@ -792,7 +791,7 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 		public void BindingIsResolvedAsBindingExtension()
 		// https://github.com/xamarin/Microsoft.Maui.Controls/issues/3606#issuecomment-422377338
 		{
-			var bindingType = XamlParser.GetElementType(new XmlType("http://schemas.microsoft.com/dotnet/2021/maui", "Binding", null), null, null, out var ex);
+			var bindingType = XamlParser.GetElementType(new XmlType("http://schemas.microsoft.com/dotnet/2021/maui", "Binding", null), null, null, true, out var ex);
 			Assert.That(ex, Is.Null);
 			Assert.That(bindingType, Is.EqualTo(typeof(BindingExtension)));
 			var module = ModuleDefinition.CreateModule("foo", new ModuleParameters()
@@ -800,7 +799,7 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 				AssemblyResolver = new MockAssemblyResolver(),
 				Kind = ModuleKind.Dll,
 			});
-			var bindingTypeRef = new XmlType("http://schemas.microsoft.com/dotnet/2021/maui", "Binding", null).GetTypeReference(module, null);
+			var bindingTypeRef = new XmlType("http://schemas.microsoft.com/dotnet/2021/maui", "Binding", null).GetTypeReference(new XamlCache(), module, null);
 			Assert.That(bindingType.FullName, Is.EqualTo("Microsoft.Maui.Controls.Xaml.BindingExtension"));
 		}
 	}

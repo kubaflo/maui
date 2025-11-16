@@ -1,9 +1,5 @@
-using System;
-using System.Collections.Generic;
+#nullable disable
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -13,7 +9,7 @@ using WVisibility = Microsoft.UI.Xaml.Visibility;
 
 namespace Microsoft.Maui.Controls.Platform
 {
-	public class ShellFlyoutItemView : ContentControl
+	public partial class ShellFlyoutItemView : ContentControl
 	{
 		public static readonly DependencyProperty IsSelectedProperty = DependencyProperty.Register(
 			nameof(IsSelected), typeof(bool), typeof(ShellFlyoutItemView),
@@ -21,18 +17,12 @@ namespace Microsoft.Maui.Controls.Platform
 
 		View _content;
 		object _previousDataContext;
-		FrameworkElement FrameworkElement { get; set; }
 		Shell _shell;
 		ShellView ShellView => _shell.Handler?.PlatformView as ShellView;
 
 		public ShellFlyoutItemView()
 		{
 			this.DataContextChanged += OnDataContextChanged;
-		}
-
-		protected override void OnContentChanged(object oldContent, object newContent)
-		{
-			base.OnContentChanged(oldContent, newContent);
 		}
 
 		public bool IsSelected
@@ -52,14 +42,24 @@ namespace Microsoft.Maui.Controls.Platform
 				if (_content.BindingContext is INotifyPropertyChanged inpc)
 					inpc.PropertyChanged -= ShellElementPropertyChanged;
 
-				_shell?.RemoveLogicalChild(_content);
+				if (_content.Parent is BaseShellItem bsi)
+					bsi.RemoveLogicalChild(_content);
+				else
+					_shell?.RemoveLogicalChild(_content);
+
 				_content.Cleanup();
 				_content.BindingContext = null;
 				_content.Parent = null;
 				_content = null;
 			}
 
-			var bo = (BindableObject)args.NewValue;
+			BindableObject bo = null;
+
+			if (args.NewValue is NavigationViewItemViewModel vm && vm.Data is BindableObject bindableObject)
+				bo = bindableObject;
+			else
+				bo = (BindableObject)args.NewValue;
+
 			var element = bo as Element;
 			_shell = element?.FindParentOfType<Shell>();
 			DataTemplate dataTemplate = (_shell as IShellController)?.GetFlyoutItemDataTemplate(bo);
@@ -70,14 +70,19 @@ namespace Microsoft.Maui.Controls.Platform
 			if (dataTemplate != null)
 			{
 				_content = (View)dataTemplate.CreateContent();
+
+				// Set binding context before calling AddLogicalChild so parent binding context doesn't propagate to view
 				_content.BindingContext = bo;
-				_shell.AddLogicalChild(_content);
 
-				var renderer = _content.ToPlatform(_shell.Handler.MauiContext);
+				if (bo is BaseShellItem bsi)
+					bsi.AddLogicalChild(_content);
+				else
+					_shell.AddLogicalChild(_content);
 
-				Content = renderer;
-				FrameworkElement = renderer;
 
+				var platformView = _content.ToPlatform(_shell.Handler.MauiContext);
+
+				Content = platformView;
 				UpdateVisualState();
 			}
 		}
@@ -91,9 +96,6 @@ namespace Microsoft.Maui.Controls.Platform
 		protected override global::Windows.Foundation.Size MeasureOverride(global::Windows.Foundation.Size availableSize)
 		{
 			if (ShellView == null)
-				return base.MeasureOverride(availableSize);
-
-			if (!ShellView.IsPaneOpen)
 				return base.MeasureOverride(availableSize);
 
 			if (ShellView.OpenPaneLength < availableSize.Width)
@@ -112,7 +114,7 @@ namespace Microsoft.Maui.Controls.Platform
 						fe.Visibility = WVisibility.Visible;
 					}
 				}
-
+				base.MeasureOverride(availableSize);
 				var request = view.Measure(availableSize.Width, availableSize.Height);
 				Clip = new RectangleGeometry { Rect = new WRect(0, 0, request.Width, request.Height) };
 				return request.ToPlatform();
@@ -123,13 +125,16 @@ namespace Microsoft.Maui.Controls.Platform
 
 		protected override global::Windows.Foundation.Size ArrangeOverride(global::Windows.Foundation.Size finalSize)
 		{
-			if (this.ActualWidth > 0 && _content is IView view)
+			base.ArrangeOverride(finalSize);
+
+			// Replaced ActualWidth with finalSize.Width since ActualWidth updates only after ArrangeOverride completes, 
+			// ensuring accurate layout during the initial arrangement phase.
+			if (finalSize.Width > 0 && _content is IView view)
 			{
 				view.Arrange(new Rect(0, 0, finalSize.Width, finalSize.Height));
-				return finalSize;
 			}
 
-			return base.ArrangeOverride(finalSize);
+			return finalSize;
 		}
 
 		void UpdateVisualState()

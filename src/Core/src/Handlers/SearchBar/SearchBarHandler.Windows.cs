@@ -1,11 +1,10 @@
-﻿#nullable enable
+#nullable enable
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 
 namespace Microsoft.Maui.Handlers
 {
 	public partial class SearchBarHandler : ViewHandler<ISearchBar, AutoSuggestBox>
-	{   
+	{
 		public AutoSuggestBox? QueryEditor => null;
 
 		protected override AutoSuggestBox CreatePlatformView() => new AutoSuggestBox
@@ -19,6 +18,12 @@ namespace Microsoft.Maui.Handlers
 			platformView.Loaded += OnLoaded;
 			platformView.QuerySubmitted += OnQuerySubmitted;
 			platformView.TextChanged += OnTextChanged;
+			//In ViewHandler.Windows, FocusManager.GotFocus and LostFocus are handled for other controls. 
+			// However, for AutoSuggestBox, when handling the GotFocus or LostFocus methods, tapping the AutoSuggestBox causes e.NewFocusedElement and e.OldFocusedElement to be a TextBox (which receives the focus). 
+			// As a result, when comparing the PlatformView with the appropriate handler in FocusManagerMapping, the condition is not satisfied, causing the focus and unfocus methods to not work correctly. 
+			// To address this, I have specifically handled the focus and unfocus events for AutoSuggestBox here. 
+			platformView.GotFocus += OnGotFocus;
+			platformView.LostFocus += OnLostFocus;
 		}
 
 		protected override void DisconnectHandler(AutoSuggestBox platformView)
@@ -26,6 +31,8 @@ namespace Microsoft.Maui.Handlers
 			platformView.Loaded -= OnLoaded;
 			platformView.QuerySubmitted -= OnQuerySubmitted;
 			platformView.TextChanged -= OnTextChanged;
+			platformView.GotFocus -= OnGotFocus;
+			platformView.LostFocus -= OnLostFocus;
 		}
 
 		public static void MapBackground(ISearchBarHandler handler, ISearchBar searchBar)
@@ -47,7 +54,7 @@ namespace Microsoft.Maui.Handlers
 		{
 			handler.PlatformView?.UpdatePlaceholder(searchBar);
 		}
-			
+
 		public static void MapVerticalTextAlignment(ISearchBarHandler handler, ISearchBar searchBar)
 		{
 			handler.PlatformView?.UpdateVerticalTextAlignment(searchBar);
@@ -80,9 +87,14 @@ namespace Microsoft.Maui.Handlers
 			handler?.PlatformView?.UpdateTextColor(searchBar);
 		}
 
-		public static void MapIsTextPredictionEnabled(ISearchBarHandler handler, ISearchBar searchBar) 
+		public static void MapIsTextPredictionEnabled(ISearchBarHandler handler, ISearchBar searchBar)
 		{
 			handler.PlatformView?.UpdateIsTextPredictionEnabled(searchBar);
+		}
+
+		public static void MapIsSpellCheckEnabled(ISearchBarHandler handler, ISearchBar searchBar)
+		{
+			handler.PlatformView?.UpdateIsSpellCheckEnabled(searchBar);
 		}
 
 		public static void MapMaxLength(ISearchBarHandler handler, ISearchBar searchBar)
@@ -97,7 +109,22 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapCancelButtonColor(ISearchBarHandler handler, ISearchBar searchBar)
 		{
-			// AutoSuggestBox does not support this property
+			handler.PlatformView?.UpdateCancelButtonColor(searchBar);
+		}
+
+		internal static void MapSearchIconColor(ISearchBarHandler handler, ISearchBar searchBar)
+		{
+			handler.PlatformView?.UpdateSearchIconColor(searchBar);
+		}
+
+		public static void MapKeyboard(ISearchBarHandler handler, ISearchBar searchBar)
+		{
+			handler.PlatformView?.UpdateKeyboard(searchBar);
+		}
+
+		public static void MapReturnType(ISearchBarHandler handler, ISearchBar searchBar)
+		{
+			handler.PlatformView?.UpdateReturnType(searchBar);
 		}
 
 		void OnLoaded(object sender, UI.Xaml.RoutedEventArgs e)
@@ -109,6 +136,12 @@ namespace Microsoft.Maui.Handlers
 				PlatformView?.UpdateHorizontalTextAlignment(VirtualView);
 				PlatformView?.UpdateMaxLength(VirtualView);
 				PlatformView?.UpdateIsReadOnly(VirtualView);
+				PlatformView?.UpdateIsTextPredictionEnabled(VirtualView);
+				PlatformView?.UpdateIsSpellCheckEnabled(VirtualView);
+				PlatformView?.UpdateCancelButtonColor(VirtualView);
+				PlatformView?.UpdateSearchIconColor(VirtualView);
+				PlatformView?.UpdateKeyboard(VirtualView);
+				PlatformView?.UpdateReturnType(VirtualView);
 			}
 		}
 
@@ -134,6 +167,16 @@ namespace Microsoft.Maui.Handlers
 				return;
 
 			VirtualView.Text = sender.Text;
+		}
+
+		void OnGotFocus(object sender, UI.Xaml.RoutedEventArgs e)
+		{
+			UpdateIsFocused(true);
+		}
+
+		void OnLostFocus(object sender, UI.Xaml.RoutedEventArgs e)
+		{
+			UpdateIsFocused(false);
 		}
 	}
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 
@@ -8,6 +9,7 @@ namespace Maui.Controls.Sample.Pages.ListViewGalleries
 {
 	public class ListViewRefresh : ContentPage
 	{
+		[RequiresUnreferencedCode("ListViewRefresh may require unreferenced code for data binding")]
 		public ListViewRefresh()
 		{
 			var refreshingCount = 0;
@@ -66,7 +68,7 @@ namespace Maui.Controls.Sample.Pages.ListViewGalleries
 			});
 
 			var lbl = new Label { Text = string.Format("Refreshing {0}", refreshingCount) };
-			lv.Refreshing += (object sender, EventArgs e) =>
+			lv.Refreshing += (object? sender, EventArgs e) =>
 			{
 				refreshingCount++;
 				lbl.Text = string.Format("Refreshing {0}", refreshingCount);
@@ -89,7 +91,7 @@ namespace Maui.Controls.Sample.Pages.ListViewGalleries
 
 		public class FooViewModel
 		{
-			List<Group<string>> _things;
+			List<Group<string>>? _things;
 			public List<Group<string>> Things
 			{
 				get
@@ -115,7 +117,7 @@ namespace Maui.Controls.Sample.Pages.ListViewGalleries
 				}
 			}
 
-			Command _refreshThingsCommand;
+			Command? _refreshThingsCommand;
 			public Command RefreshThingsCommand
 			{
 				get { return _refreshThingsCommand ?? (_refreshThingsCommand = new Command(BeginRefreshThings, () => _canExecute)); }
@@ -131,7 +133,7 @@ namespace Maui.Controls.Sample.Pages.ListViewGalleries
 		{
 			public Group(IEnumerable<T> seed) : base(seed) { }
 
-			public string Name
+			public string? Name
 			{
 				get;
 				set;

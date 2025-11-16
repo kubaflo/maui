@@ -163,9 +163,6 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			if (OperatingSystem.IsIOSVersionAtLeast(11))
 				SetNeedsUpdateOfHomeIndicatorAutoHidden();
 
-			if (Element.Parent is CarouselPage)
-				return;
-
 			Page.SendAppearing();
 		}
 
@@ -177,9 +174,6 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 				return;
 
 			_appeared = false;
-
-			if (Element.Parent is CarouselPage)
-				return;
 
 			Page.SendDisappearing();
 		}
@@ -321,7 +315,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 		public override void TraitCollectionDidChange(UITraitCollection previousTraitCollection)
 		{
+#pragma warning disable CA1422 // Validate platform compatibility
 			base.TraitCollectionDidChange(previousTraitCollection);
+#pragma warning restore CA1422 // Validate platform compatibility
 
 			if (Forms.IsiOS13OrNewer &&
 				previousTraitCollection.UserInterfaceStyle != TraitCollection.UserInterfaceStyle &&

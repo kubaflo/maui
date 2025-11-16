@@ -1,69 +1,69 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using NSubstitute;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
-	[TestFixture]
+
 	public class PageTests : BaseTestFixture
 	{
-		[TearDown]
-		public override void TearDown()
-		{
-			base.TearDown();
-			MessagingCenter.ClearSubscribers();
-		}
-
-		[Test]
+		[Fact]
 		public void TestConstructor()
 		{
 			var child = new Label();
 			Page root = new ContentPage { Content = child };
 
-			Assert.AreEqual(root, child.Parent);
+			Assert.Equal(root, child.Parent);
 
-			Assert.AreEqual(((IElementController)root).LogicalChildren.Count, 1);
-			Assert.AreSame(((IElementController)root).LogicalChildren.First(), child);
+			Assert.Single(((IElementController)root).LogicalChildren);
+			Assert.Same(((IElementController)root).LogicalChildren.First(), child);
 
 			((ContentPage)root).Content = null;
 			Assert.Null(child.Parent);
 		}
 
-		[Test]
+		[Fact]
 		public void TestChildFillBehavior()
 		{
-			var child = new Label();
+			var mockHandler = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(200, 500));
+			var child = MockPlatformSizeService.Sub<Label>();
+			child.Handler = mockHandler;
 			Page root = new ContentPage { Content = child };
 			root.IsPlatformEnabled = child.IsPlatformEnabled = true;
 
-			root.Layout(new Rect(0, 0, 200, 500));
+			var crossPlatformLayout = (ICrossPlatformLayout)root;
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 200, 500));
 
-
-			Assert.AreEqual(child.Width, 200);
-			Assert.AreEqual(child.Height, 500);
+			Assert.Equal(200, child.Width);
+			Assert.Equal(500, child.Height);
 		}
 
-		[Test]
+		[Fact]
 		public void TestSizedChildBehavior()
 		{
-			var child = new Label { IsPlatformEnabled = true, WidthRequest = 100, HorizontalOptions = LayoutOptions.Center };
+			var mockHandler1 = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler1.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(100, 500));
+			var child = MockPlatformSizeService.Sub<Label>(width: 100, horizOpts: LayoutOptions.Center);
+			child.Handler = mockHandler1;
 			var root = new ContentPage { IsPlatformEnabled = true, Content = child };
 
-			root.Layout(new Rect(0, 0, 200, 500));
+			var crossPlatformLayout = (ICrossPlatformLayout)root;
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 200, 500));
 
-			Assert.AreEqual(50, child.X);
-			Assert.AreEqual(100, child.Width);
-			Assert.AreEqual(500, child.Height);
+			Assert.Equal(50, child.X);
+			Assert.Equal(100, child.Width);
+			Assert.Equal(500, child.Height);
 
-			child = new Label()
-			{
-				IsPlatformEnabled = true,
-				HeightRequest = 100,
-				VerticalOptions = LayoutOptions.Center
-			};
+			var mockHandler2 = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler2.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(200, 100));
+			child = MockPlatformSizeService.Sub<Label>(height: 100, vertOpts: LayoutOptions.Center);
+			child.Handler = mockHandler2;
 
 			root = new ContentPage
 			{
@@ -71,16 +71,19 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				Content = child
 			};
 
-			root.Layout(new Rect(0, 0, 200, 500));
+			var crossPlatformLayout2 = (ICrossPlatformLayout)root;
+			crossPlatformLayout2.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout2.CrossPlatformArrange(new Rect(0, 0, 200, 500));
 
-			Assert.AreEqual(0, child.X);
-			Assert.AreEqual(200, child.Y);
-			Assert.AreEqual(200, child.Width);
-			Assert.AreEqual(100, child.Height);
+			Assert.Equal(0, child.X);
+			Assert.Equal(200, child.Y);
+			Assert.Equal(200, child.Width);
+			Assert.Equal(100, child.Height);
 
-			child = new Label();
-			child.IsPlatformEnabled = true;
-			child.HeightRequest = 100;
+			var mockHandler3 = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler3.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(200, 500));
+			child = MockPlatformSizeService.Sub<Label>(height: 100);
+			child.Handler = mockHandler3;
 
 			root = new ContentPage
 			{
@@ -88,31 +91,37 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				IsPlatformEnabled = true
 			};
 
-			root.Layout(new Rect(0, 0, 200, 500));
+			var crossPlatformLayout3 = (ICrossPlatformLayout)root;
+			crossPlatformLayout3.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout3.CrossPlatformArrange(new Rect(0, 0, 200, 500));
 
-			Assert.AreEqual(0, child.X);
-			Assert.AreEqual(0, child.Y);
-			Assert.AreEqual(200, child.Width);
-			Assert.AreEqual(500, child.Height);
+			Assert.Equal(0, child.X);
+			Assert.Equal(0, child.Y);
+			Assert.Equal(200, child.Width);
+			Assert.Equal(500, child.Height);
 		}
 
-		[Test]
+		[Fact]
 		public void NativeSizedChildBehavior()
 		{
-			var child = new Label { IsPlatformEnabled = true, HorizontalOptions = LayoutOptions.Center };
+			var mockHandler1 = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler1.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(100, 500));
+			var child = MockPlatformSizeService.Sub<Label>(horizOpts: LayoutOptions.Center);
+			child.Handler = mockHandler1;
 			var root = new ContentPage { IsPlatformEnabled = true, Content = child };
 
-			root.Layout(new Rect(0, 0, 200, 500));
+			var crossPlatformLayout = (ICrossPlatformLayout)root;
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 200, 500));
 
-			Assert.AreEqual(50, child.X);
-			Assert.AreEqual(100, child.Width);
-			Assert.AreEqual(500, child.Height);
+			Assert.Equal(50, child.X);
+			Assert.Equal(100, child.Width);
+			Assert.Equal(500, child.Height);
 
-			child = new Label()
-			{
-				IsPlatformEnabled = true,
-				VerticalOptions = LayoutOptions.Center
-			};
+			var mockHandler2 = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler2.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(200, 20));
+			child = MockPlatformSizeService.Sub<Label>(vertOpts: LayoutOptions.Center);
+			child.Handler = mockHandler2;
 
 			root = new ContentPage
 			{
@@ -120,21 +129,23 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				Content = child
 			};
 
-			root.Layout(new Rect(0, 0, 200, 500));
+			crossPlatformLayout = (ICrossPlatformLayout)root;
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 200, 500));
 
-			Assert.AreEqual(0, child.X);
-			Assert.AreEqual(240, child.Y);
-			Assert.AreEqual(200, child.Width);
-			Assert.AreEqual(20, child.Height);
+			Assert.Equal(0, child.X);
+			Assert.Equal(240, child.Y);
+			Assert.Equal(200, child.Width);
+			Assert.Equal(20, child.Height);
 		}
 
-		[Test]
+		[Fact]
 		public void TestContentPageSetContent()
 		{
 			View child;
 			var page = new ContentPage { Content = child = new View() };
 
-			Assert.AreEqual(child, page.Content);
+			Assert.Equal(child, page.Content);
 
 			bool fired = false;
 			page.PropertyChanged += (sender, args) =>
@@ -153,136 +164,152 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.Null(page.Content);
 		}
 
-		[Test]
+		[Fact]
 		public void TestLayoutChildrenFill()
 		{
 			View child;
+			var mockHandler = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(800, 800));
 			var page = new ContentPage
 			{
-				Content = child = new View
-				{
-					WidthRequest = 100,
-					HeightRequest = 200,
-					IsPlatformEnabled = true
-				},
+				Content = child = MockPlatformSizeService.Sub<View>(width: 100, height: 200),
 				IsPlatformEnabled = true,
 			};
+			child.Handler = mockHandler;
 
-			page.Layout(new Rect(0, 0, 800, 800));
+			var crossPlatformLayout = (ICrossPlatformLayout)page;
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 800, 800));
 
-			Assert.AreEqual(new Rect(0, 0, 800, 800), child.Bounds);
+			Assert.Equal(new Rect(0, 0, 800, 800), child.Bounds);
 
-			page.Layout(new Rect(0, 0, 50, 50));
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(50, 50));
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 50, 50));
 
-			Assert.AreEqual(new Rect(0, 0, 50, 50), child.Bounds);
+			Assert.Equal(new Rect(0, 0, 50, 50), child.Bounds);
 		}
 
-		[Test]
+		[Fact]
 		public void TestLayoutChildrenStart()
 		{
 			View child;
+			var mockHandler = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(100, 200));
 			var page = new ContentPage
 			{
-				Content = child = new View
-				{
-					WidthRequest = 100,
-					HeightRequest = 200,
-					HorizontalOptions = LayoutOptions.Start,
-					VerticalOptions = LayoutOptions.Start,
-					IsPlatformEnabled = true
-				},
+				Content = child = MockPlatformSizeService.Sub<View>(
+					width: 100,
+					height: 200,
+					vertOpts: LayoutOptions.Start,
+					horizOpts: LayoutOptions.Start),
 				IsPlatformEnabled = true,
 			};
+			child.Handler = mockHandler;
 
-			page.Layout(new Rect(0, 0, 800, 800));
+			var crossPlatformLayout = (ICrossPlatformLayout)page;
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 800, 800));
 
-			Assert.AreEqual(new Rect(0, 0, 100, 200), child.Bounds);
+			Assert.Equal(new Rect(0, 0, 100, 200), child.Bounds);
 
-			page.Layout(new Rect(0, 0, 50, 50));
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(50, 50));
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 50, 50));
 
-			Assert.AreEqual(new Rect(0, 0, 50, 50), child.Bounds);
+			Assert.Equal(new Rect(0, 0, 50, 50), child.Bounds);
 		}
 
-		[Test]
+		[Fact]
 		public void TestLayoutChildrenEnd()
 		{
 			View child;
+			var mockHandler = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(100, 200));
 			var page = new ContentPage
 			{
-				Content = child = new View
-				{
-					WidthRequest = 100,
-					HeightRequest = 200,
-					HorizontalOptions = LayoutOptions.End,
-					VerticalOptions = LayoutOptions.End,
-					IsPlatformEnabled = true
-				},
+				Content = child = MockPlatformSizeService.Sub<View>(
+					width: 100,
+					height: 200,
+					vertOpts: LayoutOptions.End,
+					horizOpts: LayoutOptions.End),
 				IsPlatformEnabled = true,
 			};
+			child.Handler = mockHandler;
 
-			page.Layout(new Rect(0, 0, 800, 800));
+			var crossPlatformLayout = (ICrossPlatformLayout)page;
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 800, 800));
 
-			Assert.AreEqual(new Rect(700, 600, 100, 200), child.Bounds);
+			Assert.Equal(new Rect(700, 600, 100, 200), child.Bounds);
 
-			page.Layout(new Rect(0, 0, 50, 50));
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(50, 50));
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 50, 50));
 
-			Assert.AreEqual(new Rect(0, 0, 50, 50), child.Bounds);
+			Assert.Equal(new Rect(0, 0, 50, 50), child.Bounds);
 		}
 
-		[Test]
+		[Fact]
 		public void TestLayoutChildrenCenter()
 		{
 			View child;
+			var mockHandler = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Microsoft.Maui.Graphics.Size(100, 200));
 			var page = new ContentPage
 			{
-				Content = child = new View
-				{
-					WidthRequest = 100,
-					HeightRequest = 200,
-					HorizontalOptions = LayoutOptions.Center,
-					VerticalOptions = LayoutOptions.Center,
-					IsPlatformEnabled = true
-				},
+				Content = child = MockPlatformSizeService.Sub<View>(
+					width: 100,
+					height: 200,
+					vertOpts: LayoutOptions.Center,
+					horizOpts: LayoutOptions.Center),
 				IsPlatformEnabled = true,
 			};
+			child.Handler = mockHandler;
 
-			page.Layout(new Rect(0, 0, 800, 800));
+			var crossPlatformLayout = (ICrossPlatformLayout)page;
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 800, 800));
 
-			Assert.AreEqual(new Rect(350, 300, 100, 200), child.Bounds);
+			Assert.Equal(new Rect(350, 300, 100, 200), child.Bounds);
 
-			page.Layout(new Rect(0, 0, 50, 50));
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(50, 50));
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 50, 50));
 
-			Assert.AreEqual(new Rect(0, 0, 50, 50), child.Bounds);
+			Assert.Equal(new Rect(0, 0, 50, 50), child.Bounds);
 		}
 
-		[Test]
+		[Fact]
 		public void TestLayoutWithContainerArea()
 		{
 			View child;
+			var mockHandler = NSubstitute.Substitute.For<IViewHandler>();
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(800, 800));
 			var page = new ContentPage
 			{
-				Content = child = new View
-				{
-					WidthRequest = 100,
-					HeightRequest = 200,
-					IsPlatformEnabled = true
-				},
+				Content = child = MockPlatformSizeService.Sub<View>(width: 100, height: 200),
 				IsPlatformEnabled = true,
 			};
+			child.Handler = mockHandler;
 
-			page.Layout(new Rect(0, 0, 800, 800));
+			var crossPlatformLayout = (ICrossPlatformLayout)page;
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 800, 800));
 
-			Assert.AreEqual(new Rect(0, 0, 800, 800), child.Bounds);
+			Assert.Equal(new Rect(0, 0, 800, 800), child.Bounds);
 			((IPageController)page).ContainerArea = new Rect(10, 10, 30, 30);
 
-			Assert.AreEqual(new Rect(10, 10, 30, 30), child.Bounds);
+			Assert.Equal(new Rect(0, 0, 800, 800), child.Bounds);
 
-			page.Layout(new Rect(0, 0, 50, 50));
+			mockHandler.GetDesiredSize(NSubstitute.Arg.Any<double>(), NSubstitute.Arg.Any<double>()).Returns(callInfo => new Size(50, 50));
+			crossPlatformLayout.CrossPlatformMeasure(double.PositiveInfinity, double.PositiveInfinity);
+			crossPlatformLayout.CrossPlatformArrange(new Rect(0, 0, 50, 50));
 
-			Assert.AreEqual(new Rect(10, 10, 30, 30), child.Bounds);
+			Assert.Equal(new Rect(0, 0, 50, 50), child.Bounds);
 		}
 
-		[Test]
+		[Fact]
 		public void TestThrowOnInvalidAlignment()
 		{
 			bool thrown = false;
@@ -310,122 +337,9 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.True(thrown);
 		}
 
-		[Test]
-		public void BusyNotSentWhenNotVisible()
-		{
-			var sent = false;
-			MessagingCenter.Subscribe<Page, bool>(this, Page.BusySetSignalName, (p, b) => sent = true);
-
-			new ContentPage { IsBusy = true };
-
-			Assert.That(sent, Is.False, "Busy message sent while not visible");
-		}
-
-		[Test]
-		public void BusySentWhenBusyPageAppears()
-		{
-			var sent = false;
-			MessagingCenter.Subscribe<Page, bool>(this, Page.BusySetSignalName, (p, b) =>
-			{
-				Assert.That(b, Is.True);
-				sent = true;
-			});
-
-			var page = new ContentPage { IsBusy = true, IsPlatformEnabled = true };
-
-			Assert.That(sent, Is.False, "Busy message sent while not visible");
-
-			_ = new Window(page);
-
-			Assert.That(sent, Is.True, "Busy message not sent when visible");
-		}
-
-		[Test]
-		public void BusySentWhenBusyPageDisappears()
-		{
-			var page = new ContentPage { IsBusy = true };
-			_ = new Window(page);
-			((IPageController)page).SendAppearing();
-
-			var sent = false;
-			MessagingCenter.Subscribe<Page, bool>(this, Page.BusySetSignalName, (p, b) =>
-			{
-				Assert.That(b, Is.False);
-				sent = true;
-			});
-
-			((IPageController)page).SendDisappearing();
-
-			Assert.That(sent, Is.True, "Busy message not sent when visible");
-		}
-
-		[Test]
-		public void BusySentWhenVisiblePageSetToBusy()
-		{
-			var sent = false;
-			MessagingCenter.Subscribe<Page, bool>(this, Page.BusySetSignalName, (p, b) => sent = true);
-
-			var page = new ContentPage();
-			_ = new Window(page);
-			((IPageController)page).SendAppearing();
-
-			Assert.That(sent, Is.False, "Busy message sent appearing while not busy");
-
-			page.IsBusy = true;
-
-			Assert.That(sent, Is.True, "Busy message not sent when visible");
-		}
-
-		[Test]
-		public void DisplayAlert()
-		{
-			var page = new ContentPage() { IsPlatformEnabled = true };
-
-			AlertArguments args = null;
-			MessagingCenter.Subscribe(this, Page.AlertSignalName, (Page sender, AlertArguments e) => args = e);
-
-			var task = page.DisplayAlert("Title", "Message", "Accept", "Cancel");
-
-			Assert.AreEqual("Title", args.Title);
-			Assert.AreEqual("Message", args.Message);
-			Assert.AreEqual("Accept", args.Accept);
-			Assert.AreEqual("Cancel", args.Cancel);
-
-			bool completed = false;
-			var continueTask = task.ContinueWith(t => completed = true);
-
-			args.SetResult(true);
-			continueTask.Wait();
-			Assert.True(completed);
-		}
-
-		[Test]
-		public void DisplayActionSheet()
-		{
-			var page = new ContentPage() { IsPlatformEnabled = true };
-
-			ActionSheetArguments args = null;
-			MessagingCenter.Subscribe(this, Page.ActionSheetSignalName, (Page sender, ActionSheetArguments e) => args = e);
-
-			var task = page.DisplayActionSheet("Title", "Cancel", "Destruction", "Other 1", "Other 2");
-
-			Assert.AreEqual("Title", args.Title);
-			Assert.AreEqual("Destruction", args.Destruction);
-			Assert.AreEqual("Cancel", args.Cancel);
-			Assert.AreEqual("Other 1", args.Buttons.First());
-			Assert.AreEqual("Other 2", args.Buttons.Skip(1).First());
-
-			bool completed = false;
-			var continueTask = task.ContinueWith(t => completed = true);
-
-			args.SetResult("Cancel");
-			continueTask.Wait();
-			Assert.True(completed);
-		}
-
 		class PageTestApp : Application { }
 
-		[Test]
+		[Fact]
 		public void SendApplicationPageAppearing()
 		{
 			var app = new PageTestApp();
@@ -438,10 +352,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			((IPageController)page).SendDisappearing();
 			((IPageController)page).SendAppearing();
 
-			Assert.AreSame(page, actual);
+			Assert.Same(page, actual);
 		}
 
-		[Test]
+		[Fact]
 		public void SendApplicationPageDisappearing()
 		{
 			var app = new PageTestApp();
@@ -454,10 +368,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			((IPageController)page).SendAppearing();
 			((IPageController)page).SendDisappearing();
 
-			Assert.AreSame(page, actual);
+			Assert.Same(page, actual);
 		}
 
-		[Test]
+		[Fact]
 		public void SendAppearing()
 		{
 			var page = new ContentPage();
@@ -465,16 +379,16 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			bool sent = false;
 			page.Appearing += (sender, args) => sent = true;
 
-			_ = new Window(page);
+			_ = new TestWindow(page);
 
 			Assert.True(sent);
 		}
 
-		[Test]
+		[Fact]
 		public void SendDisappearing()
 		{
 			var page = new ContentPage();
-			_ = new Window(page);
+			_ = new TestWindow(page);
 
 			((IPageController)page).SendAppearing();
 
@@ -486,7 +400,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.True(sent);
 		}
 
-		[Test]
+		[Fact]
 		public void SendAppearingDoesntGetCalledMultipleTimes()
 		{
 			var page = new ContentPage();
@@ -494,13 +408,13 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			int countAppearing = 0;
 			page.Appearing += (sender, args) => countAppearing++;
 
-			_ = new Window(page);
+			_ = new TestWindow(page);
 			((IPageController)page).SendAppearing();
 
-			Assert.That(countAppearing, Is.EqualTo(1));
+			Assert.Equal(1, countAppearing);
 		}
 
-		[Test]
+		[Fact]
 		public void IsVisibleWorks()
 		{
 			var page = new ContentPage();
@@ -508,7 +422,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.False(page.IsVisible);
 		}
 
-		[Test]
+		[Fact]
 		public void SendAppearingToChildrenAfter()
 		{
 			var page = new ContentPage();
@@ -524,20 +438,20 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			};
 			navPage.Appearing += (sender, e) => sentNav = true;
 
-			_ = new Window(navPage);
+			_ = new TestWindow(navPage);
 
 			Assert.True(sentNav);
 			Assert.True(sent);
 
 		}
 
-		[Test]
+		[Fact]
 		public void SendDisappearingToChildrenPageFirst()
 		{
 			var page = new ContentPage();
 
 			var navPage = new NavigationPage(page);
-			_ = new Window(navPage);
+			_ = new TestWindow(navPage);
 			((IPageController)navPage).SendAppearing();
 
 			bool sentNav = false;
@@ -555,6 +469,212 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			Assert.True(sentNav);
 			Assert.True(sent);
+		}
+
+		[Fact]
+		public void LogicalChildrenDontAddToPagesInternalChildren()
+		{
+			var page = new ContentPage()
+			{
+				Content = new VerticalStackLayout()
+			};
+
+			var window = new TestWindow(page);
+
+			var customControl = new VerticalStackLayout();
+			Shell.SetTitleView(page, new VerticalStackLayout());
+			page.AddLogicalChild(customControl);
+
+			Assert.Equal(window, customControl.Window);
+			Assert.Single(page.InternalChildren);
+			Assert.Contains(customControl, page.LogicalChildrenInternal);
+			Assert.Contains(customControl, ((IVisualTreeElement)page).GetVisualChildren());
+		}
+
+		[Fact]
+		public void MeasureInvalidatedPropagatesUpTreeWithCompatibilityLayouts()
+		{
+			var label = new LabelInvalidateMeasureCheck
+			{
+				IsPlatformEnabled = true
+			};
+
+			var scrollView = new ScrollViewInvalidationMeasureCheck
+			{
+				Content = new Compatibility.StackLayout
+				{
+					Children = { new ContentView { Content = label, IsPlatformEnabled = true } },
+					IsPlatformEnabled = true
+				},
+				IsPlatformEnabled = true
+			};
+
+			var page = new InvalidatePageInvalidateMeasureCheck
+			{
+				Content = scrollView
+			};
+
+			// Set up the window
+			_ = new TestWindow(page);
+
+			// Reset counters
+			label.InvalidateMeasureCount = 0;
+			label.PlatformInvalidateMeasureCount = 0;
+			page.InvalidateMeasureCount = 0;
+			page.PlatformInvalidateMeasureCount = 0;
+			scrollView.InvalidateMeasureCount = 0;
+			scrollView.PlatformInvalidateMeasureCount = 0;
+
+			// Invalidate the label
+			label.InvalidateMeasureInternal(InvalidationTrigger.MeasureChanged);
+			Assert.Equal(1, label.InvalidateMeasureCount);
+			Assert.Equal(1, label.PlatformInvalidateMeasureCount);
+			Assert.Equal(1, page.InvalidateMeasureCount);
+			Assert.Equal(0, page.PlatformInvalidateMeasureCount);
+			Assert.Equal(1, scrollView.InvalidateMeasureCount);
+			Assert.Equal(0, scrollView.PlatformInvalidateMeasureCount);
+
+			// Invalidate page content
+			page.Content.InvalidateMeasureInternal(InvalidationTrigger.MeasureChanged);
+			Assert.Equal(2, page.InvalidateMeasureCount);
+			Assert.Equal(0, page.PlatformInvalidateMeasureCount);
+		}
+
+		[Theory]
+		[InlineData(true, 0)]
+		[InlineData(false, 1)]
+		public void MeasureInvalidatedPropagatesUpTreeOnAppSwitch(bool skipMeasureInvalidatedPropagation, int expectedAncestorMeasureInvalidatedEvents)
+		{
+			try
+			{
+				VisualElement.SkipMeasureInvalidatedPropagation = skipMeasureInvalidatedPropagation;
+
+				var label = new LabelInvalidateMeasureCheck { IsPlatformEnabled = true };
+
+				var contentView = new ContentViewInvalidationMeasureCheck { Content = label, IsPlatformEnabled = true };
+
+				var scrollView = new ScrollViewInvalidationMeasureCheck
+				{
+					// VerticalStackLayout is not a CompatibilityLayout so it will not propagate the MeasureInvalidated
+					// event up the tree unless VisualElement.IsMeasureInvalidatedPropagationEnabled switch is set to true
+					Content = new VerticalStackLayout
+					{
+						Children = { contentView },
+						IsPlatformEnabled = true
+					},
+					IsPlatformEnabled = true
+				};
+
+				var page = new InvalidatePageInvalidateMeasureCheck { Content = scrollView };
+
+				// Set up the window
+				_ = new TestWindow(page);
+
+				// Reset counters
+				label.InvalidateMeasureCount = 0;
+				label.PlatformInvalidateMeasureCount = 0;
+				contentView.InvalidateMeasureCount = 0;
+				contentView.PlatformInvalidateMeasureCount = 0;
+				scrollView.InvalidateMeasureCount = 0;
+				scrollView.PlatformInvalidateMeasureCount = 0;
+				page.InvalidateMeasureCount = 0;
+				page.PlatformInvalidateMeasureCount = 0;
+
+				// Invalidate the label
+				label.InvalidateMeasureInternal(InvalidationTrigger.MeasureChanged);
+				Assert.Equal(1, label.InvalidateMeasureCount);
+				Assert.Equal(1, label.PlatformInvalidateMeasureCount);
+				Assert.Equal(expectedAncestorMeasureInvalidatedEvents, contentView.InvalidateMeasureCount);
+				Assert.Equal(0, contentView.PlatformInvalidateMeasureCount);
+				Assert.Equal(expectedAncestorMeasureInvalidatedEvents, scrollView.InvalidateMeasureCount);
+				Assert.Equal(0, scrollView.PlatformInvalidateMeasureCount);
+				Assert.Equal(expectedAncestorMeasureInvalidatedEvents, page.InvalidateMeasureCount);
+				Assert.Equal(0, page.PlatformInvalidateMeasureCount);
+			}
+			finally
+			{
+				VisualElement.SkipMeasureInvalidatedPropagation = false;
+			}
+		}
+
+		class LabelInvalidateMeasureCheck : Label
+		{
+			public int PlatformInvalidateMeasureCount { get; set; }
+			public int InvalidateMeasureCount { get; set; }
+
+			public LabelInvalidateMeasureCheck()
+			{
+				MeasureInvalidated += (sender, args) =>
+				{
+					InvalidateMeasureCount++;
+				};
+			}
+
+			internal override void InvalidateMeasureInternal(InvalidationTrigger trigger)
+			{
+				base.InvalidateMeasureInternal(trigger);
+				PlatformInvalidateMeasureCount++;
+			}
+		}
+
+		class ContentViewInvalidationMeasureCheck : ContentView
+		{
+			public int PlatformInvalidateMeasureCount { get; set; }
+			public int InvalidateMeasureCount { get; set; }
+
+			public ContentViewInvalidationMeasureCheck()
+			{
+				MeasureInvalidated += (sender, args) =>
+				{
+					InvalidateMeasureCount++;
+				};
+			}
+
+			internal override void InvalidateMeasureInternal(InvalidationTrigger trigger)
+			{
+				base.InvalidateMeasureInternal(trigger);
+				PlatformInvalidateMeasureCount++;
+			}
+		}
+
+		class ScrollViewInvalidationMeasureCheck : ScrollView
+		{
+			public int PlatformInvalidateMeasureCount { get; set; }
+			public int InvalidateMeasureCount { get; set; }
+
+			public ScrollViewInvalidationMeasureCheck()
+			{
+				MeasureInvalidated += (sender, args) =>
+				{
+					InvalidateMeasureCount++;
+				};
+			}
+
+			internal override void InvalidateMeasureInternal(InvalidationTrigger trigger)
+			{
+				base.InvalidateMeasureInternal(trigger);
+				PlatformInvalidateMeasureCount++;
+			}
+		}
+
+		class InvalidatePageInvalidateMeasureCheck : ContentPage
+		{
+			public int PlatformInvalidateMeasureCount { get; set; }
+			public int InvalidateMeasureCount { get; set; }
+
+			public InvalidatePageInvalidateMeasureCheck()
+			{
+				MeasureInvalidated += (sender, args) =>
+				{
+					InvalidateMeasureCount++;
+				};
+			}
+
+			internal override void InvalidateMeasureInternal(InvalidationTrigger trigger)
+			{
+				base.InvalidateMeasureInternal(trigger);
+				PlatformInvalidateMeasureCount++;
+			}
 		}
 	}
 }

@@ -1,19 +1,19 @@
 using System;
 using System.ComponentModel;
 using System.Linq;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.Maui.Controls.Internals;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class TimePickerRenderer : ViewRenderer<TimePicker, Microsoft.UI.Xaml.Controls.TimePicker>
+	public partial class TimePickerRenderer : ViewRenderer<TimePicker, Microsoft.UI.Xaml.Controls.TimePicker>
 	{
 		WBrush _defaultBrush;
 		bool _fontApplied;
@@ -125,7 +125,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		{
 			Control.UpdateFlowDirection(Element);
 		}
-		
+
 		void PickerOnForceInvalidate(object sender, EventArgs eventArgs)
 		{
 			((IVisualElementController)Element)?.InvalidateMeasure(InvalidationTrigger.SizeRequestChanged);
@@ -173,7 +173,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		[PortHandler]
 		void UpdateTime()
 		{
-			Control.Time = Element.Time;
+			Control.Time = Element.Time ?? TimeSpan.Zero;
 			if (Element.Format?.Contains('H', StringComparison.Ordinal) == true)
 			{
 				Control.ClockIdentifier = "24HourClock";

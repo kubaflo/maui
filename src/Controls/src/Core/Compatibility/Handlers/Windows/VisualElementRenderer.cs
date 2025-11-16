@@ -1,7 +1,6 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -18,10 +17,36 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		TPlatformElement? _nativeView;
 		public FrameworkElement ContainerElement => this;
 
-		public TPlatformElement? Control => ((IElementHandler)this).PlatformView as TPlatformElement ?? _nativeView;
-		object? IElementHandler.PlatformView => _nativeView;
+		public TPlatformElement? Control
+		{
+			get
+			{
+				var value = ((IElementHandler)this).PlatformView as TPlatformElement;
+				if (value != this && value != null)
+					return value;
+
+				return _nativeView;
+			}
+		}
+
+		object? IElementHandler.PlatformView
+		{
+			get => (_nativeView as object) ?? this;
+		}
 
 		public UIElement? GeTPlatformElement() => Control;
+
+		UIElementCollection? _cachedChildren;
+
+		[SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs", Justification = "Panel.Children property is banned to enforce use of this CachedChildren property.")]
+		internal UIElementCollection CachedChildren
+		{
+			get
+			{
+				_cachedChildren ??= Children;
+				return _cachedChildren;
+			}
+		}
 
 		protected virtual void UpdateNativeControl() { }
 
@@ -32,7 +57,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			if (oldControl != null)
 			{
-				Children.Remove(oldControl);
+				CachedChildren.Remove(oldControl);
 			}
 
 			if (Control == null)
@@ -43,7 +68,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			Control.HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Stretch;
 			Control.VerticalAlignment = Microsoft.UI.Xaml.VerticalAlignment.Stretch;
 
-			Children.Add(control);
+			CachedChildren.Add(control);
 			UpdateNativeControl();
 		}
 
@@ -56,15 +81,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			if (Element == null || availableSize.Width * availableSize.Height == 0)
 				return new WSize(0, 0);
 
-			if (Control != null)
-			{
-				Control.Measure(availableSize);
-			}
+			Control?.Measure(availableSize);
 
 			var mauiContext = Element?.Handler?.MauiContext;
 			var minimumSize = MinimumSize();
 			var mauiRect = Control?.DesiredSize ?? minimumSize.ToPlatform();
-			
+
 			if (Element is not IVisualTreeElement vte || mauiContext == null)
 				return mauiRect;
 
@@ -87,10 +109,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		protected override WSize ArrangeOverride(global::Windows.Foundation.Size finalSize)
 		{
 			var myRect = new WRect(0, 0, finalSize.Width, finalSize.Height);
-			if (Control != null)
-			{
-				Control.Arrange(myRect);
-			}
+			Control?.Arrange(myRect);
 
 			var mauiContext = Element?.Handler?.MauiContext;
 			if (Element is not IVisualTreeElement vte || mauiContext == null)
@@ -139,7 +158,10 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				return;
 			}
 
-			panel.Children.Clear();
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons. Here we can just cache it.
+			var panelChildren = panel.Children;
+#pragma warning restore RS0030 // Do not use banned APIs
+			panelChildren.Clear();
 
 			if (element is not IVisualTreeElement vte)
 				return;
@@ -151,7 +173,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			foreach (var child in vte.GetVisualChildren())
 			{
 				if (child is Maui.IElement childElement)
-					panel.Children.Add(childElement.ToPlatform(mauiContext));
+					panelChildren.Add(childElement.ToPlatform(mauiContext));
 			}
 		}
 

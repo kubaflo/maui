@@ -1,23 +1,192 @@
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Microsoft.Maui.Platform;
+using Xunit;
+using Xunit.Sdk;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
-	[TestFixture]
+
 	public class SwipeViewTests : BaseTestFixture
 	{
-		[Test]
+		[Fact]
 		public void TestConstructor()
 		{
 			var swipeView = new SwipeView();
 
-			Assert.AreEqual(0, swipeView.LeftItems.Count);
-			Assert.AreEqual(0, swipeView.TopItems.Count);
-			Assert.AreEqual(0, swipeView.RightItems.Count);
-			Assert.AreEqual(0, swipeView.BottomItems.Count);
+			Assert.Empty(swipeView.LeftItems);
+			Assert.Empty(swipeView.TopItems);
+			Assert.Empty(swipeView.RightItems);
+			Assert.Empty(swipeView.BottomItems);
 		}
 
-		[Test]
+		[Fact]
+		public void TestSwipeViewBindingContextChangedEvent()
+		{
+			var swipeView = new SwipeView();
+			bool passed = false;
+			swipeView.BindingContextChanged += (sender, args) => passed = true;
+
+			swipeView.BindingContext = new object();
+
+			if (!passed)
+			{
+				throw new XunitException("The BindingContextChanged event was not fired.");
+			}
+		}
+
+		[Fact]
+		public void TestContentBindingContextChangedEvent()
+		{
+			var content = new Label();
+			var swipeView = new SwipeView
+			{
+				Content = content
+			};
+
+			bool passed = false;
+			content.BindingContextChanged += (sender, args) => passed = true;
+
+			swipeView.BindingContext = new object();
+
+			if (!passed)
+			{
+				throw new XunitException("The BindingContextChanged event was not fired.");
+			}
+		}
+
+		[Fact]
+		public void TestTemplatedContentBindingContextChangedEvent()
+		{
+			var content = new Label();
+			var swipeView = new SwipeView();
+
+			swipeView.ControlTemplate = new ControlTemplate(() => content);
+
+			bool passed = false;
+			content.BindingContextChanged += (sender, args) => passed = true;
+
+			swipeView.BindingContext = new object();
+
+			if (!passed)
+			{
+				throw new XunitException("The BindingContextChanged event was not fired.");
+			}
+		}
+
+		[Fact]
+		public void ClearRemovesLogicalChildren()
+		{
+			var swipeView = new SwipeView();
+
+			swipeView.LeftItems = new SwipeItems
+			{
+				new SwipeItem(),
+				new SwipeItem(),
+				new SwipeItem(),
+				new SwipeItem(),
+				new SwipeItem()
+			};
+
+			swipeView.LeftItems.Clear();
+			Assert.Empty((swipeView.LeftItems as IVisualTreeElement).GetVisualChildren());
+		}
+
+		[Fact]
+		public void TestContentBindingContextPropagatesToNewSwipeItems()
+		{
+			var swipeView = new SwipeView();
+
+			swipeView.LeftItems = new SwipeItems
+			{
+				new SwipeItem()
+			};
+			swipeView.RightItems = new SwipeItems
+			{
+				new SwipeItem()
+			};
+			swipeView.TopItems = new SwipeItems
+			{
+				new SwipeItem()
+			};
+			swipeView.BottomItems = new SwipeItems
+			{
+				new SwipeItem()
+			};
+
+			swipeView.BindingContext = new object();
+			Assert.Equal(swipeView.BindingContext, ((BindableObject)swipeView.LeftItems[0]).BindingContext);
+			Assert.Equal(swipeView.BindingContext, ((BindableObject)swipeView.RightItems[0]).BindingContext);
+			Assert.Equal(swipeView.BindingContext, ((BindableObject)swipeView.TopItems[0]).BindingContext);
+			Assert.Equal(swipeView.BindingContext, ((BindableObject)swipeView.BottomItems[0]).BindingContext);
+		}
+
+		[Fact]
+		public void TestContentBindingContextPropagatesToPassedInSwipeItem()
+		{
+			var swipeView = new SwipeView();
+
+			swipeView.LeftItems = new SwipeItems(new[] { new SwipeItem() });
+
+			swipeView.BindingContext = new object();
+			Assert.Equal(swipeView.BindingContext, ((BindableObject)swipeView.LeftItems[0]).BindingContext);
+		}
+
+		[Fact]
+		public void TestContentBindingContextPropagatesToAddedSwipeItems()
+		{
+			var swipeView = new SwipeView();
+
+			swipeView.LeftItems.Add(new SwipeItem());
+			swipeView.RightItems.Add(new SwipeItem());
+			swipeView.TopItems.Add(new SwipeItem());
+			swipeView.BottomItems.Add(new SwipeItem());
+
+			swipeView.BindingContext = new object();
+			Assert.Equal(swipeView.BindingContext, ((BindableObject)swipeView.LeftItems[0]).BindingContext);
+			Assert.Equal(swipeView.BindingContext, ((BindableObject)swipeView.RightItems[0]).BindingContext);
+			Assert.Equal(swipeView.BindingContext, ((BindableObject)swipeView.TopItems[0]).BindingContext);
+			Assert.Equal(swipeView.BindingContext, ((BindableObject)swipeView.BottomItems[0]).BindingContext);
+		}
+
+		[Fact]
+		public void BindingContextTransfersToNewSetOfSwipeItems()
+		{
+			var bc1 = new object();
+			var bc2 = new object();
+
+			var swipeView = new SwipeView();
+			var leftItems = swipeView.LeftItems;
+			var swipeItem = new SwipeItem();
+			leftItems.Add(swipeItem);
+			swipeView.BindingContext = bc1;
+
+			Assert.Equal(leftItems.BindingContext, bc1);
+			Assert.Equal(swipeItem.BindingContext, bc1);
+
+			Assert.Equal(leftItems, swipeView.LeftItems);
+			Assert.Contains(leftItems, (swipeView as IVisualTreeElement).GetVisualChildren());
+			Assert.Equal(swipeItem, (leftItems as IVisualTreeElement).GetVisualChildren()[0]);
+
+			var leftItems2 = new SwipeItems();
+			leftItems2.Add(swipeItem);
+			swipeView.LeftItems = leftItems2;
+
+			// now that this isn't the logical child of SwipeItems the parent should be null
+			Assert.Null(leftItems.Parent);
+
+			// The parent on swipeItem should now be leftItems2 because that's been set on SwipeView
+			Assert.NotSame(swipeItem.Parent, leftItems);
+			Assert.NotSame(leftItems.Parent, swipeView);
+
+			Assert.Equal(swipeItem.Parent, leftItems2);
+			Assert.Equal(leftItems2.Parent, swipeView);
+
+			swipeView.BindingContext = bc2;
+			Assert.Equal(leftItems2.BindingContext, bc2);
+			Assert.Equal(swipeItem.BindingContext, bc2);
+		}
+
+		[Fact]
 		public void TestDefaultSwipeItems()
 		{
 			var swipeView = new SwipeView();
@@ -33,11 +202,11 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				swipeItem
 			};
 
-			Assert.AreEqual(SwipeMode.Reveal, swipeView.LeftItems.Mode);
-			Assert.AreEqual(SwipeBehaviorOnInvoked.Auto, swipeView.LeftItems.SwipeBehaviorOnInvoked);
+			Assert.Equal(SwipeMode.Reveal, swipeView.LeftItems.Mode);
+			Assert.Equal(SwipeBehaviorOnInvoked.Auto, swipeView.LeftItems.SwipeBehaviorOnInvoked);
 		}
 
-		[Test]
+		[Fact]
 		public void TestSwipeItemsExecuteMode()
 		{
 			var swipeView = new SwipeView();
@@ -57,10 +226,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			swipeView.LeftItems = swipeItems;
 
-			Assert.AreEqual(SwipeMode.Execute, swipeView.LeftItems.Mode);
+			Assert.Equal(SwipeMode.Execute, swipeView.LeftItems.Mode);
 		}
 
-		[Test]
+		[Fact]
 		public void TestSwipeItemsSwipeBehaviorOnInvoked()
 		{
 			var swipeView = new SwipeView();
@@ -80,10 +249,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			swipeView.LeftItems = swipeItems;
 
-			Assert.AreEqual(SwipeBehaviorOnInvoked.Close, swipeView.LeftItems.SwipeBehaviorOnInvoked);
+			Assert.Equal(SwipeBehaviorOnInvoked.Close, swipeView.LeftItems.SwipeBehaviorOnInvoked);
 		}
 
-		[Test]
+		[Fact]
 		public void TestLeftItems()
 		{
 			var swipeView = new SwipeView();
@@ -99,10 +268,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				swipeItem
 			};
 
-			Assert.AreNotEqual(0, swipeView.LeftItems.Count);
+			Assert.NotEmpty(swipeView.LeftItems);
 		}
 
-		[Test]
+		[Fact]
 		public void TestRightItems()
 		{
 			var swipeView = new SwipeView();
@@ -118,10 +287,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				swipeItem
 			};
 
-			Assert.AreNotEqual(0, swipeView.RightItems.Count);
+			Assert.NotEmpty(swipeView.RightItems);
 		}
 
-		[Test]
+		[Fact]
 		public void TestTopItems()
 		{
 			var swipeView = new SwipeView();
@@ -137,10 +306,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				swipeItem
 			};
 
-			Assert.AreNotEqual(0, swipeView.TopItems.Count);
+			Assert.NotEmpty(swipeView.TopItems);
 		}
 
-		[Test]
+		[Fact]
 		public void TestBottomItems()
 		{
 			var swipeView = new SwipeView();
@@ -156,10 +325,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				swipeItem
 			};
 
-			Assert.AreNotEqual(0, swipeView.BottomItems.Count);
+			Assert.NotEmpty(swipeView.BottomItems);
 		}
 
-		[Test]
+		[Fact]
 		public void TestProgrammaticallyOpen()
 		{
 			bool isOpen = false;
@@ -184,10 +353,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			swipeView.Open(OpenSwipeItem.LeftItems);
 
-			Assert.IsTrue(isOpen);
+			Assert.True(isOpen);
 		}
 
-		[Test]
+		[Fact]
 		public void TestProgrammaticallyClose()
 		{
 			bool isOpen = false;
@@ -212,10 +381,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			swipeView.Close();
 
-			Assert.IsFalse(isOpen);
+			Assert.False(isOpen);
 		}
 
-		[Test]
+		[Fact]
 		public void TestSwipeItemView()
 		{
 			var swipeView = new SwipeView();
@@ -242,7 +411,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			Assert.NotNull(swipeItemView);
 			Assert.NotNull(swipeItemView.Content);
-			Assert.AreNotEqual(0, swipeView.LeftItems.Count);
+			Assert.NotEmpty(swipeView.LeftItems);
 		}
 	}
 }

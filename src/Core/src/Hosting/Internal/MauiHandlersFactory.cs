@@ -1,33 +1,38 @@
-#nullable enable
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Maui.Hosting.Internal
 {
 	sealed class MauiHandlersFactory : MauiFactory, IMauiHandlersFactory
 	{
-		public MauiHandlersFactory(IEnumerable<HandlerMauiAppBuilderExtensions.HandlerRegistration> registrationActions) :
-			base(CreateHandlerCollection(registrationActions))
-		{
-		}
+		readonly ConcurrentDictionary<Type, Type?> _serviceCache = new();
 
-		private static IMauiServiceCollection CreateHandlerCollection(IEnumerable<HandlerMauiAppBuilderExtensions.HandlerRegistration> registrationActions)
+		readonly RegisteredHandlerServiceTypeSet _registeredHandlerServiceTypeSet;
+
+		public MauiHandlersFactory(IMauiHandlersCollection collection)
+			: base(collection)
 		{
-			var collection = new MauiHandlersCollection();
-			if (registrationActions != null)
-			{
-				foreach (var registrationAction in registrationActions)
-				{
-					registrationAction.AddRegistration(collection);
-				}
-			}
-			HotReload.MauiHotReloadHelper.RegisterHandlers(collection);
-			return collection;
+			_registeredHandlerServiceTypeSet = RegisteredHandlerServiceTypeSet.GetInstance(collection);
 		}
 
 		public IElementHandler? GetHandler(Type type)
-			=> GetService(type) as IElementHandler;
+		{
+			if (TryGetVirtualViewHandlerServiceType(type) is Type serviceType
+				&& GetService(serviceType) is IElementHandler handler)
+			{
+				return handler;
+			}
+
+			if (TryGetElementHandlerAttribute(type, out var elementHandlerAttribute))
+			{
+				return elementHandlerAttribute.CreateHandler();
+			}
+
+			throw new HandlerNotFoundException($"Unable to find a {nameof(IElementHandler)} corresponding to {type}. Please register a handler for {type} using `Microsoft.Maui.Hosting.MauiHandlersCollectionExtensions.AddHandler` or `Microsoft.Maui.Hosting.MauiHandlersCollectionExtensions.TryAddHandler`");
+		}
 
 		public IElementHandler? GetHandler<T>() where T : IElement
 			=> GetHandler(typeof(T));
@@ -35,23 +40,37 @@ namespace Microsoft.Maui.Hosting.Internal
 		[return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
 		public Type? GetHandlerType(Type iview)
 		{
-			if (!TryGetServiceDescriptors(ref iview, out var single, out var enumerable))
-				return default;
-
-			if (single != null)
-				return single.ImplementationType;
-
-			if (enumerable != null)
+			if (TryGetVirtualViewHandlerServiceType(iview) is Type serviceType
+				&& InternalCollection.TryGetService(serviceType, out ServiceDescriptor? serviceDescriptor)
+				&& serviceDescriptor?.ImplementationType is Type type)
 			{
-				foreach (var descriptor in enumerable)
-				{
-					return descriptor.ImplementationType;
-				}
+				return type;
 			}
 
-			return default;
+			if (TryGetElementHandlerAttribute(iview, out var elementHandlerAttribute))
+			{
+				return GetHandlerType(elementHandlerAttribute);
+			}
+
+			return null;
+
+			[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2073",
+				Justification = "There is no need to create instances of the handlers for types with this attribute using reflection."
+					+ "We intentionally avoid annotating these handler types with DAM.")]
+			[return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+			static Type GetHandlerType(ElementHandlerAttribute elementHandlerAttribute)
+				=> elementHandlerAttribute.HandlerType;
+		}
+
+		private static bool TryGetElementHandlerAttribute(Type viewType, [NotNullWhen(returnValue: true)] out ElementHandlerAttribute? elementHandlerAttribute)
+		{
+			elementHandlerAttribute = viewType.GetCustomAttribute<ElementHandlerAttribute>();
+			return elementHandlerAttribute is not null;
 		}
 
 		public IMauiHandlersCollection GetCollection() => (IMauiHandlersCollection)InternalCollection;
+
+		private Type? TryGetVirtualViewHandlerServiceType(Type type)
+			=> _serviceCache.GetOrAdd(type, _registeredHandlerServiceTypeSet.ResolveVirtualViewToRegisteredHandlerServiceType);
 	}
 }

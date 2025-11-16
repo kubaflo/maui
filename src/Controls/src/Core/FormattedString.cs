@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,14 +8,15 @@ using System.Linq;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls/FormattedString.xml" path="Type[@FullName='Microsoft.Maui.Controls.FormattedString']/Docs" />
+	/// <summary>Represents a text with attributes applied to some parts.</summary>
 	[ContentProperty("Spans")]
+	[TypeConverter(typeof(FormattedStringConverter))]
 	public class FormattedString : Element
 	{
 		readonly SpanCollection _spans = new SpanCollection();
 		internal event NotifyCollectionChangedEventHandler SpansCollectionChanged;
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/FormattedString.xml" path="//Member[@MemberName='.ctor']/Docs" />
+		/// <summary>Initializes a new instance of the FormattedString class.</summary>
 		public FormattedString() => _spans.CollectionChanged += OnCollectionChanged;
 
 		protected override void OnBindingContextChanged()
@@ -24,14 +26,14 @@ namespace Microsoft.Maui.Controls
 				SetInheritedBindingContext(Spans[i], BindingContext);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/FormattedString.xml" path="//Member[@MemberName='Spans']/Docs" />
+		/// <summary>Gets the collection of spans.</summary>
 		public IList<Span> Spans => _spans;
 
 		public static explicit operator string(FormattedString formatted) => formatted.ToString();
 
 		public static implicit operator FormattedString(string text) => new FormattedString { Spans = { new Span { Text = text } } };
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/FormattedString.xml" path="//Member[@MemberName='ToString']/Docs" />
+		/// <summary>Returns the text of the formatted string as an unformatted string.</summary>
 		public override string ToString() => string.Concat(Spans.Select(span => span.Text));
 
 		void OnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -41,9 +43,9 @@ namespace Microsoft.Maui.Controls
 				foreach (object item in e.OldItems)
 				{
 					var bo = item as Span;
-					bo.Parent = null;
 					if (bo != null)
 					{
+						bo.Parent?.RemoveLogicalChild(bo);
 						bo.PropertyChanging -= OnItemPropertyChanging;
 						bo.PropertyChanged -= OnItemPropertyChanged;
 					}
@@ -56,9 +58,9 @@ namespace Microsoft.Maui.Controls
 				foreach (object item in e.NewItems)
 				{
 					var bo = item as Span;
-					bo.Parent = this;
 					if (bo != null)
 					{
+						this.AddLogicalChild(bo);
 						bo.PropertyChanging += OnItemPropertyChanging;
 						bo.PropertyChanged += OnItemPropertyChanged;
 					}
@@ -84,6 +86,35 @@ namespace Microsoft.Maui.Controls
 				var removed = new List<Span>(this);
 				base.ClearItems();
 				base.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, removed));
+			}
+		}
+
+		private sealed class FormattedStringConverter : TypeConverter
+		{
+			public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
+				=> sourceType == typeof(string);
+
+			public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
+				=> destinationType == typeof(string);
+
+			public override object ConvertFrom(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value)
+			{
+				if (value is string strValue)
+				{
+					return (FormattedString)strValue;
+				}
+
+				throw new NotSupportedException();
+			}
+
+			public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, Type destinationType)
+			{
+				if (value is FormattedString formattedStr)
+				{
+					return (string)formattedStr;
+				}
+
+				throw new NotSupportedException();
 			}
 		}
 	}

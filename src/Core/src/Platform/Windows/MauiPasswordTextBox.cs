@@ -15,7 +15,7 @@ namespace Microsoft.Maui.Platform
 {
 	// TODO: Replace this all with a real PasswordBox and not do this
 	//       as we lose many default password box features.
-	public class MauiPasswordTextBox : TextBox
+	public partial class MauiPasswordTextBox : TextBox
 	{
 		const char ObfuscationCharacter = '●';
 
@@ -55,11 +55,27 @@ namespace Microsoft.Maui.Platform
 		bool _internalChangeFlag;
 		int _cachedCursorPosition;
 		int _cachedTextLength;
+		readonly long _token;
 
 		public MauiPasswordTextBox()
 		{
 			TextChanging += OnNativeTextChanging;
 			TextChanged += OnNativeTextChanged;
+			_token = RegisterPropertyChangedCallback(TextBox.InputScopeProperty, OnInputScopePropertyChanged);
+			Unloaded += (s, e) =>
+			{
+				UnregisterPropertyChangedCallback(TextBox.InputScopeProperty, _token);
+			};
+		}
+
+		static void OnInputScopePropertyChanged(DependencyObject sender, DependencyProperty dp)
+		{
+			if (sender is not MauiPasswordTextBox mauiTxtBox || mauiTxtBox.IsPassword)
+			{
+				return;
+			}
+
+			mauiTxtBox.IsPassword = mauiTxtBox.InputScope?.Names?.Any(x => x.NameValue == InputScopeNameValue.Password) ?? false;
 		}
 
 		public bool IsPassword
@@ -136,11 +152,17 @@ namespace Microsoft.Maui.Platform
 		}
 
 		private void OnNativeTextChanging(TextBox sender, TextBoxTextChangingEventArgs args)
-		{	
-			// As we are obfuscating the text by ourselves, transforming the text, or a user could be using a custom Converter;
-			// we are setting the Text property directly on code many times.
-			// This causes that we invoke the SelectionChanged event many times with SelectionStart = 0, setting the cursor to
-			// the beginning of the TextBox.
+		{
+			// We are handling the CursorPosition issue at Platform.TextBoxExtensions.UpdateText method
+			// but when IsPassword=true, it is too late to handle it at that moment, as we have already
+			// obfuscated the text and have lost the real CursorPosition value. So, let's handle that
+			// issue here when IsPassword is enabled.
+			if (!IsPassword)
+				return;
+
+			// As we are obfuscating the text by ourselves we are setting the Text property directly on code many times.
+			// This causes that we invoke the SelectionChanged event many times with SelectionStart = 0, setting the cursor
+			// to the beginning of the TextBox.
 			// To avoid this behavior let's save the current cursor position of the first time the Text is updated by the user
 			// and keep the same cursor position after each Text update until a new Text update by the user happens.
 			var updatedPassword = DetermineTextFromPassword(Password, SelectionStart, Text);
@@ -154,7 +176,7 @@ namespace Microsoft.Maui.Platform
 			{
 				// Recalculate the cursor position, as the Text could be modified by a user Converter
 				_cachedCursorPosition += (updatedPassword.Length - _cachedTextLength);
-				SelectionStart = _cachedCursorPosition;
+				SelectionStart = this.GetCursorPosition(_cachedCursorPosition);
 			}
 		}
 
@@ -276,7 +298,15 @@ namespace Microsoft.Maui.Platform
 			var updatedPassword = DetermineTextFromPassword(Password, SelectionStart, Text);
 
 			if (Password != updatedPassword)
+			{
 				Password = updatedPassword;
+			}
+			else
+			{
+				// Ensure the UI properly refreshes when text is pasted with the same value
+				// Without this, pasting identical text via Ctrl+V doesn't trigger obfuscation
+				UpdateVisibleText();
+			}
 		}
 
 		static string Obfuscate(string text, bool leaveLastVisible = false)
@@ -289,7 +319,7 @@ namespace Microsoft.Maui.Platform
 
 			return text.Length == 1
 				? text
-				: new string(ObfuscationCharacter, text.Length - 1) + text.Substring(text.Length - 1, 1);
+				: string.Concat(new string(ObfuscationCharacter, text.Length - 1), text.AsSpan(text.Length - 1, 1));
 		}
 
 		static string DetermineTextFromPassword(string realText, int start, string passwordText)

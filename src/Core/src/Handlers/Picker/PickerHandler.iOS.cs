@@ -7,19 +7,20 @@ namespace Microsoft.Maui.Handlers
 {
 	public partial class PickerHandler : ViewHandler<IPicker, MauiPicker>
 	{
+		readonly MauiPickerProxy _proxy = new();
 		UIPickerView? _pickerView;
-#if IOS && !MACCATALYST
 
+#if !MACCATALYST
 		protected override MauiPicker CreatePlatformView()
 		{
 			_pickerView = new UIPickerView();
 
-			var platformPicker = new MauiPicker(_pickerView) { BorderStyle = UITextBorderStyle.RoundedRect };
-			platformPicker.InputView = _pickerView;
-			platformPicker.InputAccessoryView = new MauiDoneAccessoryView(() =>
+			var platformPicker = new MauiPicker(_pickerView)
 			{
-				FinishSelectItem(_pickerView, platformPicker);
-			});
+				BorderStyle = UITextBorderStyle.RoundedRect,
+				InputView = _pickerView,
+				InputAccessoryView = new MauiDoneAccessoryView(_proxy.OnDone),
+			};
 
 			platformPicker.InputView.AutoresizingMask = UIViewAutoresizing.FlexibleHeight;
 			platformPicker.InputAccessoryView.AutoresizingMask = UIViewAutoresizing.FlexibleHeight;
@@ -27,112 +28,132 @@ namespace Microsoft.Maui.Handlers
 			platformPicker.InputAssistantItem.TrailingBarButtonGroups = null;
 			platformPicker.AccessibilityTraits = UIAccessibilityTrait.Button;
 
-			_pickerView.Model = new PickerSource(VirtualView);
+			_pickerView.Model = new PickerSource(this);
 
 			return platformPicker;
 		}
+
+		void OnDone() => FinishSelectItem(_pickerView, PlatformView);
 #else
-		protected override MauiPicker CreatePlatformView()
-		{	
-			var platformPicker = new MauiPicker(null) { BorderStyle = UITextBorderStyle.RoundedRect };
-	
-			platformPicker.ShouldBeginEditing += (textField) => 
-			{
-				var alertController = CreateAlert(textField);
-				var platformWindow = MauiContext?.GetPlatformWindow();
-				platformWindow?.BeginInvokeOnMainThread(() =>
-				{
-					_ = platformWindow?.RootViewController?.PresentViewControllerAsync(alertController, true);
-				});
-                return false;
-            };
-	
-			return platformPicker;
-		}
-		
-		UIAlertController CreateAlert(UITextField uITextField)
+		protected override MauiPicker CreatePlatformView() =>
+			new MauiPicker(null) { BorderStyle = UITextBorderStyle.RoundedRect };
+
+		void DisplayAlert(MauiPicker uITextField, int selectedIndex)
 		{
 			var paddingTitle = 0;
-			if(!string.IsNullOrEmpty(VirtualView.Title))
-				paddingTitle+= 25;
-				
+			if (!string.IsNullOrEmpty(VirtualView.Title))
+				paddingTitle += 25;
+
 			var pickerHeight = 240;
 			var frame = new RectangleF(0, paddingTitle, 269, pickerHeight);
 			var pickerView = new UIPickerView(frame);
-			pickerView.Model  = new PickerSource(VirtualView);
+			pickerView.Model = new PickerSource(this);
 			pickerView?.ReloadAllComponents();
 
-			var pickerController = UIAlertController.Create(VirtualView.Title, "", UIAlertControllerStyle.ActionSheet);
+			if (pickerView?.Model is PickerSource source)
+			{
+				source.SelectedIndex = selectedIndex;
+				pickerView.Select(Math.Max(selectedIndex, 0), 0, true);
+				pickerView.ReloadAllComponents();
+			}
+
+			// The UIPickerView is displayed as a subview of the UIAlertController when an empty string is provided as the title, instead of using the VirtualView title. 
+			// This behavior deviates from the expected native macOS behavior.
+			var pickerController = UIAlertController.Create("", "", UIAlertControllerStyle.ActionSheet);
 
 			// needs translation
-    		pickerController.AddAction(UIAlertAction.Create("Done",
-								UIAlertActionStyle.Default, 
-								action => FinishSelectItem(pickerView,uITextField)
+			pickerController.AddAction(UIAlertAction.Create("Done",
+								UIAlertActionStyle.Default,
+								action => FinishSelectItem(pickerView, uITextField)
 							));
-			
-			if(pickerController.View != null && pickerView != null)
+
+			if (pickerController.View != null && pickerView != null)
 			{
 				pickerController.View.AddSubview(pickerView);
 				var doneButtonHeight = 90;
-				var height = NSLayoutConstraint.Create(pickerController.View,  NSLayoutAttribute.Height, NSLayoutRelation.Equal, null, NSLayoutAttribute.NoAttribute, 1, pickerHeight+doneButtonHeight);
+				var height = NSLayoutConstraint.Create(pickerController.View, NSLayoutAttribute.Height, NSLayoutRelation.Equal, null, NSLayoutAttribute.NoAttribute, 1, pickerHeight + doneButtonHeight);
 				pickerController.View.AddConstraint(height);
 			}
-			
+
 			var popoverPresentation = pickerController.PopoverPresentationController;
-			if (popoverPresentation!=null)
+			if (popoverPresentation != null)
 			{
-    			popoverPresentation.SourceView = uITextField;
+				popoverPresentation.SourceView = uITextField;
 				popoverPresentation.SourceRect = uITextField.Bounds;
 			}
 
-			return pickerController;
+			EventHandler? editingDidEndHandler = null;
+
+			editingDidEndHandler = async (s, e) =>
+			{
+				await pickerController.DismissViewControllerAsync(true);
+				if (VirtualView is IPicker virtualView)
+					virtualView.IsFocused = virtualView.IsOpen = false;
+				uITextField.EditingDidEnd -= editingDidEndHandler;
+			};
+
+			uITextField.EditingDidEnd += editingDidEndHandler;
+
+			var platformWindow = MauiContext?.GetPlatformWindow();
+			if (platformWindow is null)
+			{
+				return;
+			}
+
+			var currentViewController = GetCurrentViewController(platformWindow.RootViewController);
+			platformWindow.BeginInvokeOnMainThread(() =>
+			{
+				currentViewController?.PresentViewControllerAsync(pickerController, true);
+			});
+		}
+
+		static UIViewController? GetCurrentViewController(UIViewController? viewController)
+		{
+			while (viewController?.PresentedViewController != null)
+			{
+				viewController = viewController.PresentedViewController;
+			}
+ 
+			return viewController;
 		}
 #endif
+
+		internal bool UpdateImmediately { get; set; }
+
 		protected override void ConnectHandler(MauiPicker platformView)
 		{
-			platformView.EditingDidBegin += OnStarted;
-			platformView.EditingDidEnd += OnEnded;
-			platformView.EditingChanged += OnEditing;
-
-			if (VirtualView.Items is INotifyCollectionChanged notifyCollection)
-				notifyCollection.CollectionChanged += OnRowsCollectionChanged;
+			_proxy.Connect(this, VirtualView, platformView);
 
 			base.ConnectHandler(platformView);
 		}
 
 		protected override void DisconnectHandler(MauiPicker platformView)
 		{
-			platformView.EditingDidBegin -= OnStarted;
-			platformView.EditingDidEnd -= OnEnded;
-			platformView.EditingChanged -= OnEditing;
-
-			if (VirtualView.Items is INotifyCollectionChanged notifyCollection)
-				notifyCollection.CollectionChanged -= OnRowsCollectionChanged;
+			_proxy.Disconnect(platformView);
 
 			if (_pickerView != null)
 			{
 				if (_pickerView.Model != null)
 				{
-					_pickerView.Model.Dispose();
 					_pickerView.Model = null;
 				}
 
 				_pickerView.RemoveFromSuperview();
-				_pickerView.Dispose();
 				_pickerView = null;
 			}
 
 			base.DisconnectHandler(platformView);
 		}
+
 		static void Reload(IPickerHandler handler)
 		{
-			if (handler.VirtualView == null || handler.PlatformView == null)
-				return;
-
 			handler.PlatformView.UpdatePicker(handler.VirtualView);
 		}
 
+		[Obsolete("Use Microsoft.Maui.Handlers.PickerHandler.MapItems instead")]
 		public static void MapReload(IPickerHandler handler, IPicker picker, object? args) => Reload(handler);
+
+		internal static void MapItems(IPickerHandler handler, IPicker picker) => Reload(handler);
 
 		public static void MapTitle(IPickerHandler handler, IPicker picker)
 		{
@@ -176,45 +197,9 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView?.UpdateVerticalTextAlignment(picker);
 		}
 
-		void OnStarted(object? sender, EventArgs eventArgs)
+		internal static void MapIsOpen(IPickerHandler handler, IPicker picker)
 		{
-			if (VirtualView != null)
-				VirtualView.IsFocused = true;
-		}
-
-		void OnEnded(object? sender, EventArgs eventArgs)
-		{
-			if (_pickerView == null)
-				return;
-
-			PickerSource? model = (PickerSource)_pickerView.Model;
-
-			if (model.SelectedIndex != -1 && model.SelectedIndex != _pickerView.SelectedRowInComponent(0))
-			{
-				_pickerView.Select(model.SelectedIndex, 0, false);
-			}
-
-			if (VirtualView != null)
-				VirtualView.IsFocused = false;
-		}
-
-		void OnEditing(object? sender, EventArgs eventArgs)
-		{
-			if (VirtualView == null || PlatformView == null)
-				return;
-
-			// Reset the TextField's Text so it appears as if typing with a keyboard does not work.
-			var selectedIndex = VirtualView.SelectedIndex;
-
-			PlatformView.Text = VirtualView.GetItem(selectedIndex);
-
-			// Also clears the undo stack (undo/redo possible on iPads)
-			PlatformView.UndoManager?.RemoveAllActions();
-		}
-
-		void OnRowsCollectionChanged(object? sender, EventArgs e)
-		{
-			Reload(this);
+			handler.PlatformView?.UpdateIsOpen(picker);
 		}
 
 		void UpdatePickerFromPickerSource(PickerSource? pickerSource)
@@ -236,7 +221,7 @@ namespace Microsoft.Maui.Handlers
 			pickerView.Select(Math.Max(formsIndex, 0), 0, true);
 		}
 
-		void FinishSelectItem(UIPickerView? pickerView, UITextField textField)
+		void FinishSelectItem(UIPickerView? pickerView, MauiPicker textField)
 		{
 			var pickerSource = pickerView?.Model as PickerSource;
 			var count = VirtualView?.GetCount() ?? 0;
@@ -246,16 +231,112 @@ namespace Microsoft.Maui.Handlers
 			UpdatePickerFromPickerSource(pickerSource);
 			textField.ResignFirstResponder();
 		}
+
+		class MauiPickerProxy
+		{
+			WeakReference<PickerHandler>? _handler;
+			WeakReference<IPicker>? _virtualView;
+
+			IPicker? VirtualView => _virtualView is not null && _virtualView.TryGetTarget(out var v) ? v : null;
+
+			PickerHandler? Handler => _handler is not null && _handler.TryGetTarget(out var h) ? h : null;
+
+			public void Connect(PickerHandler handler, IPicker virtualView, MauiPicker platformView)
+			{
+				_handler = new(handler);
+				_virtualView = new(virtualView);
+
+				platformView.EditingDidBegin += OnStarted;
+				platformView.EditingDidEnd += OnEnded;
+				platformView.EditingChanged += OnEditing;
+			}
+
+			public void Disconnect(MauiPicker platformView)
+			{
+				platformView.EditingDidBegin -= OnStarted;
+				platformView.EditingDidEnd -= OnEnded;
+				platformView.EditingChanged -= OnEditing;
+			}
+
+#if !MACCATALYST
+			public void OnDone()
+			{
+				if (Handler is PickerHandler handler)
+				{
+					handler.OnDone();
+				}
+			}
+#endif
+
+			void OnStarted(object? sender, EventArgs eventArgs)
+			{
+				if (VirtualView is IPicker virtualView)
+					virtualView.IsFocused = virtualView.IsOpen = true;
+#if MACCATALYST
+				if (Handler is not PickerHandler handler)
+					return;
+
+				int selectedIndex = handler.VirtualView?.SelectedIndex ?? 0;
+				handler.DisplayAlert(handler.PlatformView, selectedIndex);
+#endif
+			}
+
+			void OnEnded(object? sender, EventArgs eventArgs)
+			{
+				if (Handler is not PickerHandler handler || handler._pickerView is not UIPickerView pickerView)
+					return;
+
+				PickerSource? model = (PickerSource)pickerView.Model;
+				if (model.SelectedIndex != -1 && model.SelectedIndex != pickerView.SelectedRowInComponent(0))
+				{
+					pickerView.Select(model.SelectedIndex, 0, false);
+				}
+				if (VirtualView is IPicker virtualView)
+					virtualView.IsFocused = virtualView.IsOpen = false;
+			}
+
+			void OnEditing(object? sender, EventArgs eventArgs)
+			{
+				if (sender is not MauiPicker platformView || VirtualView is not IPicker virtualView)
+					return;
+
+				// Reset the TextField's Text so it appears as if typing with a keyboard does not work.
+				var selectedIndex = virtualView.SelectedIndex;
+
+				platformView.Text = virtualView.GetItem(selectedIndex);
+
+				// Also clears the undo stack (undo/redo possible on iPads)
+				platformView.UndoManager?.RemoveAllActions();
+			}
+		}
 	}
 
 	public class PickerSource : UIPickerViewModel
 	{
-		IPicker? _virtualView;
-		bool _disposed;
+		WeakReference<PickerHandler>? _weakReference;
 
-		public PickerSource(IPicker? virtualView)
+		public PickerSource(PickerHandler? handler)
 		{
-			_virtualView = virtualView;
+			Handler = handler;
+		}
+
+		public PickerHandler? Handler
+		{
+			get
+			{
+				if (_weakReference?.TryGetTarget(out PickerHandler? target) == true)
+					return target;
+
+				return null;
+			}
+			set
+			{
+				_weakReference = null;
+				if (value == null)
+					return;
+
+				_weakReference = new WeakReference<PickerHandler>(value);
+			}
 		}
 
 		public int SelectedIndex { get; internal set; }
@@ -263,25 +344,25 @@ namespace Microsoft.Maui.Handlers
 		public override nint GetComponentCount(UIPickerView picker) => 1;
 
 		public override nint GetRowsInComponent(UIPickerView pickerView, nint component) =>
-			_virtualView?.GetCount() ?? 0;
+			Handler?.VirtualView?.GetCount() ?? 0;
 
 		public override string GetTitle(UIPickerView picker, nint row, nint component) =>
-			_virtualView?.GetItem((int)row) ?? "";
+			Handler?.VirtualView?.GetItem((int)row) ?? string.Empty;
 
-		public override void Selected(UIPickerView picker, nint row, nint component) =>
+		public override void Selected(UIPickerView picker, nint row, nint component)
+		{
 			SelectedIndex = (int)row;
 
-		protected override void Dispose(bool disposing)
-		{
-			if (_disposed)
-				return;
+			if (Handler != null && Handler.UpdateImmediately)  // Platform Specific
+			{
+				var virtualView = Handler?.VirtualView;
+				var platformView = Handler?.PlatformView;
 
-			_disposed = true;
+				if (virtualView == null || platformView == null)
+					return;
 
-			if (disposing)
-				_virtualView = null;
-
-			base.Dispose(disposing);
+				platformView.UpdatePicker(virtualView, SelectedIndex);
+			}
 		}
 	}
 }

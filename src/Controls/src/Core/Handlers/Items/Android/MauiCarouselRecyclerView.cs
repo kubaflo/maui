@@ -1,4 +1,5 @@
-﻿using System;
+#nullable disable
+using System;
 using System.Collections.Generic;
 using Android.Content;
 using Android.Views;
@@ -12,13 +13,14 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		CarouselViewLoopManager _carouselViewLoopManager;
 		int _oldPosition;
 		int _gotoPosition = -1;
+		int _scrollToCounter = 0;
 		bool _noNeedForScroll;
 		bool _initialized;
 		bool _isVisible;
 		bool _disposed;
 
 		List<View> _oldViews;
-		CarouselViewwOnGlobalLayoutListener _carouselViewLayoutListener;
+		CarouselViewOnGlobalLayoutListener _carouselViewLayoutListener;
 
 		protected CarouselView Carousel => ItemsView as CarouselView;
 
@@ -73,11 +75,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				_carouselViewLoopManager?.SetItemsSource(null);
 				_carouselViewLoopManager = null;
 
-				if (_itemDecoration != null)
-				{
-					_itemDecoration.Dispose();
-					_itemDecoration = null;
-				}
+				_itemDecoration?.Dispose();
+				_itemDecoration = null;
 
 				ClearLayoutListener();
 			}
@@ -100,11 +99,24 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public override void TearDownOldElement(CarouselView oldElement)
 		{
-			if (ItemsView != null)
+			if (ItemsView is not null)
 				ItemsView.Scrolled -= CarouselViewScrolled;
 
 			ClearLayoutListener();
+			UnsubscribeCollectionItemsSourceChanged(ItemsViewAdapter);
 			base.TearDownOldElement(oldElement);
+		}
+
+		protected override void OnAttachedToWindow()
+		{
+			AddLayoutListener();
+			base.OnAttachedToWindow();
+		}
+
+		protected override void OnDetachedFromWindow()
+		{
+			ClearLayoutListener();
+			base.OnDetachedFromWindow();
 		}
 
 		public override void UpdateAdapter()
@@ -114,14 +126,14 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			// So we give it an alternate delegate for creating the views
 
 			var oldItemViewAdapter = ItemsViewAdapter;
-		
-			if (oldItemViewAdapter != null)
+
+			UnsubscribeCollectionItemsSourceChanged(ItemsViewAdapter);
+			if (oldItemViewAdapter != null && _initialized)
 			{
-				UnsubscribeCollectionItemsSourceChanged(oldItemViewAdapter);
 				ItemsView.SetValueFromRenderer(CarouselView.PositionProperty, 0);
 				ItemsView.SetValueFromRenderer(CarouselView.CurrentItemProperty, null);
 			}
-			
+
 			_gotoPosition = -1;
 
 			base.UpdateAdapter();
@@ -154,10 +166,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			var adapter = GetAdapter();
 
-			if (adapter != null)
-			{
-				adapter.NotifyItemChanged(_oldPosition);
-			}
+			adapter?.NotifyItemChanged(_oldPosition);
 
 			base.UpdateItemSpacing();
 		}
@@ -168,6 +177,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			if (_carouselViewLoopManager == null)
 				return;
+
+			_scrollToCounter++;
 
 			// Special case here
 			// We could have a race condition where we are scrolling our collection to center the first item
@@ -210,6 +221,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			var carouselPosition = Carousel.Position;
 			var currentItemPosition = observableItemsSource.GetPosition(Carousel.CurrentItem);
 			var count = observableItemsSource.Count;
+			var savedScrollToCounter = _scrollToCounter;
 
 			bool removingCurrentElement = currentItemPosition == -1;
 			bool removingLastElement = e.OldStartingIndex == count;
@@ -253,15 +265,37 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				return;
 			}
 
+			// While Modifying the collection we should consider the ItemsUpdatingScrollMode to update the position
+			if (Carousel.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepLastItemInView)
+			{
+				if (count == 0)
+				{
+					carouselPosition = 0;
+				}
+				else
+				{
+					carouselPosition = count - 1;
+				}
+
+			}
+			else if (Carousel.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepItemsInView)
+			{
+				carouselPosition = 0;
+			}
+
 			Carousel.
 				Handler.
 				MauiContext.
 				GetDispatcher()
 					.Dispatch(() =>
 					{
-
-						SetCurrentItem(carouselPosition);
-						UpdatePosition(carouselPosition);
+						// If someone called explicit ScrollTo before the dispatched
+						// callback was delivered then don't override it.
+						if (_scrollToCounter == savedScrollToCounter)
+						{
+							SetCurrentItem(carouselPosition);
+							UpdatePosition(carouselPosition);
+						}
 
 						//If we are adding or removing the last item we need to update
 						//the inset that we give to items so they are centered
@@ -306,7 +340,13 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				Carousel.Position = position;
 			}
 			else
+			{
 				position = Carousel.Position;
+				if (Carousel.Loop && position == 0)
+				{
+					itemCount = ItemsViewAdapter.ItemsSource.Count;
+				}
+			}
 
 			_oldPosition = position;
 
@@ -466,6 +506,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				_gotoPosition = currentItemPosition;
 				ItemsView.ScrollTo(currentItemPosition, position: Microsoft.Maui.Controls.ScrollToPosition.Center, animate: Carousel.AnimateCurrentItemChanges);
 			}
+
+			_gotoPosition = -1;
 		}
 
 		void IMauiCarouselRecyclerView.UpdateFromPosition()
@@ -510,17 +552,18 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		void AddLayoutListener()
 		{
-			if (_carouselViewLayoutListener != null)
+			if (_carouselViewLayoutListener is not null)
 				return;
 
-			_carouselViewLayoutListener = new CarouselViewwOnGlobalLayoutListener();
-			_carouselViewLayoutListener.LayoutReady += LayoutReady;
-
+			_carouselViewLayoutListener = new CarouselViewOnGlobalLayoutListener(this);
 			ViewTreeObserver.AddOnGlobalLayoutListener(_carouselViewLayoutListener);
 		}
 
-		void LayoutReady(object sender, EventArgs e)
+		void LayoutReady()
 		{
+			if (ItemsView is null)
+				return;
+
 			if (!_initialized)
 			{
 				ItemsView.Scrolled += CarouselViewScrolled;
@@ -543,62 +586,75 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				return;
 
 			ViewTreeObserver?.RemoveOnGlobalLayoutListener(_carouselViewLayoutListener);
-			_carouselViewLayoutListener.LayoutReady -= LayoutReady;
 			_carouselViewLayoutListener = null;
 		}
 
 		protected override void OnMeasure(int widthMeasureSpec, int heightMeasureSpec)
 		{
-			if (Carousel.Loop)
+			// If the height or width are unbounded and the user is set to
+			// Loop then we can't just do an infinite measure.
+			// Looping works by setting item count to 16384 so if the 
+			// CarV has infinite room it'll generate all 16384 items.
+			// This code forces the adapter to just measure the first item
+			// And then that measure is used for the WxH of the CarouselView
+
+			// I found that "AtMost" also causes this behavior so
+			// that's why I'm turning "AtMost" into "Exactly"
+			if (MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpecMode.AtMost)
 			{
-				// If the height or width are unbounded and the user is set to
-				// Loop then we can't just do an infinite measure.
-				// Looping works by setting item count to 16384 so if the 
-				// CarV has infinite room it'll generate all 16384 items.
-				// This code forces the adapter to just measure the first item
-				// And then that measure is used for the WxH of the CarouselView
+				widthMeasureSpec = MeasureSpecMode.Exactly.MakeMeasureSpec(widthMeasureSpec.GetSize());
+			}
 
-				// I found that "AtMost" also causes this behavior so
-				// that's why I'm turning "AtMost" into "Exactly"
-				if (MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpecMode.AtMost)
-				{
-					widthMeasureSpec = MeasureSpecMode.Exactly.MakeMeasureSpec(widthMeasureSpec.GetSize());
-				}
+			if (MeasureSpec.GetMode(heightMeasureSpec) == MeasureSpecMode.AtMost)
+			{
+				heightMeasureSpec = MeasureSpecMode.Exactly.MakeMeasureSpec(heightMeasureSpec.GetSize());
+			}
 
-				if (MeasureSpec.GetMode(heightMeasureSpec) == MeasureSpecMode.AtMost)
+			if (MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpecMode.Unspecified ||
+				MeasureSpec.GetMode(heightMeasureSpec) == MeasureSpecMode.Unspecified)
+			{
+				if (ItemsViewAdapter.ItemCount > 0)
 				{
-					heightMeasureSpec = MeasureSpecMode.Exactly.MakeMeasureSpec(heightMeasureSpec.GetSize());
-				}
+					// Retrieve the first item of the CarouselView and measure it
+					// This is what we'll use for the CarV WxH if the requested measure
+					// is for an infinite amount of space
 
-				if (MeasureSpec.GetMode(widthMeasureSpec) == MeasureSpecMode.Unspecified ||
-					MeasureSpec.GetMode(heightMeasureSpec) == MeasureSpecMode.Unspecified)
-				{
-					if (ItemsViewAdapter.ItemCount > 0)
+					var viewType = ItemsViewAdapter.GetItemViewType(0);
+					var viewHolder = (ViewHolder)ItemsViewAdapter.CreateViewHolder(this, viewType);
+					ItemsViewAdapter.BindViewHolder(viewHolder, 0);
+					viewHolder.ItemView.Measure(widthMeasureSpec, heightMeasureSpec);
+
+					if (widthMeasureSpec.GetMode() == MeasureSpecMode.Unspecified)
 					{
-						// Retrieve the first item of the CarouselView and measure it
-						// This is what we'll use for the CarV WxH if the requested measure
-						// is for an infinite amount of space
-
-						var viewType = ItemsViewAdapter.GetItemViewType(0);
-						var viewHolder = (ViewHolder)ItemsViewAdapter.CreateViewHolder(this, viewType);
-						ItemsViewAdapter.BindViewHolder(viewHolder, 0);
-						viewHolder.ItemView.Measure(widthMeasureSpec, heightMeasureSpec);
 						widthMeasureSpec = MeasureSpecMode.Exactly.MakeMeasureSpec(viewHolder.ItemView.MeasuredWidth);
+					}
+
+					if (heightMeasureSpec.GetMode() == MeasureSpecMode.Unspecified)
+					{
 						heightMeasureSpec = MeasureSpecMode.Exactly.MakeMeasureSpec(viewHolder.ItemView.MeasuredHeight);
 					}
 				}
 			}
-
 			base.OnMeasure(widthMeasureSpec, heightMeasureSpec);
 		}
-	}
 
-	class CarouselViewwOnGlobalLayoutListener : Java.Lang.Object, ViewTreeObserver.IOnGlobalLayoutListener
-	{
-		public EventHandler<EventArgs> LayoutReady;
-		public void OnGlobalLayout()
+		class CarouselViewOnGlobalLayoutListener : Java.Lang.Object, ViewTreeObserver.IOnGlobalLayoutListener
 		{
-			LayoutReady?.Invoke(this, new EventArgs());
+			readonly WeakReference<MauiCarouselRecyclerView> _recyclerView;
+
+			public CarouselViewOnGlobalLayoutListener(MauiCarouselRecyclerView recyclerView)
+			{
+				_recyclerView = new(recyclerView);
+			}
+
+			public void OnGlobalLayout()
+			{
+				if (_recyclerView.TryGetTarget(out var recyclerView) &&
+					recyclerView.IsAlive())
+				{
+					recyclerView.LayoutReady();
+				}
+			}
 		}
 	}
 }

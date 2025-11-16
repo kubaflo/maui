@@ -2,38 +2,25 @@
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Handlers;
+using Microsoft.Maui.DeviceTests.Stubs;
+using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Handlers;
+using Microsoft.Maui.Hosting;
 using Microsoft.Maui.Platform;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using WFrameworkElement = Microsoft.UI.Xaml.FrameworkElement;
 using WSolidColorBrush = Microsoft.UI.Xaml.Media.SolidColorBrush;
-using Microsoft.Maui.Hosting;
-using Microsoft.Maui.Handlers;
-using Microsoft.Maui.Graphics;
 
 namespace Microsoft.Maui.DeviceTests
 {
 
 	[Category(TestCategory.TabbedPage)]
-	public partial class TabbedPageTests : HandlerTestBase
+	public partial class TabbedPageTests : ControlsHandlerTestBase
 	{
-		void SetupBuilder()
-		{
-			EnsureHandlerCreated(builder =>
-			{
-				builder.ConfigureMauiHandlers(handlers =>
-				{
-					handlers.AddHandler(typeof(Toolbar), typeof(ToolbarHandler));
-					handlers.AddHandler(typeof(TabbedPage), typeof(TabbedViewHandler));
-					handlers.AddHandler<Page, PageHandler>();
-					handlers.AddHandler(typeof(NavigationPage), typeof(NavigationViewHandler));
-				});
-			});
-		}
-
 		[Fact(DisplayName = "Toolbar Visible When Pushing To TabbedPage")]
 		public async Task ToolbarVisibleWhenPushingToTabbedPage()
 		{
@@ -79,22 +66,6 @@ namespace Microsoft.Maui.DeviceTests
 			});
 		}
 
-		[Fact(DisplayName = "BarBackground Color")]
-		public async Task BarBackgroundColor()
-		{
-			SetupBuilder();
-			var tabbedPage = CreateBasicTabbedPage();
-			tabbedPage.BarBackground = SolidColorBrush.Purple;
-
-			await CreateHandlerAndAddToWindow<WindowHandlerStub>(new Window(tabbedPage), (handler) =>
-			{
-				var navView = GetMauiNavigationView(tabbedPage.Handler.MauiContext);
-				var platformBrush = (WSolidColorBrush)((Paint)tabbedPage.BarBackground).ToPlatform();
-				Assert.Equal(platformBrush.Color, ((WSolidColorBrush)navView.TopNavArea.Background).Color);
-				return Task.CompletedTask;
-			});
-		}
-
 		[Fact(DisplayName = "Swapping Root Window Content for New Tabbed Page")]
 		public async Task SwapWindowContentForNewTabbedPage()
 		{
@@ -120,26 +91,6 @@ namespace Microsoft.Maui.DeviceTests
 			});
 		}
 
-
-		[Fact(DisplayName = "Bar Text Color")]
-		public async Task BarTextColor()
-		{
-			SetupBuilder();
-			var tabbedPage = CreateBasicTabbedPage();
-			tabbedPage.BarTextColor = Colors.Red;
-			await CreateHandlerAndAddToWindow<TabbedViewHandler>(tabbedPage, handler =>
-			{
-				var navView = GetMauiNavigationView(handler.MauiContext);
-				var navItem = GetNavigationViewItems(navView).ToList()[0];
-
-				Assert.Equal(Colors.Red, ((WSolidColorBrush)navItem.Foreground).ToColor());
-				tabbedPage.BarTextColor = Colors.Blue;
-				Assert.Equal(Colors.Blue, ((WSolidColorBrush)navItem.Foreground).ToColor());
-
-				return Task.CompletedTask;
-			});
-		}
-
 		[Fact(DisplayName = "Tab Title")]
 		public async Task TabTitle()
 		{
@@ -151,34 +102,6 @@ namespace Microsoft.Maui.DeviceTests
 				Assert.Equal("Page 1", navItem.Content);
 				(handler.VirtualView as TabbedPage).Children[0].Title = "New Page Name";
 				Assert.Equal("New Page Name", navItem.Content);
-				return Task.CompletedTask;
-			});
-		}
-
-		[Fact(DisplayName = "Selected/Unselected Color")]
-		public async Task SelectedAndUnselectedTabColor()
-		{
-			SetupBuilder();
-			var tabbedPage = CreateBasicTabbedPage();
-			tabbedPage.Children.Add(new ContentPage() { Title = "Page 2" });
-
-			tabbedPage.SelectedTabColor = Colors.Red;
-			tabbedPage.UnselectedTabColor = Colors.Purple;
-
-			await CreateHandlerAndAddToWindow<TabbedViewHandler>(tabbedPage, handler =>
-			{
-				var navView = GetMauiNavigationView(handler.MauiContext);
-				var navItem1 = GetNavigationViewItems(navView).ToList()[0];
-				var navItem2 = GetNavigationViewItems(navView).ToList()[1];
-
-				Assert.Equal(Colors.Red, ((WSolidColorBrush)navItem1.Background).ToColor());
-				Assert.Equal(Colors.Purple, ((WSolidColorBrush)navItem2.Background).ToColor());
-
-				tabbedPage.CurrentPage = tabbedPage.Children[1];
-
-				Assert.Equal(Colors.Purple, ((WSolidColorBrush)navItem1.Background).ToColor());
-				Assert.Equal(Colors.Red, ((WSolidColorBrush)navItem2.Background).ToColor());
-
 				return Task.CompletedTask;
 			});
 		}
@@ -228,17 +151,51 @@ namespace Microsoft.Maui.DeviceTests
 			});
 		}
 
-
-		TabbedPage CreateBasicTabbedPage()
+		MauiNavigationView GetMauiNavigationView(TabbedPage tabbedPage)
 		{
-			return new TabbedPage()
+			return (tabbedPage.Handler as IPlatformViewHandler)
+				.PlatformView
+				.GetParentOfType<MauiNavigationView>();
+		}
+
+		async Task ValidateTabBarIconColor(
+			TabbedPage tabbedPage,
+			string tabText,
+			Color iconColor,
+			bool hasColor)
+		{
+			if (hasColor)
 			{
-				Title = "Tabbed Page",
-				Children =
-				{
-					new ContentPage() { Title = "Page 1" }
-				}
-			};
+				await AssertionExtensions.AssertTabItemIconContainsColor(
+					GetMauiNavigationView(tabbedPage),
+					tabText, iconColor, tabbedPage.FindMauiContext());
+			}
+			else
+			{
+				await AssertionExtensions.AssertTabItemIconDoesNotContainColor(
+					GetMauiNavigationView(tabbedPage),
+					tabText, iconColor, tabbedPage.FindMauiContext());
+			}
+		}
+
+		async Task ValidateTabBarTextColor(
+			TabbedPage tabbedPage,
+			string tabText,
+			Color iconColor,
+			bool hasColor)
+		{
+			if (hasColor)
+			{
+				await AssertionExtensions.AssertTabItemTextContainsColor(
+					GetMauiNavigationView(tabbedPage),
+					tabText, iconColor, tabbedPage.FindMauiContext());
+			}
+			else
+			{
+				await AssertionExtensions.AssertTabItemTextDoesNotContainColor(
+					GetMauiNavigationView(tabbedPage),
+					tabText, iconColor, tabbedPage.FindMauiContext());
+			}
 		}
 	}
 }

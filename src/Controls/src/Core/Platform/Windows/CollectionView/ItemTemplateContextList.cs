@@ -1,3 +1,5 @@
+#nullable disable
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -13,7 +15,7 @@ namespace Microsoft.Maui.Controls.Platform
 		readonly double _itemWidth;
 		readonly Thickness _itemSpacing;
 
-		readonly List<ItemTemplateContext> _itemTemplateContexts;
+		readonly Dictionary<int, ItemTemplateContext> _itemTemplateContexts;
 
 		public int Count => _itemsSource.Count;
 
@@ -21,13 +23,13 @@ namespace Microsoft.Maui.Controls.Platform
 		{
 			get
 			{
-				if (_itemTemplateContexts[index] == null)
+				if (!_itemTemplateContexts.TryGetValue(index, out var context))
 				{
-					_itemTemplateContexts[index] = new ItemTemplateContext(_itemTemplate, _itemsSource[index], 
+					_itemTemplateContexts[index] = context = new ItemTemplateContext(_itemTemplate, _itemsSource[index],
 						_container, _itemHeight, _itemWidth, _itemSpacing, _mauiContext);
 				}
 
-				return _itemTemplateContexts[index];
+				return context;
 			}
 		}
 
@@ -47,12 +49,7 @@ namespace Microsoft.Maui.Controls.Platform
 			if (itemSpacing.HasValue)
 				_itemSpacing = itemSpacing.Value;
 
-			_itemTemplateContexts = new List<ItemTemplateContext>(_itemsSource.Count);
-
-			for (int n = 0; n < _itemsSource.Count; n++)
-			{
-				_itemTemplateContexts.Add(null);
-			}
+			_itemTemplateContexts = new(capacity: Math.Min(64, _itemsSource.Count));
 		}
 
 		public IEnumerator<ItemTemplateContext> GetEnumerator()
@@ -72,7 +69,7 @@ namespace Microsoft.Maui.Controls.Platform
 			int _currentIndex = -1;
 			private ItemTemplateContextList _itemTemplateContextList;
 
-			public ItemTemplateContextListEnumerator(ItemTemplateContextList observableItemTemplateCollection) => 
+			public ItemTemplateContextListEnumerator(ItemTemplateContextList observableItemTemplateCollection) =>
 				_itemTemplateContextList = observableItemTemplateCollection;
 
 			public void Dispose()

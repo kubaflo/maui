@@ -1,11 +1,15 @@
-#nullable enable
+﻿using CoreGraphics;
+using System.Collections.Generic;
 using Foundation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Graphics;
+using System;
+
 #if !MACOS
 using ObjCRuntime;
 using UIKit;
+
 #else
 using AppKit;
 using UIColor = AppKit.NSColor;
@@ -26,8 +30,14 @@ namespace Microsoft.Maui.Controls.Platform
 				label.TextColor,
 				label.TextTransform);
 
-
-		public static NSAttributedString ToNSAttributedString(this FormattedString formattedString, IFontManager fontManager, double defaultLineHeight = 0d, TextAlignment defaultHorizontalAlignment = TextAlignment.Start, Font? defaultFont = null, Color? defaultColor = null, TextTransform defaultTextTransform = TextTransform.Default)
+		public static NSAttributedString ToNSAttributedString(
+			this FormattedString formattedString,
+			IFontManager fontManager,
+			double defaultLineHeight = -1,
+			TextAlignment defaultHorizontalAlignment = TextAlignment.Start,
+			Font? defaultFont = null,
+			Color? defaultColor = null,
+			TextTransform defaultTextTransform = TextTransform.Default)
 		{
 			if (formattedString == null)
 				return new NSAttributedString(string.Empty);
@@ -39,17 +49,27 @@ namespace Microsoft.Maui.Controls.Platform
 				if (span.Text == null)
 					continue;
 
-				attributed.Append(span.ToNSAttributedString(fontManager, defaultLineHeight, defaultHorizontalAlignment, defaultFont, defaultColor, defaultTextTransform));
+				attributed.Append(span.ToNSAttributedString(fontManager, defaultLineHeight, defaultHorizontalAlignment,
+					defaultFont, defaultColor, defaultTextTransform));
 			}
 
 			return attributed;
 		}
 
-		public static NSAttributedString ToNSAttributedString(this Span span, IFontManager fontManager, double defaultLineHeight = 0d, TextAlignment defaultHorizontalAlignment = TextAlignment.Start, Font? defaultFont = null, Color? defaultColor = null, TextTransform defaultTextTransform = TextTransform.Default)
+		public static NSAttributedString ToNSAttributedString(
+			this Span span,
+			IFontManager fontManager,
+			double defaultLineHeight = -1,
+			TextAlignment defaultHorizontalAlignment = TextAlignment.Start,
+			Font? defaultFont = null,
+			Color? defaultColor = null,
+			TextTransform defaultTextTransform = TextTransform.Default)
 		{
+			var defaultFontSize = defaultFont?.Size ?? fontManager.DefaultFontSize;
+
 			var transform = span.TextTransform != TextTransform.Default ? span.TextTransform : defaultTextTransform;
 
-			var text = TextTransformUtilites.GetTransformedText(span.Text, transform);
+			var text = TextTransformUtilities.GetTransformedText(span.Text, transform);
 			if (text is null)
 				return new NSAttributedString(string.Empty);
 
@@ -71,7 +91,7 @@ namespace Microsoft.Maui.Controls.Platform
 				_ => UITextAlignment.Left
 			};
 
-			var font = span.ToFont();
+			var font = span.ToFont(defaultFontSize);
 			if (font.IsDefault && defaultFont.HasValue)
 				font = defaultFont.Value;
 
@@ -111,5 +131,132 @@ namespace Microsoft.Maui.Controls.Platform
 			return attrString;
 		}
 
+		internal static void RecalculateSpanPositions(this UILabel control, Label element, Size size)
+		{
+			if (element is null)
+			{
+				return;
+			}
+
+			if (element.TextType == TextType.Html)
+			{
+				return;
+			}
+
+			if (element?.FormattedText?.Spans is null
+				|| element.FormattedText.Spans.Count == 0)
+			{
+				return;
+			}
+
+			var finalSize = size;
+
+			if (finalSize.Width <= 0 || finalSize.Height <= 0)
+			{
+				return;
+			}
+
+			var inline = control.AttributedText;
+
+			if (inline is null)
+			{
+				return;
+			}
+
+			var attributedText = control.AttributedText;
+			if (attributedText is null || attributedText.Length == 0)
+			{
+				return;
+			}
+
+			var spans = element.FormattedText.Spans;
+
+			nint NSMaxRange(NSRange range) => range.Location + range.Length;
+
+			using var textStorage = new NSTextStorage();
+			using var layoutManager = new NSLayoutManager();
+			using var textContainer = new NSTextContainer { LineFragmentPadding = 0 };
+
+			textStorage.AddLayoutManager(layoutManager);
+			layoutManager.AddTextContainer(textContainer);
+
+			textContainer.Size = new(control.Bounds.Width,
+				control.Lines == 0 ? nfloat.MaxValue : control.Bounds.Height);
+
+			textStorage.SetString(attributedText);
+			layoutManager.EnsureLayoutForTextContainer(textContainer);
+
+			int currentLocation = 0;
+
+			foreach (var span in spans)
+			{
+				if (string.IsNullOrEmpty(span?.Text))
+				{
+					continue;
+				}
+
+				var spanRects = new List<CGRect>();
+				var spanStartIndex = currentLocation;
+				var spanEndIndex = currentLocation + span.Text.Length - 1;
+
+				var startGlyphRange = layoutManager.GetGlyphRange(new NSRange(spanStartIndex, 1));
+				var endGlyphRange = layoutManager.GetGlyphRange(new NSRange(spanEndIndex, 1));
+
+				void EnumerateLineFragmentCallback(CGRect rect, CGRect usedRect, NSTextContainer container,
+					NSRange lineGlyphRange, out bool stop)
+				{
+					//Whole span is within the line and bigger than the line
+					if (lineGlyphRange.Location >= startGlyphRange.Location &&
+						NSMaxRange(lineGlyphRange) <= endGlyphRange.Location)
+					{
+						spanRects.Add(usedRect);
+					}
+					// Whole span is within the line and smaller than the line
+					else if (lineGlyphRange.Location <= startGlyphRange.Location &&
+							 endGlyphRange.Location <= NSMaxRange(lineGlyphRange))
+					{
+						var spanBoundingRect = layoutManager.GetBoundingRect(
+							new(startGlyphRange.Location, endGlyphRange.Location - startGlyphRange.Location + 1),
+							textContainer);
+						spanRects.Add(spanBoundingRect);
+					}
+					// Span starts on current line and ends on next lines
+					else if (lineGlyphRange.Location <= startGlyphRange.Location &&
+							 NSMaxRange(lineGlyphRange) <= endGlyphRange.Location)
+					{
+						var spanBoundingRect = layoutManager.GetBoundingRect(
+							new(startGlyphRange.Location, NSMaxRange(lineGlyphRange) - startGlyphRange.Location),
+							textContainer);
+						spanRects.Add(spanBoundingRect);
+					}
+					// Span starts on previous lines and ends on current line
+					else if (lineGlyphRange.Location >= startGlyphRange.Location &&
+							 NSMaxRange(lineGlyphRange) >= endGlyphRange.Location)
+					{
+						var spanBoundingRect = layoutManager.GetBoundingRect(
+							new(lineGlyphRange.Location, endGlyphRange.Location - lineGlyphRange.Location),
+							textContainer);
+						spanRects.Add(spanBoundingRect);
+					}
+
+					stop = false;
+				}
+
+				layoutManager.EnumerateLineFragments(
+					new(startGlyphRange.Location, endGlyphRange.Location - startGlyphRange.Location + 1),
+					EnumerateLineFragmentCallback);
+
+				if (span is ISpatialElement spatialElement)
+				{
+					var rects = new List<Rect>();
+					foreach (var r in spanRects)
+					{
+						rects.Add(new Rect(r.X, r.Y, r.Width, r.Height));
+					}
+					spatialElement.Region = Region.FromRectangles(rects);
+				}
+				currentLocation += span.Text.Length;
+			}
+		}
 	}
 }

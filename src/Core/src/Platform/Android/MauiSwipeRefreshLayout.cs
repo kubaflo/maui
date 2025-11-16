@@ -16,10 +16,58 @@ namespace Microsoft.Maui.Platform
 {
 	public class MauiSwipeRefreshLayout : SwipeRefreshLayout
 	{
+		readonly Context _context;
 		AView? _contentView;
+		bool _refreshEnabled = true;
 
 		public MauiSwipeRefreshLayout(Context context) : base(context)
 		{
+			_context = context;
+
+			// This works around a bug in SwipeRefreshLayout
+			// https://github.com/dotnet/maui/pull/17647#discussion_r1433358418
+			// https://issuetracker.google.com/issues/110463864
+			// It looks like this issue is fixed on the main branch of Android but it hasn't made its way into the packages yet
+			SetProgressViewOffset(true, ProgressViewStartOffset, ProgressViewEndOffset - Math.Abs(ProgressViewStartOffset));
+		}
+
+		public ICrossPlatformLayout? CrossPlatformLayout
+		{
+			get;
+			set;
+		}
+
+		public override void OnMeasure(int widthMeasureSpec, int heightMeasureSpec)
+		{
+			base.OnMeasure(widthMeasureSpec, heightMeasureSpec);
+
+			if (CrossPlatformLayout is null)
+			{
+				return;
+			}
+
+			var deviceIndependentWidth = widthMeasureSpec.ToDouble(_context);
+			var deviceIndependentHeight = heightMeasureSpec.ToDouble(_context);
+
+			CrossPlatformLayout?.CrossPlatformMeasure(deviceIndependentWidth, deviceIndependentHeight);
+		}
+
+		protected override void OnLayout(bool changed, int left, int top, int right, int bottom)
+		{
+			base.OnLayout(changed, left, top, right, bottom);
+			if (CrossPlatformLayout is null)
+			{
+				return;
+			}
+
+			var destination = _context.ToCrossPlatformRectInReferenceFrame(left, top, right, bottom);
+			CrossPlatformLayout?.CrossPlatformArrange(destination);
+		}
+
+		public bool RefreshEnabled
+		{
+			get => _refreshEnabled;
+			set => _refreshEnabled = value;
 		}
 
 		public void UpdateContent(IView? content, IMauiContext? mauiContext)
@@ -52,6 +100,10 @@ namespace Microsoft.Maui.Platform
 
 		public override bool CanChildScrollUp()
 		{
+			// When refresh is disabled, always return true to prevent pull-to-refresh
+			if (!_refreshEnabled)
+				return true;
+
 			if (ChildCount == 0)
 				return base.CanChildScrollUp();
 
@@ -82,7 +134,7 @@ namespace Microsoft.Maui.Platform
 			return true;
 		}
 
-		bool CanScrollUpViewByType(AView? view)
+		static bool CanScrollUpViewByType(AView? view)
 		{
 			if (view is AbsListView absListView)
 			{
@@ -99,8 +151,10 @@ namespace Microsoft.Maui.Platform
 			if (view is RecyclerView recyclerView)
 				return recyclerView.ComputeVerticalScrollOffset() > 0;
 
+#pragma warning disable XAOBS001 // Obsolete
 			if (view is NestedScrollView nestedScrollView)
 				return nestedScrollView.ComputeVerticalScrollOffset() > 0;
+#pragma warning restore XAOBS001 // Obsolete
 
 			if (view is AWebView webView)
 				return webView.ScrollY > 0;

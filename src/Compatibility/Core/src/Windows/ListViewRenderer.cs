@@ -1,35 +1,35 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Windows.Foundation;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
+using Microsoft.Maui.Devices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.Maui.Devices;
-using WListView = Microsoft.UI.Xaml.Controls.ListView;
-using WBinding = Microsoft.UI.Xaml.Data.Binding;
-using WApp = Microsoft.UI.Xaml.Application;
-using WRect = Windows.Foundation.Rect;
-using Microsoft.Maui.Controls.Internals;
-using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
+using Windows.Foundation;
 using Specifics = Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific.ListView;
-using System.Collections.ObjectModel;
-using Microsoft.Maui.Controls.Platform;
 using UwpScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility;
+using WApp = Microsoft.UI.Xaml.Application;
+using WBinding = Microsoft.UI.Xaml.Data.Binding;
+using WListView = Microsoft.UI.Xaml.Controls.ListView;
+using WRect = Windows.Foundation.Rect;
 using WSelectionChangedEventArgs = Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[Obsolete("Use Microsoft.Maui.Controls.Handlers.Compatibility.ListViewRenderer instead")]
-	public class ListViewRenderer : ViewRenderer<ListView, FrameworkElement>
+	public partial class ListViewRenderer : ViewRenderer<ListView, FrameworkElement>
 	{
 		ITemplatedItemsView<Cell> TemplatedItemsView => Element;
 		bool _collectionIsWrapped;
@@ -38,14 +38,14 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		bool _subscribedToItemClick;
 		bool _subscribedToTapped;
 		bool _disposed;
-		CollectionViewSource _collectionViewSource;	
+		CollectionViewSource _collectionViewSource;
 
 		UwpScrollBarVisibility? _defaultHorizontalScrollVisibility;
 		UwpScrollBarVisibility? _defaultVerticalScrollVisibility;
 
 		protected WListView List { get; private set; }
 
-		protected class ListViewTransparent : WListView
+		protected partial class ListViewTransparent : WListView
 		{
 			public ListViewTransparent() : base() { }
 
@@ -142,7 +142,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 					foreach (var item in Element.ItemsSource)
 						_collection.Add(item);
 				}
-				else if(!object.ReferenceEquals(_collection, Element.ItemsSource))
+				else if (!object.ReferenceEquals(_collection, Element.ItemsSource))
 				{
 					_collection = (IList)Element.ItemsSource;
 				}

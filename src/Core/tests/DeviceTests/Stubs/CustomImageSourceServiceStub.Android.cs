@@ -6,7 +6,7 @@ using Android.Graphics.Drawables;
 
 namespace Microsoft.Maui.DeviceTests.Stubs
 {
-	class CustomImageSourceServiceStub : IImageSourceService<ICustomImageSourceStub>
+	public class CustomImageSourceServiceStub : IImageSourceService<ICustomImageSourceStub>
 	{
 		readonly CustomImageCacheStub _cache;
 
@@ -15,7 +15,7 @@ namespace Microsoft.Maui.DeviceTests.Stubs
 			_cache = cache;
 		}
 
-		public Task<IImageSourceServiceResult> LoadDrawableAsync(IImageSource imageSource, Android.Widget.ImageView imageView, CancellationToken cancellationToken = default)
+		public Task<IImageSourceServiceResult> LoadDrawableAsync(IImageSource imageSource, global::Android.Widget.ImageView imageView, CancellationToken cancellationToken = default)
 		{
 			if (imageSource is not ICustomImageSourceStub imageSourceStub)
 				return Task.FromResult<IImageSourceServiceResult>(new ImageSourceServiceLoadResult());

@@ -1,10 +1,12 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using CoreGraphics;
 using Foundation;
+using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Graphics;
-using ObjCRuntime;
 using UIKit;
 
 namespace Microsoft.Maui.Controls.Handlers.Items
@@ -13,24 +15,44 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 	where TItemsView : ItemsView
 	{
 		public const int EmptyTag = 333;
+		readonly WeakReference<TItemsView> _itemsView;
 
 		public IItemsViewSource ItemsSource { get; protected set; }
-		public TItemsView ItemsView { get; }
+		public TItemsView ItemsView => _itemsView.GetTargetOrDefault();
+
+		// ItemsViewLayout provides an accessor to the typed UICollectionViewLayout. It's also important to note that the
+		// initial UICollectionViewLayout which is passed in to the ItemsViewController (and accessed via the Layout property)
+		// _does not_ get updated when the layout is updated for the CollectionView. That property only refers to the
+		// original layout. So it's unlikely that you would ever want to use .Layout; use .ItemsViewLayout instead.
+		// See https://developer.apple.com/documentation/uikit/uicollectionviewcontroller/1623980-collectionviewlayout
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
 		protected ItemsViewLayout ItemsViewLayout { get; set; }
+
 		bool _initialized;
+		bool _laidOut;
 		bool _isEmpty = true;
 		bool _emptyViewDisplayed;
 		bool _disposed;
 
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
+		Func<UICollectionViewCell> _getPrototype;
+
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
+		Func<NSIndexPath, UICollectionViewCell> _getPrototypeForIndexPath;
+		CGSize _previousContentSize = CGSize.Empty;
+
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
 		UIView _emptyUIView;
 		VisualElement _emptyViewFormsElement;
 		Dictionary<object, TemplatedCell> _measurementCells = new Dictionary<object, TemplatedCell>();
+		List<string> _cellReuseIds = new List<string>();
 
+		[UnconditionalSuppressMessage("Memory", "MEM0002", Justification = "Proven safe in test: MemoryTests.HandlerDoesNotLeak")]
 		protected UICollectionViewDelegateFlowLayout Delegator { get; set; }
 
 		protected ItemsViewController(TItemsView itemsView, ItemsViewLayout layout) : base(layout)
 		{
-			ItemsView = itemsView;
+			_itemsView = new(itemsView);
 			ItemsViewLayout = layout;
 		}
 
@@ -47,9 +69,14 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			if (_initialized)
 			{
-				// Reload the data so the currently visible cells get laid out according to the new layout
+				// Reload the data so the currently visible cells get arranged according to the new layout
 				CollectionView.ReloadData();
 			}
+		}
+
+		internal virtual void Disconnect()
+		{
+			DisposeItemsSource();
 		}
 
 		protected override void Dispose(bool disposing)
@@ -62,6 +89,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			if (disposing)
 			{
 				ItemsSource?.Dispose();
+
+				((IUIViewLifeCycleEvents)CollectionView).MovedToWindow -= MovedToWindow;
 
 				CollectionView.Delegate = null;
 				Delegator?.Dispose();
@@ -80,7 +109,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public override UICollectionViewCell GetCell(UICollectionView collectionView, NSIndexPath indexPath)
 		{
-			var cell = collectionView.DequeueReusableCell(DetermineCellReuseId(), indexPath) as UICollectionViewCell;
+			var cell = collectionView.DequeueReusableCell(DetermineCellReuseId(indexPath), indexPath) as UICollectionViewCell;
 
 			switch (cell)
 			{
@@ -110,7 +139,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			if (_isEmpty)
 			{
-				_measurementCells.Clear();
+				_measurementCells?.Clear();
 				ItemsViewLayout?.ClearCellSizeCache();
 			}
 
@@ -134,10 +163,14 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			ItemsSource = CreateItemsViewSource();
 
-			if (!(OperatingSystem.IsIOSVersionAtLeast(11) || OperatingSystem.IsTvOSVersionAtLeast(11)))
+			if (!(OperatingSystem.IsIOSVersionAtLeast(11) || OperatingSystem.IsMacCatalystVersionAtLeast(11)
+#if TVOS
+				|| OperatingSystem.IsTvOSVersionAtLeast(11)
+#endif
+			))
 			{
 				AutomaticallyAdjustsScrollViewInsets = false;
-      		}
+			}
 			else
 			{
 				// We set this property to keep iOS from trying to be helpful about insetting all the 
@@ -152,31 +185,189 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			EnsureLayoutInitialized();
 		}
 
+		public override void LoadView()
+		{
+			base.LoadView();
+			var collectionView = new MauiCollectionView(CGRect.Empty, ItemsViewLayout);
+			((IUIViewLifeCycleEvents)collectionView).MovedToWindow += MovedToWindow;
+			CollectionView = collectionView;
+		}
+
+		private void MovedToWindow(object sender, EventArgs e)
+		{
+			if (CollectionView?.Window != null)
+			{
+				AttachingToWindow();
+			}
+			else
+			{
+				DetachingFromWindow();
+			}
+		}
+
 		public override void ViewWillAppear(bool animated)
 		{
 			base.ViewWillAppear(animated);
-			ConstrainToItemsView();
 		}
 
 		public override void ViewWillLayoutSubviews()
 		{
-			ConstrainToItemsView();
+			ConstrainItemsToBounds();
+
+			var mauiCollectionView = CollectionView as MauiCollectionView;
+			var needsCellLayout = mauiCollectionView?.NeedsCellLayout is true;
+			if (needsCellLayout)
+			{
+				InvalidateLayoutIfItemsMeasureChanged();
+				mauiCollectionView.NeedsCellLayout = false;
+			}
+
 			base.ViewWillLayoutSubviews();
+
+			if (needsCellLayout || // A cell changed its measure
+				!_laidOut || // We have never laid out
+							 // With no cells, nothing will trigger a layout when bounds change,
+							 // but we still need to properly lay out supplementary views
+				ItemsSource.ItemCount == 0)
+			{
+				// We don't want to mess up with ContentOffset while refreshing, given that's also gonna cause
+				// a change in the content's offset Y.
+				if (!IsRefreshing())
+				{
+					MeasureSupplementaryViews();
+					LayoutSupplementaryViews();
+				}
+			}
+
+			InvalidateMeasureIfContentSizeChanged();
+
+			_laidOut = true;
+		}
+
+		private protected virtual void MeasureSupplementaryViews()
+		{
+			RemeasureLayout(_emptyViewFormsElement, _emptyUIView);
+		}
+
+		private protected virtual void LayoutSupplementaryViews()
+		{
 			LayoutEmptyView();
 		}
 
-		void ConstrainToItemsView()
+		void InvalidateLayoutIfItemsMeasureChanged()
 		{
-			var itemsViewWidth = ItemsView.Width;
-			var itemsViewHeight = ItemsView.Height;
+			var visibleCells = CollectionView.VisibleCells;
+			List<TemplatedCell> invalidatedCells = null;
 
-			if (itemsViewHeight < 0 || itemsViewWidth < 0)
+			var visibleCellsLength = visibleCells.Length;
+			for (int n = 0; n < visibleCellsLength; n++)
 			{
-				ItemsViewLayout.UpdateConstraints(CollectionView.Bounds.Size);
+				if (visibleCells[n] is TemplatedCell { MeasureInvalidated: true } cell)
+				{
+					invalidatedCells ??= [];
+					invalidatedCells.Add(cell);
+				}
+			}
+
+			if (invalidatedCells is not null)
+			{
+				// GridLayout has a special positioning override when there's only one item
+				// so we have to invalidate the layout entirely to trigger that special case.
+				if (ItemsSource.ItemCount == 1)
+				{
+					CollectionView.CollectionViewLayout.InvalidateLayout();
+				}
+				else
+				{
+					var layoutInvalidationContext = new UICollectionViewFlowLayoutInvalidationContext();
+					layoutInvalidationContext.InvalidateItems(invalidatedCells.Select(CollectionView.IndexPathForCell).ToArray());
+					CollectionView.CollectionViewLayout.InvalidateLayout(layoutInvalidationContext);
+				}
+			}
+		}
+
+		bool IsRefreshing()
+		{
+			var subviews = CollectionView.Subviews;
+			var subviewsLength = subviews.Length;
+			for (int i = 0; i < subviewsLength; i++)
+			{
+				if (subviews[i] is UIRefreshControl { Refreshing: true })
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		void InvalidateMeasureIfContentSizeChanged()
+		{
+			var contentSize = CollectionView?.CollectionViewLayout?.CollectionViewContentSize;
+
+			if (!contentSize.HasValue)
+			{
 				return;
 			}
 
-			ItemsViewLayout.UpdateConstraints(new CGSize(itemsViewWidth, itemsViewHeight));
+			bool widthChanged = _previousContentSize.Width != contentSize.Value.Width;
+			bool heightChanged = _previousContentSize.Height != contentSize.Value.Height;
+
+			if (_initialized && (widthChanged || heightChanged))
+			{
+				var screenFrame = CollectionView?.Window?.Frame;
+
+				if (!screenFrame.HasValue)
+				{
+					return;
+				}
+
+				var screenWidth = screenFrame.Value.Width;
+				var screenHeight = screenFrame.Value.Height;
+				bool invalidate = false;
+
+				// If both the previous content size and the current content size are larger
+				// than the screen size, then we know that we're already maxed out and the 
+				// CollectionView items are scrollable. There's no reason to force an invalidation
+				// of the CollectionView to expand/contract it.
+
+				// If either size is smaller than that, we need to invalidate to ensure that the 
+				// CollectionView is re-measured and set to the correct size.
+
+				if (widthChanged && (contentSize.Value.Width < screenWidth || _previousContentSize.Width < screenWidth))
+				{
+					invalidate = true;
+				}
+				else if (heightChanged && (contentSize.Value.Height < screenHeight || _previousContentSize.Height < screenHeight))
+				{
+					invalidate = true;
+				}
+
+				if (invalidate)
+				{
+					ItemsView.InvalidateMeasureInternal(InvalidationTrigger.MeasureChanged);
+				}
+			}
+
+			_previousContentSize = contentSize.Value;
+		}
+
+
+		internal virtual Size? GetSize()
+		{
+			if (_emptyViewDisplayed)
+			{
+				return _emptyUIView.Frame.Size.ToSize();
+			}
+
+			return CollectionView.CollectionViewLayout.CollectionViewContentSize.ToSize();
+		}
+
+		void ConstrainItemsToBounds()
+		{
+			var contentBounds = CollectionView.AdjustedContentInset.InsetRect(CollectionView.Bounds);
+			var constrainedSize = contentBounds.Size;
+			ItemsViewLayout.UpdateConstraints(constrainedSize, !_laidOut);
 		}
 
 		void EnsureLayoutInitialized()
@@ -188,7 +379,11 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			_initialized = true;
 
-			ItemsViewLayout.GetPrototype = GetPrototype;
+			_getPrototype ??= GetPrototype;
+			ItemsViewLayout.GetPrototype = _getPrototype;
+
+			_getPrototypeForIndexPath ??= GetPrototypeForIndexPath;
+			ItemsViewLayout.GetPrototypeForIndexPath = _getPrototypeForIndexPath;
 
 			Delegator = CreateDelegator();
 			CollectionView.Delegate = Delegator;
@@ -211,17 +406,53 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public virtual void UpdateItemsSource()
 		{
-			_measurementCells.Clear();
+			_measurementCells?.Clear();
 			ItemsViewLayout?.ClearCellSizeCache();
 			ItemsSource?.Dispose();
 			ItemsSource = CreateItemsViewSource();
+
 			CollectionView.ReloadData();
 			CollectionView.CollectionViewLayout.InvalidateLayout();
+
+			(ItemsView as IView)?.InvalidateMeasure();
+		}
+
+		internal void DisposeItemsSource()
+		{
+			_measurementCells?.Clear();
+			ItemsViewLayout?.ClearCellSizeCache();
+			ItemsSource?.Dispose();
+			ItemsSource = new EmptySource();
+			CollectionView.ReloadData();
 		}
 
 		public virtual void UpdateFlowDirection()
 		{
-			CollectionView.UpdateFlowDirection(ItemsView);
+			if (ItemsView.Handler.PlatformView is UIView itemsView)
+			{
+				itemsView.UpdateFlowDirection(ItemsView);
+				if (ItemsView.ItemTemplate is not null)
+				{
+					foreach (var child in ItemsView.LogicalChildrenInternal)
+					{
+						if (child is VisualElement ve && ve.Handler?.PlatformView is UIView view)
+						{
+							view.UpdateFlowDirection(ve);
+						}
+					}
+				}
+				else
+				{
+					// If we don't have an ItemTemplate, then we need to update the default cell's flow direction
+					if (CollectionView?.VisibleCells is UICollectionViewCell[] visibleCells)
+					{
+						foreach (var cell in visibleCells.OfType<DefaultCell>())
+						{
+							cell.Label.UpdateFlowDirection(ItemsView);
+						}
+					}
+				}
+			}
 
 			if (_emptyViewDisplayed)
 			{
@@ -249,16 +480,14 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		protected virtual void UpdateTemplatedCell(TemplatedCell cell, NSIndexPath indexPath)
 		{
-			cell.ContentSizeChanged -= CellContentSizeChanged;
 			cell.LayoutAttributesChanged -= CellLayoutAttributesChanged;
 
 			var bindingContext = ItemsSource[indexPath];
 
 			// If we've already created a cell for this index path (for measurement), re-use the content
-			if (_measurementCells.TryGetValue(bindingContext, out TemplatedCell measurementCell))
+			if (_measurementCells != null && _measurementCells.TryGetValue(bindingContext, out TemplatedCell measurementCell))
 			{
 				_measurementCells.Remove(bindingContext);
-				measurementCell.ContentSizeChanged -= CellContentSizeChanged;
 				measurementCell.LayoutAttributesChanged -= CellLayoutAttributesChanged;
 				cell.UseContent(measurementCell);
 			}
@@ -267,7 +496,6 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				cell.Bind(ItemsView.ItemTemplate, ItemsSource[indexPath], ItemsView);
 			}
 
-			cell.ContentSizeChanged += CellContentSizeChanged;
 			cell.LayoutAttributesChanged += CellLayoutAttributesChanged;
 
 			ItemsViewLayout.PrepareCellForLayout(cell);
@@ -283,28 +511,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			return ItemsSource[index];
 		}
 
-		void CellContentSizeChanged(object sender, EventArgs e)
-		{
-			if (_disposed)
-				return;
-
-			if (!(sender is TemplatedCell cell))
-			{
-				return;
-			}
-
-			var visibleCells = CollectionView.VisibleCells;
-
-			for (int n = 0; n < visibleCells.Length; n++)
-			{
-				if (cell == visibleCells[n])
-				{
-					Layout?.InvalidateLayout();
-					return;
-				}
-			}
-		}
-
+		[UnconditionalSuppressMessage("Memory", "MEM0003", Justification = "Proven safe in test: CollectionViewTests.ItemsSourceDoesNotLeak")]
 		void CellLayoutAttributesChanged(object sender, LayoutAttributesChangedEventArgs args)
 		{
 			CacheCellAttributes(args.NewAttributes.IndexPath, args.NewAttributes.Size);
@@ -325,6 +532,39 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			}
 		}
 
+		protected virtual string DetermineCellReuseId(NSIndexPath indexPath)
+		{
+			if (ItemsView.ItemTemplate != null)
+			{
+				var item = ItemsSource[indexPath];
+
+				var dataTemplate = ItemsView.ItemTemplate.SelectDataTemplate(item, ItemsView);
+
+				var cellOrientation = ItemsViewLayout.ScrollDirection == UICollectionViewScrollDirection.Vertical ? "v" : "h";
+				(Type cellType, var cellTypeReuseId) = DetermineTemplatedCellType();
+
+				var reuseId = $"_{cellTypeReuseId}_{cellOrientation}_{dataTemplate.Id}";
+
+				if (!_cellReuseIds.Contains(reuseId))
+				{
+					CollectionView.RegisterClassForCell(cellType, new NSString(reuseId));
+					_cellReuseIds.Add(reuseId);
+				}
+
+				return reuseId;
+			}
+
+			return ItemsViewLayout.ScrollDirection == UICollectionViewScrollDirection.Horizontal
+				? HorizontalDefaultCell.ReuseId
+				: VerticalDefaultCell.ReuseId;
+		}
+
+		private protected virtual (Type CellType, string CellTypeReuseId) DetermineTemplatedCellType()
+		{
+			return (ItemsViewLayout.ScrollDirection == UICollectionViewScrollDirection.Vertical ? typeof(VerticalCell) : typeof(HorizontalCell), "maui");
+		}
+
+		[Obsolete("Use DetermineCellReuseId(NSIndexPath indexPath) instead.")]
 		protected virtual string DetermineCellReuseId()
 		{
 			if (ItemsView.ItemTemplate != null)
@@ -364,6 +604,11 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			var indexPath = NSIndexPath.Create(group, 0);
 
+			return GetPrototypeForIndexPath(indexPath);
+		}
+
+		internal UICollectionViewCell GetPrototypeForIndexPath(NSIndexPath indexPath)
+		{
 			return CreateMeasurementCell(indexPath);
 		}
 
@@ -385,15 +630,58 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		protected void RemeasureLayout(VisualElement formsElement)
 		{
+			Size size;
 			if (IsHorizontal)
 			{
-				var request = formsElement.Measure(double.PositiveInfinity, CollectionView.Frame.Height, MeasureFlags.IncludeMargins);
-				Controls.Compatibility.Layout.LayoutChildIntoBoundingRegion(formsElement, new Rect(0, 0, request.Request.Width, CollectionView.Frame.Height));
+				var request = formsElement.Measure(double.PositiveInfinity, CollectionView.Frame.Height);
+				size = new Size(request.Width, CollectionView.Frame.Height);
 			}
 			else
 			{
-				var request = formsElement.Measure(CollectionView.Frame.Width, double.PositiveInfinity, MeasureFlags.IncludeMargins);
-				Controls.Compatibility.Layout.LayoutChildIntoBoundingRegion(formsElement, new Rect(0, 0, CollectionView.Frame.Width, request.Request.Height));
+				var request = formsElement.Measure(CollectionView.Frame.Width, double.PositiveInfinity);
+				size = new Size(CollectionView.Frame.Width, request.Height);
+			}
+
+			var platformView = formsElement.ToPlatform();
+			if (platformView.Superview is GeneralWrapperView generalWrapperView)
+			{
+				var originalFrame = generalWrapperView.Frame;
+				generalWrapperView.Frame = new CGRect(originalFrame.X, originalFrame.Y, (nfloat)size.Width, (nfloat)size.Height);
+			}
+			else
+			{
+				var frame = new Rect(platformView.Frame.X, platformView.Frame.Y, size.Width, size.Height);
+				formsElement.Arrange(frame);
+			}
+		}
+
+		void RemeasureLayout(UIView nativeView)
+		{
+			var originalFrame = nativeView.Frame;
+
+			if (IsHorizontal)
+			{
+				var constraints = new CGSize(double.PositiveInfinity, CollectionView.Frame.Height);
+				var size = nativeView.SizeThatFits(constraints);
+				nativeView.Frame = new CGRect(originalFrame.X, originalFrame.Y, size.Width, CollectionView.Frame.Height);
+			}
+			else
+			{
+				var constraints = new CGSize(CollectionView.Frame.Width, double.PositiveInfinity);
+				var size = nativeView.SizeThatFits(constraints);
+				nativeView.Frame = new CGRect(originalFrame.X, originalFrame.Y, CollectionView.Frame.Width, size.Height);
+			}
+		}
+
+		private protected void RemeasureLayout(VisualElement formsElement, UIView nativeElement)
+		{
+			if (formsElement is not null)
+			{
+				RemeasureLayout(formsElement);
+			}
+			else if (nativeElement is not null)
+			{
+				RemeasureLayout(nativeElement);
 			}
 		}
 
@@ -413,17 +701,16 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		internal void UpdateView(object view, DataTemplate viewTemplate, ref UIView uiView, ref VisualElement formsElement)
 		{
 			// Is view set on the ItemsView?
-			if (view == null)
+			if (view is null && (viewTemplate is null || viewTemplate is DataTemplateSelector))
 			{
 				if (formsElement != null)
 				{
 					//Platform.GetRenderer(formsElement)?.DisposeRendererAndChildren();
 				}
 
-
 				uiView?.Dispose();
 				uiView = null;
-
+				formsElement?.Handler?.DisconnectHandler();
 				formsElement = null;
 			}
 			else
@@ -521,7 +808,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				ItemsView.AddLogicalChild(_emptyViewFormsElement);
 			}
 
-			LayoutEmptyView();
+			_emptyUIView.InvalidateMeasure();
 
 			AlignEmptyView();
 			_emptyViewDisplayed = true;
@@ -559,10 +846,9 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			var frame = DetermineEmptyViewFrame();
 
+			_emptyViewFormsElement?.Measure(frame.Width, frame.Height);
+			_emptyViewFormsElement?.Arrange(frame.ToRectangle());
 			_emptyUIView.Frame = frame;
-
-			if (_emptyViewFormsElement != null && ((IElementController)ItemsView).LogicalChildren.IndexOf(_emptyViewFormsElement) != -1)
-				_emptyViewFormsElement.Layout(frame.ToRectangle());
 		}
 
 		TemplatedCell CreateAppropriateCellForLayout()
@@ -602,7 +888,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			UpdateTemplatedCell(templatedCell, indexPath);
 
 			// Keep this cell around, we can transfer the contents to the actual cell when the UICollectionView creates it
-			_measurementCells[ItemsSource[indexPath]] = templatedCell;
+			if (_measurementCells != null)
+				_measurementCells[ItemsSource[indexPath]] = templatedCell;
 
 			return templatedCell;
 		}
@@ -642,6 +929,47 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			else
 			{
 				CollectionView.Hidden = true;
+			}
+		}
+
+		private protected virtual void AttachingToWindow()
+		{
+
+		}
+
+		private protected virtual void DetachingFromWindow()
+		{
+		}
+
+		private protected virtual NSIndexPath GetAdjustedIndexPathForItemSource(NSIndexPath indexPath)
+		{
+			return indexPath;
+		}
+
+		internal virtual void CellDisplayingEndedFromDelegate(UICollectionViewCell cell, NSIndexPath indexPath)
+		{
+			if (cell is TemplatedCell templatedCell &&
+				(templatedCell.PlatformHandler?.VirtualView as View)?.BindingContext is object bindingContext)
+			{
+				// We want to unbind a cell that is no longer present in the items source. Unfortunately
+				// it's too expensive to check directly, so let's check that the current binding context
+				// matches the item at a given position.
+
+				indexPath = GetAdjustedIndexPathForItemSource(indexPath);
+
+				var itemsSource = ItemsSource;
+				if (itemsSource is null ||
+					!itemsSource.IsIndexPathValid(indexPath) ||
+					!Equals(itemsSource[indexPath], bindingContext))
+				{
+					templatedCell.Unbind();
+
+					if (CollectionView is MauiCollectionView collectionView)
+					{
+						// When removing a cell, we need to trigger a layout update in order to sync the footer position
+						collectionView.NeedsCellLayout = true;
+					}
+				}
 			}
 		}
 	}

@@ -6,8 +6,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Text;
 using Microsoft.Graphics.Canvas.UI.Xaml;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Storage;
 using WImageSource = Microsoft.UI.Xaml.Media.ImageSource;
 
 namespace Microsoft.Maui
@@ -24,13 +26,21 @@ namespace Microsoft.Maui
 
 			try
 			{
+				// TODO: The DPI not working as the view is not respecting the
+				//       value, so just reset to 1 to keep the correct size.
+				//       https://github.com/dotnet/maui/issues/1000
+				scale = 1;
+
 				// TODO: use a cached way
 				var image = RenderImageSource(imageSource, scale);
 
 				if (image == null)
 					throw new InvalidOperationException("Unable to generate font image.");
 
-				var result = new ImageSourceServiceResult(image, true);
+				// TODO: The DPI not working as the view is not respecting the
+				//       value, so mark this image as non-resolution-dependent.
+				//       https://github.com/dotnet/maui/issues/1000
+				var result = new ImageSourceServiceResult(image, false);
 
 				return FromResult(result);
 			}
@@ -48,6 +58,7 @@ namespace Microsoft.Maui
 		{
 			// TODO: The DPI not working as the view is not respecting the
 			//       value, so just reset to 1 to keep the correct size.
+			//       https://github.com/dotnet/maui/issues/1000
 			scale = 1;
 
 			var dpi = scale * DeviceDisplay.BaseLogicalDpi;
@@ -110,6 +121,28 @@ namespace Microsoft.Maui
 						fontSource = family;
 						break;
 					}
+				}
+			}
+
+			// Win2D in unpackaged apps can't load files using packaged schemes, such as `ms-appx://`
+			// so we have to first convert it to a `file://` scheme will the full file path.
+			if (!AppInfoUtils.IsPackagedApp)
+			{
+				// At this part of the load operation, the font URI contains the font family name fragment
+				// component, so we first have to remove it.
+				var fragment = "";
+				if (fontSource.IndexOf('#', StringComparison.OrdinalIgnoreCase) is int index && index >= 0)
+				{
+					fragment = fontSource[index..];
+					fontSource = fontSource[..index];
+				}
+
+				// Now we can convert the URI to a `file://` scheme with the full file path.
+				var fontUri = new Uri(fontSource, UriKind.RelativeOrAbsolute);
+				var path = fontUri.LocalPath.TrimStart('/');
+				if (FileSystemUtils.TryGetAppPackageFileUri(path, out var uri))
+				{
+					fontSource = uri + fragment;
 				}
 			}
 

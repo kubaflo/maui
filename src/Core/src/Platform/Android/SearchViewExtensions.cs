@@ -1,6 +1,14 @@
-﻿using Android.Content.Res;
+﻿using System;
+using Android.Content;
+using Android.Content.Res;
+using Android.Graphics;
+using Android.Graphics.Drawables;
 using Android.Text;
+using Android.Util;
+using Android.Views.InputMethods;
 using Android.Widget;
+using static Android.Content.Res.Resources;
+using AAttribute = Android.Resource.Attribute;
 using SearchView = AndroidX.AppCompat.Widget.SearchView;
 
 namespace Microsoft.Maui.Platform
@@ -21,22 +29,35 @@ namespace Microsoft.Maui.Platform
 		{
 			editText ??= searchView.GetFirstChildOfType<EditText>();
 
-			if (editText == null)
+			if (editText is null)
 				return;
 
-			var placeholderTextColor = searchBar.PlaceholderColor;
-
-			if (placeholderTextColor == null)
+			if (searchBar?.PlaceholderColor is Graphics.Color placeholderTextColor)
 			{
-				editText.SetHintTextColor(defaultPlaceholderColor);
-			}
-			else
-			{
-				var androidColor = placeholderTextColor.ToPlatform();
-				if (!editText.HintTextColors.IsOneColor(ColorStates.EditText, androidColor))
+				if (PlatformInterop.CreateEditTextColorStateList(editText.HintTextColors, placeholderTextColor.ToPlatform()) is ColorStateList c)
 				{
-					editText.SetHintTextColor(ColorStateListExtensions.CreateEditText(androidColor));
+					editText.SetHintTextColor(c);
 				}
+			}
+			else if (TryGetDefaultStateColor(searchView, AAttribute.TextColorHint, out var color))
+			{
+				editText.SetHintTextColor(color);
+
+				var searchMagIconImage = searchView.FindViewById<ImageView>(Resource.Id.search_mag_icon);
+				searchMagIconImage?.Drawable?.SetTint(color);
+			}
+		}
+
+		internal static void UpdateTextColor(this SearchView searchView, ITextStyle entry)
+		{
+			if (TryGetDefaultStateColor(searchView, AAttribute.TextColorPrimary, out var color) &&
+				searchView.GetFirstChildOfType<EditText>() is EditText editText)
+			{
+				if (entry.TextColor is null)
+					editText.SetTextColor(color);
+
+				var searchMagIconImage = searchView.FindViewById<ImageView>(Resource.Id.search_mag_icon);
+				searchMagIconImage?.Drawable?.SetTint(color);
 			}
 		}
 
@@ -109,10 +130,31 @@ namespace Microsoft.Maui.Platform
 			{
 				var image = searchView.FindViewById<ImageView>(searchCloseButtonIdentifier);
 
-				if (image != null && image.Drawable != null)
+				if (image is not null && image.Drawable is Drawable drawable)
 				{
-					if (searchBar.CancelButtonColor != null)
-						image.Drawable.SetColorFilter(searchBar.CancelButtonColor, FilterMode.SrcIn);
+					if (searchBar.CancelButtonColor is not null)
+						drawable.SetColorFilter(searchBar.CancelButtonColor, FilterMode.SrcIn);
+					else if (TryGetDefaultStateColor(searchView, AAttribute.TextColorPrimary, out var color))
+						drawable.SetColorFilter(color, FilterMode.SrcIn);
+				}
+			}
+		}
+
+		internal static void UpdateSearchIconColor(this SearchView searchView, ISearchBar searchBar)
+		{
+			if (searchView.Resources is null)
+				return;
+
+			var searchIconIdentifier = Resource.Id.search_mag_icon;
+
+			if (searchIconIdentifier > 0)
+			{
+				var image = searchView.FindViewById<ImageView>(searchIconIdentifier);
+
+				if (image?.Drawable is not null)
+				{
+					if (searchBar.SearchIconColor is not null)
+						image.Drawable.SetColorFilter(searchBar.SearchIconColor, FilterMode.SrcIn);
 					else
 						image.Drawable.ClearColorFilter();
 				}
@@ -127,9 +169,22 @@ namespace Microsoft.Maui.Platform
 				return;
 
 			if (searchBar.IsTextPredictionEnabled)
-				editText.InputType &= ~InputTypes.TextFlagNoSuggestions;
+				editText.InputType |= InputTypes.TextFlagAutoCorrect;
 			else
+				editText.InputType &= ~InputTypes.TextFlagAutoCorrect;
+		}
+
+		public static void UpdateIsSpellCheckEnabled(this SearchView searchView, ISearchBar searchBar, EditText? editText = null)
+		{
+			editText ??= searchView.GetFirstChildOfType<EditText>();
+
+			if (editText == null)
+				return;
+
+			if (!searchBar.IsSpellCheckEnabled)
 				editText.InputType |= InputTypes.TextFlagNoSuggestions;
+			else
+				editText.InputType &= ~InputTypes.TextFlagNoSuggestions;
 		}
 
 		public static void UpdateIsEnabled(this SearchView searchView, ISearchBar searchBar, EditText? editText = null)
@@ -139,10 +194,51 @@ namespace Microsoft.Maui.Platform
 			if (editText == null)
 				return;
 
-			if (editText != null)
-			{
-				editText.Enabled = searchBar.IsEnabled;
-			}
+			editText?.Enabled = searchBar.IsEnabled;
+		}
+
+		public static void UpdateKeyboard(this SearchView searchView, ISearchBar searchBar)
+		{
+			searchView.SetInputType(searchBar);
+		}
+
+		public static void UpdateReturnType(this SearchView searchView, ISearchBar searchBar)
+		{
+			searchView.SetInputType(searchBar);
+			searchView.ImeOptions = (int)searchBar.ReturnType.ToPlatform();
+		}
+
+		internal static void SetInputType(this SearchView searchView, ISearchBar searchBar, EditText? editText = null)
+		{
+			editText ??= searchView.GetFirstChildOfType<EditText>();
+
+			if (editText == null)
+				return;
+
+			editText.SetInputType(searchBar);
+		}
+
+		static bool TryGetDefaultStateColor(SearchView searchView, int attribute, out Color color)
+		{
+			color = default;
+
+			if (!OperatingSystem.IsAndroidVersionAtLeast(23))
+				return false;
+
+			if (searchView.Context?.Theme is not Theme theme)
+				return false;
+
+			int[] s_disabledState = [-AAttribute.StateEnabled];
+			int[] s_enabledState = [AAttribute.StateEnabled];
+
+			using var ta = theme.ObtainStyledAttributes([attribute]);
+			var cs = ta.GetColorStateList(0);
+			if (cs is null)
+				return false;
+
+			var state = searchView.Enabled ? s_enabledState : s_disabledState;
+			color = new Color(cs.GetColorForState(state, Color.Black));
+			return true;
 		}
 	}
 }

@@ -1,6 +1,8 @@
 using System;
+using System.Net;
 using Android.Graphics;
 using Android.Text;
+using Android.Views;
 using Android.Widget;
 using static Android.Widget.TextView;
 using ALayoutDirection = Android.Views.LayoutDirection;
@@ -17,13 +19,19 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateTextHtml(this TextView textView, ILabel label)
 		{
-			var newText = label.Text ?? string.Empty;
+			var text = label.Text ?? string.Empty;
+			textView.UpdateTextHtml(text);
+		}
+
+		internal static void UpdateTextHtml(this TextView textView, string text)
+		{
+			var htmlText = WebUtility.HtmlDecode(text);
 
 			if (OperatingSystem.IsAndroidVersionAtLeast(24))
-				textView.SetText(Html.FromHtml(newText, FromHtmlOptions.ModeCompact), BufferType.Spannable);
+				textView.SetText(Html.FromHtml(htmlText, FromHtmlOptions.ModeCompact), BufferType.Spannable);
 			else
 #pragma warning disable CS0618 // Type or member is obsolete
-				textView.SetText(Html.FromHtml(newText), BufferType.Spannable);
+				textView.SetText(Html.FromHtml(htmlText), BufferType.Spannable);
 #pragma warning restore CS0618 // Type or member is obsolete
 		}
 
@@ -61,7 +69,14 @@ namespace Microsoft.Maui.Platform
 			{
 				// But if RTL support is not available for some reason, we have to resort
 				// to gravity, because Android will simply ignore text alignment
-				textView.Gravity = Android.Views.GravityFlags.Top | text.HorizontalTextAlignment.ToHorizontalGravityFlags();
+				textView.Gravity = GravityFlags.Top | text.HorizontalTextAlignment.ToHorizontalGravityFlags();
+			}
+
+			if (OperatingSystem.IsAndroidVersionAtLeast(26))
+			{
+				textView.JustificationMode = text.HorizontalTextAlignment == TextAlignment.Justify
+					? JustificationMode.InterWord
+					: JustificationMode.None;
 			}
 		}
 
@@ -72,18 +87,11 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdatePadding(this TextView textView, ILabel label)
 		{
-			var context = textView.Context;
-
-			if (context == null)
-			{
-				return;
-			}
-
 			textView.SetPadding(
-				(int)context.ToPixels(label.Padding.Left),
-				(int)context.ToPixels(label.Padding.Top),
-				(int)context.ToPixels(label.Padding.Right),
-				(int)context.ToPixels(label.Padding.Bottom));
+				(int)textView.ToPixels(label.Padding.Left),
+				(int)textView.ToPixels(label.Padding.Top),
+				(int)textView.ToPixels(label.Padding.Right),
+				(int)textView.ToPixels(label.Padding.Bottom));
 		}
 
 		public static void UpdateTextDecorations(this TextView textView, ILabel label)
@@ -111,11 +119,15 @@ namespace Microsoft.Maui.Platform
 					break;
 				case FlowDirection.RightToLeft:
 					platformView.LayoutDirection = ALayoutDirection.Rtl;
-					platformView.TextDirection = ATextDirection.Rtl;
+#pragma warning disable CA1416 // Introduced in API 23: https://developer.android.com/reference/android/view/View#TEXT_DIRECTION_FIRST_STRONG_RTL
+					platformView.TextDirection = ATextDirection.FirstStrongRtl;
+#pragma warning restore CA1416
 					break;
 				case FlowDirection.LeftToRight:
 					platformView.LayoutDirection = ALayoutDirection.Ltr;
-					platformView.TextDirection = ATextDirection.Ltr;
+#pragma warning disable CA1416 // Introduced in API 23: https://developer.android.com/reference/android/view/View#TEXT_DIRECTION_FIRST_STRONG_LTR
+					platformView.TextDirection = ATextDirection.FirstStrongLtr;
+#pragma warning restore CA1416
 					break;
 			}
 		}
@@ -124,6 +136,18 @@ namespace Microsoft.Maui.Platform
 		{
 			if (label.LineHeight >= 0)
 				textView.SetLineSpacing(0, (float)label.LineHeight);
+		}
+
+		internal static void Focus(this TextView textView, FocusRequest request)
+		{
+			if (textView is null)
+				return;
+
+			textView.Focus(request, () =>
+			{
+				if (textView.ShowSoftInputOnFocus)
+					ViewExtensions.PostShowSoftInput(textView);
+			});
 		}
 	}
 }

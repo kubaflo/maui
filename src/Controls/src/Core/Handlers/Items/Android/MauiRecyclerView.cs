@@ -1,8 +1,10 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
 using Android.Content;
+using Android.Views;
 using AndroidX.RecyclerView.Widget;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.Platform;
@@ -13,7 +15,7 @@ using AViewCompat = AndroidX.Core.View.ViewCompat;
 namespace Microsoft.Maui.Controls.Handlers.Items
 {
 
-	public class MauiRecyclerView<TItemsView, TAdapter, TItemsViewSource> : RecyclerView, IMauiRecyclerView<TItemsView>
+	public class MauiRecyclerView<TItemsView, TAdapter, TItemsViewSource> : RecyclerView, IMauiRecyclerView<TItemsView>, IMauiRecyclerView
 		where TItemsView : ItemsView
 		where TAdapter : ItemsViewAdapter<TItemsView, TItemsViewSource>
 		where TItemsViewSource : IItemsViewSource
@@ -41,25 +43,27 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		ItemTouchHelper _itemTouchHelper;
 		SimpleItemTouchHelperCallback _itemTouchHelperCallback;
+		WeakNotifyPropertyChangedProxy _layoutPropertyChangedProxy;
+		PropertyChangedEventHandler _layoutPropertyChanged;
 
-		public MauiRecyclerView(Context context, Func<IItemsLayout> getItemsLayout, Func<TAdapter> getAdapter) : base(context)
+		~MauiRecyclerView() => _layoutPropertyChangedProxy?.Unsubscribe();
+
+		public MauiRecyclerView(Context context, Func<IItemsLayout> getItemsLayout, Func<TAdapter> getAdapter) : base(new ContextThemeWrapper(context, Resource.Style.collectionViewTheme))
 		{
 			_getItemsLayout = getItemsLayout ?? throw new ArgumentNullException(nameof(getItemsLayout));
 			CreateAdapter = getAdapter ?? throw new ArgumentNullException(nameof(getAdapter));
 
 			_emptyCollectionObserver = new DataChangeObserver(UpdateEmptyViewVisibility);
 			_itemsUpdateScrollObserver = new DataChangeObserver(AdjustScrollForItemUpdate);
-
-			VerticalScrollBarEnabled = false;
-			HorizontalScrollBarEnabled = false;
 		}
 
 		public virtual void TearDownOldElement(TItemsView oldElement)
 		{
 			// Stop listening for layout property changes
-			if (ItemsLayout != null)
+			if (_layoutPropertyChangedProxy is not null)
 			{
-				ItemsLayout.PropertyChanged -= LayoutPropertyChanged;
+				_layoutPropertyChangedProxy.Unsubscribe();
+				_layoutPropertyChanged = null;
 			}
 
 			// Stop listening for ScrollTo requests
@@ -80,11 +84,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				ItemsViewAdapter?.Dispose();
 			}
 
-			if (_snapManager != null)
-			{
-				_snapManager.Dispose();
-				_snapManager = null;
-			}
+			_snapManager?.Dispose();
+			_snapManager = null;
 
 			if (_itemDecoration != null)
 			{
@@ -98,11 +99,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				_itemTouchHelper = null;
 			}
 
-			if (_itemTouchHelperCallback != null)
-			{
-				_itemTouchHelperCallback.Dispose();
-				_itemTouchHelperCallback = null;
-			}
+			_itemTouchHelperCallback?.Dispose();
+			_itemTouchHelperCallback = null;
 		}
 
 		public virtual void SetUpNewElement(TItemsView newElement)
@@ -272,24 +270,30 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 					_itemTouchHelper.Dispose();
 					_itemTouchHelper = null;
 				}
-				if (_itemTouchHelperCallback != null)
-				{
-					_itemTouchHelperCallback.Dispose();
-					_itemTouchHelperCallback = null;
-				}
+
+				_itemTouchHelperCallback?.Dispose();
+				_itemTouchHelperCallback = null;
 			}
 		}
 
 		public virtual void UpdateLayoutManager()
 		{
-			if (ItemsLayout != null)
-				ItemsLayout.PropertyChanged -= LayoutPropertyChanged;
+			var itemsLayout = _getItemsLayout();
 
-			ItemsLayout = _getItemsLayout();
+			if (itemsLayout == ItemsLayout)
+			{
+				return;
+			}
+
+			_layoutPropertyChangedProxy?.Unsubscribe();
+			ItemsLayout = itemsLayout;
 
 			// Keep track of the ItemsLayout's property changes
-			if (ItemsLayout != null)
-				ItemsLayout.PropertyChanged += LayoutPropertyChanged;
+			if (ItemsLayout is not null)
+			{
+				_layoutPropertyChanged ??= LayoutPropertyChanged;
+				_layoutPropertyChangedProxy = new WeakNotifyPropertyChangedProxy(ItemsLayout, _layoutPropertyChanged);
+			}
 
 			SetLayoutManager(SelectLayoutManager(ItemsLayout));
 
@@ -417,13 +421,37 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		protected virtual int DetermineTargetPosition(ScrollToRequestEventArgs args)
 		{
+			var item = args.Item;
 			if (args.Mode == ScrollToMode.Position)
 			{
-				// TODO hartez 2018/08/28 15:40:03 Need to handle group indices here as well	
-				return args.Index;
+				// Do not use `IGroupableItemsViewSource` since `UngroupedItemsSource` also implements that interface
+				if (ItemsViewAdapter.ItemsSource is UngroupedItemsSource)
+				{
+					return args.Index;
+				}
+				else if (ItemsViewAdapter.ItemsSource is IGroupableItemsViewSource groupItemSource)
+				{
+					item = FindBoundItemInGroup(args, groupItemSource);
+				}
 			}
 
-			return ItemsViewAdapter.GetPositionForItem(args.Item);
+			return ItemsViewAdapter.GetPositionForItem(item);
+		}
+
+		private static object FindBoundItemInGroup(ScrollToRequestEventArgs args, IGroupableItemsViewSource groupItemSource)
+		{
+			if (args.GroupIndex >= 0 &&
+				args.GroupIndex < groupItemSource.Count)
+			{
+				var group = groupItemSource.GetGroupItemsViewSource(args.GroupIndex);
+
+				if (group is not null)
+				{
+					// GetItem calls AdjustIndexRequest, which subtracts 1 if we have a header (UngroupedItemsSource does not do this)
+					return group.GetItem(args.Index + 1);
+				}
+			}
+			return groupItemSource.GetItem(args.Index);
 		}
 
 		protected virtual void UpdateItemSpacing()
@@ -499,7 +527,9 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		protected override void OnLayout(bool changed, int l, int t, int r, int b)
 		{
 			base.OnLayout(changed, l, t, r, b);
+#pragma warning disable CS0618 // Obsolete
 			AViewCompat.SetClipBounds(this, new ARect(0, 0, Width, Height));
+#pragma warning restore CS0618 // Obsolete
 
 			// After a direct (non-animated) scroll operation, we may need to make adjustments
 			// to align the target item; if an adjustment is pending, execute it here.
@@ -535,18 +565,21 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 					itemCount++;
 			}
 
-			var showEmptyView = ItemsView?.EmptyView != null && ItemsViewAdapter.ItemCount == itemCount;
+			var showEmptyView = (ItemsView?.EmptyView is not null || ItemsView?.EmptyViewTemplate is not null) && ItemsViewAdapter.ItemCount == itemCount;
 
 			var currentAdapter = GetAdapter();
 			if (showEmptyView && currentAdapter != _emptyViewAdapter)
 			{
+				GetRecycledViewPool().Clear();
 				SwapAdapter(_emptyViewAdapter, true);
 
 				// TODO hartez 2018/10/24 17:34:36 If this works, cache this layout manager as _emptyLayoutManager	
-				SetLayoutManager(new LinearLayoutManager(Context));
+				SetLayoutManager(SelectLayoutManager(ItemsLayout));
+				UpdateEmptyView();
 			}
 			else if (!showEmptyView && currentAdapter != ItemsViewAdapter)
 			{
+				GetRecycledViewPool().Clear();
 				SwapAdapter(ItemsViewAdapter, true);
 				UpdateLayoutManager();
 			}

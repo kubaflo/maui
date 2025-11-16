@@ -1,11 +1,11 @@
 using System;
-using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Windows.Foundation;
-using WThickness = Microsoft.UI.Xaml.Thickness;
 using WGridLength = Microsoft.UI.Xaml.GridLength;
+using WThickness = Microsoft.UI.Xaml.Thickness;
 
 namespace Microsoft.Maui.Platform
 {
@@ -17,6 +17,7 @@ namespace Microsoft.Maui.Platform
 		double AppBarTitleHeight => _useCustomAppTitleBar ? _appBarTitleHeight : 0;
 		double _appBarTitleHeight;
 		bool _useCustomAppTitleBar;
+		readonly FlyoutPanel _flyoutPanel = new FlyoutPanel();
 
 		public RootNavigationView()
 		{
@@ -45,7 +46,7 @@ namespace Microsoft.Maui.Platform
 					return;
 
 				base.Toolbar = value;
-        
+
 				if (value != null)
 				{
 					value.NavigationViewBackButton = NavigationViewBackButton;
@@ -53,6 +54,7 @@ namespace Microsoft.Maui.Platform
 				}
 
 				UpdateToolbarPlacement();
+				UpdateHeaderPropertyBinding();
 			}
 		}
 
@@ -221,7 +223,6 @@ namespace Microsoft.Maui.Platform
 			};
 
 			UpdateToolbarPlacement();
-			UpdateContentGridMargin();
 
 			if (Toolbar != null)
 			{
@@ -234,14 +235,6 @@ namespace Microsoft.Maui.Platform
 		void PaneContentTopPaddingChanged(DependencyObject sender, DependencyProperty dp)
 		{
 			UpdatePaneContentGridMargin();
-		}
-
-		void UpdateContentGridMargin()
-		{
-			if (PaneDisplayMode == NavigationViewPaneDisplayMode.Top)
-				NavigationViewContentMargin = new WThickness(0, 0, 0, 0);
-			else
-				NavigationViewContentMargin = new WThickness(0, AppBarTitleHeight, 0, 0);
 		}
 
 		internal void UpdateAppTitleBar(double appTitleBarHeight)
@@ -259,16 +252,15 @@ namespace Microsoft.Maui.Platform
 			UpdateNavigationAndPaneButtonHolderGridStyles();
 		}
 
-
 		void UpdateNavigationAndPaneButtonHolderGridStyles()
 		{
-			var buttonHeight = Math.Min(_appBarTitleHeight, DefaultNavigationBackButtonHeight);
+			var buttonHeight = Math.Max(_appBarTitleHeight, DefaultNavigationBackButtonHeight);
 			var buttonRatio = buttonHeight / DefaultNavigationBackButtonHeight;
 
 			NavigationBackButtonHeight = buttonHeight;
 			NavigationBackButtonWidth = DefaultNavigationBackButtonWidth * buttonRatio;
 
-			var paneToggleHeight = Math.Min(_appBarTitleHeight, DefaultPaneToggleButtonHeight);
+			var paneToggleHeight = Math.Max(_appBarTitleHeight, DefaultPaneToggleButtonHeight);
 			var paneToggleRatio = paneToggleHeight / DefaultPaneToggleButtonHeight;
 
 			PaneToggleButtonHeight = paneToggleHeight;
@@ -277,7 +269,6 @@ namespace Microsoft.Maui.Platform
 			if (PaneDisplayMode == NavigationViewPaneDisplayMode.LeftMinimal ||
 				PaneDisplayMode == NavigationViewPaneDisplayMode.Top)
 			{
-
 				NavigationViewButtonHolderGridMargin = new WThickness(0, 0, 0, 0);
 				NavigationViewBackButtonMargin = new WThickness(0, 0, 0, 0);
 				PaneToggleButtonPadding = new WThickness();
@@ -297,7 +288,6 @@ namespace Microsoft.Maui.Platform
 
 			UpdatePaneContentGridMargin();
 			UpdateToolbarPlacement();
-			UpdateContentGridMargin();
 		}
 
 		// This updates the amount of space between the top of the window
@@ -339,8 +329,11 @@ namespace Microsoft.Maui.Platform
 			if (PaneContentGrid == null)
 				return;
 
-			var newSize = new Size(OpenPaneLength, PaneContentGrid.ActualHeight - PaneContentGrid.RowDefinitions[1].Height.Value);
+			var newHeight = PaneContentGrid.ActualHeight - PaneContentGrid.RowDefinitions[1].Height.Value;
+			if (newHeight < 0)
+				return;
 
+			var newSize = new Size(OpenPaneLength, newHeight);
 			if (newSize == FlyoutPaneSize)
 				return;
 
@@ -350,11 +343,9 @@ namespace Microsoft.Maui.Platform
 			_flyoutPanel.InvalidateMeasure();
 		}
 
-		readonly FlyoutPanel _flyoutPanel = new FlyoutPanel();
-
 		void ReplacePaneMenuItemsWithCustomContent(UIElement? customContent)
 		{
-			_flyoutPanel.Children.Clear();
+			_flyoutPanel.CachedChildren.Clear();
 
 			if (customContent == null)
 			{
@@ -362,7 +353,7 @@ namespace Microsoft.Maui.Platform
 			}
 			else
 			{
-				_flyoutPanel.Children.Add(customContent);
+				_flyoutPanel.CachedChildren.Add(customContent);
 				PaneCustomContent = _flyoutPanel;
 			}
 		}
@@ -376,9 +367,21 @@ namespace Microsoft.Maui.Platform
 		// We use a container because if we just assign our Flyout to the PaneFooter on the NavigationView 
 		// The measure call passes in PositiveInfinity for the measurements which causes the layout system
 		// to crash. So we use this Panel to facilitate more constrained measuring values
-		class FlyoutPanel : Panel
+		partial class FlyoutPanel : Panel
 		{
 			public Maui.IView? FlyoutView { get; set; }
+
+			UIElementCollection? _cachedChildren;
+
+			[SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs", Justification = "Panel.Children property is banned to enforce use of this CachedChildren property.")]
+			internal UIElementCollection CachedChildren
+			{
+				get
+				{
+					_cachedChildren ??= Children;
+					return _cachedChildren;
+				}
+			}
 
 			public FlyoutPanel()
 			{
@@ -387,7 +390,7 @@ namespace Microsoft.Maui.Platform
 			public double ContentWidth { get; set; }
 
 			FrameworkElement? FlyoutContent =>
-				Children.Count > 0 ? (FrameworkElement?)Children[0] : null;
+				CachedChildren.Count > 0 ? (FrameworkElement?)CachedChildren[0] : null;
 
 			protected override Size MeasureOverride(Size availableSize)
 			{

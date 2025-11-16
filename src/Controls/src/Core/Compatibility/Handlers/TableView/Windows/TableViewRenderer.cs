@@ -1,14 +1,17 @@
+#nullable disable
 using System;
+using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using WItemsControl = Microsoft.UI.Xaml.Controls.ItemsControl;
 using WSelectionChangedEventArgs = Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs;
-using Microsoft.Maui.Controls.Platform;
 
 namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
-	public class TableViewRenderer : ViewRenderer<TableView, Microsoft.UI.Xaml.Controls.ListView>
+#pragma warning disable CS0618 // Type or member is obsolete
+	public partial class TableViewRenderer : ViewRenderer<TableView, Microsoft.UI.Xaml.Controls.ListView>
+#pragma warning restore CS0618 // Type or member is obsolete
 	{
 		bool _ignoreSelectionEvent;
 		bool _disposed;
@@ -23,7 +26,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			return new Size(40, 40);
 		}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		protected override void OnElementChanged(ElementChangedEventArgs<TableView> e)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 			if (e.OldElement != null)
 			{
@@ -34,15 +39,18 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				if (Control == null)
 				{
-
-					SetNativeControl(new Microsoft.UI.Xaml.Controls.ListView
+					var listView = new Microsoft.UI.Xaml.Controls.ListView
 					{
 						ItemContainerStyle = (Microsoft.UI.Xaml.Style)Microsoft.UI.Xaml.Application.Current.Resources["MauiListViewItem"],
 						ItemTemplate = (Microsoft.UI.Xaml.DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["CellTemplate"],
 						GroupStyle = { new GroupStyle { HidesIfEmpty = false, HeaderTemplate = (Microsoft.UI.Xaml.DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["TableSection"] } },
 						HeaderTemplate = (Microsoft.UI.Xaml.DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["TableRoot"],
 						SelectionMode = Microsoft.UI.Xaml.Controls.ListViewSelectionMode.Single
-					});
+					};
+
+					listView.ApplyListViewStyles();
+
+					SetNativeControl(listView);
 
 					// You can't set ItemsSource directly to a CollectionViewSource, it crashes.
 					Control.SetBinding(WItemsControl.ItemsSourceProperty, "");
@@ -58,12 +66,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		protected override void Dispose(bool disposing)
 		{
-			if(disposing && !_disposed)
+			if (disposing && !_disposed)
 			{
 				_disposed = true;
-				if(Control != null)
+				if (Control != null)
 				{
-					Control.SelectionChanged -= OnSelectionChanged;				
+					Control.SelectionChanged -= OnSelectionChanged;
 				}
 			}
 			base.Dispose(disposing);
@@ -86,12 +94,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				foreach (object item in e.AddedItems)
 				{
+#pragma warning disable CS0618 // Type or member is obsolete
 					if (item is Cell cell)
 					{
 						if (cell.IsEnabled)
 							Element.Model.RowSelected(cell);
 						break;
 					}
+#pragma warning restore CS0618 // Type or member is obsolete
 				}
 			}
 

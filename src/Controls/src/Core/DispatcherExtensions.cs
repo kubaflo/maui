@@ -1,8 +1,8 @@
-#nullable enable
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Dispatching;
+using Microsoft.Maui.Hosting;
 
 namespace Microsoft.Maui.Controls
 {
@@ -23,11 +23,17 @@ namespace Microsoft.Maui.Controls
 			if (Dispatcher.GetForCurrentThread() is IDispatcher globalDispatcher)
 				return globalDispatcher;
 
-			// If BO is of type Application then check for its Dispatcher
+			// If BO is of type Application then return the Dispatcher from ApplicationDispatcher
 			if (bindableObject is Application app &&
-				app.FindMauiContext() is IMauiContext appMauiContext &&
-				appMauiContext.Services.GetService<IDispatcher>() is IDispatcher appHandlerDispatcher)
-				return appHandlerDispatcher;
+				app.FindMauiContext() is IMauiContext appMauiContext)
+			{
+				if (appMauiContext.Services.GetOptionalApplicationDispatcher() is IDispatcher appDispatcherServiceDispatcher)
+					return appDispatcherServiceDispatcher;
+
+				// If BO is of type Application then check for its Dispatcher
+				if (appMauiContext.Services.GetService<IDispatcher>() is IDispatcher appHandlerDispatcher)
+					return appHandlerDispatcher;
+			}
 
 			// try looking on the static app
 			// We don't include Application because Application.Dispatcher will call

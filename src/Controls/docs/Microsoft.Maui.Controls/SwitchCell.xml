@@ -71,7 +71,7 @@ namespace FormsGallery
 }]]></code>
       </example>
       <para>
-        <img href="~/Microsoft.Maui.Controls/_images/SwitchCell.TripleScreenShot.png" />
+        <img href="~/xml/Microsoft.Maui.Controls/_images/SwitchCell.TripleScreenShot.png" />
       </para>
     </remarks>
   </Docs>
@@ -95,7 +95,6 @@ namespace FormsGallery
       <Parameters />
       <Docs>
         <summary>Initializes a new instance of the SwitchCell class.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="On">
@@ -121,7 +120,6 @@ namespace FormsGallery
       <Docs>
         <summary>Gets or sets the state of the switch. This is a bindable property.</summary>
         <value>Default is <see langword="false" />.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="OnChanged">
@@ -146,26 +144,22 @@ namespace FormsGallery
       </ReturnValue>
       <Docs>
         <summary>Triggered when the switch has changed value.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="OnColor">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.Color OnColor { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.Color OnColor" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.Graphics.Color OnColor { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Graphics.Color OnColor" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.SwitchCell.OnColor" />
-      <MemberSignature Language="F#" Value="member this.OnColor : Microsoft.Maui.Controls.Color with get, set" Usage="Microsoft.Maui.Controls.SwitchCell.OnColor" />
+      <MemberSignature Language="F#" Value="member this.OnColor : Microsoft.Maui.Graphics.Color with get, set" Usage="Microsoft.Maui.Controls.SwitchCell.OnColor" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.Color</ReturnType>
+        <ReturnType>Microsoft.Maui.Graphics.Color</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="OnColorProperty">
@@ -183,7 +177,6 @@ namespace FormsGallery
       </ReturnValue>
       <Docs>
         <summary>The backing store for the <see cref="P:Microsoft.Maui.Controls.SwitchCell.OnColor" /> field.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="OnProperty">
@@ -208,7 +201,6 @@ namespace FormsGallery
       </ReturnValue>
       <Docs>
         <summary>Identifies the <see cref="P:Microsoft.Maui.Controls.SwitchCell.On" /> bindable property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Text">
@@ -235,7 +227,6 @@ namespace FormsGallery
         <summary>Gets or sets the text displayed next to the switch. This is a bindable property.</summary>
         <value>
         </value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="TextProperty">
@@ -260,7 +251,6 @@ namespace FormsGallery
       </ReturnValue>
       <Docs>
         <summary>Identifies the Text bindable property.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
   </Members>

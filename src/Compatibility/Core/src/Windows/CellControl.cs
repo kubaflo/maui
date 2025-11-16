@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using Windows.UI.Input;
+using Microsoft.Maui.Controls.Handlers.Compatibility;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
@@ -10,17 +13,16 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.Maui.Controls.Internals;
+using Windows.UI.Input;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
+using WFlyoutBase = Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase;
+using WMenuFlyout = Microsoft.UI.Xaml.Controls.MenuFlyout;
 using WSolidColorBrush = Microsoft.UI.Xaml.Media.SolidColorBrush;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Handlers.Compatibility;
-using Microsoft.Maui.Controls.Platform;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[Obsolete("Use Microsoft.Maui.Controls.Platform.Compatibility.CellControl instead")]
-	public class CellControl : ContentControl
+	public partial class CellControl : ContentControl
 	{
 		public static readonly DependencyProperty CellProperty = DependencyProperty.Register("Cell", typeof(object), typeof(CellControl),
 			new PropertyMetadata(null, (o, e) => ((CellControl)o).SetSource((Cell)e.OldValue, (Cell)e.NewValue)));
@@ -54,7 +56,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			if (Cell == null)
 				return;
 
-			/// 🚀 subscribe topropertychanged
+			// 🚀 subscribe topropertychanged
 			// make sure we do not subscribe twice (because this could happen in SetSource(Cell oldCell, Cell newCell))
 			Cell.PropertyChanged -= _propertyChangedHandler;
 			Cell.PropertyChanged += _propertyChangedHandler;
@@ -66,7 +68,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				return;
 
 			Cell.SendDisappearing();
-			/// 🚀 unsubscribe from propertychanged
+			// 🚀 unsubscribe from propertychanged
 			Cell.PropertyChanged -= _propertyChangedHandler;
 		}
 
@@ -126,10 +128,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			// Children still need measure called on them
 			global::Windows.Foundation.Size result = base.MeasureOverride(availableSize);
 
-			if (lv != null)
-			{
-				lv.SetValue(MeasuredEstimateProperty, result.Height);
-			}
+			lv?.SetValue(MeasuredEstimateProperty, result.Height);
 
 			SetDefaultSwitchColor();
 
@@ -284,9 +283,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		/// <summary>
 		/// To check the context, not just the text.
 		/// </summary>
-		MenuFlyout GetAttachedFlyout()
+		WMenuFlyout GetAttachedFlyout()
 		{
-			if (FlyoutBase.GetAttachedFlyout(CellContent) is MenuFlyout flyout)
+			if (WFlyoutBase.GetAttachedFlyout(CellContent) is WMenuFlyout flyout)
 			{
 				var actions = Cell.ContextActions;
 				if (flyout.Items.Count != actions.Count)
@@ -306,16 +305,16 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		{
 			if (GetAttachedFlyout() == null)
 			{
-				var flyout = new MenuFlyout();
+				var flyout = new WMenuFlyout();
 				SetupMenuItems(flyout);
 
 				((INotifyCollectionChanged)Cell.ContextActions).CollectionChanged += OnContextActionsChanged;
 
 				_contextActions = Cell.ContextActions;
-				FlyoutBase.SetAttachedFlyout(CellContent, flyout);
+				WFlyoutBase.SetAttachedFlyout(CellContent, flyout);
 			}
 
-			FlyoutBase.ShowAttachedFlyout(CellContent);
+			WFlyoutBase.ShowAttachedFlyout(CellContent);
 		}
 
 		void SetCell(object newContext)
@@ -441,7 +440,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 					_contextActions = null;
 				}
 
-				FlyoutBase.SetAttachedFlyout(CellContent, null);
+				WFlyoutBase.SetAttachedFlyout(CellContent, null);
 				return;
 			}
 
@@ -449,9 +448,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			CellContent.Holding += OnLongTap;
 		}
 
-		void SetupMenuItems(MenuFlyout flyout)
+		void SetupMenuItems(WMenuFlyout flyout)
 		{
-			foreach (MenuItem item in Cell.ContextActions)
+			foreach (var item in Cell.ContextActions)
 			{
 				var flyoutItem = new Microsoft.UI.Xaml.Controls.MenuFlyoutItem();
 				flyoutItem.SetBinding(UI.Xaml.Controls.MenuFlyoutItem.TextProperty, "Text");

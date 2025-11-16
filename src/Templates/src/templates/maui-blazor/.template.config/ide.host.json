@@ -1,18 +1,30 @@
 {
-    "$schema": "http://json.schemastore.org/vs-2017.3.host",
-    "icon": "ide/icon.ico",
-    "unsupportedHosts": [
-        {
-            "id": "vs",
-            "version": "(,17.2)"
-        }
-    ],
-    "requiredComponents": [ 
-        { 
-              "id": "Microsoft.VisualStudio.ComponentGroup.Maui.Blazor", 
-              "hostId": "vs", 
-              "componentType": "SetupComponent" 
-        }
-    
-   ]
+  "$schema": "http://json.schemastore.org/ide.host",
+  "icon": "ide/icon.ico",
+  "unsupportedHosts": [
+    {
+      "id": "vs",
+      "version": "(,17.3)"
+    }
+  ],
+  "requiredComponents": [
+    {
+      "id": "Microsoft.VisualStudio.ComponentGroup.Maui.Blazor",
+      "hostId": "vs",
+      "componentType": "SetupComponent"
+    }
+  ],
+  "symbolInfo": [
+    {
+      "id": "Framework",
+      "persistenceScope": "shared",
+      "persistenceScopeName": "maui"
+    },
+    {
+      "id": "IncludeSampleContent",
+      "isVisible": true,
+      "persistenceScope": "shared",
+      "persistenceScopeName": "Microsoft"
+    }
+  ]
 }

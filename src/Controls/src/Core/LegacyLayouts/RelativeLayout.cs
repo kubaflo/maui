@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,16 +11,23 @@ using Microsoft.Maui.Graphics;
 namespace Microsoft.Maui.Controls.Compatibility
 {
 	[ContentProperty(nameof(Children))]
+#pragma warning disable CS0618 // Type or member is obsolete
 	public class RelativeLayout : Layout<View>, IElementConfiguration<RelativeLayout>
+#pragma warning restore CS0618 // Type or member is obsolete
 	{
+		/// <summary>Bindable property for attached property <c>XConstraint</c>.</summary>
 		public static readonly BindableProperty XConstraintProperty = BindableProperty.CreateAttached("XConstraint", typeof(Constraint), typeof(RelativeLayout), null, propertyChanged: ConstraintChanged);
 
+		/// <summary>Bindable property for attached property <c>YConstraint</c>.</summary>
 		public static readonly BindableProperty YConstraintProperty = BindableProperty.CreateAttached("YConstraint", typeof(Constraint), typeof(RelativeLayout), null, propertyChanged: ConstraintChanged);
 
+		/// <summary>Bindable property for attached property <c>WidthConstraint</c>.</summary>
 		public static readonly BindableProperty WidthConstraintProperty = BindableProperty.CreateAttached("WidthConstraint", typeof(Constraint), typeof(RelativeLayout), null, propertyChanged: ConstraintChanged);
 
+		/// <summary>Bindable property for attached property <c>HeightConstraint</c>.</summary>
 		public static readonly BindableProperty HeightConstraintProperty = BindableProperty.CreateAttached("HeightConstraint", typeof(Constraint), typeof(RelativeLayout), null, propertyChanged: ConstraintChanged);
 
+		/// <summary>Bindable property for attached property <c>BoundsConstraint</c>.</summary>
 		public static readonly BindableProperty BoundsConstraintProperty = BindableProperty.CreateAttached("BoundsConstraint", typeof(BoundsConstraint), typeof(RelativeLayout), null);
 
 		readonly RelativeElementCollection _children;
@@ -40,6 +48,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 				new PlatformConfigurationRegistry<RelativeLayout>(this));
 		}
 
+		/// <inheritdoc/>
 		public IPlatformElementConfiguration<T, RelativeLayout> On<T>() where T : IConfigPlatform
 		{
 			return _platformConfigurationRegistry.Value.On<T>();
@@ -104,7 +113,9 @@ namespace Microsoft.Maui.Controls.Compatibility
 
 			_childrenInSolveOrder = null; // New constraints may have impact on solve order
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			InvalidateLayout();
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		public static BoundsConstraint GetBoundsConstraint(BindableObject bindable)
@@ -157,13 +168,17 @@ namespace Microsoft.Maui.Controls.Compatibility
 			bindable.SetValue(YConstraintProperty, value);
 		}
 
+#pragma warning disable CS0672 // Member overrides obsolete member
 		protected override void LayoutChildren(double x, double y, double width, double height)
 		{
 			foreach (View child in ChildrenInSolveOrder)
 			{
+#pragma warning disable CS0618 // Type or member is obsolete
 				LayoutChildIntoBoundingRegion(child, SolveView(child));
+#pragma warning restore CS0618 // Type or member is obsolete
 			}
 		}
+#pragma warning restore CS0672 // Member overrides obsolete member
 
 		protected override void OnAdded(View view)
 		{
@@ -184,7 +199,11 @@ namespace Microsoft.Maui.Controls.Compatibility
 			base.OnRemoved(view);
 		}
 
+#pragma warning disable CS0672 // Member overrides obsolete member
+#pragma warning disable CS0618 // Type or member is obsolete
 		protected override SizeRequest OnMeasure(double widthConstraint, double heightConstraint)
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0672 // Member overrides obsolete member
 		{
 			double mockWidth = double.IsPositiveInfinity(widthConstraint) ? (Parent as VisualElement).Width : widthConstraint;
 			double mockHeight = double.IsPositiveInfinity(heightConstraint) ? (Parent as VisualElement).Height : heightConstraint;
@@ -215,7 +234,9 @@ namespace Microsoft.Maui.Controls.Compatibility
 
 			UnmockBounds();
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			return new SizeRequest(new Size(boundsRectangle.Right, boundsRectangle.Bottom));
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		bool CanSolveView(View view, Dictionary<View, bool> solveTable)
@@ -285,7 +306,9 @@ namespace Microsoft.Maui.Controls.Compatibility
 					parents.AddRange(widthConstraint.RelativeTo);
 			}
 			else
+#pragma warning disable CS0618 // Type or member is obsolete
 				width = () => view.Measure(Width, heightConstraint != null ? height() : Height, MeasureFlags.IncludeMargins).Request.Width;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			if (heightConstraint != null)
 			{
@@ -294,12 +317,13 @@ namespace Microsoft.Maui.Controls.Compatibility
 					parents.AddRange(heightConstraint.RelativeTo);
 			}
 			else
+#pragma warning disable CS0618 // Type or member is obsolete
 				height = () => view.Measure(widthConstraint != null ? width() : Width, Height, MeasureFlags.IncludeMargins).Request.Height;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			BoundsConstraint bounds = BoundsConstraint.FromExpression(() => new Rect(x(), y(), width(), height()), parents.Distinct().ToArray());
 			SetBoundsConstraint(view, bounds);
 		}
-
 		static Rect SolveView(View view)
 		{
 			BoundsConstraint boundsConstraint = GetBoundsConstraint(view);
@@ -345,8 +369,10 @@ namespace Microsoft.Maui.Controls.Compatibility
 			{
 				Func<double> xCompiled = x != null ? x.Compile() : () => 0;
 				Func<double> yCompiled = y != null ? y.Compile() : () => 0;
+#pragma warning disable CS0618 // Type or member is obsolete
 				Func<double> widthCompiled = width != null ? width.Compile() : () => view.Measure(Parent.Width, Parent.Height, MeasureFlags.IncludeMargins).Request.Width;
 				Func<double> heightCompiled = height != null ? height.Compile() : () => view.Measure(Parent.Width, Parent.Height, MeasureFlags.IncludeMargins).Request.Height;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 				var parents = new List<View>();
 				parents.AddRange(ExpressionSearch.Default.FindObjects<View>(x));

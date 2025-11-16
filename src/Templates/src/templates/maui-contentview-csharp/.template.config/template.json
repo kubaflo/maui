@@ -1,9 +1,12 @@
 {
     "$schema": "http://json.schemastore.org/template",
     "author": "Microsoft",
-    "classifications": [ "MAUI", "Android", "iOS", "macOS", "Mac Catalyst", "WinUI", "Tizen", "Xaml", "Code" ],
-    "identity": "Microsoft.Maui.CSharpContentView",
+    "classifications": [ "MAUI", "Android", "iOS", "macOS", "Mac Catalyst", "WinUI", "Xaml", "Code" ],
+    "identity": "Microsoft.Maui.CSharpContentView.DOTNET_TFM_VERSION_VALUE",
+    "groupIdentity": "Microsoft.Maui.CSharpContentView",
+    "precedence": "DOTNET_TFM_VERSION_MAJOR_VALUE",
     "name": ".NET MAUI ContentView (C#)",
+    "description": "A view for displaying content using C#. This is very suitable for creating your own custom and reusable controls.",
     "shortName": "maui-view-csharp",
     "tags": {
       "language": "C#",
@@ -35,6 +38,10 @@
         "description": "Namespace for the generated code.",
         "replaces": "MauiApp1",
         "type": "parameter"
+      },
+      "HostIdentifier": {
+          "type": "bind",
+          "binding": "HostIdentifier"
       }
     }
   }

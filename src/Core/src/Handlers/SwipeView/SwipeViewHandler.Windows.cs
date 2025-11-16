@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
-using WSwipeControl = Microsoft.UI.Xaml.Controls.SwipeControl;
-using WSwipeItems = Microsoft.UI.Xaml.Controls.SwipeItems;
-using WSwipeItem = Microsoft.UI.Xaml.Controls.SwipeItem;
 using Microsoft.Maui.Graphics;
+using WSwipeControl = Microsoft.UI.Xaml.Controls.SwipeControl;
+using WSwipeItem = Microsoft.UI.Xaml.Controls.SwipeItem;
+using WSwipeItems = Microsoft.UI.Xaml.Controls.SwipeItems;
 
 namespace Microsoft.Maui.Handlers
 {
@@ -41,6 +41,11 @@ namespace Microsoft.Maui.Handlers
 			{
 				return;
 			}
+
+			// Note: On Windows, the SwipeView control leverages the underlying SwipeControl from WinUI.
+			// Unlike other platforms, SwipeControl does not provide a method to programmatically open or reveal its content.
+			// As a result, programmatic triggering of the swipe functionality is not supported.
+			// https://learn.microsoft.com/en-us/windows/winui/api/microsoft.ui.xaml.controls.swipecontrol.close?view=winui-2.8
 		}
 
 		public static void MapRequestClose(ISwipeViewHandler handler, ISwipeView swipeView, object? args)
@@ -48,24 +53,23 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView.Close();
 		}
 
-
 		protected override void ConnectHandler(WSwipeControl platformView)
 		{
 			base.ConnectHandler(platformView);
-			PlatformView.Loaded += OnLoaded;
+			platformView.Loaded += OnLoaded;
 		}
 
 		protected override void DisconnectHandler(WSwipeControl platformView)
 		{
 			base.DisconnectHandler(platformView);
-			PlatformView.Loaded -= OnLoaded;
+			platformView.Loaded -= OnLoaded;
 		}
 
 		void OnLoaded(object sender, UI.Xaml.RoutedEventArgs e)
 		{
 			if (!PlatformView.IsLoaded)
 				return;
-				
+
 			// Setting the Left/Right Items before the view has loaded causes the Swipe Control
 			// to crash on the first layout pass. So we wait until the control has been loaded
 			// before propagating our Left/Right Items
@@ -112,7 +116,7 @@ namespace Microsoft.Maui.Handlers
 
 			try
 			{
-				if(wSwipeItems != null || items.Count > 0)
+				if (wSwipeItems != null || items.Count > 0)
 					setSwipeItems(items);
 			}
 			catch

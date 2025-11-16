@@ -1,4 +1,5 @@
 ﻿using System;
+using Android.Views;
 
 namespace Microsoft.Maui.Handlers
 {
@@ -13,13 +14,12 @@ namespace Microsoft.Maui.Handlers
 
 			var viewGroup = new ContentViewGroup(Context)
 			{
-				CrossPlatformMeasure = VirtualView.CrossPlatformMeasure,
-				CrossPlatformArrange = VirtualView.CrossPlatformArrange
+				CrossPlatformLayout = VirtualView
 			};
 
 			// We only want to use a hardware layer for the entering view because its quite likely
 			// the view will invalidate several times the Drawable (Draw).
-			viewGroup.SetLayerType(Android.Views.LayerType.Hardware, null);
+			viewGroup.SetLayerType(LayerType.Hardware, null);
 
 			return viewGroup;
 		}
@@ -27,14 +27,14 @@ namespace Microsoft.Maui.Handlers
 		public override void SetVirtualView(IView view)
 		{
 			base.SetVirtualView(view);
+
 			_ = VirtualView ?? throw new InvalidOperationException($"{nameof(VirtualView)} should have been set by base class.");
 			_ = PlatformView ?? throw new InvalidOperationException($"{nameof(PlatformView)} should have been set by base class.");
 
-			PlatformView.CrossPlatformMeasure = VirtualView.CrossPlatformMeasure;
-			PlatformView.CrossPlatformArrange = VirtualView.CrossPlatformArrange;
+			PlatformView.CrossPlatformLayout = VirtualView;
 		}
 
-		static void UpdateContent(IBorderHandler handler)
+		static partial void UpdateContent(IBorderHandler handler)
 		{
 			_ = handler.PlatformView ?? throw new InvalidOperationException($"{nameof(PlatformView)} should have been set by base class.");
 			_ = handler.MauiContext ?? throw new InvalidOperationException($"{nameof(MauiContext)} should have been set by base class.");
@@ -46,26 +46,21 @@ namespace Microsoft.Maui.Handlers
 				handler.PlatformView.AddView(view.ToPlatform(handler.MauiContext));
 		}
 
-		public static void MapHeight(IBorderHandler handler, IBorderView border)
+		public static partial void MapHeight(IBorderHandler handler, IBorderView border)
 		{
 			handler.PlatformView?.UpdateHeight(border);
 			handler.PlatformView?.InvalidateBorderStrokeBounds();
 		}
 
-		public static void MapWidth(IBorderHandler handler, IBorderView border)
+		public static partial void MapWidth(IBorderHandler handler, IBorderView border)
 		{
 			handler.PlatformView?.UpdateWidth(border);
 			handler.PlatformView?.InvalidateBorderStrokeBounds();
 		}
 
-		public static void MapContent(IBorderHandler handler, IBorderView border)
-		{
-			UpdateContent(handler);
-		}
-
 		protected override void DisconnectHandler(ContentViewGroup platformView)
 		{
-			// If we're being disconnected from the xplat element, then we should no longer be managing its chidren
+			// If we're being disconnected from the xplat element, then we should no longer be managing its children
 			platformView.RemoveAllViews();
 
 			base.DisconnectHandler(platformView);

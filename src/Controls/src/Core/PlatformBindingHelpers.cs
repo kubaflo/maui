@@ -1,6 +1,8 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -10,10 +12,11 @@ using static System.String;
 
 namespace Microsoft.Maui.Controls.Internals
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls.Internals/PlatformBindingHelpers.xml" path="Type[@FullName='Microsoft.Maui.Controls.Internals.PlatformBindingHelpers']/Docs" />	
+	/// <summary>Internal API for Microsoft.Maui.Controls platform use.</summary>
+	/// <remarks>For internal use only. This API can be changed or removed without notice at any time.</remarks>	
 	internal static class PlatformBindingHelpers
 	{
-		/// <include file="../../docs/Microsoft.Maui.Controls.Internals/PlatformBindingHelpers.xml" path="//Member[@MemberName='SetBinding'][1]/Docs" />
+		[RequiresUnreferencedCode(TrimmerConstants.StringPathBindingWarning, Url = TrimmerConstants.ExpressionBasedBindingsDocsUrl)]
 		public static void SetBinding<TPlatformView>(TPlatformView target, string targetProperty, BindingBase bindingBase, string updateSourceEventName = null) where TPlatformView : class
 		{
 			var binding = bindingBase as Binding;
@@ -22,12 +25,12 @@ namespace Microsoft.Maui.Controls.Internals
 				updateSourceEventName = binding.UpdateSourceEventName;
 			INotifyPropertyChanged eventWrapper = null;
 			if (!IsNullOrEmpty(updateSourceEventName))
-				eventWrapper = new EventWrapper(target, targetProperty, updateSourceEventName);
+				eventWrapper = new EventWrapper<TPlatformView>(target, targetProperty, updateSourceEventName);
 
 			SetBinding(target, targetProperty, bindingBase, eventWrapper);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls.Internals/PlatformBindingHelpers.xml" path="//Member[@MemberName='SetBinding'][2]/Docs" />
+		[RequiresUnreferencedCode(TrimmerConstants.StringPathBindingWarning, Url = TrimmerConstants.ExpressionBasedBindingsDocsUrl)]
 		public static void SetBinding<TPlatformView>(TPlatformView target, string targetProperty, BindingBase bindingBase, INotifyPropertyChanged propertyChanged) where TPlatformView : class
 		{
 			if (target == null)
@@ -42,13 +45,13 @@ namespace Microsoft.Maui.Controls.Internals
 			var targetPropertyInfo = target.GetType().GetProperty(targetProperty);
 			var propertyType = targetPropertyInfo?.PropertyType;
 			var defaultValue = targetPropertyInfo?.GetMethod.Invoke(target, Array.Empty<object>());
-			bindableProperty = CreateBindableProperty<TPlatformView>(targetProperty, propertyType, defaultValue);
+			bindableProperty = CreateBindableProperty(targetProperty, propertyType, defaultValue);
 			if (binding != null && binding.Mode != BindingMode.OneWay && propertyChanged != null)
 				propertyChanged.PropertyChanged += (sender, e) =>
 				{
 					if (e.PropertyName != targetProperty)
 						return;
-					SetValueFromNative<TPlatformView>(sender as TPlatformView, targetProperty, bindableProperty);
+					SetValueFromNative(sender as TPlatformView, targetProperty, bindableProperty);
 					//we need to keep the listener around he same time we have the proxy
 					proxy.NativeINPCListener = propertyChanged;
 				};
@@ -57,49 +60,48 @@ namespace Microsoft.Maui.Controls.Internals
 				SetValueFromNative(target, targetProperty, bindableProperty);
 
 			proxy.SetBinding(bindableProperty, bindingBase);
+
+			static BindableProperty CreateBindableProperty(string targetProperty, Type propertyType = null, object defaultValue = null)
+			{
+				propertyType = propertyType ?? typeof(object);
+				defaultValue = defaultValue ?? (propertyType.IsValueType ? Activator.CreateInstance(propertyType) : null);
+				return BindableProperty.Create(
+					targetProperty,
+					propertyType,
+					typeof(BindableObjectProxy<TPlatformView>),
+					defaultValue: defaultValue,
+					defaultBindingMode: BindingMode.Default,
+					propertyChanged: (bindable, oldValue, newValue) =>
+					{
+						TPlatformView platformView;
+						if ((bindable as BindableObjectProxy<TPlatformView>).TargetReference.TryGetTarget(out platformView))
+							SetPlatformValue(platformView, targetProperty, newValue);
+					}
+				);
+			}
+
+			static void SetPlatformValue(TPlatformView target, string targetProperty, object newValue)
+			{
+				var mi = target.GetType().GetProperty(targetProperty)?.SetMethod;
+				if (mi == null)
+					throw new InvalidOperationException(Format("Native Binding on {0}.{1} failed due to missing or inaccessible property", target.GetType(), targetProperty));
+				mi.Invoke(target, new[] { newValue });
+			}
+
+			static void SetValueFromNative(TPlatformView target, string targetProperty, BindableProperty bindableProperty)
+			{
+				BindableObjectProxy<TPlatformView> proxy;
+				if (!BindableObjectProxy<TPlatformView>.BindableObjectProxies.TryGetValue(target, out proxy))
+					return;
+				SetValueFromRenderer(proxy, bindableProperty, target.GetType().GetProperty(targetProperty)?.GetMethod.Invoke(target, Array.Empty<object>()));
+			}
+
+			static void SetValueFromRenderer(BindableObject bindable, BindableProperty property, object value)
+			{
+				bindable.SetValue(property, value);
+			}
 		}
 
-		static BindableProperty CreateBindableProperty<TPlatformView>(string targetProperty, Type propertyType = null, object defaultValue = null) where TPlatformView : class
-		{
-			propertyType = propertyType ?? typeof(object);
-			defaultValue = defaultValue ?? (propertyType.IsValueType ? Activator.CreateInstance(propertyType) : null);
-			return BindableProperty.Create(
-				targetProperty,
-				propertyType,
-				typeof(BindableObjectProxy<TPlatformView>),
-				defaultValue: defaultValue,
-				defaultBindingMode: BindingMode.Default,
-				propertyChanged: (bindable, oldValue, newValue) =>
-				{
-					TPlatformView platformView;
-					if ((bindable as BindableObjectProxy<TPlatformView>).TargetReference.TryGetTarget(out platformView))
-						SetPlatformValue(platformView, targetProperty, newValue);
-				}
-			);
-		}
-
-		static void SetPlatformValue<TPlatformView>(TPlatformView target, string targetProperty, object newValue) where TPlatformView : class
-		{
-			var mi = target.GetType().GetProperty(targetProperty)?.SetMethod;
-			if (mi == null)
-				throw new InvalidOperationException(Format("Native Binding on {0}.{1} failed due to missing or inaccessible property", target.GetType(), targetProperty));
-			mi.Invoke(target, new[] { newValue });
-		}
-
-		static void SetValueFromNative<TPlatformView>(TPlatformView target, string targetProperty, BindableProperty bindableProperty) where TPlatformView : class
-		{
-			BindableObjectProxy<TPlatformView> proxy;
-			if (!BindableObjectProxy<TPlatformView>.BindableObjectProxies.TryGetValue(target, out proxy))
-				return;
-			SetValueFromRenderer(proxy, bindableProperty, target.GetType().GetProperty(targetProperty)?.GetMethod.Invoke(target, new object[] { }));
-		}
-
-		static void SetValueFromRenderer(BindableObject bindable, BindableProperty property, object value)
-		{
-			bindable.SetValueCore(property, value);
-		}
-
-		/// <include file="../../docs/Microsoft.Maui.Controls.Internals/PlatformBindingHelpers.xml" path="//Member[@MemberName='SetBinding'][3]/Docs" />
 		public static void SetBinding<TPlatformView>(TPlatformView target, BindableProperty targetProperty, BindingBase binding) where TPlatformView : class
 		{
 			if (target == null)
@@ -113,7 +115,6 @@ namespace Microsoft.Maui.Controls.Internals
 			proxy.BindingsBackpack.Add(new KeyValuePair<BindableProperty, BindingBase>(targetProperty, binding));
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls.Internals/PlatformBindingHelpers.xml" path="//Member[@MemberName='SetValue']/Docs" />
 		public static void SetValue<TPlatformView>(TPlatformView target, BindableProperty targetProperty, object value) where TPlatformView : class
 		{
 			if (target == null)
@@ -125,7 +126,6 @@ namespace Microsoft.Maui.Controls.Internals
 			proxy.ValuesBackpack.Add(new KeyValuePair<BindableProperty, object>(targetProperty, value));
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls.Internals/PlatformBindingHelpers.xml" path="//Member[@MemberName='SetBindingContext']/Docs" />
 		public static void SetBindingContext<TPlatformView>(TPlatformView target, object bindingContext, Func<TPlatformView, IEnumerable<TPlatformView>> getChild = null) where TPlatformView : class
 		{
 			if (target == null)
@@ -143,7 +143,6 @@ namespace Microsoft.Maui.Controls.Internals
 					SetBindingContext(child, bindingContext, getChild);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls.Internals/PlatformBindingHelpers.xml" path="//Member[@MemberName='TransferBindablePropertiesToWrapper']/Docs" />
 		public static void TransferBindablePropertiesToWrapper<TPlatformView, TPlatformWrapper>(TPlatformView platformView, TPlatformWrapper wrapper)
 			where TPlatformView : class
 			where TPlatformWrapper : View
@@ -154,20 +153,19 @@ namespace Microsoft.Maui.Controls.Internals
 			proxy.TransferAttachedPropertiesTo(wrapper);
 		}
 
-		class EventWrapper : INotifyPropertyChanged
+		class EventWrapper<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicEvents)] TTarget> : INotifyPropertyChanged
 		{
 			string TargetProperty { get; set; }
-			static readonly MethodInfo s_handlerinfo = typeof(EventWrapper).GetRuntimeMethods().Single(mi => mi.Name == "OnPropertyChanged" && mi.IsPublic == false);
 
-			public EventWrapper(object target, string targetProperty, string updateSourceEventName)
+			public EventWrapper(TTarget target, string targetProperty, string updateSourceEventName)
 			{
 				TargetProperty = targetProperty;
 				Delegate handlerDelegate = null;
 				EventInfo updateSourceEvent = null;
 				try
 				{
-					updateSourceEvent = target.GetType().GetRuntimeEvent(updateSourceEventName);
-					handlerDelegate = s_handlerinfo.CreateDelegate(updateSourceEvent.EventHandlerType, this);
+					updateSourceEvent = typeof(TTarget).GetRuntimeEvent(updateSourceEventName);
+					handlerDelegate = ((EventHandler)OnPropertyChanged).Method.CreateDelegate(updateSourceEvent.EventHandlerType, this);
 				}
 				catch (Exception)
 				{

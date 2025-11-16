@@ -1,24 +1,23 @@
+#nullable disable
 using System;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Xml;
 using Microsoft.Extensions.Logging;
-using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.Xaml;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls/BindablePropertyConverter.xml" path="Type[@FullName='Microsoft.Maui.Controls.BindablePropertyConverter']/Docs" />
+	/// <include file="../../docs/Microsoft.Maui.Controls/BindablePropertyConverter.xml" path="Type[@FullName='Microsoft.Maui.Controls.BindablePropertyConverter']/Docs/*" />
 	[Xaml.ProvideCompiled("Microsoft.Maui.Controls.XamlC.BindablePropertyConverter")]
 	public sealed class BindablePropertyConverter : TypeConverter, IExtendedTypeConverter
 	{
-		/// <include file="../../docs/Microsoft.Maui.Controls/BindablePropertyConverter.xml" path="//Member[@MemberName='CanConvertFrom']/Docs" />
 		public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
 			=> sourceType == typeof(string);
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/BindablePropertyConverter.xml" path="//Member[@MemberName='CanConvertTo']/Docs" />
 		public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
 			=> true;
 
@@ -74,7 +73,6 @@ namespace Microsoft.Maui.Controls
 			throw new XamlParseException($"Can't resolve {value}. Syntax is [[prefix:]Type.]PropertyName.", lineinfo);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/BindablePropertyConverter.xml" path="//Member[@MemberName='ConvertFrom']/Docs" />
 		public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
 		{
 			var strValue = value?.ToString();
@@ -92,22 +90,39 @@ namespace Microsoft.Maui.Controls
 				Application.Current?.FindMauiContext()?.CreateLogger<BindablePropertyConverter>()?.LogWarning($"Can't resolve {value}. Accepted syntax is Type.PropertyName.");
 				return null;
 			}
-			Type type = Type.GetType("Microsoft.Maui.Controls." + parts[0]);
+			Type type = GetControlType(parts[0]);
 			return ConvertFrom(type, parts[1], null);
 		}
 
 		BindableProperty ConvertFrom(Type type, string propertyName, IXmlLineInfo lineinfo)
 		{
-			string name = propertyName + "Property";
-			FieldInfo bpinfo = type.GetField(fi => fi.Name == name && fi.IsStatic && fi.IsPublic && fi.FieldType == typeof(BindableProperty));
-			if (bpinfo == null)
+			var name = propertyName + "Property";
+			FieldInfo bpinfo = GetPropertyField(type, name);
+			if (bpinfo == null || bpinfo.FieldType != typeof(BindableProperty))
 				throw new XamlParseException($"Can't resolve {name} on {type.Name}", lineinfo);
 			var bp = bpinfo.GetValue(null) as BindableProperty;
-			var isObsolete = bpinfo.GetCustomAttribute<ObsoleteAttribute>() != null;
+			var isObsolete = GetObsoleteAttribute(bpinfo) != null;
 			if (bp.PropertyName != propertyName && !isObsolete)
 				throw new XamlParseException($"The PropertyName of {type.Name}.{name} is not {propertyName}", lineinfo);
 			return bp;
 		}
+
+		[UnconditionalSuppressMessage("TrimAnalysis", "IL2045:AttributeRemoval",
+			Justification = "ObsoleteAttribute instances are removed by the trimmer in production builds.")]
+		static ObsoleteAttribute GetObsoleteAttribute(FieldInfo fieldInfo)
+			=> fieldInfo.GetCustomAttribute<ObsoleteAttribute>();
+
+		[UnconditionalSuppressMessage("TrimAnalysis", "IL2057:TypeGetType",
+			Justification = "The converter is only used when parsing XAML at runtime. The developer will receive a warning " +
+				"saying that parsing XAML at runtime may not work as expected when trimming.")]
+		static Type GetControlType(string typeName)
+			=> Type.GetType("Microsoft.Maui.Controls." + typeName);
+
+		[UnconditionalSuppressMessage("TrimAnalysis", "IL2070:UnrecognizedReflectionPattern",
+			Justification = "The converter is only used when parsing XAML at runtime. The developer will receive a warning " +
+				"saying that parsing XAML at runtime may not work as expected when trimming.")]
+		static FieldInfo GetPropertyField(Type type, string fieldName)
+			=> type.GetField(fieldName, BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
 
 		Type FindTypeForVisualState(IProvideParentValues parentValueProvider, IXmlLineInfo lineInfo)
 		{
@@ -144,7 +159,6 @@ namespace Microsoft.Maui.Controls
 
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/BindablePropertyConverter.xml" path="//Member[@MemberName='ConvertTo']/Docs" />
 		public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
 		{
 			if (value is not BindableProperty bp)

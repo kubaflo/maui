@@ -4,20 +4,18 @@
     <TargetFramework>$(_MauiDotNetTfm)</TargetFramework>
     <AssemblyName>Microsoft.Maui.Resizetizer.UnitTests</AssemblyName>
     <IsPackable>false</IsPackable>
+    <MauiTestProject>true</MauiTestProject>
     <DefineConstants Condition="'$(OS)' == 'Windows_NT'">$(DefineConstants);WINDOWS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
-    <PackageReference Include="Microsoft.Build.Framework" Version="16.7.0" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="16.7.0" PrivateAssets="all" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="SkiaSharp" Version="2.88.0-preview.256" />
-    <PackageReference Include="xunit" Version="2.4.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5" />
-    <PackageReference Include="coverlet.collector" Version="3.1.2" />
+    <PackageReference Include="Microsoft.Build.Framework" PrivateAssets="all" Publish="true"/>
+    <PackageReference Include="Microsoft.Build.Utilities.Core" PrivateAssets="all" Publish="true"/>
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.Extended" />
+    <PackageReference Include="xunit" Version="$(XunitPackageVersion)" />
+    <PackageReference Include="coverlet.collector" Version="$(CoverletCollectorPackageVersion)" />
     <PackageReference Include="Svg.Skia" />
-    <PackageReference Include="Svg2VectorDrawable.Net" Version="0.3.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,10 +25,11 @@
   <ItemGroup>
     <None Include="images\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="testdata\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="imageresults\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="resources\*" LogicalName="%(FileName)%(Extension)" />
+    <Compile Include="..\..\..\..\Graphics\tests\Graphics.Tests\ImageAssert.cs" Link="ImageAssert.cs" />
   </ItemGroup>
 
 </Project>

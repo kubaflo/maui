@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using CoreGraphics;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.DeviceTests.Stubs;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Handlers;
@@ -40,6 +41,22 @@ namespace Microsoft.Maui.DeviceTests
 			Assert.Equal(expectedValue, values.PlatformViewValue);
 		}
 
+		//src/Compatibility/Core/tests/iOS/ImageButtonTests.cs
+		[Fact]
+		[Trait("Category", "ImageButton")]
+		public async Task CreatedWithCorrectButtonType()
+		{
+			var imageButton = new ImageButton();
+			var handler = await CreateHandlerAsync(imageButton);
+
+			var buttonType = await InvokeOnMainThreadAsync(() =>
+			{
+				var uiButton = GetPlatformImageButton(handler);
+				return uiButton.ButtonType;
+			});
+
+			Assert.NotEqual(UIButtonType.Custom, buttonType);
+		}
 		UIButton GetPlatformImageButton(ImageButtonHandler imageButtonHandler) =>
 			imageButtonHandler.PlatformView;
 
@@ -61,7 +78,17 @@ namespace Microsoft.Maui.DeviceTests
 			});
 		}
 
+#pragma warning disable CA1416, CA1422
 		UIEdgeInsets GetNativePadding(ImageButtonHandler imageButtonHandler) =>
 			GetPlatformImageButton(imageButtonHandler).ContentEdgeInsets;
+#pragma warning restore CA1416, CA1422
+
+		bool ImageSourceLoaded(ImageButtonHandler imageButtonHandler) =>
+			imageButtonHandler.PlatformView.ImageView.Image != null;
+
+		public partial class ImageButtonImageHandlerTests
+		{
+			protected override bool UsesAnimatedImages => false;
+		}
 	}
 }

@@ -1,19 +1,19 @@
 using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
-using Windows.UI.Core;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.Maui.Controls.Internals;
+using Windows.UI.Core;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
 using WSelectionChangedEventArgs = Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class PickerRenderer : ViewRenderer<Picker, FormsComboBox>
+	public partial class PickerRenderer : ViewRenderer<Picker, FormsComboBox>
 	{
 		bool _fontApplied;
 		bool _isAnimating;
@@ -84,7 +84,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			else if (e.PropertyName == Picker.HorizontalTextAlignmentProperty.PropertyName || e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
 				UpdateHorizontalTextAlignment();
 			else if (e.PropertyName == Picker.VerticalTextAlignmentProperty.PropertyName)
-				UpdateVerticalTextAlignment();			
+				UpdateVerticalTextAlignment();
 		}
 
 		void ControlOnLoaded(object sender, RoutedEventArgs routedEventArgs)
@@ -246,7 +246,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		{
 			Control.HorizontalContentAlignment = Element.HorizontalTextAlignment.ToPlatformHorizontalAlignment();
 		}
-        [PortHandler]
+		[PortHandler]
 		void UpdateVerticalTextAlignment()
 		{
 			Control.VerticalContentAlignment = Element.VerticalTextAlignment.ToPlatformVerticalAlignment();

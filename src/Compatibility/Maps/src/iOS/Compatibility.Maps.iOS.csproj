@@ -6,17 +6,15 @@
     <RootNamespace>Microsoft.Maui.Controls.Compatibility.iOS</RootNamespace>
     <IsPackable>false</IsPackable>
     <Nullable>disable</Nullable>
+    <NoWarn>$(NoWarn);CS0672;CS0618</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Maui.Graphics" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\Graphics\src\Graphics\Graphics.csproj" />
     <ProjectReference Include="..\..\..\..\Controls\Maps\src\Controls.Maps.csproj" />
     <ProjectReference Include="..\..\..\..\Controls\src\Core\Controls.Core.csproj" />
     <ProjectReference Include="..\..\..\..\Core\src\Core.csproj" />
-    <ProjectReference Include="..\..\..\Core\src\Compatibility.csproj" />
+    <ProjectReference Include="..\..\..\..\Compatibility\Core\src\Compatibility.csproj" />
   </ItemGroup>
 
 </Project>

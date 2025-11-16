@@ -1,8 +1,9 @@
 using System;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
@@ -11,88 +12,93 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 		MockAppInfo mockAppInfo;
 		Application app;
 
-		[SetUp]
-		public override void Setup()
+		public AppThemeTests()
 		{
-			base.Setup();
-
 			AppInfo.SetCurrent(mockAppInfo = new MockAppInfo() { RequestedTheme = AppTheme.Light });
 			Application.Current = app = new Application();
 		}
 
-		[TearDown]
-		public override void TearDown()
+		protected override void Dispose(bool disposing)
 		{
-			Application.Current = null;
+			if (disposing)
+			{
+				Application.Current = null;
+			}
 
-			base.TearDown();
+			base.Dispose(disposing);
 		}
 
-		[Test]
+		[Fact]
 		public void ThemeChangeUsingSetAppThemeColor()
 		{
 			var label = new Label
 			{
 				Text = "Green on Light, Red on Dark"
 			};
+			app.LoadPage(new ContentPage { Content = label });
 
 			label.SetAppThemeColor(Label.TextColorProperty, Colors.Green, Colors.Red);
-			Assert.AreEqual(Colors.Green, label.TextColor);
+			Assert.Equal(Colors.Green, label.TextColor);
 
 			SetAppTheme(AppTheme.Dark);
 
-			Assert.AreEqual(Colors.Red, label.TextColor);
+			Assert.Equal(Colors.Red, label.TextColor);
 		}
 
-		[Test]
+		[Fact]
 		public void ThemeChangeUsingSetAppTheme()
 		{
+
 			var label = new Label
 			{
 				Text = "Green on Light, Red on Dark"
 			};
 
+			app.LoadPage(new ContentPage { Content = label });
+
 			label.SetAppTheme(Label.TextColorProperty, Colors.Green, Colors.Red);
-			Assert.AreEqual(Colors.Green, label.TextColor);
+			Assert.Equal(Colors.Green, label.TextColor);
 
 			SetAppTheme(AppTheme.Dark);
 
-			Assert.AreEqual(Colors.Red, label.TextColor);
+			Assert.Equal(Colors.Red, label.TextColor);
 		}
 
-		[Test]
+		[Fact]
 		public void ThemeChangeUsingSetBinding()
 		{
 			var label = new Label
 			{
 				Text = "Green on Light, Red on Dark"
 			};
+			app.LoadPage(new ContentPage { Content = label });
 
 			label.SetBinding(Label.TextColorProperty, new AppThemeBinding { Light = Colors.Green, Dark = Colors.Red });
-			Assert.AreEqual(Colors.Green, label.TextColor);
+			Assert.Equal(Colors.Green, label.TextColor);
 
 			SetAppTheme(AppTheme.Dark);
 
-			Assert.AreEqual(Colors.Red, label.TextColor);
+			Assert.Equal(Colors.Red, label.TextColor);
 		}
 
-		[Test]
+		[Fact]
 		public void ThemeChangeUsingUserAppTheme()
 		{
 			var label = new Label
 			{
 				Text = "Green on Light, Red on Dark"
 			};
+			app.LoadPage(new ContentPage { Content = label });
 
 			label.SetAppThemeColor(Label.TextColorProperty, Colors.Green, Colors.Red);
-			Assert.AreEqual(Colors.Green, label.TextColor);
+			Assert.Equal(Colors.Green, label.TextColor);
 
 			app.UserAppTheme = AppTheme.Dark;
 
-			Assert.AreEqual(Colors.Red, label.TextColor);
+			Assert.Equal(Colors.Red, label.TextColor);
 		}
 
-		[Test]
+		[Fact]
 		public void InitialThemeIsCorrect()
 		{
 			var changed = 0;
@@ -104,15 +110,15 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				newTheme = e.RequestedTheme;
 			};
 
-			Assert.AreEqual(AppTheme.Light, app.RequestedTheme);
-			Assert.AreEqual(AppTheme.Light, app.PlatformAppTheme);
-			Assert.AreEqual(AppTheme.Unspecified, app.UserAppTheme);
+			Assert.Equal(AppTheme.Light, app.RequestedTheme);
+			Assert.Equal(AppTheme.Light, app.PlatformAppTheme);
+			Assert.Equal(AppTheme.Unspecified, app.UserAppTheme);
 
-			Assert.AreEqual(0, changed);
-			Assert.AreEqual(AppTheme.Unspecified, newTheme);
+			Assert.Equal(0, changed);
+			Assert.Equal(AppTheme.Unspecified, newTheme);
 		}
 
-		[Test]
+		[Fact]
 		public void SettingSameUserThemeDoesNotFireEvent()
 		{
 			var changed = 0;
@@ -126,15 +132,15 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			app.UserAppTheme = AppTheme.Light;
 
-			Assert.AreEqual(AppTheme.Light, app.RequestedTheme);
-			Assert.AreEqual(AppTheme.Light, app.PlatformAppTheme);
-			Assert.AreEqual(AppTheme.Light, app.UserAppTheme);
+			Assert.Equal(AppTheme.Light, app.RequestedTheme);
+			Assert.Equal(AppTheme.Light, app.PlatformAppTheme);
+			Assert.Equal(AppTheme.Light, app.UserAppTheme);
 
-			Assert.AreEqual(0, changed);
-			Assert.AreEqual(AppTheme.Unspecified, newTheme);
+			Assert.Equal(0, changed);
+			Assert.Equal(AppTheme.Unspecified, newTheme);
 		}
 
-		[Test]
+		[Fact]
 		public void SettingDifferentUserThemeDoesNotFireEvent()
 		{
 			var changed = 0;
@@ -148,15 +154,15 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			app.UserAppTheme = AppTheme.Dark;
 
-			Assert.AreEqual(AppTheme.Dark, app.RequestedTheme);
-			Assert.AreEqual(AppTheme.Light, app.PlatformAppTheme);
-			Assert.AreEqual(AppTheme.Dark, app.UserAppTheme);
+			Assert.Equal(AppTheme.Dark, app.RequestedTheme);
+			Assert.Equal(AppTheme.Light, app.PlatformAppTheme);
+			Assert.Equal(AppTheme.Dark, app.UserAppTheme);
 
-			Assert.AreEqual(1, changed);
-			Assert.AreEqual(AppTheme.Dark, newTheme);
+			Assert.Equal(1, changed);
+			Assert.Equal(AppTheme.Dark, newTheme);
 		}
 
-		[Test]
+		[Fact]
 		public void UnsettingUserThemeReverts()
 		{
 			var changed = 0;
@@ -171,12 +177,12 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			app.UserAppTheme = AppTheme.Dark;
 			app.UserAppTheme = AppTheme.Unspecified;
 
-			Assert.AreEqual(AppTheme.Light, app.RequestedTheme);
-			Assert.AreEqual(AppTheme.Light, app.PlatformAppTheme);
-			Assert.AreEqual(AppTheme.Unspecified, app.UserAppTheme);
+			Assert.Equal(AppTheme.Light, app.RequestedTheme);
+			Assert.Equal(AppTheme.Light, app.PlatformAppTheme);
+			Assert.Equal(AppTheme.Unspecified, app.UserAppTheme);
 
-			Assert.AreEqual(2, changed);
-			Assert.AreEqual(AppTheme.Light, newTheme);
+			Assert.Equal(2, changed);
+			Assert.Equal(AppTheme.Light, newTheme);
 		}
 
 		void SetAppTheme(AppTheme theme)
@@ -185,7 +191,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			((IApplication)app).ThemeChanged();
 		}
 
-		[Test]
+		[Fact]
 		//https://github.com/dotnet/maui/issues/3188
 		public void ThemeBindingRemovedOnOneTimeBindablePropertyWhenPropertySet()
 		{
@@ -193,7 +199,58 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			shell.SetAppThemeColor(Shell.FlyoutBackgroundProperty, Colors.White, Colors.Black);
 			shell.FlyoutBackgroundColor = Colors.Pink;
 			SetAppTheme(AppTheme.Dark);
-			Assert.AreEqual(Colors.Pink, shell.FlyoutBackgroundColor);
+			Assert.Equal(Colors.Pink, shell.FlyoutBackgroundColor);
+		}
+
+		void validateRadioButtonColors(RadioButton button, SolidColorBrush desiredBrush)
+		{
+			var border = (Border)(button as IVisualTreeElement).GetVisualChildren()[0];
+			var grid = (Grid)border.Content;
+			var outerEllipse = (Ellipse)grid[0];
+			var innerEllipse = (Ellipse)grid[1];
+
+			Assert.Equal(desiredBrush, outerEllipse.Stroke);
+			Assert.Equal(desiredBrush, innerEllipse.Fill);
+		}
+
+		[Fact]
+		public void CorrectDefaultRadioButtonThemeColorsInLightAndDarkModes()
+		{
+			validateRadioButtonColors(
+				new RadioButton() { ControlTemplate = RadioButton.DefaultTemplate },
+				Brush.Black);
+			SetAppTheme(AppTheme.Dark);
+			validateRadioButtonColors(
+				new RadioButton() { ControlTemplate = RadioButton.DefaultTemplate },
+				Brush.White);
+		}
+
+		[Fact]
+		public void NullApplicationCurrentFallsBackToEssentials()
+		{
+			var label = new Label
+			{
+				Text = "Green on Light, Red on Dark"
+			};
+			app.LoadPage(new ContentPage { Content = label });
+
+			label.SetAppThemeColor(Label.TextColorProperty, Colors.Green, Colors.Red);
+
+			Application.Current = null;
+
+			Assert.Equal(Colors.Green, label.TextColor);
+
+			SetAppTheme(AppTheme.Dark);
+
+			Assert.Equal(Colors.Red, label.TextColor);
+		}
+
+		[Fact]
+		//https://github.com/dotnet/maui/issues/17478
+		public void BindingConversion()
+		{
+			var border = new Border();
+			border.SetAppTheme(Border.StrokeProperty, Colors.Red, Colors.Black);
 		}
 	}
 }

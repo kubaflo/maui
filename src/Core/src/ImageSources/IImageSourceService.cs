@@ -1,6 +1,10 @@
 ﻿#nullable enable
 using System.Threading;
 using System.Threading.Tasks;
+#if ANDROID
+using Android.Widget;
+using Android.Graphics.Drawables;
+#endif
 
 namespace Microsoft.Maui
 {
@@ -9,12 +13,12 @@ namespace Microsoft.Maui
 #if ANDROID
 		Task<IImageSourceServiceResult?> LoadDrawableAsync(
 			IImageSource imageSource,
-			Android.Widget.ImageView imageView,
+			ImageView imageView,
 			CancellationToken cancellationToken = default);
 
-		Task<IImageSourceServiceResult<Android.Graphics.Drawables.Drawable>?> GetDrawableAsync(
+		Task<IImageSourceServiceResult<Drawable>?> GetDrawableAsync(
 			IImageSource imageSource,
-			Android.Content.Context context,
+			global::Android.Content.Context context,
 			CancellationToken cancellationToken = default);
 #elif IOS
 		Task<IImageSourceServiceResult<UIKit.UIImage>?> GetImageAsync(
@@ -22,9 +26,8 @@ namespace Microsoft.Maui
 			float scale = 1,
 			CancellationToken cancellationToken = default);
 #elif TIZEN || __TIZEN__
-		Task<IImageSourceServiceResult<Tizen.UIExtensions.ElmSharp.Image>?> GetImageAsync(
+		Task<IImageSourceServiceResult<MauiImageSource>?> GetImageAsync(
 			IImageSource imageSource,
-			Tizen.UIExtensions.ElmSharp.Image image,
 			CancellationToken cancellationToken = default);
 #elif WINDOWS
 		Task<IImageSourceServiceResult<UI.Xaml.Media.ImageSource>?> GetImageSourceAsync(

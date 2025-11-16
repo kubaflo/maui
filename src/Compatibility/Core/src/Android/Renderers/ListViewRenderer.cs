@@ -86,11 +86,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 					Control.SetOnScrollListener(null);
 				}
 
-				if (_adapter != null)
-				{
-					_adapter.Dispose();
-					_adapter = null;
-				}
+				_adapter?.Dispose();
+				_adapter = null;
 			}
 
 			base.Dispose(disposing);
@@ -145,11 +142,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 					Control.SetOnScrollListener(null);
 				}
 
-				if (_adapter != null)
-				{
-					_adapter.Dispose();
-					_adapter = null;
-				}
+				_adapter?.Dispose();
+				_adapter = null;
 			}
 
 			if (e.NewElement != null)
@@ -203,7 +197,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 			var position = Control.GetPositionForView(viewCell);
 			var id = Control.GetItemIdAtPosition(position);
 
+#pragma warning disable CA1416 // Introduced in API 23: https://developer.android.com/reference/android/view/HapticFeedbackConstants#CONTEXT_CLICK
 			viewCell.PerformHapticFeedback(FeedbackConstants.ContextClick);
+#pragma warning restore CA1416
 			_adapter.OnItemClick(Control, viewCell, position, id);
 		}
 
@@ -217,7 +213,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 			var position = Control.GetPositionForView(viewCell);
 			var id = Control.GetItemIdAtPosition(position);
 
+#pragma warning disable CA1416 // Introduced in API 23: https://developer.android.com/reference/android/view/HapticFeedbackConstants#CONTEXT_CLICK
 			viewCell.PerformHapticFeedback(FeedbackConstants.ContextClick);
+#pragma warning restore CA1416
 			_adapter.OnItemLongClick(Control, viewCell, position, id);
 		}
 

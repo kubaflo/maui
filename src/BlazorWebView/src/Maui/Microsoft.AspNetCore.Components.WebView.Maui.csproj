@@ -2,13 +2,29 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(_MauiDotNetTfm);$(MauiPlatforms)</TargetFrameworks>
+    <TargetFrameworks Condition="'$(IncludePreviousTfms)' == 'true'">$(TargetFrameworks);$(_MauiPreviousDotNetTfm);$(MauiPreviousPlatforms)</TargetFrameworks>
     <Nullable>enable</Nullable>
-    <Description>Build .NET MAUI applications with Blazor web UI in the BlazorWebView control.</Description>
     <DefineConstants>$(DefineConstants);WEBVIEW2_MAUI</DefineConstants>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <Import Project="$(MauiNuSpecDirectory)Microsoft.Maui.Controls.MultiTargeting.targets" />
+  <PropertyGroup Condition="!$(TargetFramework.StartsWith('netstandard'))">
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- NuGet package information -->
+    <IsPackable>true</IsPackable>
+    <PackageId>Microsoft.AspNetCore.Components.WebView.Maui</PackageId>
+    <PackageTags>$(DefaultPackageTags);blazor;webview;aspnet</PackageTags>
+    <PackageIconFullPath>$(MauiRootDirectory)Assets\aspnet-icon.png</PackageIconFullPath>
+    <Description>Build .NET Multi-platform App UI (.NET MAUI) apps with Blazor web UI in the BlazorWebView control.</Description>
+  </PropertyGroup>
+
+  <Import Project="$(MauiSrcDirectory)MultiTargeting.targets" />
 
   <ItemGroup>
     <Content Remove="build\**\*" />
@@ -17,7 +33,6 @@
 
   <ItemGroup>
     <Compile Include="..\SharedSource\**\*.cs" Link="Windows\SharedSource\%(Filename)%(Extension)" />
-    <Compile Include="..\..\..\Core\src\TaskExtensions.cs" Link="Utilities\TaskExtensions.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,11 +46,7 @@
     <ProjectReference Include="..\..\..\Core\src\Core.csproj" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup>
-    <AdditionalFiles Include="PublicAPI\$(TargetFramework)\PublicAPI.Shipped.txt" />
-    <AdditionalFiles Include="PublicAPI\$(TargetFramework)\PublicAPI.Unshipped.txt" />
-  </ItemGroup>
-
+  <Import Project="$(MauiSrcDirectory)PublicAPI.targets" />
   <Import Project="$(MauiRootDirectory)src\Workload\Shared\LibraryPacks.targets" />
 
 </Project>

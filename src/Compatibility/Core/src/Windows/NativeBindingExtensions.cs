@@ -1,14 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using Microsoft.UI.Xaml;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Maui.Controls.Internals;
+using Microsoft.UI.Xaml;
 using static System.String;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	public static class NativeBindingExtensions
 	{
+		[RequiresUnreferencedCode(TrimmerConstants.StringPathBindingWarning, Url = TrimmerConstants.ExpressionBasedBindingsDocsUrl)]
 		public static void SetBinding(this FrameworkElement view, string propertyName, BindingBase bindingBase, string updateSourceEventName = null)
 		{
 			var binding = bindingBase as Binding;

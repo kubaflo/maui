@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Layouts;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
@@ -13,10 +13,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 	public class FlexLayoutMarginTests : BaseTestFixture
 	{
-		[Test]
+		[Fact]
 		public void TestMarginLeft()
 		{
-			var view0 = new View { IsPlatformEnabled = true, WidthRequest = 10, Margin = new Thickness(10, 0, 0, 0), };
+			var view0 = MockPlatformSizeService.Sub<View>(width: 10, margin: new(10, 0, 0, 0));
 			var layout = new FlexLayout
 			{
 				IsPlatformEnabled = true,
@@ -27,14 +27,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			};
 
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(10, 0, 10, 100)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(10, 0, 10, 100));
 		}
 
-		[Test]
+		[Fact]
 		public void TestMarginTop()
 		{
-			var view0 = new View { IsPlatformEnabled = true, HeightRequest = 10, Margin = new Thickness(0, 10, 0, 0), };
+			var view0 = MockPlatformSizeService.Sub<View>(height: 10, margin: new(0, 10, 0, 0));
 			var layout = new FlexLayout
 			{
 				IsPlatformEnabled = true,
@@ -46,14 +46,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			};
 
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(0, 10, 100, 10)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(0, 10, 100, 10));
 		}
 
-		[Test]
+		[Fact]
 		public void TestMarginRight()
 		{
-			var view0 = new View { IsPlatformEnabled = true, WidthRequest = 10, Margin = new Thickness(0, 0, 10, 0), };
+			var view0 = MockPlatformSizeService.Sub<View>(width: 10, margin: new(0, 0, 10, 0));
 			var layout = new FlexLayout
 			{
 				IsPlatformEnabled = true,
@@ -66,14 +66,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			};
 
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(80, 0, 10, 100)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(80, 0, 10, 100));
 		}
 
-		[Test]
+		[Fact]
 		public void TestMarginBottom()
 		{
-			var view0 = new View { IsPlatformEnabled = true, HeightRequest = 10, Margin = new Thickness(0, 0, 0, 10), };
+			var view0 = MockPlatformSizeService.Sub<View>(height: 10, margin: new(0, 0, 0, 10));
 			var layout = new FlexLayout
 			{
 				IsPlatformEnabled = true,
@@ -86,14 +86,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			};
 
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(0, 80, 100, 10)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(0, 80, 100, 10));
 		}
 
-		[Test]
+		[Fact]
 		public void TestMarginAndFlexRow()
 		{
-			var view0 = new View { IsPlatformEnabled = true, Margin = new Thickness(10, 0, 10, 0), };
+			var view0 = MockPlatformSizeService.Sub<View>(margin: new(10, 0, 10, 0));
 			FlexLayout.SetGrow(view0, 1);
 			var layout = new FlexLayout
 			{
@@ -105,14 +105,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				Direction = FlexDirection.Row,
 			};
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(10, 0, 80, 100)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(10, 0, 80, 100));
 		}
 
-		[Test]
+		[Fact]
 		public void TestMarginAndFlexColumn()
 		{
-			var view0 = new View { IsPlatformEnabled = true, Margin = new Thickness(0, 10, 0, 10), };
+			var view0 = MockPlatformSizeService.Sub<View>(margin: new(0, 10, 0, 10));
 			FlexLayout.SetGrow(view0, 1);
 			var layout = new FlexLayout
 			{
@@ -124,14 +124,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				Direction = FlexDirection.Column,
 			};
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(0, 10, 100, 80)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(0, 10, 100, 80));
 		}
 
-		[Test]
+		[Fact]
 		public void TestMarginAndStretchRow()
 		{
-			var view0 = new View { IsPlatformEnabled = true, Margin = new Thickness(0, 10, 0, 10), };
+			var view0 = MockPlatformSizeService.Sub<View>(margin: new(0, 10, 0, 10));
 			FlexLayout.SetGrow(view0, 1);
 			var layout = new FlexLayout
 			{
@@ -144,15 +144,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			};
 
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(0, 10, 100, 80)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(0, 10, 100, 80));
 		}
 
-		[Test]
+		[Fact]
 		public void TestMarginAndStretchColumn()
 		{
-
-			var view0 = new View { IsPlatformEnabled = true, Margin = new Thickness(10, 0, 10, 0) };
+			var view0 = MockPlatformSizeService.Sub<View>(margin: new(10, 0, 10, 0));
 			FlexLayout.SetGrow(view0, 1);
 			var layout = new FlexLayout
 			{
@@ -164,18 +163,18 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			};
 
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(10, 0, 80, 100)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(10, 0, 80, 100));
 		}
 
-		[Test]
+		[Fact]
 		public void TestMarginWithSiblingRow()
 		{
-			MockPlatformSizeService.Current.GetPlatformSizeFunc = (visual, width, height) => new SizeRequest(new Size(0, 0));
+			static SizeRequest GetSize(VisualElement _, double w, double h) => new(new(0, 0));
 
-			var view0 = new View { IsPlatformEnabled = true, Margin = new Thickness(0, 0, 10, 0) };
+			var view0 = MockPlatformSizeService.Sub<View>(GetSize, margin: new(0, 0, 10, 0));
 			FlexLayout.SetGrow(view0, 1);
-			var view1 = new View { IsPlatformEnabled = true };
+			var view1 = MockPlatformSizeService.Sub<View>(GetSize);
 			FlexLayout.SetGrow(view1, 1);
 			var layout = new FlexLayout
 			{
@@ -189,17 +188,17 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			};
 
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(0, 0, 45, 100)));
-			Assert.That(view1.Bounds, Is.EqualTo(new Rect(55, 0, 45, 100)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(0, 0, 45, 100));
+			Assert.Equal(view1.Bounds, new Rect(55, 0, 45, 100));
 		}
 
-		[Test]
+		[Fact]
 		public void TestMarginWithSiblingColumn()
 		{
-			var view0 = new View { IsPlatformEnabled = true, Margin = new Thickness(0, 0, 0, 10) };
+			var view0 = MockPlatformSizeService.Sub<View>(margin: new(0, 0, 0, 10));
 			FlexLayout.SetGrow(view0, 1);
-			var view1 = new View { IsPlatformEnabled = true };
+			var view1 = MockPlatformSizeService.Sub<View>();
 			FlexLayout.SetGrow(view1, 1);
 
 			var layout = new FlexLayout
@@ -214,9 +213,9 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			};
 
 			layout.Layout(new Rect(0, 0, 100, 100));
-			Assert.That(layout.Bounds, Is.EqualTo(new Rect(0, 0, 100, 100)));
-			Assert.That(view0.Bounds, Is.EqualTo(new Rect(0, 0, 100, 45)));
-			Assert.That(view1.Bounds, Is.EqualTo(new Rect(0, 55, 100, 45)));
+			Assert.Equal(layout.Bounds, new Rect(0, 0, 100, 100));
+			Assert.Equal(view0.Bounds, new Rect(0, 0, 100, 45));
+			Assert.Equal(view1.Bounds, new Rect(0, 55, 100, 45));
 		}
 	}
 }

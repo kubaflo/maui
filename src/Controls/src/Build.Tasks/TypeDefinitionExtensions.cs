@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MethodAttributes = Mono.Cecil.MethodAttributes;
@@ -10,24 +8,24 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 {
 	static class TypeDefinitionExtensions
 	{
-		public static MethodDefinition AddDefaultConstructor(this TypeDefinition targetType)
+		public static MethodDefinition AddDefaultConstructor(this TypeDefinition targetType, XamlCache cache)
 		{
 			var module = targetType.Module;
-			var parentType = module.ImportReference(("mscorlib", "System", "Object"));
+			var parentType = module.ImportReference(cache, ("mscorlib", "System", "Object"));
 
-			return AddDefaultConstructor(targetType, parentType);
+			return AddDefaultConstructor(targetType, cache, parentType);
 		}
 
-		public static MethodDefinition AddDefaultConstructor(this TypeDefinition targetType, TypeReference parentType)
+		public static MethodDefinition AddDefaultConstructor(this TypeDefinition targetType, XamlCache cache, TypeReference parentType)
 		{
 			var module = targetType.Module;
-			var voidType = module.ImportReference(("mscorlib", "System", "Void"));
+			var voidType = module.ImportReference(cache, ("mscorlib", "System", "Void"));
 			var methodAttributes = MethodAttributes.Public |
 								   MethodAttributes.HideBySig |
 								   MethodAttributes.SpecialName |
 								   MethodAttributes.RTSpecialName;
 
-			var parentctor = module.ImportCtorReference(parentType, paramCount: 0) ?? module.ImportCtorReference(("mscorlib", "System", "Object"), parameterTypes: null);
+			var parentctor = module.ImportCtorReference(cache, parentType, paramCount: 0) ?? module.ImportCtorReference(cache, ("mscorlib", "System", "Object"), parameterTypes: null);
 
 			var ctor = new MethodDefinition(".ctor", methodAttributes, voidType)
 			{
@@ -46,7 +44,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			return ctor;
 		}
 
-		public static IEnumerable<(MethodDefinition methodDef, TypeReference declTypeRef)> AllMethods(this TypeDefinition self)
+		public static IEnumerable<(MethodDefinition methodDef, TypeReference declTypeRef)> AllMethods(this TypeDefinition self, XamlCache cache)
 		{
 			TypeReference selfTypeRef = self;
 			while (self != null)
@@ -54,8 +52,19 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 				foreach (var md in self.Methods)
 					yield return (md, selfTypeRef);
 				selfTypeRef = self.BaseType;
-				self = self.BaseType?.ResolveCached();
+				self = self.BaseType?.ResolveCached(cache);
 			}
+		}
+
+		public static bool IsPublicOrVisibleInternal(this TypeDefinition self, ModuleDefinition module)
+		{
+			if (self.IsPublic || self.IsNestedPublic)
+				return true;
+			if (self.Module == module)
+				return true;
+			if (self.Module.IsVisibleInternal(module))
+				return true;
+			return false;
 		}
 	}
 }

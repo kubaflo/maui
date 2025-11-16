@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -15,6 +13,10 @@ namespace Microsoft.Maui.Platform
 		IView? _currentPage;
 		IMauiContext _mauiContext;
 		Frame? _navigationFrame;
+		Action? _pendingNavigationFinished;
+		ContentPresenter? _previousContent;
+		bool _connected;
+
 		protected NavigationRootManager WindowManager => _mauiContext.GetNavigationRootManager();
 		internal IStackNavigation? NavigationView { get; private set; }
 		public IReadOnlyList<IView> NavigationStack { get; set; } = new List<IView>();
@@ -31,10 +33,18 @@ namespace Microsoft.Maui.Platform
 
 		public virtual void Connect(IStackNavigation navigationView, Frame navigationFrame)
 		{
+			_connected = true;
 			if (_navigationFrame != null)
+			{
+				_navigationFrame.Navigating -= OnNavigating;
 				_navigationFrame.Navigated -= OnNavigated;
+			}
 
+			FirePendingNavigationFinished();
+
+			navigationFrame.Navigating += OnNavigating;
 			navigationFrame.Navigated += OnNavigated;
+
 			_navigationFrame = navigationFrame;
 			NavigationView = (IStackNavigation)navigationView;
 
@@ -44,16 +54,27 @@ namespace Microsoft.Maui.Platform
 
 		public virtual void Disconnect(IStackNavigation navigationView, Frame navigationFrame)
 		{
+			_connected = false;
 			if (_navigationFrame != null)
+			{
+				_navigationFrame.Navigating -= OnNavigating;
 				_navigationFrame.Navigated -= OnNavigated;
+			}
 
+			FirePendingNavigationFinished();
 			_navigationFrame = null;
 			NavigationView = null;
+
+			if (_previousContent is not null)
+			{
+				_previousContent.Content = null;
+				_previousContent = null;
+			}
 		}
 
 		public virtual void NavigateTo(NavigationRequest args)
 		{
-			IReadOnlyList<IView> newPageStack = new List<IView>(args.NavigationStack);
+			var newPageStack = new List<IView>(args.NavigationStack);
 			var previousNavigationStack = NavigationStack;
 			var previousNavigationStackCount = previousNavigationStack.Count;
 			bool initialNavigation = NavigationStack.Count == 0;
@@ -73,7 +94,7 @@ namespace Microsoft.Maui.Platform
 			NavigationTransitionInfo? transition = GetNavigationTransition(args);
 			_currentPage = newPageStack[newPageStack.Count - 1];
 
-			_ = _currentPage ?? throw new InvalidOperationException("Navigatoin Request Contains Null Elements");
+			_ = _currentPage ?? throw new InvalidOperationException("Navigation Request Contains Null Elements");
 			if (previousNavigationStack.Count < args.NavigationStack.Count)
 			{
 				Type destinationPageType = GetDestinationPageType();
@@ -130,6 +151,28 @@ namespace Microsoft.Maui.Platform
 			}
 		}
 
+		private void OnNavigating(object sender, NavigatingCancelEventArgs e)
+		{
+			// We can navigate to pages that do not exist in the shell as sections, so we 
+			// end up keeping the previous page loaded and in the (MAUI) visual tree.
+			// This means we need to manually clear the WinUI content from the presenter so we don't
+			// get a crash when the page is navigated to again due to the content already being the
+			// child of another parent
+			if (NavigationFrame.Content is Page p)
+			{
+				p.Unloaded += PageUnloaded;
+				void PageUnloaded(object s, RoutedEventArgs e)
+				{
+					p.Unloaded -= PageUnloaded;
+					if (p.Content is ContentPresenter presenter)
+					{
+						presenter.Content = null;
+						_previousContent = null;
+					}
+				}
+			}
+		}
+
 		// This is used to fire NavigationFinished back to the xplat view
 		// Firing NavigationFinished from Loaded is the latest reliable point
 		// in time that I know of for firing `NavigationFinished`
@@ -146,7 +189,7 @@ namespace Microsoft.Maui.Platform
 			if (e.Content is not Page page)
 				return;
 
-
+			var nv = NavigationView;
 			ContentPresenter? presenter;
 
 			if (page.Content == null)
@@ -157,6 +200,13 @@ namespace Microsoft.Maui.Platform
 					VerticalAlignment = UI.Xaml.VerticalAlignment.Stretch
 				};
 
+				// Clear the content just in case the previous page didn't unload
+				if (_previousContent is not null)
+				{
+					_previousContent.Content = null;
+					_previousContent = null;
+				}
+
 				page.Content = presenter;
 			}
 			else
@@ -165,13 +215,15 @@ namespace Microsoft.Maui.Platform
 			}
 
 			// At this point if the Content isn't a ContentPresenter the user has replaced
-			// the conent so we just let them take control
+			// the content so we just let them take control
 			if (presenter == null || _currentPage == null)
 				return;
 
+			var platformPage = _currentPage.ToPlatform(MauiContext);
+
 			try
 			{
-				presenter.Content = _currentPage.ToPlatform(MauiContext);
+				presenter.Content = platformPage;
 			}
 			catch (Exception)
 			{
@@ -179,8 +231,10 @@ namespace Microsoft.Maui.Platform
 				throw;
 			}
 
-			fe.OnLoaded(() =>
+			_pendingNavigationFinished = () =>
 			{
+				_previousContent = presenter;
+
 				if (presenter?.Content is not FrameworkElement pc)
 				{
 					FireNavigationFinished();
@@ -190,16 +244,24 @@ namespace Microsoft.Maui.Platform
 					pc.OnLoaded(FireNavigationFinished);
 				}
 
-				if (NavigationView is IView view)
+				if (NavigationView is IView view && _connected)
 				{
 					view.Arrange(fe);
 				}
-			});
+			};
+
+			fe.OnLoaded(FirePendingNavigationFinished);
 		}
 
 		void FireNavigationFinished()
 		{
+			_pendingNavigationFinished = null;
 			NavigationView?.NavigationFinished(NavigationStack);
+		}
+
+		void FirePendingNavigationFinished()
+		{
+			Interlocked.Exchange(ref _pendingNavigationFinished, null)?.Invoke();
 		}
 	}
 }

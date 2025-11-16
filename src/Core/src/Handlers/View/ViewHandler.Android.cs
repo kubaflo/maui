@@ -1,6 +1,7 @@
 ﻿using System;
 using Android.Views;
 using AndroidX.Core.View;
+using Microsoft.Maui.Platform;
 using PlatformView = Android.Views.View;
 
 namespace Microsoft.Maui.Handlers
@@ -27,6 +28,11 @@ namespace Microsoft.Maui.Handlers
 					ViewCompat.SetAccessibilityDelegate(platformView, null);
 				}
 			}
+
+			if (VirtualView is IToolbarElement te)
+			{
+				te.Toolbar?.Handler?.DisconnectHandler();
+			}
 		}
 
 		void OnRootViewSet(object? sender, EventArgs e)
@@ -42,51 +48,111 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapTranslationX(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateTranslationX(view);
 		}
 
 		public static void MapTranslationY(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateTranslationY(view);
 		}
 
 		public static void MapScale(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateScale(view);
 		}
 
 		public static void MapScaleX(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateScaleX(view);
 		}
 
 		public static void MapScaleY(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateScaleY(view);
 		}
 
 		public static void MapRotation(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateRotation(view);
 		}
 
 		public static void MapRotationX(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateRotationX(view);
 		}
 
 		public static void MapRotationY(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateRotationY(view);
 		}
 
 		public static void MapAnchorX(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateAnchorX(view);
 		}
 
 		public static void MapAnchorY(IViewHandler handler, IView view)
 		{
+			if (handler.IsConnectingHandler())
+			{
+				// Mapped through _InitializeBatchedProperties
+				return;
+			}
+
 			handler.ToPlatform().UpdateAnchorY(view);
 		}
 
@@ -95,7 +161,9 @@ namespace Microsoft.Maui.Handlers
 			if (handler.PlatformView == null)
 				return;
 
-			var accessibilityDelegate = ViewCompat.GetAccessibilityDelegate(handler.PlatformView as View) as MauiAccessibilityDelegateCompat;
+			AccessibilityDelegateCompat? accessibilityDelegate = null;
+			if (handler.PlatformView is View viewPlatform)
+				accessibilityDelegate = ViewCompat.GetAccessibilityDelegate(viewPlatform) as MauiAccessibilityDelegateCompat;
 
 			if (handler.PlatformView is not PlatformView platformView)
 				return;
@@ -178,21 +246,48 @@ namespace Microsoft.Maui.Handlers
 			appbarLayout.AddView(nativeToolBar, 0);
 		}
 
-		public virtual bool NeedsContainer
+		public static void MapContextFlyout(IViewHandler handler, IView view)
 		{
-			get
-			{
-				return VirtualView?.Clip != null || VirtualView?.Shadow != null
-					|| (VirtualView as IBorder)?.Border != null || VirtualView?.InputTransparent == true;
-			}
 		}
 
 		void OnPlatformViewFocusChange(object? sender, PlatformView.FocusChangeEventArgs e)
 		{
-			if (VirtualView != null)
+			VirtualView?.IsFocused = e.HasFocus;
+		}
+
+		internal static void MapSafeAreaEdges(IViewHandler handler, IView view)
+		{
+			if (handler.IsConnectingHandler())
 			{
-				VirtualView.IsFocused = e.HasFocus;
+				return;
 			}
+
+			if (handler.MauiContext?.Context is null || handler.PlatformView is not View platformView)
+			{
+				return;
+			}
+
+			// Use our static registry approach to find and reset the appropriate listener
+			var listener = MauiWindowInsetListener.FindListenerForView(platformView);
+
+			// Check for specific view group types that handle safe area
+			if (handler.PlatformView is ContentViewGroup cvg)
+			{
+				listener?.ResetAppliedSafeAreas(cvg);
+				cvg.MarkSafeAreaEdgeConfigurationChanged();
+			}
+			else if (handler.PlatformView is LayoutViewGroup lvg)
+			{
+				listener?.ResetAppliedSafeAreas(lvg);
+				lvg.MarkSafeAreaEdgeConfigurationChanged();
+			}
+			else if (handler.PlatformView is MauiScrollView msv)
+			{
+				listener?.ResetAppliedSafeAreas(msv);
+				msv.MarkSafeAreaEdgeConfigurationChanged();
+			}
+
+			view.InvalidateMeasure();
 		}
 	}
 }

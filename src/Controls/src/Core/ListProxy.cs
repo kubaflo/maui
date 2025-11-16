@@ -1,9 +1,9 @@
+#nullable disable
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Dispatching;
 
@@ -11,11 +11,12 @@ namespace Microsoft.Maui.Controls
 {
 	internal sealed class ListProxy : IReadOnlyList<object>, IListProxy, INotifyCollectionChanged
 	{
-		IDispatcher _dispatcher;
+		readonly IDispatcher _dispatcher;
 		readonly ICollection _collection;
 		readonly IList _list;
 		readonly int _windowSize;
-		readonly ConditionalWeakTable<ListProxy, WeakNotifyProxy> _sourceToWeakHandlers;
+		readonly WeakNotifyCollectionChangedProxy _proxy;
+		readonly NotifyCollectionChangedEventHandler _collectionChangedDelegate;
 
 		IEnumerator _enumerator;
 		int _enumeratorIndex;
@@ -35,19 +36,22 @@ namespace Microsoft.Maui.Controls
 
 			ProxiedEnumerable = enumerable;
 			_collection = enumerable as ICollection;
-			_sourceToWeakHandlers = new ConditionalWeakTable<ListProxy, WeakNotifyProxy>();
 
-			if (_collection == null && enumerable is IReadOnlyCollection<object>)
-				_collection = new ReadOnlyListAdapter((IReadOnlyCollection<object>)enumerable);
+			if (_collection == null && enumerable is IReadOnlyCollection<object> coll)
+				_collection = new ReadOnlyListAdapter(coll);
 
 			_list = enumerable as IList;
 			if (_list == null && enumerable is IReadOnlyList<object>)
 				_list = new ReadOnlyListAdapter((IReadOnlyList<object>)enumerable);
 
-			var changed = enumerable as INotifyCollectionChanged;
-			if (changed != null)
-				_sourceToWeakHandlers.Add(this, new WeakNotifyProxy(this, changed));
+			if (enumerable is INotifyCollectionChanged changed)
+			{
+				_collectionChangedDelegate = OnCollectionChanged;
+				_proxy = new WeakNotifyCollectionChangedProxy(changed, _collectionChangedDelegate);
+			}
 		}
+
+		~ListProxy() => _proxy?.Unsubscribe();
 
 		public IEnumerable ProxiedEnumerable { get; }
 
@@ -127,7 +131,7 @@ namespace Microsoft.Maui.Controls
 			{
 				object value;
 				if (!TryGetValue(index, out value))
-					throw new ArgumentOutOfRangeException("index");
+					throw new ArgumentOutOfRangeException(nameof(index));
 
 				return value;
 			}
@@ -143,16 +147,13 @@ namespace Microsoft.Maui.Controls
 			if (_enumerator != null)
 			{
 				var dispose = _enumerator as IDisposable;
-				if (dispose != null)
-					dispose.Dispose();
+				dispose?.Dispose();
 
 				_enumerator = null;
 			}
 
-			if (_items != null)
-				_items.Clear();
-			if (_indexesCounted != null)
-				_indexesCounted.Clear();
+			_items?.Clear();
+			_indexesCounted?.Clear();
 
 			OnCountChanged();
 			OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
@@ -299,8 +300,7 @@ namespace Microsoft.Maui.Controls
 				_windowIndex = 0;
 
 				var dispose = _enumerator as IDisposable;
-				if (dispose != null)
-					dispose.Dispose();
+				dispose?.Dispose();
 
 				_enumerator = null;
 				_enumeratorIndex = 0;
@@ -331,8 +331,7 @@ namespace Microsoft.Maui.Controls
 					if (!moved)
 					{
 						var dispose = _enumerator as IDisposable;
-						if (dispose != null)
-							dispose.Dispose();
+						dispose?.Dispose();
 
 						_enumerator = null;
 						_enumeratorIndex = 0;
@@ -359,40 +358,6 @@ namespace Microsoft.Maui.Controls
 				OnCountChanged();
 
 			return _items.TryGetValue(index, out value);
-		}
-
-		class WeakNotifyProxy
-		{
-			readonly WeakReference<INotifyCollectionChanged> _weakCollection;
-			readonly WeakReference<ListProxy> _weakProxy;
-			readonly ConditionalWeakTable<ListProxy, NotifyCollectionChangedEventHandler> _sourceToWeakHandlers;
-
-			public WeakNotifyProxy(ListProxy proxy, INotifyCollectionChanged incc)
-			{
-				_sourceToWeakHandlers = new ConditionalWeakTable<ListProxy, NotifyCollectionChangedEventHandler>();
-				NotifyCollectionChangedEventHandler handler = new NotifyCollectionChangedEventHandler(OnCollectionChanged);
-
-				_sourceToWeakHandlers.Add(proxy, handler);
-				incc.CollectionChanged += handler;
-
-				_weakProxy = new WeakReference<ListProxy>(proxy);
-				_weakCollection = new WeakReference<INotifyCollectionChanged>(incc);
-			}
-
-			void OnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-			{
-				ListProxy proxy;
-				if (!_weakProxy.TryGetTarget(out proxy))
-				{
-					INotifyCollectionChanged collection;
-					if (_weakCollection.TryGetTarget(out collection))
-						collection.CollectionChanged -= OnCollectionChanged;
-
-					return;
-				}
-
-				proxy.OnCollectionChanged(sender, e);
-			}
 		}
 
 		class ProxyEnumerator : IEnumerator<object>

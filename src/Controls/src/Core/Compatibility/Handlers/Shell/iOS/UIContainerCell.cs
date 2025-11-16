@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using Foundation;
 using ObjCRuntime;
@@ -24,18 +25,34 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			if (_renderer == null)
 			{
-				_renderer = (IPlatformViewHandler)view.ToHandler(shell.FindMauiContext());
+				_renderer = (IPlatformViewHandler)view.ToHandler(view.FindMauiContext() ?? shell.FindMauiContext());
 			}
 
-			ContentView.AddSubview(_renderer.PlatformView);
+			var platformView = view.ToPlatform();
+			ContentView.AddSubview(platformView);
+			platformView.AccessibilityTraits |= UIAccessibilityTrait.Button;
+			platformView.TranslatesAutoresizingMaskIntoConstraints = false;
+
+			var margin = view.Margin;
+			var constraints = new NSLayoutConstraint[]
+			{
+				platformView.LeadingAnchor.ConstraintEqualTo(ContentView.LeadingAnchor, (nfloat)margin.Left),
+				platformView.TrailingAnchor.ConstraintEqualTo(ContentView.TrailingAnchor, (nfloat)(-margin.Right)),
+				platformView.TopAnchor.ConstraintEqualTo(ContentView.TopAnchor, (nfloat)margin.Top),
+				platformView.BottomAnchor.ConstraintEqualTo(ContentView.BottomAnchor, (nfloat)(-margin.Bottom))
+			};
+			NSLayoutConstraint.ActivateConstraints(constraints);
+
 			_renderer.PlatformView.ClipsToBounds = true;
 			ContentView.ClipsToBounds = true;
 
 			BindingContext = context;
-			if (shell != null)
-				shell.AddLogicalChild(View);
-		}
 
+			if (BindingContext is BaseShellItem bsi)
+				bsi.AddLogicalChild(View);
+			else
+				shell?.AddLogicalChild(View);
+		}
 
 		public UIContainerCell(string cellId, View view) : this(cellId, view, null, null)
 		{
@@ -61,13 +78,16 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			if (_bindingContext != null && _bindingContext is BaseShellItem baseShell)
 				baseShell.PropertyChanged -= OnElementPropertyChanged;
 
+			if (View.Parent is BaseShellItem bsi)
+				bsi.RemoveLogicalChild(View);
+			else
+				shell?.RemoveLogicalChild(View);
+
 			_bindingContext = null;
 
 			if (!keepRenderer)
 				View.Handler = null;
 
-			if (shell != null)
-				shell.RemoveLogicalChild(shell);
 
 			View = null;
 			TableView = null;

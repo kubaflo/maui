@@ -7,12 +7,21 @@ using System.Runtime.CompilerServices;
 using static System.String;
 namespace Microsoft.Maui
 {
-	/// <include file="../docs/Microsoft.Maui/WeakEventManager.xml" path="Type[@FullName='Microsoft.Maui.WeakEventManager']/Docs" />
+	/// <summary>
+	/// Manages weak event subscriptions, preventing memory leaks by maintaining weak references to handlers.
+	/// </summary>
 	public class WeakEventManager
 	{
-		readonly Dictionary<string, List<Subscription>> _eventHandlers = new Dictionary<string, List<Subscription>>();
+		readonly Dictionary<string, List<Subscription>> _eventHandlers = new(StringComparer.Ordinal);
 
-		/// <include file="../docs/Microsoft.Maui/WeakEventManager.xml" path="//Member[@MemberName='AddEventHandler'][1]/Docs" />
+		/// <summary>
+		/// Adds an event handler for the specified event, storing a weak reference to the handler's target.
+		/// </summary>
+		/// <typeparam name="TEventArgs">The type of the event arguments.</typeparam>
+		/// <param name="handler">The event handler to add.</param>
+		/// <param name="eventName">The name of the event.</param>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="eventName"/> is null or empty.</exception>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="handler"/> is null.</exception>
 		public void AddEventHandler<TEventArgs>(EventHandler<TEventArgs> handler, [CallerMemberName] string eventName = "")
 			where TEventArgs : EventArgs
 		{
@@ -25,7 +34,13 @@ namespace Microsoft.Maui
 			AddEventHandler(eventName, handler.Target, handler.GetMethodInfo());
 		}
 
-		/// <include file="../docs/Microsoft.Maui/WeakEventManager.xml" path="//Member[@MemberName='AddEventHandler'][2]/Docs" />
+		/// <summary>
+		/// Adds an event handler for the specified event, storing a weak reference to the handler's target.
+		/// </summary>
+		/// <param name="handler">The event handler to add.</param>
+		/// <param name="eventName">The name of the event.</param>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="eventName"/> is null or empty.</exception>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="handler"/> is null.</exception>
 		public void AddEventHandler(Delegate? handler, [CallerMemberName] string eventName = "")
 		{
 			if (IsNullOrEmpty(eventName))
@@ -37,8 +52,13 @@ namespace Microsoft.Maui
 			AddEventHandler(eventName, handler.Target, handler.GetMethodInfo());
 		}
 
-		/// <include file="../docs/Microsoft.Maui/WeakEventManager.xml" path="//Member[@MemberName='HandleEvent']/Docs" />
-		public void HandleEvent(object sender, object args, string eventName)
+		/// <summary>
+		/// Invokes the handlers registered for the specified event. Removes handlers whose targets have been garbage collected.
+		/// </summary>
+		/// <param name="sender">The source of the event.</param>
+		/// <param name="args">The event arguments.</param>
+		/// <param name="eventName">The name of the event to raise.</param>
+		public void HandleEvent(object? sender, object? args, string eventName)
 		{
 			var toRaise = new List<(object? subscriber, MethodInfo handler)>();
 			var toRemove = new List<Subscription>();
@@ -79,7 +99,14 @@ namespace Microsoft.Maui
 			}
 		}
 
-		/// <include file="../docs/Microsoft.Maui/WeakEventManager.xml" path="//Member[@MemberName='RemoveEventHandler'][1]/Docs" />
+		/// <summary>
+		/// Removes a previously added event handler for the specified event.
+		/// </summary>
+		/// <typeparam name="TEventArgs">The type of the event arguments.</typeparam>
+		/// <param name="handler">The event handler to remove.</param>
+		/// <param name="eventName">The name of the event.</param>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="eventName"/> is null or empty.</exception>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="handler"/> is null.</exception>
 		public void RemoveEventHandler<TEventArgs>(EventHandler<TEventArgs> handler, [CallerMemberName] string eventName = "")
 			where TEventArgs : EventArgs
 		{
@@ -92,7 +119,13 @@ namespace Microsoft.Maui
 			RemoveEventHandler(eventName, handler.Target, handler.GetMethodInfo());
 		}
 
-		/// <include file="../docs/Microsoft.Maui/WeakEventManager.xml" path="//Member[@MemberName='RemoveEventHandler'][2]/Docs" />
+		/// <summary>
+		/// Removes a previously added event handler for the specified event.
+		/// </summary>
+		/// <param name="handler">The event handler to remove.</param>
+		/// <param name="eventName">The name of the event.</param>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="eventName"/> is null or empty.</exception>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="handler"/> is null.</exception>
 		public void RemoveEventHandler(Delegate? handler, [CallerMemberName] string eventName = "")
 		{
 			if (IsNullOrEmpty(eventName))
@@ -127,31 +160,47 @@ namespace Microsoft.Maui
 			if (!_eventHandlers.TryGetValue(eventName, out List<Subscription>? subscriptions))
 				return;
 
-			for (int n = subscriptions.Count; n > 0; n--)
+			for (int n = subscriptions.Count - 1; n >= 0; n--)
 			{
-				Subscription current = subscriptions[n - 1];
+				Subscription current = subscriptions[n];
 
-				if (current.Subscriber?.Target != handlerTarget || current.Handler.Name != methodInfo.Name)
+				if (current.Subscriber != null && !current.Subscriber.IsAlive)
+				{
+					// If not alive, remove and continue
+					subscriptions.RemoveAt(n);
 					continue;
+				}
 
-				subscriptions.Remove(current);
-				break;
+				if (current.Subscriber?.Target == handlerTarget && current.Handler.Name == methodInfo.Name)
+				{
+					// Found the match, we can break
+					subscriptions.RemoveAt(n);
+					break;
+				}
 			}
 		}
 
-		struct Subscription
+		readonly struct Subscription : IEquatable<Subscription>
 		{
-			/// <include file="../docs/Microsoft.Maui/WeakEventManager.xml" path="//Member[@MemberName='.ctor']/Docs" />
+			/// <summary>
+			/// Initializes a new <see cref="Subscription"/> with a weak reference to the subscriber and the handler method.
+			/// </summary>
+			/// <param name="subscriber">A weak reference to the subscriber object.</param>
+			/// <param name="handler">The method info of the handler to invoke.</param>
 			public Subscription(WeakReference? subscriber, MethodInfo handler)
 			{
 				Subscriber = subscriber;
 				Handler = handler ?? throw new ArgumentNullException(nameof(handler));
 			}
 
-			/// <include file="../docs/Microsoft.Maui/WeakEventManager.xml" path="//Member[@MemberName='Subscriber']/Docs" />
 			public readonly WeakReference? Subscriber;
-			/// <include file="../docs/Microsoft.Maui/WeakEventManager.xml" path="//Member[@MemberName='Handler']/Docs" />
 			public readonly MethodInfo Handler;
+
+			public bool Equals(Subscription other) => Subscriber == other.Subscriber && Handler == other.Handler;
+
+			public override bool Equals(object? obj) => obj is Subscription other && Equals(other);
+
+			public override int GetHashCode() => Subscriber?.GetHashCode() ?? 0 ^ Handler.GetHashCode();
 		}
 	}
 }

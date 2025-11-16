@@ -9,6 +9,35 @@ namespace Microsoft.Maui.Platform
 {
 	public static class MenuExtensions
 	{
+		internal static void UpdateIsEnabled(this UIMenuElement uiMenuElement, IMenuBarItem menuBarItem)
+		{
+			uiMenuElement.UpdateIsEnabled(menuBarItem.IsEnabled);
+		}
+
+		internal static void UpdateIsEnabled(this UIMenuElement uiMenuElement, IMenuFlyoutItem menuFlyoutItem)
+		{
+			uiMenuElement.UpdateIsEnabled(menuFlyoutItem.IsEnabled);
+		}
+
+		internal static void UpdateIsEnabled(this UIMenuElement uiMenuElement, bool isEnabled)
+		{
+			uiMenuElement.UpdateMenuElementAttributes(isEnabled);
+		}
+
+		internal static void UpdateMenuElementAttributes(this UIMenuElement uiMenuElement, bool isEnabled)
+		{
+			if (uiMenuElement is UIAction action)
+				action.Attributes = isEnabled.ToUIMenuElementAttributes();
+
+			if (uiMenuElement is UICommand command)
+				command.Attributes = isEnabled.ToUIMenuElementAttributes();
+		}
+
+		internal static UIMenuElementAttributes ToUIMenuElementAttributes(this bool isEnabled)
+		{
+			return isEnabled ? 0 : UIMenuElementAttributes.Disabled;
+		}
+
 		internal static UIImage? GetPlatformMenuImage(this IImageSource? imageSource, IMauiContext mauiContext)
 		{
 			if (imageSource == null)
@@ -40,6 +69,27 @@ namespace Microsoft.Maui.Platform
 		[System.Runtime.Versioning.SupportedOSPlatform("ios13.0")]
 		internal static UIMenu ToPlatformMenu(
 			this IList<IMenuElement> menuElements,
+			IMauiContext mauiContext)
+		{
+			UIMenuElement[] platformMenuElements = new UIMenuElement[menuElements.Count];
+
+			for (int i = 0; i < menuElements.Count; i++)
+			{
+				var item = menuElements[i];
+				var menuElement = (UIMenuElement)item.ToHandler(mauiContext)!.PlatformView!;
+				platformMenuElements[i] = menuElement;
+			}
+
+#pragma warning disable CA1416
+			var platformMenu = UIMenu.Create(children: platformMenuElements);
+#pragma warning restore CA1416
+
+			return platformMenu;
+		}
+
+		[System.Runtime.Versioning.SupportedOSPlatform("ios13.0")]
+		internal static UIMenu ToPlatformMenu(
+			this IList<IMenuElement> menuElements,
 			string title,
 			IImageSource? imageSource,
 			IMauiContext mauiContext,
@@ -62,7 +112,7 @@ namespace Microsoft.Maui.Platform
 				if (result != null)
 				{
 					platformMenu =
-						uIMenuBuilder.GetMenu(((UIMenuIdentifier)result).GetConstant());
+						uIMenuBuilder.GetMenu(((UIMenuIdentifier)result).GetConstant() ?? string.Empty);
 				}
 			}
 

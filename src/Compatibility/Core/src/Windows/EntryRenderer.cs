@@ -1,21 +1,21 @@
 using System;
 using System.ComponentModel;
-using Windows.System;
-using Windows.UI.Text;
+using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
-using WBrush = Microsoft.UI.Xaml.Media.Brush;
+using Windows.System;
+using Windows.UI.Text;
 using Specifics = Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific.InputView;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
-using Microsoft.Extensions.Logging;
+using WBrush = Microsoft.UI.Xaml.Media.Brush;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class EntryRenderer : ViewRenderer<Entry, FormsTextBox>
+	public partial class EntryRenderer : ViewRenderer<Entry, FormsTextBox>
 	{
 		bool _fontApplied;
 		WBrush _backgroundColorFocusedDefaultBrush;
@@ -502,11 +502,13 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		{
 			FormsTextBox child = Control;
 
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 			if (Children.Count == 0 || child == null)
 				return new SizeRequest();
+#pragma warning restore RS0030 // Do not use banned APIs
 
 			var constraint = new global::Windows.Foundation.Size(widthConstraint, heightConstraint);
-            child.Measure(constraint);
+			child.Measure(constraint);
 			var result = FormsTextBox.GetCopyOfSize(child, constraint);
 			return new SizeRequest(result);
 		}

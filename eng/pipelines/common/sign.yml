@@ -1,31 +1,57 @@
-stages:
-  - stage: nuget_signing
-    dependsOn: pack_net6
-    displayName: Sign Nuget
-    jobs:
-      - template: sign-artifacts/jobs/v2.yml@xamarin-templates
-        parameters:
-          signType: Real
-          teamName: $(TeamName)
-          usePipelineArtifactTasks: false
-          targetFolder: $(Build.ArtifactStagingDirectory)/nuget/signed
-          signedArtifactName: nuget
-          signedArtifactPath: signed
-          displayName: Sign Phase
-          condition: and(succeeded(), or(eq(variables['Sign'], 'true'), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), or(startsWith(variables['Build.SourceBranch'],'refs/tags/'),  startsWith(variables['Build.SourceBranch'],'refs/heads/release/') ))))
+parameters:
+  poolName: Azure Pipelines
+  vmImage: windows-latest
+  os: windows
+  teamName: $(TeamName)
+  signType: 'Real'
+  dependsOn: []
+  stageName: 'nuget_signing'
+  displayName: 'Sign Nuget'
 
-      - template: nuget-msi-convert/job/v2.yml@xamarin-templates
+
+stages:
+  - stage: ${{ parameters.stageName }}
+    dependsOn: ${{ parameters.dependsOn }}
+    displayName: ${{ parameters.displayName }}
+    jobs:
+      - template: sign-artifacts/jobs/v2.yml@yaml-templates
         parameters:
-          yamlResourceName: xamarin-templates
-          artifactName: nuget
-          artifactPatterns: |
-            **/signed/*.nupkg
-          artifactPath: signed
-          propsArtifactName: nuget
-          signType: Real
-          preConvertSteps:
-            - task: DownloadPipelineArtifact@2
-              displayName: Download library-packs nugets
-              inputs:
-                artifactName: library-packs
-                downloadPath: $(Build.StagingDirectory)\nugets\signed
+          signType: ${{ parameters.signType }}
+          teamName: ${{ parameters.teamName }}
+          condition: eq(variables.signingCondition, true)
+          use1ESTemplate: true
+          usePipelineArtifactTasks: true
+          checkoutType : 'self'
+        
+      - template: nuget-msi-convert/job/v4.yml@yaml-templates
+        parameters:
+          yamlResourceName: yaml-templates
+          artifactName: nuget-signed
+          propsArtifactName:  nuget
+          signType: ${{ parameters.signType }}
+          use1ESTemplate: true
+          postConvertSteps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              artifactName: nuget
+              downloadPath: $(Build.ArtifactStagingDirectory)\sign-verify
+              patterns: |
+                **/SignVerifyIgnore.txt
+
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              artifactName: nuget
+              downloadPath: $(Build.SourcesDirectory)\eng\automation\guardian
+              patterns: |
+                **/tsaoptions-v2.json
+                **/source.gdnsuppress
+
+          - task: MicroBuildCodesignVerify@3
+            displayName: verify signed msi content
+            inputs:
+              TargetFolders: |
+                $(Build.ArtifactStagingDirectory)\bin\manifests
+                $(Build.ArtifactStagingDirectory)\bin\manifests-packs
+                $(Build.ArtifactStagingDirectory)\bin\msi-nupkgs
+              ExcludeSNVerify: true
+              ApprovalListPathForCerts: $(Build.ArtifactStagingDirectory)\sign-verify\SignVerifyIgnore.txt

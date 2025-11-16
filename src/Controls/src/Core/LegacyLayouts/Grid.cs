@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -9,23 +10,31 @@ using Microsoft.Maui.Controls.Internals;
 namespace Microsoft.Maui.Controls.Compatibility
 {
 	[ContentProperty(nameof(Children))]
+	[Obsolete("Use Microsoft.Maui.Controls.Grid instead. For more information, see https://learn.microsoft.com/dotnet/maui/migration/layouts")]
 	public partial class Grid : Layout<View>, IGridController, IElementConfiguration<Grid>, IGridLayout
 	{
+		/// <summary>Bindable property for attached property <c>Row</c>.</summary>
 		public static readonly BindableProperty RowProperty = BindableProperty.CreateAttached("Row", typeof(int), typeof(Grid), default(int), validateValue: (bindable, value) => (int)value >= 0);
 
+		/// <summary>Bindable property for attached property <c>RowSpan</c>.</summary>
 		public static readonly BindableProperty RowSpanProperty = BindableProperty.CreateAttached("RowSpan", typeof(int), typeof(Grid), 1, validateValue: (bindable, value) => (int)value >= 1);
 
+		/// <summary>Bindable property for attached property <c>Column</c>.</summary>
 		public static readonly BindableProperty ColumnProperty = BindableProperty.CreateAttached("Column", typeof(int), typeof(Grid), default(int), validateValue: (bindable, value) => (int)value >= 0);
 
+		/// <summary>Bindable property for attached property <c>ColumnSpan</c>.</summary>
 		public static readonly BindableProperty ColumnSpanProperty = BindableProperty.CreateAttached("ColumnSpan", typeof(int), typeof(Grid), 1, validateValue: (bindable, value) => (int)value >= 1);
 
-		public static readonly BindableProperty RowSpacingProperty = BindableProperty.Create("RowSpacing", typeof(double), typeof(Grid), 6d,
+		/// <summary>Bindable property for <see cref="RowSpacing"/>.</summary>
+		public static readonly BindableProperty RowSpacingProperty = BindableProperty.Create(nameof(RowSpacing), typeof(double), typeof(Grid), 6d,
 			propertyChanged: (bindable, oldValue, newValue) => ((Grid)bindable).InvalidateMeasureInternal(InvalidationTrigger.MeasureChanged));
 
-		public static readonly BindableProperty ColumnSpacingProperty = BindableProperty.Create("ColumnSpacing", typeof(double), typeof(Grid), 6d,
+		/// <summary>Bindable property for <see cref="ColumnSpacing"/>.</summary>
+		public static readonly BindableProperty ColumnSpacingProperty = BindableProperty.Create(nameof(ColumnSpacing), typeof(double), typeof(Grid), 6d,
 			propertyChanged: (bindable, oldValue, newValue) => ((Grid)bindable).InvalidateMeasureInternal(InvalidationTrigger.MeasureChanged));
 
-		public static readonly BindableProperty ColumnDefinitionsProperty = BindableProperty.Create("ColumnDefinitions", typeof(ColumnDefinitionCollection), typeof(Grid), null,
+		/// <summary>Bindable property for <see cref="ColumnDefinitions"/>.</summary>
+		public static readonly BindableProperty ColumnDefinitionsProperty = BindableProperty.Create(nameof(ColumnDefinitions), typeof(ColumnDefinitionCollection), typeof(Grid), null,
 			validateValue: (bindable, value) => value != null, propertyChanged: (bindable, oldvalue, newvalue) =>
 			{
 				if (oldvalue != null)
@@ -40,7 +49,8 @@ namespace Microsoft.Maui.Controls.Compatibility
 				return colDef;
 			});
 
-		public static readonly BindableProperty RowDefinitionsProperty = BindableProperty.Create("RowDefinitions", typeof(RowDefinitionCollection), typeof(Grid), null,
+		/// <summary>Bindable property for <see cref="RowDefinitions"/>.</summary>
+		public static readonly BindableProperty RowDefinitionsProperty = BindableProperty.Create(nameof(RowDefinitions), typeof(RowDefinitionCollection), typeof(Grid), null,
 			validateValue: (bindable, value) => value != null, propertyChanged: (bindable, oldvalue, newvalue) =>
 			{
 				if (oldvalue != null)
@@ -66,6 +76,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 				new PlatformConfigurationRegistry<Grid>(this));
 		}
 
+		/// <inheritdoc/>
 		public IPlatformElementConfiguration<T, Grid> On<T>() where T : IConfigPlatform
 		{
 			return _platformConfigurationRegistry.Value.On<T>();
@@ -160,7 +171,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 			view.PropertyChanged -= OnItemPropertyChanged;
 		}
 
-		internal override void ComputeConstraintForView(View view)
+		protected override LayoutConstraint ComputeConstraintForView(View view)
 		{
 			LayoutOptions vOptions = view.VerticalOptions;
 			LayoutOptions hOptions = view.HorizontalOptions;
@@ -224,7 +235,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 					result |= LayoutConstraint.HorizontallyFixed;
 			}
 
-			view.ComputedConstraint = result;
+			return result;
 		}
 
 		[EditorBrowsable(EditorBrowsableState.Never)]
@@ -248,7 +259,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 				var child = sender as View;
 				if (child != null)
 				{
-					ComputeConstraintForView(child);
+					child.ComputedConstraint = ComputeConstraintForView(child);
 				}
 
 				InvalidateLayout();
@@ -301,24 +312,24 @@ namespace Microsoft.Maui.Controls.Compatibility
 			public void Add(View view, int left, int top)
 			{
 				if (left < 0)
-					throw new ArgumentOutOfRangeException("left");
+					throw new ArgumentOutOfRangeException(nameof(left));
 				if (top < 0)
-					throw new ArgumentOutOfRangeException("top");
+					throw new ArgumentOutOfRangeException(nameof(top));
 				Add(view, left, left + 1, top, top + 1);
 			}
 
 			public void Add(View view, int left, int right, int top, int bottom)
 			{
 				if (left < 0)
-					throw new ArgumentOutOfRangeException("left");
+					throw new ArgumentOutOfRangeException(nameof(left));
 				if (top < 0)
-					throw new ArgumentOutOfRangeException("top");
+					throw new ArgumentOutOfRangeException(nameof(top));
 				if (left >= right)
-					throw new ArgumentOutOfRangeException("right");
+					throw new ArgumentOutOfRangeException(nameof(right));
 				if (top >= bottom)
-					throw new ArgumentOutOfRangeException("bottom");
+					throw new ArgumentOutOfRangeException(nameof(bottom));
 				if (view == null)
-					throw new ArgumentNullException("view");
+					throw new ArgumentNullException(nameof(view));
 
 				SetRow(view, top);
 				SetRowSpan(view, bottom - top);
@@ -331,7 +342,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 			public void AddHorizontal(IEnumerable<View> views)
 			{
 				if (views == null)
-					throw new ArgumentNullException("views");
+					throw new ArgumentNullException(nameof(views));
 
 				views.ForEach(AddHorizontal);
 			}
@@ -339,7 +350,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 			public void AddHorizontal(View view)
 			{
 				if (view == null)
-					throw new ArgumentNullException("view");
+					throw new ArgumentNullException(nameof(view));
 
 				var rows = RowCount();
 				var columns = ColumnCount();
@@ -354,7 +365,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 			public void AddVertical(IEnumerable<View> views)
 			{
 				if (views == null)
-					throw new ArgumentNullException("views");
+					throw new ArgumentNullException(nameof(views));
 
 				views.ForEach(AddVertical);
 			}
@@ -362,7 +373,7 @@ namespace Microsoft.Maui.Controls.Compatibility
 			public void AddVertical(View view)
 			{
 				if (view == null)
-					throw new ArgumentNullException("view");
+					throw new ArgumentNullException(nameof(view));
 
 				var rows = RowCount();
 				var columns = ColumnCount();

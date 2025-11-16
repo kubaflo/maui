@@ -1,4 +1,5 @@
 #nullable enable
+using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -16,63 +17,70 @@ namespace Microsoft.Maui.Platform
 			var brush = buttonStroke.StrokeColor?.ToPlatform();
 
 			if (brush is null)
-			{
-				platformButton.Resources.Remove("ButtonBorderBrush");
-				platformButton.Resources.Remove("ButtonBorderBrushPointerOver");
-				platformButton.Resources.Remove("ButtonBorderBrushPressed");
-				platformButton.Resources.Remove("ButtonBorderBrushDisabled");
-
-				platformButton.ClearValue(Button.BorderBrushProperty);
-			}
+				platformButton.Resources.RemoveKeys(StrokeColorResourceKeys);
 			else
-			{
-				platformButton.Resources["ButtonBorderBrush"] = brush;
-				platformButton.Resources["ButtonBorderBrushPointerOver"] = brush;
-				platformButton.Resources["ButtonBorderBrushPressed"] = brush;
-				platformButton.Resources["ButtonBorderBrushDisabled"] = brush;
+				platformButton.Resources.SetValueForAllKey(StrokeColorResourceKeys, brush);
 
-				platformButton.BorderBrush = brush;
-			}
+			platformButton.RefreshThemeResources();
 		}
+
+		static readonly string[] StrokeColorResourceKeys =
+		{
+			"ButtonBorderBrush",
+			"ButtonBorderBrushPointerOver",
+			"ButtonBorderBrushPressed",
+			"ButtonBorderBrushDisabled",
+		};
 
 		public static void UpdateStrokeThickness(this Button platformButton, IButtonStroke buttonStroke)
 		{
-			if (buttonStroke.StrokeThickness >= 0)
-			{
-				platformButton.Resources["ButtonBorderThemeThickness"] = WinUIHelpers.CreateThickness(buttonStroke.StrokeThickness);
-			}
+			var thickness = buttonStroke.StrokeThickness;
+
+			if (thickness >= 0)
+				platformButton.Resources.SetValueForAllKey(StrokeThicknessResourceKeys, WinUIHelpers.CreateThickness(buttonStroke.StrokeThickness));
 			else
-			{
-				platformButton.Resources.Remove("ButtonBorderThemeThickness");
-			}
+				platformButton.Resources.RemoveKeys(StrokeThicknessResourceKeys);
+
+			platformButton.RefreshThemeResources();
 		}
+
+		static readonly string[] StrokeThicknessResourceKeys =
+		{
+			"ButtonBorderThemeThickness",
+		};
 
 		public static void UpdateCornerRadius(this Button platformButton, IButtonStroke buttonStroke)
 		{
-			if (buttonStroke.CornerRadius >= 0)
-			{
-				platformButton.Resources["ControlCornerRadius"] = WinUIHelpers.CreateCornerRadius(buttonStroke.CornerRadius);
-			}
+			var radius = buttonStroke.CornerRadius;
+
+			if (radius >= 0)
+				platformButton.Resources.SetValueForAllKey(CornerRadiusResourceKeys, WinUIHelpers.CreateCornerRadius(radius));
 			else
-			{
-				platformButton.Resources.Remove("ControlCornerRadius");
-			}
+				platformButton.Resources.RemoveKeys(CornerRadiusResourceKeys);
+
+			platformButton.RefreshThemeResources();
 		}
+
+		static readonly string[] CornerRadiusResourceKeys =
+		{
+			"ControlCornerRadius",
+		};
 
 		public static void UpdateText(this Button platformButton, IText text)
 		{
 			platformButton.UpdateText(text.Text);
 		}
 
-		public static void UpdateText(this Button platformButton, string text) 
+		public static void UpdateText(this Button platformButton, string text)
 		{
-			if (platformButton.GetContent<TextBlock>() is TextBlock textBlock)
-			{
-				textBlock.Text = text;
-				textBlock.Visibility = string.IsNullOrEmpty(text)
-					? UI.Xaml.Visibility.Collapsed
-					: UI.Xaml.Visibility.Visible;
-			}
+			if (platformButton.GetContent<TextBlock>() is not TextBlock textBlock)
+				return;
+
+			textBlock.Text = text;
+
+			textBlock.Visibility = string.IsNullOrEmpty(text)
+				? UI.Xaml.Visibility.Collapsed
+				: UI.Xaml.Visibility.Visible;
 		}
 
 		public static void UpdateBackground(this Button platformButton, IButton button)
@@ -80,24 +88,20 @@ namespace Microsoft.Maui.Platform
 			var brush = button.Background?.ToPlatform();
 
 			if (brush is null)
-			{
-				platformButton.Resources.Remove("ButtonBackground");
-				platformButton.Resources.Remove("ButtonBackgroundPointerOver");
-				platformButton.Resources.Remove("ButtonBackgroundPressed");
-				platformButton.Resources.Remove("ButtonBackgroundDisabled");
-
-				platformButton.ClearValue(Button.BackgroundProperty);
-			}
+				platformButton.Resources.RemoveKeys(BackgroundResourceKeys);
 			else
-			{
-				platformButton.Resources["ButtonBackground"] = brush;
-				platformButton.Resources["ButtonBackgroundPointerOver"] = brush;
-				platformButton.Resources["ButtonBackgroundPressed"] = brush;
-				platformButton.Resources["ButtonBackgroundDisabled"] = brush;
+				platformButton.Resources.SetValueForAllKey(BackgroundResourceKeys, brush);
 
-				platformButton.Background = brush;
-			}
+			platformButton.RefreshThemeResources();
 		}
+
+		static readonly string[] BackgroundResourceKeys =
+		{
+			"ButtonBackground",
+			"ButtonBackgroundPointerOver",
+			"ButtonBackgroundPressed",
+			"ButtonBackgroundDisabled",
+		};
 
 		public static void UpdateTextColor(this ButtonBase platformButton, ITextStyle button)
 		{
@@ -106,30 +110,38 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateTextColor(this ButtonBase platformButton, Color textColor)
 		{
+			platformButton.UpdateTextColor(textColor, TextColorResourceKeys);
+		}
+
+		internal static void UpdateTextColor(this ButtonBase platformButton, Color textColor, string[] resourceKeys)
+		{
 			var brush = textColor?.ToPlatform();
+
 			if (brush is null)
 			{
 				// Windows.Foundation.UniversalApiContract < 5
-				platformButton.Resources.Remove("ButtonForeground");
-				platformButton.Resources.Remove("ButtonForegroundPointerOver");
-				platformButton.Resources.Remove("ButtonForegroundPressed");
-				platformButton.Resources.Remove("ButtonForegroundDisabled");
-
+				platformButton.Resources.RemoveKeys(resourceKeys);
 				// Windows.Foundation.UniversalApiContract >= 5
 				platformButton.ClearValue(Button.ForegroundProperty);
 			}
 			else
 			{
 				// Windows.Foundation.UniversalApiContract < 5
-				platformButton.Resources["ButtonForeground"] = brush;
-				platformButton.Resources["ButtonForegroundPointerOver"] = brush;
-				platformButton.Resources["ButtonForegroundPressed"] = brush;
-				platformButton.Resources["ButtonForegroundDisabled"] = brush;
-
+				platformButton.Resources.SetValueForAllKey(resourceKeys, brush);
 				// Windows.Foundation.UniversalApiContract >= 5
 				platformButton.Foreground = brush;
 			}
+
+			platformButton.RefreshThemeResources();
 		}
+
+		static readonly string[] TextColorResourceKeys =
+		{
+			"ButtonForeground",
+			"ButtonForegroundPointerOver",
+			"ButtonForegroundPressed",
+			"ButtonForegroundDisabled",
+		};
 
 		public static void UpdatePadding(this Button platformButton, IPadding padding) =>
 			platformButton.UpdatePadding(padding, platformButton.GetResource<UI.Xaml.Thickness>("ButtonPadding"));
@@ -148,40 +160,34 @@ namespace Microsoft.Maui.Platform
 		{
 			if (platformButton.GetContent<WImage>() is WImage nativeImage)
 			{
-				nativeImage.Source = nativeImageSource;
-
-				if (nativeImageSource is not null)
+				// If we're a CanvasImageSource (font image source), we need to explicitly set the image height
+				// to the desired size of the font, otherwise it will be stretched to the available space
+				if (nativeImageSource is CanvasImageSource canvas)
 				{
-					// set the base size if we can
-					{
-						var imageSourceSize = nativeImageSource.GetImageSourceSize(platformButton);
-						nativeImage.Width = imageSourceSize.Width;
-						nativeImage.Height = imageSourceSize.Height;
-					}
+					var size = canvas.GetImageSourceSize(platformButton);
+					nativeImage.Width = size.Width;
+					nativeImage.Height = size.Height;
+					nativeImage.MaxHeight = double.PositiveInfinity;
+				}
 
-					// BitmapImage is a special case that has an event when the image is loaded
-					// when this happens, we want to resize the button
-					if (nativeImageSource is BitmapImage bitmapImage)
+				// Ensure that we only scale images down and never up
+				if (nativeImageSource is BitmapImage bitmapImage)
+				{
+					// This will fire after `nativeImageSource.Source` is set
+					bitmapImage.ImageOpened += OnImageOpened;
+					void OnImageOpened(object sender, RoutedEventArgs e)
 					{
-						bitmapImage.ImageOpened += OnImageOpened;
+						bitmapImage.ImageOpened -= OnImageOpened;
 
-						void OnImageOpened(object sender, RoutedEventArgs e)
+						var actualImageSource = sender as BitmapImage;
+						if (actualImageSource is not null)
 						{
-							bitmapImage.ImageOpened -= OnImageOpened;
-
-							// check if the image that just loaded is still the current image
-							var actualImageSource = sender as BitmapImage;
-							if (actualImageSource is not null && nativeImage.Source == actualImageSource)
-							{
-								// do the actual resize
-								var imageSourceSize = actualImageSource.GetImageSourceSize(platformButton);
-								nativeImage.Width = imageSourceSize.Width;
-								nativeImage.Height = imageSourceSize.Height;
-							}
-						};
+							nativeImage.MaxHeight = nativeImageSource.GetImageSourceSize(platformButton).Height;
+						}
 					}
 				}
 
+				nativeImage.Source = nativeImageSource;
 				nativeImage.Visibility = nativeImageSource == null
 					? UI.Xaml.Visibility.Collapsed
 					: UI.Xaml.Visibility.Visible;
@@ -192,17 +198,29 @@ namespace Microsoft.Maui.Platform
 			where T : FrameworkElement
 		{
 			if (platformButton.Content is null)
+			{
 				return null;
+			}
 
 			if (platformButton.Content is T t)
+			{
 				return t;
+			}
 
 			if (platformButton.Content is Panel panel)
 			{
-				foreach (var child in panel.Children)
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons. MauiPanel might not be used everywhere though.
+				var children = panel is MauiPanel mauiPanel
+					? mauiPanel.CachedChildren
+					: panel.Children;
+#pragma warning restore RS0030 // Do not use banned APIs
+
+				foreach (var child in children)
 				{
 					if (child is T c)
+					{
 						return c;
+					}
 				}
 			}
 

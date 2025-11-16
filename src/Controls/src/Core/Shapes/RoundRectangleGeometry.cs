@@ -1,26 +1,35 @@
-using Microsoft.Maui.Graphics;
+#nullable disable
 using Microsoft.Maui.Devices;
+using Microsoft.Maui.Graphics;
 using Rect = Microsoft.Maui.Graphics.Rect;
 
 namespace Microsoft.Maui.Controls.Shapes
 {
-	/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/RoundRectangleGeometry.xml" path="Type[@FullName='Microsoft.Maui.Controls.Shapes.RoundRectangleGeometry']/Docs" />
+	/// <summary>
+	/// Represents a geometry that describes a rounded rectangle.
+	/// </summary>
 	public class RoundRectangleGeometry : GeometryGroup
 	{
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/RoundRectangleGeometry.xml" path="//Member[@MemberName='.ctor'][1]/Docs" />
+		/// <summary>
+		/// Initializes a new instance of the <see cref="RoundRectangleGeometry"/> class.
+		/// </summary>
 		public RoundRectangleGeometry()
 		{
 
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/RoundRectangleGeometry.xml" path="//Member[@MemberName='.ctor'][2]/Docs" />
+		/// <summary>
+		/// Initializes a new instance of the <see cref="RoundRectangleGeometry"/> class with the specified corner radius and rectangle.
+		/// </summary>
+		/// <param name="cornerRadius">The corner radius for the rounded rectangle.</param>
+		/// <param name="rect">The rectangle that defines the bounds of the geometry.</param>
 		public RoundRectangleGeometry(CornerRadius cornerRadius, Rect rect)
 		{
 			CornerRadius = cornerRadius;
 			Rect = rect;
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/RoundRectangleGeometry.xml" path="//Member[@MemberName='RectProperty']/Docs" />
+		/// <summary>Bindable property for <see cref="Rect"/>.</summary>
 		public static readonly BindableProperty RectProperty =
 		   BindableProperty.Create(nameof(Rect), typeof(Rect), typeof(RoundRectangleGeometry), new Rect(),
 			   propertyChanged: OnRectChanged);
@@ -30,14 +39,17 @@ namespace Microsoft.Maui.Controls.Shapes
 			(bindable as RoundRectangleGeometry)?.UpdateGeometry();
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/RoundRectangleGeometry.xml" path="//Member[@MemberName='Rect']/Docs" />
+		/// <summary>
+		/// Gets or sets the rectangle that defines the bounds of the geometry.
+		/// </summary>
+		/// <value>A <see cref="Rect"/> that defines the bounds of the geometry.</value>
 		public Rect Rect
 		{
 			set { SetValue(RectProperty, value); }
 			get { return (Rect)GetValue(RectProperty); }
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/RoundRectangleGeometry.xml" path="//Member[@MemberName='CornerRadiusProperty']/Docs" />
+		/// <summary>Bindable property for <see cref="CornerRadius"/>.</summary>
 		public static readonly BindableProperty CornerRadiusProperty =
 			BindableProperty.Create(nameof(CornerRadius), typeof(CornerRadius), typeof(RoundRectangleGeometry), new CornerRadius(),
 				propertyChanged: OnCornerRadiusChanged);
@@ -47,7 +59,11 @@ namespace Microsoft.Maui.Controls.Shapes
 			(bindable as RoundRectangleGeometry)?.UpdateGeometry();
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls.Shapes/RoundRectangleGeometry.xml" path="//Member[@MemberName='CornerRadius']/Docs" />
+		/// <summary>
+		/// Gets or sets the corner radius for the round rectangle geometry.
+		/// </summary>
+		/// <value>A <see cref="CornerRadius"/> value that specifies the radius for each corner of the round rectangle geometry.</value>
+		/// <remarks>When specifying corner radii, the order of values is top left, top right, bottom left, and bottom right.</remarks>
 		public CornerRadius CornerRadius
 		{
 			set { SetValue(CornerRadiusProperty, value); }
@@ -114,19 +130,15 @@ namespace Microsoft.Maui.Controls.Shapes
 
 		public override void AppendPath(Graphics.PathF path)
 		{
-			double density = 1.0d;
-#if ANDROID
-			density = DeviceDisplay.MainDisplayInfo.Density;
-#endif
-			float x = (float)(density * Rect.X);
-			float y = (float)(density * Rect.Y);
-			float w = (float)(density * Rect.Width);
-			float h = (float)(density * Rect.Height);
+			float x = (float)Rect.X;
+			float y = (float)Rect.Y;
+			float w = (float)Rect.Width;
+			float h = (float)Rect.Height;
 
-			float tl = (float)(density * CornerRadius.TopLeft);
-			float tr = (float)(density * CornerRadius.TopRight);
-			float bl = (float)(density * CornerRadius.BottomLeft);
-			float br = (float)(density * CornerRadius.BottomRight);
+			float tl = (float)CornerRadius.TopLeft;
+			float tr = (float)CornerRadius.TopRight;
+			float bl = (float)CornerRadius.BottomLeft;
+			float br = (float)CornerRadius.BottomRight;
 
 			path.AppendRoundedRectangle(x, y, w, h, tl, tr, bl, br);
 		}

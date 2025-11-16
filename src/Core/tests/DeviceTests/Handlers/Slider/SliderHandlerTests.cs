@@ -1,14 +1,12 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Microsoft.Maui.DeviceTests.Stubs;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Handlers;
 using Xunit;
 
 namespace Microsoft.Maui.DeviceTests
 {
 	[Category(TestCategory.Slider)]
-	public partial class SliderHandlerTests : HandlerTestBase<SliderHandler, SliderStub>
+	public partial class SliderHandlerTests : CoreHandlerTestBase<SliderHandler, SliderStub>
 	{
 		[Theory(DisplayName = "Percent Value Initializes Correctly")]
 		[InlineData(0, 1, 0)]
@@ -51,17 +49,6 @@ namespace Microsoft.Maui.DeviceTests
 			var nativePercent = (native.Val - native.Min) / (native.Max - native.Min);
 
 			Assert.Equal(expectedPercent, nativePercent, 5);
-		}
-
-		[Fact(DisplayName = "Thumb Color Initializes Correctly", Skip = "There seems to be an issue, so disable for now: https://github.com/dotnet/maui/issues/1275")]
-		public async Task ThumbColorInitializesCorrectly()
-		{
-			var slider = new SliderStub()
-			{
-				ThumbColor = Colors.Purple
-			};
-
-			await ValidateNativeThumbColor(slider, Colors.Purple);
 		}
 
 		[Fact(DisplayName = "Null Thumb Color Doesn't Crash")]

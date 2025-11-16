@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Graphics;
@@ -6,14 +7,18 @@ namespace Microsoft.Maui.Controls
 {
 	static class ImageElement
 	{
+		/// <summary>Bindable property for <c>ImageSource</c>.</summary>
 		public static readonly BindableProperty ImageSourceProperty = BindableProperty.Create("ImageSource", typeof(ImageSource), typeof(IImageElement), default(ImageSource),
 			propertyChanging: OnImageSourceChanging, propertyChanged: OnImageSourceChanged);
 
+		/// <summary>Bindable property for <see cref="IImageElement.Source"/>.</summary>
 		public static readonly BindableProperty SourceProperty = BindableProperty.Create(nameof(IImageElement.Source), typeof(ImageSource), typeof(IImageElement), default(ImageSource),
 			propertyChanging: OnImageSourceChanging, propertyChanged: OnImageSourceChanged);
 
+		/// <summary>Bindable property for <see cref="IImageElement.Aspect"/>.</summary>
 		public static readonly BindableProperty AspectProperty = BindableProperty.Create(nameof(IImageElement.Aspect), typeof(Aspect), typeof(IImageElement), Aspect.AspectFit);
 
+		/// <summary>Bindable property for <see cref="IImageElement.IsOpaque"/>.</summary>
 		public static readonly BindableProperty IsOpaqueProperty = BindableProperty.Create(nameof(IImageElement.IsOpaque), typeof(bool), typeof(IImageElement), false);
 
 		internal static readonly BindableProperty IsAnimationPlayingProperty = BindableProperty.Create(nameof(IImageElement.IsAnimationPlaying), typeof(bool), typeof(IImageElement), false);
@@ -22,8 +27,12 @@ namespace Microsoft.Maui.Controls
 		{
 			var newSource = (ImageSource)newValue;
 			var image = (IImageElement)bindable;
-			if (newSource != null && image != null)
+
+			if (newSource is not null && image is not null)
+			{
 				newSource.SourceChanged += image.OnImageSourceSourceChanged;
+			}
+
 			ImageSourceChanged(bindable, newSource);
 		}
 
@@ -32,11 +41,20 @@ namespace Microsoft.Maui.Controls
 			var oldSource = (ImageSource)oldValue;
 			var image = (IImageElement)bindable;
 
-			if (oldSource != null && image != null)
-				oldSource.SourceChanged -= image.OnImageSourceSourceChanged;
+			if (oldSource is not null)
+			{
+				if (image is not null)
+				{
+					oldSource.SourceChanged -= image.OnImageSourceSourceChanged;
+				}
+
+				oldSource.Parent = null;
+			}
+
 			ImageSourceChanging(oldSource);
 		}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		public static SizeRequest Measure(IImageElement ImageElementManager, SizeRequest desiredSize, double widthConstraint, double heightConstraint)
 		{
 			double desiredAspect = desiredSize.Request.Width / desiredSize.Request.Height;
@@ -91,6 +109,7 @@ namespace Microsoft.Maui.Controls
 
 			return new SizeRequest(new Size(width, height));
 		}
+#pragma warning restore CS0618 // Type or member is obsolete
 
 		public static void OnBindingContextChanged(IImageElement image, VisualElement visualElement)
 		{

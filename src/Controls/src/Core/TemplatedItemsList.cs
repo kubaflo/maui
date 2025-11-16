@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,30 +9,35 @@ using System.Linq;
 using System.Threading.Tasks;
 using Cadenza.Collections;
 using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Xaml;
 using Microsoft.Maui.Devices;
 
 namespace Microsoft.Maui.Controls.Internals
 {
 
 	[EditorBrowsable(EditorBrowsableState.Never)]
-	public sealed class TemplatedItemsList<TView, [DynamicallyAccessedMembers(BindableProperty.DeclaringTypeMembers)] TItem> : BindableObject, ITemplatedItemsList<TItem>, IList, IDisposable
+	public sealed class TemplatedItemsList<TView, [DynamicallyAccessedMembers(BindableProperty.DeclaringTypeMembers | BindableProperty.ReturnTypeMembers)] TItem> : BindableObject, ITemplatedItemsList<TItem>, IList, IDisposable
 												where TView : BindableObject, IItemsView<TItem>
 												where TItem : BindableObject
 	{
-		public static readonly BindableProperty NameProperty = BindableProperty.Create("Name", typeof(string), typeof(TemplatedItemsList<TView, TItem>), null);
+		/// <summary>Bindable property for <see cref="Name"/>.</summary>
+		public static readonly BindableProperty NameProperty = BindableProperty.Create(nameof(Name), typeof(string), typeof(TemplatedItemsList<TView, TItem>), null);
 
-		public static readonly BindableProperty ShortNameProperty = BindableProperty.Create("ShortName", typeof(string), typeof(TemplatedItemsList<TView, TItem>), null);
+		/// <summary>Bindable property for <see cref="ShortName"/>.</summary>
+		public static readonly BindableProperty ShortNameProperty = BindableProperty.Create(nameof(ShortName), typeof(string), typeof(TemplatedItemsList<TView, TItem>), null);
 
-		static readonly BindablePropertyKey HeaderContentPropertyKey = BindableProperty.CreateReadOnly("HeaderContent", typeof(TItem), typeof(TemplatedItemsList<TView, TItem>), null);
+		static readonly BindablePropertyKey HeaderContentPropertyKey = BindableProperty.CreateReadOnly(nameof(HeaderContent), typeof(TItem), typeof(TemplatedItemsList<TView, TItem>), null);
 
-		internal static readonly BindablePropertyKey ListProxyPropertyKey = BindableProperty.CreateReadOnly("ListProxy", typeof(ListProxy), typeof(TemplatedItemsList<TView, TItem>), null,
+		internal static readonly BindablePropertyKey ListProxyPropertyKey = BindableProperty.CreateReadOnly(nameof(ListProxy), typeof(ListProxy), typeof(TemplatedItemsList<TView, TItem>), null,
 			propertyChanged: OnListProxyChanged);
 
 		static readonly BindableProperty GroupProperty = BindableProperty.Create("Group", typeof(TemplatedItemsList<TView, TItem>), typeof(TItem), null);
 
 		static readonly BindableProperty IndexProperty = BindableProperty.Create("Index", typeof(int), typeof(TItem), -1);
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		static readonly BindablePropertyKey IsGroupHeaderPropertyKey = BindableProperty.CreateAttachedReadOnly("IsGroupHeader", typeof(bool), typeof(Cell), false);
+#pragma warning restore CS0618 // Type or member is obsolete
 
 		readonly BindableProperty _itemSourceProperty;
 		readonly BindableProperty _itemTemplateProperty;
@@ -42,7 +48,7 @@ namespace Microsoft.Maui.Controls.Internals
 
 		bool _disposed;
 		BindingBase _groupDisplayBinding;
-		OrderedDictionary<object, TemplatedItemsList<TView, TItem>> _groupedItems;
+		Cadenza.Collections.OrderedDictionary<object, TemplatedItemsList<TView, TItem>> _groupedItems;
 		DataTemplate _groupHeaderTemplate;
 		BindingBase _groupShortNameBinding;
 		ShortNamesProxy _shortNames;
@@ -50,11 +56,11 @@ namespace Microsoft.Maui.Controls.Internals
 		internal TemplatedItemsList(TView itemsView, BindableProperty itemSourceProperty, BindableProperty itemTemplateProperty)
 		{
 			if (itemsView == null)
-				throw new ArgumentNullException("itemsView");
+				throw new ArgumentNullException(nameof(itemsView));
 			if (itemSourceProperty == null)
-				throw new ArgumentNullException("itemSourceProperty");
+				throw new ArgumentNullException(nameof(itemSourceProperty));
 			if (itemTemplateProperty == null)
-				throw new ArgumentNullException("itemTemplateProperty");
+				throw new ArgumentNullException(nameof(itemTemplateProperty));
 
 			_itemsView = itemsView;
 			_itemsView.PropertyChanged += BindableOnPropertyChanged;
@@ -66,15 +72,15 @@ namespace Microsoft.Maui.Controls.Internals
 			if (source != null)
 				ListProxy = new ListProxy(source, dispatcher: _itemsView.Dispatcher);
 			else
-				ListProxy = new ListProxy(new object[0], dispatcher: _itemsView.Dispatcher);
+				ListProxy = new ListProxy(Array.Empty<object>(), dispatcher: _itemsView.Dispatcher);
 		}
 
 		internal TemplatedItemsList(TemplatedItemsList<TView, TItem> parent, IEnumerable itemSource, TView itemsView, BindableProperty itemTemplateProperty, int windowSize = int.MaxValue)
 		{
 			if (itemsView == null)
-				throw new ArgumentNullException("itemsView");
+				throw new ArgumentNullException(nameof(itemsView));
 			if (itemTemplateProperty == null)
-				throw new ArgumentNullException("itemTemplateProperty");
+				throw new ArgumentNullException(nameof(itemTemplateProperty));
 
 			Parent = parent;
 
@@ -88,7 +94,7 @@ namespace Microsoft.Maui.Controls.Internals
 				ListProxy.CollectionChanged += OnProxyCollectionChanged;
 			}
 			else
-				ListProxy = new ListProxy(new object[0], dispatcher: _itemsView.Dispatcher);
+				ListProxy = new ListProxy(Array.Empty<object>(), dispatcher: _itemsView.Dispatcher);
 		}
 
 		event PropertyChangedEventHandler ITemplatedItemsList<TItem>.PropertyChanged
@@ -97,6 +103,7 @@ namespace Microsoft.Maui.Controls.Internals
 			remove { PropertyChanged -= value; }
 		}
 
+		[DoesNotInheritDataType]
 		public BindingBase GroupDisplayBinding
 		{
 			get { return _groupDisplayBinding; }
@@ -130,6 +137,7 @@ namespace Microsoft.Maui.Controls.Internals
 
 		public BindableProperty GroupHeaderTemplateProperty { get; set; }
 
+		[DoesNotInheritDataType]
 		public BindingBase GroupShortNameBinding
 		{
 			get { return _groupShortNameBinding; }
@@ -183,7 +191,9 @@ namespace Microsoft.Maui.Controls.Internals
 		{
 			get
 			{
+#pragma warning disable CS0618 // Type or member is obsolete
 				var listView = _itemsView as ListView;
+#pragma warning restore CS0618 // Type or member is obsolete
 				if (listView == null)
 					return ListViewCachingStrategy.RetainElement;
 
@@ -357,7 +367,7 @@ namespace Microsoft.Maui.Controls.Internals
 		public int GetGlobalIndexForGroup(ITemplatedItemsList<TItem> group)
 		{
 			if (group == null)
-				throw new ArgumentNullException("group");
+				throw new ArgumentNullException(nameof(group));
 
 			int groupIndex = _groupedItems.Values.IndexOf(group);
 
@@ -533,8 +543,10 @@ namespace Microsoft.Maui.Controls.Internals
 
 		public TItem ActivateContent(int index, object item)
 		{
-			TItem content = ItemTemplate != null ? (TItem)ItemTemplate.CreateContent(item, _itemsView) : _itemsView.CreateDefault(item);
-
+			if (ItemTemplate?.CreateContent(item, _itemsView) is not TItem content)
+			{
+				content = _itemsView.CreateDefault(item);
+			}
 			content = UpdateContent(content, index, item);
 
 			return content;
@@ -579,7 +591,7 @@ namespace Microsoft.Maui.Controls.Internals
 		internal static TemplatedItemsList<TView, TItem> GetGroup(TItem item)
 		{
 			if (item == null)
-				throw new ArgumentNullException("item");
+				throw new ArgumentNullException(nameof(item));
 
 			return (TemplatedItemsList<TView, TItem>)item.GetValue(GroupProperty);
 		}
@@ -587,7 +599,7 @@ namespace Microsoft.Maui.Controls.Internals
 		internal static int GetIndex(TItem item)
 		{
 			if (item == null)
-				throw new ArgumentNullException("item");
+				throw new ArgumentNullException(nameof(item));
 
 			return (int)item.GetValue(IndexProperty);
 		}
@@ -750,7 +762,16 @@ namespace Microsoft.Maui.Controls.Internals
 				// time for right now.
 				groupProxy.HeaderContent = _itemsView.CreateDefault(ListProxy.ProxiedEnumerable);
 				groupProxy.HeaderContent.BindingContext = groupProxy;
-				groupProxy.HeaderContent.SetBinding(TextCell.TextProperty, "Name");
+				// TODO: the interceptor doesn't support generics at the moment
+				// groupProxy.HeaderContent.SetBinding(TextCell.TextProperty, static (TemplatedItemsList<TView, TItem> list) => list.Name);
+#pragma warning disable CS0618 // Type or member is obsolete
+				groupProxy.HeaderContent.SetBinding(
+					TextCell.TextProperty,
+					TypedBinding.ForSingleNestingLevel(
+						nameof(TemplatedItemsList<TView, TItem>.Name),
+						getter: static (TemplatedItemsList<TView, TItem> list) => list.Name,
+						setter: static (list, val) => list.Name = val));
+#pragma warning restore CS0618 // Type or member is obsolete
 			}
 
 			SetIndex(groupProxy.HeaderContent, index);
@@ -776,7 +797,7 @@ namespace Microsoft.Maui.Controls.Internals
 		void OnCollectionChangedGrouped(NotifyCollectionChangedEventArgs e)
 		{
 			if (_groupedItems == null)
-				_groupedItems = new OrderedDictionary<object, TemplatedItemsList<TView, TItem>>();
+				_groupedItems = new Cadenza.Collections.OrderedDictionary<object, TemplatedItemsList<TView, TItem>>();
 
 			List<TemplatedItemsList<TView, TItem>> newItems = null, oldItems = null;
 
@@ -939,7 +960,7 @@ namespace Microsoft.Maui.Controls.Internals
 
 			IEnumerable itemSource = GetItemsViewSource();
 			if (itemSource == null)
-				ListProxy = new ListProxy(new object[0], dispatcher: _itemsView.Dispatcher);
+				ListProxy = new ListProxy(Array.Empty<object>(), dispatcher: _itemsView.Dispatcher);
 			else
 				ListProxy = new ListProxy(itemSource, dispatcher: _itemsView.Dispatcher);
 
@@ -958,7 +979,7 @@ namespace Microsoft.Maui.Controls.Internals
 		static void OnListProxyChanged(BindableObject bindable, object oldValue, object newValue)
 		{
 			var til = (TemplatedItemsList<TView, TItem>)bindable;
-			til.OnPropertyChanged("ItemsSource");
+			til.OnPropertyChanged(nameof(ItemsSource));
 		}
 
 		void OnProxyCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -1126,14 +1147,13 @@ namespace Microsoft.Maui.Controls.Internals
 					list.SetBinding(ShortNameProperty, GroupShortNameBinding.Clone());
 			}
 
-			if (_shortNames != null)
-				_shortNames.Reset();
+			_shortNames?.Reset();
 		}
 
 		static void SetGroup(TItem item, TemplatedItemsList<TView, TItem> group)
 		{
 			if (item == null)
-				throw new ArgumentNullException("item");
+				throw new ArgumentNullException(nameof(item));
 
 			item.SetValue(GroupProperty, group);
 		}

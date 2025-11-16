@@ -93,11 +93,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.MacOS
 			{
 				SetElement(_element, null);
 
-				if (_layer != null)
-				{
-					_layer.Dispose();
-					_layer = null;
-				}
+				_layer?.Dispose();
+				_layer = null;
 
 				Renderer.ElementChanged -= OnRendererElementChanged;
 				Renderer = null;
@@ -322,11 +319,11 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.MacOS
 					transform.M34 = 1.0f / -400f;
 
 				if (Math.Abs(rotationX % 360) > epsilon)
-					transform = transform.Rotate(rotationX * (float)Math.PI / 180.0f, 1.0f, 0.0f, 0.0f);
+					transform = transform.Rotate(rotationX * MathF.PI / 180.0f, 1.0f, 0.0f, 0.0f);
 				if (Math.Abs(rotationY % 360) > epsilon)
-					transform = transform.Rotate(rotationY * (float)Math.PI / 180.0f, 0.0f, 1.0f, 0.0f);
+					transform = transform.Rotate(rotationY * MathF.PI / 180.0f, 0.0f, 1.0f, 0.0f);
 
-				transform = transform.Rotate(rotation * (float)Math.PI / 180.0f, 0.0f, 0.0f, 1.0f);
+				transform = transform.Rotate(rotation * MathF.PI / 180.0f, 0.0f, 0.0f, 1.0f);
 
 				if (Math.Abs(scaleX - 1) > epsilon || Math.Abs(scaleY - 1) > epsilon)
 					transform = transform.Scale(scaleX, scaleY, scale);
@@ -379,8 +376,6 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.MacOS
 		[PortHandler("Partially ported")]
 		void UpdateNativeControl()
 		{
-			Performance.Start(out string reference);
-
 			if (_disposed)
 				return;
 
@@ -402,7 +397,6 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.MacOS
 			UpdateClip();
 
 			NativeControlUpdated?.Invoke(this, EventArgs.Empty);
-			Performance.Stop(reference);
 		}
 
 		void UpdateClip()
@@ -416,7 +410,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.MacOS
 			var formsGeometry = element.Clip;
 			var nativeGeometry = formsGeometry.ToCGPath();
 
-			var maskLayer = new CAShapeLayer
+			var maskLayer = new StaticCAShapeLayer
 			{
 				Name = ClipShapeLayer,
 				Path = nativeGeometry.Data,

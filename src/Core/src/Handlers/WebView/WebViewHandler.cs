@@ -6,7 +6,7 @@ using PlatformView = Android.Webkit.WebView;
 using PlatformView = Microsoft.UI.Xaml.Controls.WebView2;
 #elif TIZEN
 using PlatformView = Microsoft.Maui.Platform.MauiWebView;
-#elif NETSTANDARD || (NET6_0 && !IOS && !ANDROID && !TIZEN)
+#elif (NETSTANDARD || !PLATFORM) || (NET6_0_OR_GREATER && !IOS && !ANDROID && !TIZEN)
 using PlatformView = System.Object;
 #endif
 
@@ -23,12 +23,17 @@ namespace Microsoft.Maui.Handlers
 		public static IPropertyMapper<IWebView, IWebViewHandler> Mapper = new PropertyMapper<IWebView, IWebViewHandler>(ViewHandler.ViewMapper)
 		{
 			[nameof(IWebView.Source)] = MapSource,
+			[nameof(IWebView.UserAgent)] = MapUserAgent,
+#if WINDOWS
+	[nameof(IView.FlowDirection)] = MapFlowDirection,
+#endif
 #if __ANDROID__
 			[nameof(WebViewClient)] = MapWebViewClient,
 			[nameof(WebChromeClient)] = MapWebChromeClient,
 			[nameof(WebView.Settings)] =  MapWebViewSettings
 #elif __IOS__
 			[nameof(WKUIDelegate)] = MapWKUIDelegate,
+			[nameof(IWebView.Background)] = MapBackground,
 #endif
 		};
 

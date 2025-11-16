@@ -1,13 +1,13 @@
 
 using System.Threading.Tasks;
+using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
-	public class FormsPivot : Pivot, IToolbarProvider
+	public partial class FormsPivot : Pivot, IToolbarProvider
 	{
 		public static readonly DependencyProperty TitleVisibilityProperty = DependencyProperty.Register(nameof(TitleVisibility), typeof(UI.Xaml.Visibility), typeof(FormsPivot), new PropertyMetadata(UI.Xaml.Visibility.Collapsed));
 

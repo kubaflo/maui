@@ -108,8 +108,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 				EffectUtilities.RegisterEffectControlProvider(this, oldElement, element);
 
-				if (element != null)
-					element.SendViewInitialized(this);
+				element?.SendViewInitialized(this);
 
 				if (!string.IsNullOrEmpty(element.AutomationId))
 					AccessibilityIdentifier = element.AutomationId;
@@ -301,6 +300,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 				ScrollView.SendScrollFinished();
 		}
 
+		[PortHandler]
 		void UpdateDelaysContentTouches()
 		{
 			DelaysContentTouches = ((ScrollView)Element).OnThisPlatform().ShouldDelayContentTouches();
@@ -335,8 +335,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 
 		void UpdateScrollPosition()
 		{
-			if (ScrollView != null)
-				ScrollView.SetScrolledPosition(ContentOffset.X, ContentOffset.Y);
+			ScrollView?.SetScrolledPosition(ContentOffset.X, ContentOffset.Y);
 		}
 
 		void IEffectControlProvider.RegisterEffect(Effect effect)

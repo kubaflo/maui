@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,16 +9,18 @@ using AListView = Android.Widget.ListView;
 namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
 
-	internal class GroupedListViewAdapter : ListViewAdapter, ISectionIndexer
+	internal sealed class GroupedListViewAdapter : ListViewAdapter, ISectionIndexer
 	{
-		class SectionData
+		private sealed class SectionData
 		{
 			public int Index { get; set; }
 			public int Length { get; set; }
 			public int Start { get; set; }
 			public int End => Start + Length;
 		}
+#pragma warning disable CS0618 // Type or member is obsolete
 		public GroupedListViewAdapter(Context context, AListView realListView, ListView listView) : base(context, realListView, listView)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 
 		}

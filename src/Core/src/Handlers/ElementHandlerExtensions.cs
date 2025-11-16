@@ -5,8 +5,8 @@ using PlatformView = Android.Views.View;
 #elif WINDOWS
 using PlatformView = Microsoft.UI.Xaml.FrameworkElement;
 #elif TIZEN
-using PlatformView = ElmSharp.EvasObject;
-#elif NETSTANDARD
+using PlatformView = Tizen.NUI.BaseComponents.View;
+#elif (NETSTANDARD || !PLATFORM)
 using PlatformView = System.Object;
 #endif
 using System;
@@ -16,9 +16,9 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Maui
 {
-	static class ElementHandlerExtensions
+	public static class ElementHandlerExtensions
 	{
-		public static PlatformView ToPlatform(this IElementHandler elementHandler) =>
+		internal static PlatformView ToPlatform(this IElementHandler elementHandler) =>
 			(elementHandler.VirtualView?.ToPlatform() as PlatformView) ??
 				throw new InvalidOperationException($"Unable to convert {elementHandler} to {typeof(PlatformView)}");
 
@@ -71,18 +71,33 @@ namespace Microsoft.Maui
 			return service;
 		}
 
-		public static Task<T> InvokeAsync<T>(this IElementHandler handler, string commandName,
+		internal static Task<T> InvokeAsync<T>(this IElementHandler handler, string commandName,
 			TaskCompletionSource<T> args)
 		{
 			handler?.Invoke(commandName, args);
 			return args.Task;
 		}
 
-		public static T InvokeWithResult<T>(this IElementHandler handler, string commandName,
+		internal static T InvokeWithResult<T>(this IElementHandler handler, string commandName,
 			RetrievePlatformValueRequest<T> args)
 		{
 			handler?.Invoke(commandName, args);
 			return args.Result;
 		}
+
+		internal static bool CanInvokeMappers(this IElementHandler viewHandler)
+		{
+#if ANDROID
+			var platformView = viewHandler?.PlatformView;
+
+			if (platformView is PlatformView androidView && androidView.IsDisposed())
+				return false;
+#endif
+			return true;
+		}
+
+		public static bool IsConnected(this IElementHandler handler) =>
+			handler.PlatformView is not null;
+
 	}
 }

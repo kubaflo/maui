@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using Android.App;
 using Android.Content;
@@ -25,13 +26,27 @@ namespace Microsoft.Maui.ApplicationModel
 			return requestCode;
 		}
 
+		internal static Intent? RegisterBroadcastReceiver(BroadcastReceiver? receiver, IntentFilter filter)
+		{
+#if ANDROID34_0_OR_GREATER
+			if (OperatingSystem.IsAndroidVersionAtLeast(34))
+			{
+				return Application.Context.RegisterReceiver(receiver, filter, ReceiverFlags.NotExported);
+			}
+#endif
+			return Application.Context.RegisterReceiver(receiver, filter);
+		}
+
 		internal static bool HasSystemFeature(string systemFeature)
 		{
 			var packageManager = Application.Context.PackageManager;
-			foreach (var feature in packageManager.GetSystemAvailableFeatures())
+			if (packageManager is not null)
 			{
-				if (feature?.Name?.Equals(systemFeature, StringComparison.OrdinalIgnoreCase) ?? false)
-					return true;
+				foreach (var feature in packageManager.GetSystemAvailableFeatures())
+				{
+					if (feature?.Name?.Equals(systemFeature, StringComparison.OrdinalIgnoreCase) ?? false)
+						return true;
+				}
 			}
 			return false;
 		}
@@ -50,41 +65,6 @@ namespace Microsoft.Maui.ApplicationModel
 				return false;
 
 			return intent.ResolveActivity(pm) is ComponentName c && c.PackageName == expectedPackageName;
-		}
-
-		internal static Java.Util.Locale GetLocale()
-		{
-			var resources = Application.Context.Resources;
-			var config = resources.Configuration;
-
-#if __ANDROID_24__
-			if (OperatingSystem.IsAndroidVersionAtLeast(24))
-				return config.Locales.Get(0);
-#endif
-
-#pragma warning disable CS0618 // Type or member is obsolete
-			return config.Locale;
-#pragma warning restore CS0618 // Type or member is obsolete
-		}
-
-		internal static void SetLocale(Java.Util.Locale locale)
-		{
-			Java.Util.Locale.Default = locale;
-			var resources = Application.Context.Resources;
-			var config = resources.Configuration;
-
-#if __ANDROID_24__
-			if (OperatingSystem.IsAndroidVersionAtLeast(24))
-				config.SetLocale(locale);
-			else
-#endif
-#pragma warning disable CS0618 // Type or member is obsolete
-				config.Locale = locale;
-#pragma warning restore CS0618 // Type or member is obsolete
-
-#pragma warning disable CS0618 // Type or member is obsolete
-			resources.UpdateConfiguration(config, resources.DisplayMetrics);
-#pragma warning restore CS0618 // Type or member is obsolete
 		}
 	}
 }

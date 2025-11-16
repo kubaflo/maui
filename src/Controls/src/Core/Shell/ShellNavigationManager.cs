@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,7 +22,13 @@ namespace Microsoft.Maui.Controls
 			_shell = shell;
 		}
 
-		public Task GoToAsync(ShellNavigationState state, bool? animate, bool enableRelativeShellRoutes, ShellNavigatingEventArgs deferredArgs = null, ShellRouteParameters parameters = null)
+		public Task GoToAsync(
+			ShellNavigationState state,
+			bool? animate,
+			bool enableRelativeShellRoutes,
+			ShellNavigatingEventArgs deferredArgs = null,
+			ShellRouteParameters parameters = null,
+			bool? canCancel = null)
 		{
 			return GoToAsync(new ShellNavigationParameters
 			{
@@ -29,7 +36,8 @@ namespace Microsoft.Maui.Controls
 				Animated = animate,
 				EnableRelativeShellRoutes = enableRelativeShellRoutes,
 				DeferredArgs = deferredArgs,
-				Parameters = parameters
+				Parameters = parameters,
+				CanCancel = canCancel
 			});
 		}
 
@@ -64,7 +72,8 @@ namespace Microsoft.Maui.Controls
 			// This scenario only comes up from UI iniated navigation (i.e. switching tabs)
 			if (deferredArgs == null)
 			{
-				var navigatingArgs = ProposeNavigation(source, state, _shell.CurrentState != null, animate ?? true);
+				bool canCancel = (shellNavigationParameters.CanCancel.HasValue) ? shellNavigationParameters.CanCancel.Value : _shell.CurrentState != null;
+				var navigatingArgs = ProposeNavigation(source, state, canCancel, animate ?? true);
 
 				if (navigatingArgs != null)
 				{
@@ -83,8 +92,7 @@ namespace Microsoft.Maui.Controls
 
 			var uri = navigationRequest.Request.FullUri;
 			var queryString = navigationRequest.Query;
-			var queryData = ParseQueryString(queryString);
-			parameters.Merge(queryData);
+			parameters.SetQueryStringParameters(queryString);
 			ApplyQueryAttributes(_shell, parameters, false, false);
 
 			var shellItem = navigationRequest.Request.Item;
@@ -201,8 +209,44 @@ namespace Microsoft.Maui.Controls
 				HandleNavigated(_accumulatedEvent);
 		}
 
+		ActionDisposable _waitingForWindow;
 		public void HandleNavigated(ShellNavigatedEventArgs args)
 		{
+			_waitingForWindow?.Dispose();
+			_waitingForWindow = null;
+
+			// we don't want to fire Navigated until shell is attached to an actual window
+			if (_shell.Window == null || _shell.CurrentPage == null)
+			{
+				_shell.PropertyChanged += WaitForWindowToSet;
+				var shellContent = _shell?.CurrentItem?.CurrentItem?.CurrentItem;
+
+				if (shellContent != null)
+					shellContent.ChildAdded += WaitForWindowToSet;
+
+				_waitingForWindow = new ActionDisposable(() =>
+				{
+					_shell.PropertyChanged -= WaitForWindowToSet;
+					if (shellContent != null)
+						shellContent.ChildAdded -= WaitForWindowToSet;
+				});
+
+				void WaitForWindowToSet(object sender, EventArgs e)
+				{
+					if (_shell.Window != null &&
+						_shell.CurrentPage != null)
+					{
+						_waitingForWindow?.Dispose();
+						_waitingForWindow = null;
+
+						_shell.CurrentItem?.SendAppearing();
+						HandleNavigated(args);
+					}
+				}
+
+				return;
+			}
+
 			if (AccumulateNavigatedEvents)
 			{
 				if (_accumulatedEvent == null)
@@ -261,17 +305,7 @@ namespace Microsoft.Maui.Controls
 				baseShellItem = element?.Parent as BaseShellItem;
 
 			//filter the query to only apply the keys with matching prefix
-			var filteredQuery = new ShellRouteParameters(query.Count);
-
-			foreach (var q in query)
-			{
-				if (!q.Key.StartsWith(prefix, StringComparison.Ordinal))
-					continue;
-				var key = q.Key.Substring(prefix.Length);
-				if (key.IndexOf(".", StringComparison.Ordinal) != -1)
-					continue;
-				filteredQuery.Add(key, q.Value);
-			}
+			var filteredQuery = new ShellRouteParameters(query, prefix);
 
 
 			if (baseShellItem is ShellContent)
@@ -443,29 +477,11 @@ namespace Microsoft.Maui.Controls
 			return ShellNavigationSource.Push;
 		}
 
-		static Dictionary<string, string> ParseQueryString(string query)
-		{
-			if (query.StartsWith("?", StringComparison.Ordinal))
-				query = query.Substring(1);
-			Dictionary<string, string> lookupDict = new Dictionary<string, string>();
-			if (query == null)
-				return lookupDict;
-			foreach (var part in query.Split('&'))
-			{
-				var p = part.Split('=');
-				if (p.Length != 2)
-					continue;
-				lookupDict[p[0]] = p[1];
-			}
-
-			return lookupDict;
-		}
-
 		public static ShellNavigationParameters GetNavigationParameters(
 			ShellItem shellItem,
-			ShellSection shellSection, 
-			ShellContent shellContent, 
-			IReadOnlyList<Page> sectionStack, 
+			ShellSection shellSection,
+			ShellContent shellContent,
+			IReadOnlyList<Page> sectionStack,
 			IReadOnlyList<Page> modalStack)
 		{
 			var state = GetNavigationState(shellItem, shellSection, shellContent, sectionStack, modalStack);

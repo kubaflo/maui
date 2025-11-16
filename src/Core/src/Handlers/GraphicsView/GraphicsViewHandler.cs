@@ -12,6 +12,7 @@ namespace Microsoft.Maui.Handlers
 	{
 		public static IPropertyMapper<IGraphicsView, IGraphicsViewHandler> Mapper = new PropertyMapper<IGraphicsView, IGraphicsViewHandler>(ViewHandler.ViewMapper)
 		{
+			[nameof(IView.Background)] = MapBackground,
 			[nameof(IGraphicsView.Drawable)] = MapDrawable,
 			[nameof(IView.FlowDirection)] = MapFlowDirection
 		};
@@ -25,7 +26,12 @@ namespace Microsoft.Maui.Handlers
 		{
 		}
 
-		public GraphicsViewHandler(IPropertyMapper? mapper = null, CommandMapper? commandMapper = null)
+		public GraphicsViewHandler(IPropertyMapper? mapper)
+			: base(mapper ?? Mapper, CommandMapper)
+		{
+		}
+
+		public GraphicsViewHandler(IPropertyMapper? mapper, CommandMapper? commandMapper)
 			: base(mapper ?? Mapper, commandMapper ?? CommandMapper)
 		{
 		}

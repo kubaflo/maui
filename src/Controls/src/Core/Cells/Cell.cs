@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -9,13 +10,13 @@ using Microsoft.Maui.Controls.Internals;
 namespace Microsoft.Maui.Controls
 {
 	// Don't add IElementConfiguration<Cell> because it kills performance on UWP structures that use Cells
-	/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="Type[@FullName='Microsoft.Maui.Controls.Cell']/Docs" />
+	/// <summary>Provides base class and capabilities for all Microsoft.Maui.Controls cells. Cells are elements meant to be added to <see cref="Microsoft.Maui.Controls.ListView"/> or <see cref="Microsoft.Maui.Controls.TableView"/>.</summary>
 	public abstract class Cell : Element, ICellController, IFlowDirectionController, IPropertyPropagationController, IVisualController, IWindowController, IVisualTreeElement
 	{
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='DefaultCellHeight']/Docs" />
+		/// <summary>The default height of cells.</summary>
 		public const int DefaultCellHeight = 40;
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='IsEnabledProperty']/Docs" />
-		public static readonly BindableProperty IsEnabledProperty = BindableProperty.Create("IsEnabled", typeof(bool), typeof(Cell), true, propertyChanged: OnIsEnabledPropertyChanged);
+		/// <summary>Bindable property for <see cref="IsEnabled"/>.</summary>
+		public static readonly BindableProperty IsEnabledProperty = BindableProperty.Create(nameof(IsEnabled), typeof(bool), typeof(Cell), true, propertyChanged: OnIsEnabledPropertyChanged);
 
 		ObservableCollection<MenuItem> _contextActions;
 		List<MenuItem> _currentContextActions;
@@ -25,7 +26,8 @@ namespace Microsoft.Maui.Controls
 
 		bool _nextCallToForceUpdateSizeQueued;
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='.ctor']/Docs" />
+		/// <summary>Initializes a new instance of the Cell class.</summary>
+		/// <remarks>Cell class is abstract, this constructor is never invoked directly.</remarks>
 		public Cell()
 		{
 			_elementConfiguration = new Lazy<ElementConfiguration>(() => new ElementConfiguration(this));
@@ -82,7 +84,8 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='ContextActions']/Docs" />
+		/// <summary>Gets a list of menu items to display when the user performs the device-specific context gesture on the Cell.</summary>
+		/// <remarks>The context gesture on the iOS platform is a left swipe. For Android and Windows Phone operating systems, the context gesture is a press and hold.</remarks>
 		public IList<MenuItem> ContextActions
 		{
 			get
@@ -97,16 +100,16 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='HasContextActions']/Docs" />
+		/// <summary>Gets a value that indicates whether the cell has at least one menu item in its <see cref="Microsoft.Maui.Controls.Cell.ContextActions"/> list property.</summary>
 		public bool HasContextActions
 		{
 			get { return _contextActions != null && _contextActions.Count > 0 && IsEnabled; }
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='IsContextActionsLegacyModeEnabled']/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='IsContextActionsLegacyModeEnabled']/Docs/*" />
 		public bool IsContextActionsLegacyModeEnabled { get; set; } = false;
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='Height']/Docs" />
+		/// <summary>Gets or sets the height of the Cell.</summary>
 		public double Height
 		{
 			get { return _height; }
@@ -115,31 +118,33 @@ namespace Microsoft.Maui.Controls
 				if (_height == value)
 					return;
 
-				OnPropertyChanging("Height");
-				OnPropertyChanging("RenderHeight");
+				OnPropertyChanging(nameof(Height));
+				OnPropertyChanging(nameof(RenderHeight));
 				_height = value;
-				OnPropertyChanged("Height");
-				OnPropertyChanged("RenderHeight");
+				OnPropertyChanged(nameof(Height));
+				OnPropertyChanged(nameof(RenderHeight));
 			}
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='IsEnabled']/Docs" />
+		/// <summary>Gets or sets the IsEnabled state of the Cell. This is a bindable property.</summary>
 		public bool IsEnabled
 		{
 			get { return (bool)GetValue(IsEnabledProperty); }
 			set { SetValue(IsEnabledProperty, value); }
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='RenderHeight']/Docs" />
+		/// <summary>Gets the height of the rendered cell on the device.</summary>
 		public double RenderHeight
 		{
 			get
 			{
+#pragma warning disable CS0618 // Type or member is obsolete
 				var table = RealParent as TableView;
 				if (table != null)
 					return table.HasUnevenRows && Height > 0 ? Height : table.RowHeight;
 
 				var list = RealParent as ListView;
+#pragma warning restore CS0618 // Type or member is obsolete
 				if (list != null)
 					return list.HasUnevenRows && Height > 0 ? Height : list.RowHeight;
 
@@ -156,17 +161,20 @@ namespace Microsoft.Maui.Controls
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		public event EventHandler ForceUpdateSizeRequested;
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='ForceUpdateSize']/Docs" />
+		/// <summary>Immediately updates the cell's size.</summary>
+		/// <remarks>Developers can call this method to update the cell's size, even if the cell is currently visible. Developers should note that this operation can be expensive.</remarks>
 		public void ForceUpdateSize()
 		{
 			if (_nextCallToForceUpdateSizeQueued)
 				return;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			if ((Parent as ListView)?.HasUnevenRows == true || (Parent as TableView)?.HasUnevenRows == true)
 			{
 				_nextCallToForceUpdateSizeQueued = true;
 				OnForceUpdateSizeRequested();
 			}
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		public event EventHandler Tapped;
@@ -220,31 +228,35 @@ namespace Microsoft.Maui.Controls
 			base.OnPropertyChanging(propertyName);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='SendAppearing']/Docs" />
+		/// <summary>Internal API for Microsoft.Maui.Controls platform use.</summary>
+		/// <remarks>For internal use only. This API can be changed or removed without notice at any time.</remarks>
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		public void SendAppearing()
 		{
 			OnAppearing();
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			var container = RealParent as ListView;
-			if (container != null)
-				container.SendCellAppearing(this);
+#pragma warning restore CS0618 // Type or member is obsolete
+			container?.SendCellAppearing(this);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='SendDisappearing']/Docs" />
+		/// <summary>Internal API for Microsoft.Maui.Controls platform use.</summary>
+		/// <remarks>For internal use only. This API can be changed or removed without notice at any time.</remarks>
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		public void SendDisappearing()
 		{
 			OnDisappearing();
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			var container = RealParent as ListView;
-			if (container != null)
-				container.SendCellDisappearing(this);
+#pragma warning restore CS0618 // Type or member is obsolete
+			container?.SendCellDisappearing(this);
 		}
 
 		void IPropertyPropagationController.PropagatePropertyChanged(string propertyName)
 		{
-			PropertyPropagationExtensions.PropagatePropertyChanged(propertyName, this, ((IElementController)this).LogicalChildren);
+			PropertyPropagationExtensions.PropagatePropertyChanged(propertyName, this, ((IVisualTreeElement)this).GetVisualChildren());
 		}
 
 		void OnContextActionsChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -266,7 +278,7 @@ namespace Microsoft.Maui.Controls
 
 			_currentContextActions = new List<MenuItem>(_contextActions);
 
-			OnPropertyChanged("HasContextActions");
+			OnPropertyChanged(nameof(HasContextActions));
 		}
 
 		async void OnForceUpdateSizeRequested()
@@ -274,13 +286,14 @@ namespace Microsoft.Maui.Controls
 			// don't run more than once per 16 milliseconds
 			await Task.Delay(TimeSpan.FromMilliseconds(16));
 			ForceUpdateSizeRequested?.Invoke(this, null);
+			Handler?.Invoke("ForceUpdateSizeRequested", null);
 
 			_nextCallToForceUpdateSizeQueued = false;
 		}
 
 		static void OnIsEnabledPropertyChanged(BindableObject bindable, object oldvalue, object newvalue)
 		{
-			(bindable as Cell).OnPropertyChanged("HasContextActions");
+			(bindable as Cell).OnPropertyChanged(nameof(HasContextActions));
 		}
 
 		void OnParentPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -288,7 +301,7 @@ namespace Microsoft.Maui.Controls
 			// Technically we might be raising this even if it didn't change, but I'm taking the bet that
 			// its uncommon enough that we don't want to take the penalty of N GetValue calls to verify.
 			if (e.PropertyName == "RowHeight")
-				OnPropertyChanged("RenderHeight");
+				OnPropertyChanged(nameof(RenderHeight));
 			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName ||
 					 e.PropertyName == VisualElement.VisualProperty.PropertyName)
 				PropertyPropagationController.PropagatePropertyChanged(e.PropertyName);
@@ -297,18 +310,24 @@ namespace Microsoft.Maui.Controls
 		void OnParentPropertyChanging(object sender, PropertyChangingEventArgs e)
 		{
 			if (e.PropertyName == "RowHeight")
-				OnPropertyChanging("RenderHeight");
+				OnPropertyChanging(nameof(RenderHeight));
 		}
 
 #if ANDROID
 		// This is used by ListView to pass data to the GetCell call
 		// Ideally we can pass these as arguments to ToHandler
 		// But we'll do that in a different smaller more targeted PR
-		internal Android.Views.View ConvertView { get; set; }
+		internal global::Android.Views.View ConvertView { get; set; }
 #elif IOS
 		internal UIKit.UITableViewCell ReusableCell { get; set; }
-		internal UIKit.UITableView TableView { get; set; }
 
+		WeakReference<UIKit.UITableView> _tableView;
+
+		internal UIKit.UITableView TableView
+		{
+			get => _tableView?.GetTargetOrDefault();
+			set => _tableView = value is null ? null : new(value);
+		}
 #endif
 
 
@@ -326,7 +345,6 @@ namespace Microsoft.Maui.Controls
 		// This creates a nested class to keep track of IElementConfiguration<Cell> because adding 
 		// IElementConfiguration<Cell> to the Cell itself tanks performance on UWP ListViews
 		// Issue has been logged with UWP
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Cell.xml" path="//Member[@MemberName='On']/Docs" />
 		public IPlatformElementConfiguration<T, Cell> On<T>() where T : IConfigPlatform
 		{
 			return GetElementConfiguration().On<T>();
@@ -346,6 +364,7 @@ namespace Microsoft.Maui.Controls
 					new Lazy<PlatformConfigurationRegistry<Cell>>(() => new PlatformConfigurationRegistry<Cell>(cell));
 			}
 
+			/// <inheritdoc/>
 			public IPlatformElementConfiguration<T, Cell> On<T>() where T : IConfigPlatform
 			{
 				return _platformConfigurationRegistry.Value.On<T>();

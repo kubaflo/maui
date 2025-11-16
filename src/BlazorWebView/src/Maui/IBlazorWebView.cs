@@ -8,12 +8,21 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 	/// <summary>
 	/// Defines a contract for a view that renders Blazor content.
 	/// </summary>
-	public interface IBlazorWebView : IView
+	public interface IBlazorWebView : IView, IWebRequestInterceptingWebView
 	{
 		/// <summary>
 		/// Gets the path to the HTML file to render.
 		/// </summary>
 		string? HostPage { get; }
+
+		/// <summary>
+		/// Gets or sets the path for initial navigation within the Blazor navigation context when the Blazor component is finished loading.
+		/// </summary>
+		public string StartPath
+		{
+			get => "/";
+			set => throw new NotImplementedException();
+		}
 
 		/// <summary>
 		/// Gets a collection of <see cref="RootComponent"/> items.

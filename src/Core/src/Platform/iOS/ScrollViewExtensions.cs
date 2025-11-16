@@ -1,4 +1,5 @@
-﻿using Microsoft.Maui.Graphics;
+﻿using System;
+using Microsoft.Maui.Graphics;
 using ObjCRuntime;
 using UIKit;
 
@@ -16,9 +17,12 @@ namespace Microsoft.Maui.Platform
 			scrollView.ShowsHorizontalScrollIndicator = scrollBarVisibility == ScrollBarVisibility.Always || scrollBarVisibility == ScrollBarVisibility.Default;
 		}
 
+
+		// TODO ezhart This method is no longer used internally; we can't delete it right now because that'd be a breaking change
+		[Obsolete]
 		public static void UpdateContent(this UIScrollView scrollView, IView? content, IMauiContext context)
 		{
-			var nativeContent = content == null ? null : content.ToPlatform(context);
+			var nativeContent = content?.ToPlatform(context);
 
 			if (scrollView.Subviews.Length > 0 && scrollView.Subviews[0] == nativeContent)
 			{
@@ -37,6 +41,19 @@ namespace Microsoft.Maui.Platform
 			}
 		}
 
+		internal static UIView? GetContentView(this UIScrollView scrollView)
+		{
+			for (int i = 0; i < scrollView.Subviews.Length; i++)
+			{
+				if (scrollView.Subviews[i] is { Tag: MauiScrollView.ContentTag } contentView)
+				{
+					return contentView;
+				}
+			}
+
+			return null;
+		}
+
 		public static void UpdateContentSize(this UIScrollView scrollView, Size contentSize)
 		{
 			var nativeContentSize = contentSize.ToCGSize();
@@ -49,7 +66,14 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateIsEnabled(this UIScrollView nativeScrollView, IScrollView scrollView)
 		{
-			nativeScrollView.ScrollEnabled = scrollView.IsEnabled;
+			if (scrollView.Orientation == ScrollOrientation.Neither)
+			{
+				nativeScrollView.ScrollEnabled = false;
+			}
+			else
+			{
+				nativeScrollView.ScrollEnabled = scrollView.IsEnabled;
+			}
 		}
 	}
 }

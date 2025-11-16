@@ -2,6 +2,7 @@
 using Android.Content;
 using Android.Runtime;
 using Android.Text;
+using Android.Text.Method;
 using Android.Util;
 using Android.Views;
 using AndroidX.AppCompat.Widget;
@@ -12,17 +13,17 @@ namespace Microsoft.Maui.Platform
 {
 	public class MauiDatePicker : AppCompatEditText, IOnClickListener
 	{
-		public MauiDatePicker(Context? context) : base(context)
+		public MauiDatePicker(Context context) : base(context)
 		{
 			Initialize();
 		}
 
-		public MauiDatePicker(Context? context, IAttributeSet attrs) : base(context, attrs)
+		public MauiDatePicker(Context context, IAttributeSet? attrs) : base(context, attrs)
 		{
 			Initialize();
 		}
 
-		public MauiDatePicker(Context? context, IAttributeSet attrs, int defStyleAttr) : base(context, attrs, defStyleAttr)
+		public MauiDatePicker(Context context, IAttributeSet? attrs, int defStyleAttr) : base(context, attrs, defStyleAttr)
 		{
 			Initialize();
 		}
@@ -30,6 +31,10 @@ namespace Microsoft.Maui.Platform
 		protected MauiDatePicker(IntPtr javaReference, JniHandleOwnership transfer) : base(javaReference, transfer)
 		{
 		}
+
+		// MovementMethod handles cursor positioning, scrolling, and text selection (per Android docs).
+		// Since text is readonly, we disable it to avoid unnecessary cursor navigation during keyboard input.
+		protected override IMovementMethod? DefaultMovementMethod => null;
 
 		public Action? ShowPicker { get; set; }
 		public Action? HidePicker { get; set; }
@@ -39,24 +44,12 @@ namespace Microsoft.Maui.Platform
 			ShowPicker?.Invoke();
 		}
 
-		protected override void OnFocusChanged(bool gainFocus, [GeneratedEnum] FocusSearchDirection direction, Android.Graphics.Rect? previouslyFocusedRect)
-		{
-			base.OnFocusChanged(gainFocus, direction, previouslyFocusedRect);
-
-			if (gainFocus)
-			{
-				if (Clickable)
-					CallOnClick();
-			}
-		}
-
 		void Initialize()
 		{
-			DrawableCompat.Wrap(Background);
+			if (Background != null)
+				DrawableCompat.Wrap(Background);
 
-			Focusable = true;
-			Clickable = true;
-			InputType = InputTypes.Null;
+			PickerManager.Init(this);
 
 			SetOnClickListener(this);
 		}

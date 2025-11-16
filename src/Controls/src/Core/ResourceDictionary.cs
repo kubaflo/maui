@@ -1,29 +1,34 @@
+#nullable disable
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-
+using System.Runtime.ExceptionServices;
 using Microsoft.Maui.Controls.Internals;
-using Microsoft.Maui.Controls.Xaml;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="Type[@FullName='Microsoft.Maui.Controls.ResourceDictionary']/Docs" />
+	/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="Type[@FullName='Microsoft.Maui.Controls.ResourceDictionary']/Docs/*" />
 	public class ResourceDictionary : IResourceDictionary, IDictionary<string, object>
 	{
+		const string GetResourcePathUriScheme = "maui://";
 		static ConditionalWeakTable<Type, ResourceDictionary> s_instances = new ConditionalWeakTable<Type, ResourceDictionary>();
-		readonly Dictionary<string, object> _innerDictionary = new Dictionary<string, object>();
+		readonly Dictionary<string, object> _innerDictionary = new(StringComparer.Ordinal);
 		ResourceDictionary _mergedInstance;
 		Uri _source;
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Source']/Docs" />
-		[System.ComponentModel.TypeConverter(typeof(RDSourceTypeConverter))]
+		// This action is instantiated in a module initializer in ResourceDictionaryHotReloadHelper
+		internal static Action<ResourceDictionary, Uri, string, Assembly, System.Xml.IXmlLineInfo> s_setAndLoadSource;
+
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Source']/Docs/*" />
+		[TypeConverter(typeof(RDSourceTypeConverter))]
 		public Uri Source
 		{
 			get { return _source; }
@@ -31,28 +36,71 @@ namespace Microsoft.Maui.Controls
 			{
 				if (_source == value)
 					return;
-				throw new InvalidOperationException("Source can only be set from XAML."); //through the RDSourceTypeConverter
+				throw new InvalidOperationException("Source can only be set from XAML."); // through SetSource
 			}
 		}
 
 		//Used by the XamlC compiled converter
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='SetAndLoadSource']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='SetAndCreateSource']/Docs/*" />
 		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void SetAndCreateSource<T>(Uri value)
+			where T : ResourceDictionary, new()
+		{
+			var instance = s_instances.GetValue(typeof(T), static _ =>
+			{
+				try
+				{
+					return new T();
+				}
+				catch (TargetInvocationException tie) when (tie.InnerException is not null)
+				{
+					ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+					throw;
+				}
+			});
+
+			SetSource(value, instance);
+		}
+
+		// Used by hot reload
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='SetAndLoadSource']/Docs/*" />
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		[RequiresUnreferencedCode(TrimmerConstants.XamlRuntimeParsingNotSupportedWarning)]
 		public void SetAndLoadSource(Uri value, string resourcePath, Assembly assembly, global::System.Xml.IXmlLineInfo lineInfo)
 		{
-			_source = value;
+			if (s_setAndLoadSource is null)
+			{
+				throw new InvalidOperationException("ResourceDictionary.SetAndLoadSource was not initialized");
+			}
 
-			//this will return a type if the RD as an x:Class element, and codebehind
-			var type = XamlResourceIdAttribute.GetTypeForPath(assembly, resourcePath);
-			if (type != null)
-				_mergedInstance = s_instances.GetValue(type, (key) => (ResourceDictionary)Activator.CreateInstance(key));
-			else
-				_mergedInstance = DependencyService.Get<IResourcesLoader>().CreateFromResource<ResourceDictionary>(resourcePath, assembly, lineInfo);
+			s_setAndLoadSource(this, value, resourcePath, assembly, lineInfo);
+		}
+
+		internal static ResourceDictionary GetOrCreateInstance([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type type)
+		{
+			return s_instances.GetValue(type, _ =>
+			{
+				try
+				{
+					return (ResourceDictionary)Activator.CreateInstance(type);
+				}
+				catch (TargetInvocationException tie) when (tie.InnerException is not null)
+				{
+					ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+					throw;
+				}
+			});
+		}
+
+		internal void SetSource(Uri source, ResourceDictionary sourceInstance)
+		{
+			_source = source;
+			_mergedInstance = sourceInstance;
 			OnValuesChanged(_mergedInstance.ToArray());
 		}
 
 		ObservableCollection<ResourceDictionary> _mergedDictionaries;
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='MergedDictionaries']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='MergedDictionaries']/Docs/*" />
 		public ICollection<ResourceDictionary> MergedDictionaries
 		{
 			get
@@ -132,7 +180,7 @@ namespace Microsoft.Maui.Controls
 			OnValuesChanged(item);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Clear']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Clear']/Docs/*" />
 		public void Clear()
 		{
 			_innerDictionary.Clear();
@@ -149,7 +197,7 @@ namespace Microsoft.Maui.Controls
 			((ICollection<KeyValuePair<string, object>>)_innerDictionary).CopyTo(array, arrayIndex);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Count']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Count']/Docs/*" />
 		public int Count
 		{
 			get { return _innerDictionary.Count + (_mergedInstance?.Count ?? 0); }
@@ -165,7 +213,7 @@ namespace Microsoft.Maui.Controls
 			return ((ICollection<KeyValuePair<string, object>>)_innerDictionary).Remove(item);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Add'][4]/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Add'][4]/Docs/*" />
 		public void Add(string key, object value)
 		{
 			if (ContainsKey(key))
@@ -174,9 +222,12 @@ namespace Microsoft.Maui.Controls
 			OnValueChanged(key, value);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='ContainsKey']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='ContainsKey']/Docs/*" />
 		public bool ContainsKey(string key)
 		{
+			// Note that this only checks the inner dictionary and ignores the merged dictionaries. This is apparently an intended 
+			// behavior to support Hot Reload. 
+
 			return _innerDictionary.ContainsKey(key);
 		}
 
@@ -190,9 +241,17 @@ namespace Microsoft.Maui.Controls
 				if (_mergedInstance != null && _mergedInstance.ContainsKey(index))
 					return _mergedInstance[index];
 				if (_mergedDictionaries != null)
-					foreach (var dict in MergedDictionaries.Reverse())
-						if (dict.ContainsKey(index))
-							return dict[index];
+				{
+					var dictionaries = (ObservableCollection<ResourceDictionary>)MergedDictionaries;
+					for (int i = dictionaries.Count - 1; i >= 0; i--)
+					{
+						if (dictionaries[i].TryGetValue(index, out var value))
+						{
+							return value;
+						}
+					}
+				}
+
 				throw new KeyNotFoundException($"The resource '{index}' is not present in the dictionary.");
 			}
 			set
@@ -202,22 +261,36 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Keys']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Keys']/Docs/*" />
 		public ICollection<string> Keys
 		{
-			get { return _innerDictionary.Keys; }
+			get
+			{
+				if (_mergedInstance is null)
+					return _innerDictionary.Keys;
+				if (_innerDictionary.Count == 0)
+					return _mergedInstance.Keys;
+				return new ReadOnlyCollection<string>(_innerDictionary.Keys.Concat(_mergedInstance.Keys).ToList());
+			}
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Remove']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Remove']/Docs/*" />
 		public bool Remove(string key)
 		{
 			return _innerDictionary.Remove(key) || (_mergedInstance?.Remove(key) ?? false);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Values']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Values']/Docs/*" />
 		public ICollection<object> Values
 		{
-			get { return _innerDictionary.Values; }
+			get
+			{
+				if (_mergedInstance is null)
+					return _innerDictionary.Values;
+				if (_innerDictionary.Count == 0)
+					return _mergedInstance.Values;
+				return new ReadOnlyCollection<object>(_innerDictionary.Values.Concat(_mergedInstance.Values).ToList());
+			}
 		}
 
 		IEnumerator IEnumerable.GetEnumerator()
@@ -225,7 +298,7 @@ namespace Microsoft.Maui.Controls
 			return GetEnumerator();
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='GetEnumerator']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='GetEnumerator']/Docs/*" />
 		public IEnumerator<KeyValuePair<string, object>> GetEnumerator()
 		{
 			return _innerDictionary.GetEnumerator();
@@ -253,7 +326,7 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='TryGetValue']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='TryGetValue']/Docs/*" />
 		public bool TryGetValue(string key, out object value)
 			=> TryGetValueAndSource(key, out value, out _);
 
@@ -267,12 +340,16 @@ namespace Microsoft.Maui.Controls
 
 		bool TryGetMergedDictionaryValue(string key, out object value, out ResourceDictionary source)
 		{
-			foreach (var dictionary in MergedDictionaries.Reverse())
+			var dictionaries = (ObservableCollection<ResourceDictionary>)MergedDictionaries;
+			for (int i = dictionaries.Count - 1; i >= 0; i--)
+			{
+				var dictionary = dictionaries[i];
 				if (dictionary.TryGetValue(key, out value))
 				{
 					source = dictionary;
 					return true;
 				}
+			}
 
 			value = null;
 			source = null;
@@ -285,7 +362,7 @@ namespace Microsoft.Maui.Controls
 			remove { ValuesChanged -= value; }
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Add'][2]/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Add'][2]/Docs/*" />
 		public void Add(Style style)
 		{
 			if (string.IsNullOrEmpty(style.Class))
@@ -301,13 +378,13 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Add'][1]/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Add'][1]/Docs/*" />
 		public void Add(ResourceDictionary mergedResourceDictionary)
 		{
 			MergedDictionaries.Add(mergedResourceDictionary);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Add'][3]/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/ResourceDictionary.xml" path="//Member[@MemberName='Add'][3]/Docs/*" />
 		public void Add(StyleSheets.StyleSheet styleSheet)
 		{
 			StyleSheets = StyleSheets ?? new List<StyleSheets.StyleSheet>(2);
@@ -359,34 +436,38 @@ namespace Microsoft.Maui.Controls
 				if (rootObjectType == null)
 					return null;
 
-				var lineInfo = (serviceProvider.GetService(typeof(Xaml.IXmlLineInfoProvider)) as Xaml.IXmlLineInfoProvider)?.XmlLineInfo;
-				var rootTargetPath = XamlResourceIdAttribute.GetPathForType(rootObjectType);
-				var assembly = rootObjectType.Assembly;
+				return GetUriWithExplicitAssembly(value, rootObjectType.Assembly);
+			}
 
+			internal static Uri GetUriWithExplicitAssembly(string value, Assembly defaultAssembly)
+			{
+				(value, var assembly) = SplitUriAndAssembly(value, defaultAssembly);
+				return CombineUriAndAssembly(value, assembly);
+			}
+
+			internal static ValueTuple<string, Assembly> SplitUriAndAssembly(string value, Assembly defaultAssembly)
+			{
 				if (value.IndexOf(";assembly=", StringComparison.Ordinal) != -1)
 				{
 					var parts = value.Split(new[] { ";assembly=" }, StringSplitOptions.RemoveEmptyEntries);
-					value = parts[0];
-					var asmName = parts[1];
-					assembly = Assembly.Load(asmName);
+					return (parts[0], Assembly.Load(parts[1]));
 				}
 
-				var uri = new Uri(value, UriKind.Relative); //we don't want file:// uris, even if they start with '/'
-				var resourcePath = GetResourcePath(uri, rootTargetPath);
+				return (value, defaultAssembly);
+			}
 
-				//Re-add the assembly= in all cases, so HotReload doesn't have to make assumptions
-				uri = new Uri($"{value};assembly={assembly.GetName().Name}", UriKind.Relative);
-				targetRD.SetAndLoadSource(uri, resourcePath, assembly, lineInfo);
-
-				return uri;
+			internal static Uri CombineUriAndAssembly(string value, Assembly assembly)
+			{
+				return new Uri($"{value};assembly={assembly.GetName().Name}", UriKind.Relative);
 			}
 
 			internal static string GetResourcePath(Uri uri, string rootTargetPath)
 			{
-				//need a fake scheme so it's not seen as file:// uri, and the forward slashes are valid on all plats
+				// GetResourcePathUriScheme is a fake scheme so it's not seen as file:// uri,
+				// and the forward slashes are valid on all plats
 				var resourceUri = uri.OriginalString.StartsWith("/", StringComparison.Ordinal)
-									 ? new Uri($"pack://{uri.OriginalString}", UriKind.Absolute)
-									 : new Uri($"pack:///{rootTargetPath}/../{uri.OriginalString}", UriKind.Absolute);
+									 ? new Uri($"{GetResourcePathUriScheme}{uri.OriginalString}", UriKind.Absolute)
+									 : new Uri($"{GetResourcePathUriScheme}/{rootTargetPath}/../{uri.OriginalString}", UriKind.Absolute);
 
 				//drop the leading '/'
 				return resourceUri.AbsolutePath.Substring(1);

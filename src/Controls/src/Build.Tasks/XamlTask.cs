@@ -1,20 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Xml;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using Microsoft.Maui.Controls.Xaml;
 using Mono.Cecil;
-using Mono.Cecil.Cil;
-using Mono.Cecil.Mdb;
-using Mono.Cecil.Pdb;
 
 namespace Microsoft.Maui.Controls.Build.Tasks
 {
-	[LoadInSeparateAppDomain]
 	public abstract class XamlTask : MarshalByRefObject, ITask
 	{
 		[Required]
@@ -23,7 +19,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 		public bool DebugSymbols { get; set; }
 		public string DebugType { get; set; }
 
-		protected TaskLoggingHelper LoggingHelper { get; }
+		internal TaskLoggingHelper LoggingHelper { get; }
 
 		internal XamlTask()
 		{
@@ -41,10 +37,23 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 
 		public abstract bool Execute(out IList<Exception> thrownExceptions);
 
-		internal static ILRootNode ParseXaml(Stream stream, TypeReference typeReference)
+		internal static ILRootNode ParseXaml(Stream stream, ModuleDefinition module, TypeReference typeReference)
 		{
-			ILRootNode rootnode = null;
-			using (var reader = XmlReader.Create(stream))
+			var allowImplicitXmlns = module.Assembly.CustomAttributes.Any(a =>
+				   a.AttributeType.FullName == typeof(Microsoft.Maui.Controls.Xaml.Internals.AllowImplicitXmlnsDeclarationAttribute).FullName
+				&& (a.ConstructorArguments.Count == 0 || a.ConstructorArguments[0].Value is bool b && b));
+
+			var nsmgr = new XmlNamespaceManager(new NameTable());
+			if (allowImplicitXmlns)
+			{
+				nsmgr.AddNamespace("", XamlParser.DefaultImplicitUri);
+				foreach (var xmlnsPrefix in XmlTypeExtensions.GetXmlnsPrefixAttributes(module))
+					nsmgr.AddNamespace(xmlnsPrefix.Prefix, xmlnsPrefix.XmlNamespace);
+			}
+
+			using (var reader = XmlReader.Create(stream,
+										new XmlReaderSettings { ConformanceLevel = allowImplicitXmlns ? ConformanceLevel.Fragment : ConformanceLevel.Document },
+										new XmlParserContext(nsmgr.NameTable, nsmgr, null, XmlSpace.None)))
 			{
 				while (reader.Read())
 				{
@@ -57,25 +66,40 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 						continue;
 					}
 
-					XamlParser.ParseXaml(
-						rootnode = new ILRootNode(new XmlType(reader.NamespaceURI, reader.Name, null), typeReference, reader as IXmlNamespaceResolver, ((IXmlLineInfo)reader).LineNumber, ((IXmlLineInfo)reader).LinePosition), reader);
-					break;
+					var xmlType = new XmlType(reader.NamespaceURI, reader.Name, XamlParser.GetTypeArguments(reader));
+					var rootnode = new ILRootNode(xmlType, typeReference, reader as IXmlNamespaceResolver, ((IXmlLineInfo)reader).LineNumber, ((IXmlLineInfo)reader).LinePosition);
+					XamlParser.ParseXaml(rootnode, reader);
+					return rootnode;
 				}
 			}
-			return rootnode;
+			return null;
 		}
 	}
 
 	static class CecilExtensions
 	{
-		public static bool IsXaml(this EmbeddedResource resource, ModuleDefinition module, out string classname)
+		public static bool IsXaml(this EmbeddedResource resource, XamlCache cache, ModuleDefinition module, out string classname)
 		{
 			classname = null;
 			if (!resource.Name.EndsWith(".xaml", StringComparison.InvariantCulture))
 				return false;
 
+			var allowImplicitXmlns = module.Assembly.CustomAttributes.Any(a =>
+				   a.AttributeType.FullName == typeof(Microsoft.Maui.Controls.Xaml.Internals.AllowImplicitXmlnsDeclarationAttribute).FullName
+				&& (a.ConstructorArguments.Count == 0 || a.ConstructorArguments[0].Value is bool b && b));
+
+			var nsmgr = new XmlNamespaceManager(new NameTable());
+			nsmgr.AddNamespace("__f__", XamlParser.MauiUri);
+			if (allowImplicitXmlns)
+			{
+				nsmgr.AddNamespace("", XamlParser.DefaultImplicitUri);
+				foreach (var xmlnsPrefix in XmlTypeExtensions.GetXmlnsPrefixAttributes(module))
+					nsmgr.AddNamespace(xmlnsPrefix.Prefix, xmlnsPrefix.XmlNamespace);
+			}
 			using (var resourceStream = resource.GetResourceStream())
-			using (var reader = XmlReader.Create(resourceStream))
+			using (var reader = XmlReader.Create(resourceStream,
+										new XmlReaderSettings { ConformanceLevel = allowImplicitXmlns ? ConformanceLevel.Fragment : ConformanceLevel.Document },
+										new XmlParserContext(nsmgr.NameTable, nsmgr, null, XmlSpace.None)))
 			{
 				// Read to the first Element
 				while (reader.Read() && reader.NodeType != XmlNodeType.Element)
@@ -91,7 +115,7 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 
 				//no x:Class, but it might be a RD without x:Class and with <?xaml-comp compile="true" ?>
 				//in that case, it has a XamlResourceIdAttribute
-				var typeRef = GetTypeForResourceId(module, resource.Name);
+				var typeRef = GetTypeForResourceId(cache, module, resource.Name);
 				if (typeRef != null)
 				{
 					classname = typeRef.FullName;
@@ -102,11 +126,11 @@ namespace Microsoft.Maui.Controls.Build.Tasks
 			}
 		}
 
-		static TypeReference GetTypeForResourceId(ModuleDefinition module, string resourceId)
+		static TypeReference GetTypeForResourceId(XamlCache cache, ModuleDefinition module, string resourceId)
 		{
 			foreach (var ca in module.GetCustomAttributes())
 			{
-				if (!TypeRefComparer.Default.Equals(ca.AttributeType, module.ImportReference(("Microsoft.Maui.Controls", "Microsoft.Maui.Controls.Xaml", "XamlResourceIdAttribute"))))
+				if (!TypeRefComparer.Default.Equals(ca.AttributeType, module.ImportReference(cache, ("Microsoft.Maui.Controls", "Microsoft.Maui.Controls.Xaml", "XamlResourceIdAttribute"))))
 					continue;
 				if (ca.ConstructorArguments[0].Value as string != resourceId)
 					continue;

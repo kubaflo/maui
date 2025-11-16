@@ -4,12 +4,10 @@
 	{
 		public static void UpdateStrokeShape(this ContentPanel platformView, IBorderStroke border)
 		{
-			var shape = border.Shape;
-
-			if (shape == null)
+			if (border is null)
 				return;
 
-			platformView.UpdateBorderShape(shape);
+			platformView.UpdateBorderStroke(border);
 		}
 
 		public static void UpdateStroke(this ContentPanel platformView, IBorderStroke border)
@@ -24,11 +22,6 @@
 
 		public static void UpdateStrokeThickness(this ContentPanel platformView, IBorderStroke border)
 		{
-			bool hasBorder = border.Shape != null && border.Stroke != null;
-
-			if (!hasBorder)
-				return;
-
 			var strokeThickness = border.StrokeThickness;
 			platformView.BorderPath?.UpdateStrokeThickness(strokeThickness);
 		}
@@ -65,7 +58,7 @@
 			platformView.BorderPath?.UpdateStrokeMiterLimit(strokeMiterLimit);
 		}
 
-		public static void UpdateStrokeLineCap(this ContentPanel platformView, IBorderStroke border) 
+		public static void UpdateStrokeLineCap(this ContentPanel platformView, IBorderStroke border)
 		{
 			bool hasBorder = border.Shape != null && border.Stroke != null;
 

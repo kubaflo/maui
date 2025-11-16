@@ -1,6 +1,8 @@
+#nullable disable
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.StyleSheets;
 
 namespace Microsoft.Maui.Controls
@@ -12,10 +14,11 @@ namespace Microsoft.Maui.Controls
 			MenuItem = menuItem;
 			MenuItem.Parent = this;
 			Shell.SetFlyoutItemIsVisible(this, Shell.GetFlyoutItemIsVisible(menuItem));
-			SetBinding(TitleProperty, new Binding(nameof(MenuItem.Text), BindingMode.OneWay, source: menuItem));
-			SetBinding(IconProperty, new Binding(nameof(MenuItem.IconImageSource), BindingMode.OneWay, source: menuItem));
-			SetBinding(FlyoutIconProperty, new Binding(nameof(MenuItem.IconImageSource), BindingMode.OneWay, source: menuItem));
-			SetBinding(AutomationIdProperty, new Binding(nameof(MenuItem.AutomationId), BindingMode.OneWay, source: menuItem));
+
+			this.SetBinding(TitleProperty, static (MenuItem item) => item.Text, BindingMode.OneWay, source: menuItem);
+			this.SetBinding(IconProperty, static (MenuItem item) => item.IconImageSource, BindingMode.OneWay, source: menuItem);
+			this.SetBinding(FlyoutIconProperty, static (MenuItem item) => item.IconImageSource, BindingMode.OneWay, source: menuItem);
+			this.SetBinding(AutomationIdProperty, static (MenuItem item) => item.AutomationId, BindingMode.OneWay, source: menuItem);
 
 			MenuItem.PropertyChanged += OnMenuItemPropertyChanged;
 		}
@@ -30,7 +33,7 @@ namespace Microsoft.Maui.Controls
 				Shell.SetMenuItemTemplate(this, Shell.GetMenuItemTemplate(MenuItem));
 			else if (e.PropertyName == TitleProperty.PropertyName)
 				OnPropertyChanged(MenuItem.TextProperty.PropertyName);
-			else if (e.PropertyName == FlyoutItem.IsVisibleProperty.PropertyName)
+			else if (e.PropertyName == Shell.FlyoutItemIsVisibleProperty.PropertyName)
 				Shell.SetFlyoutItemIsVisible(this, Shell.GetFlyoutItemIsVisible(MenuItem));
 		}
 
@@ -39,6 +42,8 @@ namespace Microsoft.Maui.Controls
 			base.OnPropertyChanged(propertyName);
 			if (propertyName == nameof(Title))
 				OnPropertyChanged(nameof(Text));
+			else if (propertyName == Shell.FlyoutItemIsVisibleProperty.PropertyName && MenuItem != null)
+				Shell.SetFlyoutItemIsVisible(MenuItem, Shell.GetFlyoutItemIsVisible(this));
 		}
 
 		public MenuItem MenuItem { get; }

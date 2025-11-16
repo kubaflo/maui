@@ -3,13 +3,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Maui.Controls.Internals;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.Maui.Controls.Internals;
 using WBinding = Microsoft.UI.Xaml.Data.Binding;
-using WBrush = Microsoft.UI.Xaml.Media.Brush;
 using WBindingExpression = Microsoft.UI.Xaml.Data.BindingExpression;
+using WBrush = Microsoft.UI.Xaml.Media.Brush;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
@@ -82,7 +82,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			DependencyProperty foregroundProperty;
 			if (!ForegroundProperties.Value.TryGetValue(type, out foregroundProperty))
 			{
-				FieldInfo field = ReflectionExtensions.GetFields(type).FirstOrDefault(f => f.Name == "ForegroundProperty");
+#pragma warning disable IL2075 // The Compatibility assembly is not trimmable
+				FieldInfo field = type.GetField("ForegroundProperty", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+#pragma warning restore IL2075
 				if (field == null)
 					throw new ArgumentException("type is not a Foregroundable type");
 

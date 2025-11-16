@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
 using WIconElement = Microsoft.UI.Xaml.Controls.IconElement;
-using System.Collections.ObjectModel;
 
 namespace Microsoft.Maui.Platform
 {
@@ -29,6 +31,26 @@ namespace Microsoft.Maui.Platform
 
 	internal static class NavigationViewItemViewModelExtensions
 	{
+		public static NavigationViewItemViewModel? GetWithData(this IEnumerable<NavigationViewItemViewModel> dest, object data)
+		{
+			foreach (var item in dest)
+			{
+				if (item.Data == data)
+				{
+					return item;
+				}
+			}
+
+			return null;
+		}
+
+		public static bool TryGetWithData(this IEnumerable<NavigationViewItemViewModel> dest, object data, out NavigationViewItemViewModel? vm)
+		{
+			var result = GetWithData(dest, data);
+			vm = result;
+			return result != null;
+		}
+
 		public static void SyncItems<T>(
 			this ObservableCollection<NavigationViewItemViewModel> dest,
 			IList<T> source,
@@ -41,7 +63,7 @@ namespace Microsoft.Maui.Platform
 
 			while (source.Count < dest.Count)
 			{
-				dest.RemoveAt(0);
+				dest.RemoveAt(dest.Count - 1);
 			}
 
 			for (var i = 0; i < source.Count; i++)
@@ -59,12 +81,17 @@ namespace Microsoft.Maui.Platform
 		public event PropertyChangedEventHandler? PropertyChanged;
 
 		object? _content;
-		WBrush? _foreground;
 		bool _isSelected;
 		WBrush? _selectedBackground;
 		WBrush? _unselectedBackground;
+		WBrush? _selectedForeground;
+		WBrush? _selectedTitleColor;
+		WBrush? _unselectedTitleColor;
+		WBrush? _unselectedForeground;
+		WBrush? _iconColor;
 		ObservableCollection<NavigationViewItemViewModel>? _menuItemsSource;
 		WIconElement? _icon;
+		WeakReference<object>? _data;
 
 		public object? Content
 		{
@@ -80,16 +107,19 @@ namespace Microsoft.Maui.Platform
 
 		public WBrush? Foreground
 		{
-			get { return _foreground; }
-			set { this.SetProperty(ref _foreground, value, OnPropertyChanged); }
+			get => IconColor ?? (IsSelected ? SelectedForeground : UnselectedForeground);
 		}
 
 		public WBrush? Background
 		{
-			get => IsSelected ? SelectedBackground : UnselectedBackground;
+			get => (IsSelected ? SelectedBackground : UnselectedBackground) ?? new SolidColorBrush(Microsoft.UI.Colors.Transparent); //The Background color is set to null since both SelectedBackground and UnselectedBackground return null. Adding a default transparent background ensures it is never null, preventing rendering inconsistencies.
 		}
 
-		public object? Data { get; set; }
+		public object? Data
+		{
+			get => _data?.GetTargetOrDefault();
+			set => _data = value is null ? null : new(value);
+		}
 
 		public ObservableCollection<NavigationViewItemViewModel>? MenuItemsSource
 		{
@@ -117,6 +147,79 @@ namespace Microsoft.Maui.Platform
 			}
 		}
 
+		public WBrush? TitleColor
+		{
+			get => IsSelected ? SelectedTitleColor : UnselectedTitleColor;
+		}
+
+		public WBrush? SelectedTitleColor
+		{
+			get => _selectedTitleColor;
+			set
+			{
+				_selectedTitleColor = value;
+				OnPropertyChanged(nameof(TitleColor));
+			}
+		}
+
+		public WBrush? UnselectedTitleColor
+		{
+			get => _unselectedTitleColor;
+			set
+			{
+				_unselectedTitleColor = value;
+				OnPropertyChanged(nameof(TitleColor));
+			}
+		}
+
+		public WBrush? IconColor
+		{
+			get => _iconColor;
+			set
+			{
+				_iconColor = value;
+				OnPropertyChanged(nameof(IconColor));
+				UpdateForeground();
+			}
+		}
+
+		public WBrush? SelectedForeground
+		{
+			get => _selectedForeground;
+			set
+			{
+				_selectedForeground = value;
+				UpdateForeground();
+			}
+		}
+
+		public WBrush? UnselectedForeground
+		{
+			get => _unselectedForeground;
+			set
+			{
+				_unselectedForeground = value;
+				UpdateForeground();
+			}
+		}
+
+		void UpdateForeground()
+		{
+			OnPropertyChanged(nameof(Foreground));
+
+			if (Icon is WIconElement bi)
+			{
+				if (Foreground is null)
+				{
+					bi.ClearValue(WIconElement.ForegroundProperty);
+				}
+				else
+				{
+					bi.Foreground = Foreground;
+				}
+			}
+		}
+
 		public bool IsSelected
 		{
 			get => _isSelected;
@@ -124,6 +227,8 @@ namespace Microsoft.Maui.Platform
 			{
 				_isSelected = value;
 				OnPropertyChanged(nameof(Background));
+				OnPropertyChanged(nameof(TitleColor));
+				UpdateForeground();
 			}
 		}
 

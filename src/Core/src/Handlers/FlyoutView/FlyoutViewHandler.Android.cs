@@ -1,12 +1,17 @@
 ﻿using System;
+using System.Threading.Tasks;
+using Android.App.Roles;
 using Android.Runtime;
 using Android.Views;
 using AndroidX.AppCompat.Widget;
+using AndroidX.CoordinatorLayout.Widget;
+using AndroidX.Core.View;
 using AndroidX.DrawerLayout.Widget;
+using AndroidX.Fragment.App;
+using AndroidX.Lifecycle;
 
 namespace Microsoft.Maui.Handlers
 {
-
 	public partial class FlyoutViewHandler : ViewHandler<IFlyoutView, View>
 	{
 		View? _flyoutView;
@@ -46,37 +51,64 @@ namespace Microsoft.Maui.Handlers
 			}
 		}
 
+		IDisposable? _pendingFragment;
 		void UpdateDetailsFragmentView()
 		{
+			_pendingFragment?.Dispose();
+			_pendingFragment = null;
+
 			_ = MauiContext ?? throw new InvalidOperationException($"{nameof(MauiContext)} should have been set by base class.");
 
-			if (_detailViewFragment != null && _detailViewFragment?.DetailView == VirtualView.Detail)
+			if (_detailViewFragment is not null &&
+				_detailViewFragment?.DetailView == VirtualView.Detail &&
+				!_detailViewFragment.IsDestroyed)
+			{
+				return;
+			}
+
+			var context = MauiContext.Context;
+			if (context is null)
 				return;
 
 			if (VirtualView.Detail?.Handler is IPlatformViewHandler pvh)
 				pvh.DisconnectHandler();
 
-			if (VirtualView.Detail == null)
+			var fragmentManager = MauiContext.GetFragmentManager();
+
+			if (VirtualView.Detail is null)
 			{
-				if (_detailViewFragment != null)
+				if (_detailViewFragment is not null)
 				{
-					MauiContext
-						.GetFragmentManager()
-						.BeginTransaction()
-						.Remove(_detailViewFragment)
-						.SetReorderingAllowed(true)
-						.Commit();
+					_pendingFragment =
+						fragmentManager
+							.RunOrWaitForResume(context, (fm) =>
+							{
+								if (_detailViewFragment is null)
+								{
+									return;
+								}
+
+								fm
+									.BeginTransactionEx()
+									.RemoveEx(_detailViewFragment)
+									.SetReorderingAllowed(true)
+									.Commit();
+							});
 				}
 			}
 			else
 			{
-				_detailViewFragment = new ScopedFragment(VirtualView.Detail, MauiContext);
-				MauiContext
-					.GetFragmentManager()
-					.BeginTransaction()
-					.Replace(Resource.Id.navigationlayout_content, _detailViewFragment)
-					.SetReorderingAllowed(true)
-					.Commit();
+				_pendingFragment =
+					fragmentManager
+						.RunOrWaitForResume(context, (fm) =>
+						{
+							_detailViewFragment = new ScopedFragment(VirtualView.Detail, MauiContext);
+							fm
+								.BeginTransaction()
+								.Replace(Resource.Id.navigationlayout_content, _detailViewFragment)
+								.SetReorderingAllowed(true)
+								.Commit();
+						});
 			}
 		}
 
@@ -94,8 +126,7 @@ namespace Microsoft.Maui.Handlers
 			if (_flyoutView == newFlyoutView)
 				return;
 
-			if (_flyoutView != null)
-				_flyoutView.RemoveFromParent();
+			_flyoutView?.RemoveFromParent();
 
 			_flyoutView = newFlyoutView;
 			if (_flyoutView == null)
@@ -154,7 +185,7 @@ namespace Microsoft.Maui.Handlers
 
 			if (flyoutView.Parent != _sideBySideView)
 			{
-				// When the Flyout is acting as a flyout Android will set the Visibilty to GONE when it's off screen
+				// When the Flyout is acting as a flyout Android will set the Visibility to GONE when it's off screen
 				// This makes sure it's visible
 				flyoutView.Visibility = ViewStates.Visible;
 				flyoutView.RemoveFromParent();
@@ -169,6 +200,8 @@ namespace Microsoft.Maui.Handlers
 
 			if (_sideBySideView.Parent != PlatformView)
 				DrawerLayout.AddView(_sideBySideView);
+			else
+				UpdateDetailsFragmentView();
 
 			if (VirtualView is IToolbarElement te && te.Toolbar?.Handler is ToolbarHandler th)
 				th.SetupWithDrawerLayout(null);
@@ -213,8 +246,6 @@ namespace Microsoft.Maui.Handlers
 				DrawerLayout.AddView(flyoutView, layoutParameters);
 			}
 
-			DrawerLayout.CloseDrawer(flyoutView);
-
 			if (VirtualView is IToolbarElement te && te.Toolbar?.Handler is ToolbarHandler th)
 				th.SetupWithDrawerLayout(DrawerLayout);
 		}
@@ -236,6 +267,9 @@ namespace Microsoft.Maui.Handlers
 			if (_detailViewFragment?.DetailView?.Handler?.PlatformView == null)
 				return;
 
+			// Important to create the layout views before setting the lock mode
+			LayoutViews();
+
 			switch (behavior)
 			{
 				case FlyoutBehavior.Disabled:
@@ -247,25 +281,53 @@ namespace Microsoft.Maui.Handlers
 					DrawerLayout.SetDrawerLockMode(VirtualView.IsGestureEnabled ? DrawerLayout.LockModeUnlocked : DrawerLayout.LockModeLockedClosed);
 					break;
 			}
-
-			LayoutViews();
 		}
 
 		protected override void ConnectHandler(View platformView)
 		{
+			MauiWindowInsetListener.RegisterParentForChildViews(platformView);
+
+			if (_navigationRoot is CoordinatorLayout cl)
+			{
+				MauiWindowInsetListener.SetupViewWithLocalListener(cl);
+			}
+
 			if (platformView is DrawerLayout dl)
+			{
 				dl.DrawerStateChanged += OnDrawerStateChanged;
+				dl.ViewAttachedToWindow += DrawerLayoutAttached;
+			}
 		}
 
 		protected override void DisconnectHandler(View platformView)
 		{
+			MauiWindowInsetListener.UnregisterView(platformView);
+			if (_navigationRoot is CoordinatorLayout cl)
+			{
+				MauiWindowInsetListener.UnregisterView(cl);
+				_navigationRoot = null;
+			}
+
 			if (platformView is DrawerLayout dl)
+			{
 				dl.DrawerStateChanged -= OnDrawerStateChanged;
+				dl.ViewAttachedToWindow -= DrawerLayoutAttached;
+			}
+
+			if (VirtualView is IToolbarElement te)
+			{
+				te.Toolbar?.Handler?.DisconnectHandler();
+			}
+		}
+
+		void DrawerLayoutAttached(object? sender, View.ViewAttachedToWindowEventArgs e)
+		{
+			UpdateDetailsFragmentView();
 		}
 
 		void OnDrawerStateChanged(object? sender, DrawerLayout.DrawerStateChangedEventArgs e)
 		{
-			if (e.NewState == DrawerLayout.StateIdle && VirtualView.FlyoutBehavior == FlyoutBehavior.Flyout)
+			if (e.NewState == DrawerLayout.StateIdle && VirtualView.FlyoutBehavior == FlyoutBehavior.Flyout && _flyoutView != null)
 				VirtualView.IsPresented = DrawerLayout.IsDrawerVisible(_flyoutView);
 		}
 

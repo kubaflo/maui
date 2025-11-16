@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Runtime.Versioning;
 using Foundation;
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Handlers;
 using Microsoft.Maui.LifecycleEvents;
 using ObjCRuntime;
@@ -21,14 +23,27 @@ namespace Microsoft.Maui.Platform
 			var state = args?.State;
 			var userActivity = state.ToUserActivity(MauiUIApplicationDelegate.MauiSceneConfigurationKey);
 
-			UIApplication.SharedApplication.RequestSceneSessionActivation(
-				null,
-				userActivity,
-				null,
-				err => application.Handler?.MauiContext?.CreateLogger<IApplication>()?.LogError(new NSErrorException(err), err.Description));
+			Action<NSError> errorAction = err => application.Handler?.MauiContext?.CreateLogger<IApplication>()?.LogError(new NSErrorException(err), err.Description);
+#if NET8_0_OR_GREATER
+			if (OperatingSystem.IsIOSVersionAtLeast(17))
+			{
+				var request = UISceneSessionActivationRequest.Create();
+				request.UserActivity = userActivity;
+				UIApplication.SharedApplication.ActivateSceneSession(request, errorAction);
+			}
+			else
+#endif
+			if (OperatingSystem.IsIOSVersionAtLeast(13) || OperatingSystem.IsMacCatalystVersionAtLeast(13, 1))
+			{
+				UIApplication.SharedApplication.RequestSceneSessionActivation(
+					null,
+					userActivity,
+					null,
+					errorAction);
+			}
 		}
 
-		public static void CreatePlatformWindow(this IUIApplicationDelegate platformApplication, IApplication application, UIApplication uiApplication, NSDictionary launchOptions)
+		public static void CreatePlatformWindow(this IUIApplicationDelegate platformApplication, IApplication application, UIApplication uiApplication, NSDictionary? launchOptions)
 		{
 			// Find any userinfo/dictionaries we might pass into the activation state
 			var dicts = new List<NSDictionary>();
@@ -57,13 +72,22 @@ namespace Microsoft.Maui.Platform
 				dicts.Add(session.UserInfo);
 			if (session.StateRestorationActivity?.UserInfo is not null)
 				dicts.Add(session.StateRestorationActivity.UserInfo);
-			if (connectionOptions.UserActivities is not null)
+			try
 			{
-				foreach (var u in connectionOptions.UserActivities)
+				using var activities = connectionOptions.UserActivities;
+				if (activities is not null)
 				{
-					if (u is NSUserActivity userActivity && userActivity.UserInfo is not null)
-						dicts.Add(userActivity.UserInfo);
+					foreach (var u in activities)
+					{
+						if (u is NSUserActivity userActivity && userActivity.UserInfo is not null)
+							dicts.Add(userActivity.UserInfo);
+					}
 				}
+			}
+			catch (InvalidCastException)
+			{
+				// HACK: Workaround for https://github.com/xamarin/xamarin-macios/issues/13704
+				//       This only throws if the collection is empty.
 			}
 
 			var window = CreatePlatformWindow(application, scene as UIWindowScene, dicts.ToArray());
@@ -106,7 +130,7 @@ namespace Microsoft.Maui.Platform
 			{
 				foreach (var pair in state)
 				{
-					userInfo.SetValueForKey(new NSString(pair.Value), new NSString(pair.Key));
+					userInfo.SetValueForKey(new NSString(pair.Value ?? string.Empty), new NSString(pair.Key));
 				}
 			}
 
@@ -114,6 +138,33 @@ namespace Microsoft.Maui.Platform
 			userActivity.AddUserInfoEntries(userInfo);
 
 			return userActivity;
+		}
+
+		public static void UpdateUserInterfaceStyle(this IApplication application)
+		{
+			if (!OperatingSystem.IsIOSVersionAtLeast(13) && !OperatingSystem.IsMacCatalystVersionAtLeast(13, 1))
+				return;
+
+			if (application is null)
+				return;
+
+			var currentViewController = WindowStateManager.Default.GetCurrentUIViewController(false);
+
+			if (currentViewController is null)
+				return;
+
+			switch (application.UserAppTheme)
+			{
+				case AppTheme.Light:
+					currentViewController.OverrideUserInterfaceStyle = UIUserInterfaceStyle.Light;
+					break;
+				case AppTheme.Dark:
+					currentViewController.OverrideUserInterfaceStyle = UIUserInterfaceStyle.Dark;
+					break;
+				default:
+					currentViewController.OverrideUserInterfaceStyle = UIUserInterfaceStyle.Unspecified;
+					break;
+			}
 		}
 	}
 }

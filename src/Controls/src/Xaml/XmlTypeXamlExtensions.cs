@@ -28,6 +28,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Maui.Controls.Xaml
 {
@@ -37,8 +38,17 @@ namespace Microsoft.Maui.Controls.Xaml
 			this XmlType xmlType,
 			IEnumerable<XmlnsDefinitionAttribute> xmlnsDefinitions,
 			string defaultAssemblyName,
-			Func<(string typeName, string clrNamespace, string assemblyName), T> refFromTypeInfo)
-			where T : class
+			Func<(string typeName, string clrNamespace, string assemblyName), T?> refFromTypeInfo,
+			bool expandToExtension = true)
+			where T : class => GetTypeReferences(xmlType, xmlnsDefinitions, defaultAssemblyName, refFromTypeInfo, expandToExtension).FirstOrDefault();
+
+		public static IEnumerable<T> GetTypeReferences<T>(
+			this XmlType xmlType,
+			IEnumerable<XmlnsDefinitionAttribute> xmlnsDefinitions,
+			string defaultAssemblyName,
+			Func<(string typeName, string clrNamespace, string assemblyName), T> refFromTypeInfo,
+			bool expandToExtension = true)
+			where T : class?
 		{
 			var lookupAssemblies = new List<XmlnsDefinitionAttribute>();
 			var namespaceURI = xmlType.NamespaceUri;
@@ -60,16 +70,17 @@ namespace Microsoft.Maui.Controls.Xaml
 					lookupAssemblies.Add(new XmlnsDefinitionAttribute(namespaceURI, ns) { AssemblyName = asmstring });
 			}
 
-			var lookupNames = new List<string>();
-			if (elementName != "DataTemplate" && !elementName.EndsWith("Extension", StringComparison.Ordinal))
+			var lookupNames = new List<string>(capacity: 2);
+			if (expandToExtension && elementName != "DataTemplate" && !elementName.EndsWith("Extension", StringComparison.Ordinal))
 				lookupNames.Add(elementName + "Extension");
 			lookupNames.Add(elementName);
 
 			for (var i = 0; i < lookupNames.Count; i++)
 			{
 				var name = lookupNames[i];
-				if (name.IndexOf(":", StringComparison.Ordinal) != -1)
-					name = name.Substring(name.LastIndexOf(':') + 1);
+				var lastIndex = name.LastIndexOf(":", StringComparison.Ordinal);
+				if (lastIndex != -1)
+					name = name.Substring(lastIndex + 1);
 				if (typeArguments != null)
 					name += "`" + typeArguments.Count; //this will return an open generic Type
 				lookupNames[i] = name;
@@ -77,15 +88,29 @@ namespace Microsoft.Maui.Controls.Xaml
 
 			var potentialTypes = new List<(string typeName, string clrNamespace, string assemblyName)>();
 			foreach (string typeName in lookupNames)
+			{
 				foreach (XmlnsDefinitionAttribute xmlnsDefinitionAttribute in lookupAssemblies)
-					potentialTypes.Add(new(typeName, xmlnsDefinitionAttribute.ClrNamespace, xmlnsDefinitionAttribute.AssemblyName));
+				{
+					potentialTypes.Add(new(typeName, xmlnsDefinitionAttribute.Target, xmlnsDefinitionAttribute.AssemblyName));
+
+					// As a fallback, for assembly=mscorlib try assembly=System.Private.CoreLib
+					if (xmlnsDefinitionAttribute.AssemblyName is string assemblyName &&
+						(assemblyName == "mscorlib" || assemblyName.StartsWith("mscorlib,", StringComparison.Ordinal)))
+					{
+						potentialTypes.Add(new(typeName, xmlnsDefinitionAttribute.Target, "System.Private.CoreLib"));
+					}
+				}
+			}
 
 			T? type = null;
+			string? returnTypeName = null;
 			foreach (var typeInfo in potentialTypes)
-				if ((type = refFromTypeInfo(typeInfo)) != null)
-					break;
-
-			return type;
+				if ((returnTypeName == null || returnTypeName == typeInfo.typeName) //only return multiple types if they share the same name. avoid returning both BindingExtension and Binding
+					&& (type = refFromTypeInfo(typeInfo)) != null)
+				{
+					returnTypeName = typeInfo.typeName;
+					yield return type;
+				}
 		}
 	}
 }

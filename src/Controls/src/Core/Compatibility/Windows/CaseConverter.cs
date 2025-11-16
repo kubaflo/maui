@@ -1,8 +1,10 @@
+#nullable disable
 using System;
+using System.Globalization;
 
 namespace Microsoft.Maui.Controls.Platform.Compatibility
 {
-	public class CaseConverter : Microsoft.UI.Xaml.Data.IValueConverter
+	public partial class CaseConverter : Microsoft.UI.Xaml.Data.IValueConverter
 	{
 		public bool ConvertToUpper { get; set; }
 
@@ -12,7 +14,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				return null;
 
 			var v = (string)value;
-			return ConvertToUpper ? v.ToUpper() : v.ToLower();
+			return ConvertToUpper ? v.ToUpper(CultureInfo.CurrentCulture) : v.ToLower(CultureInfo.CurrentCulture);
 		}
 
 		public object ConvertBack(object value, Type targetType, object parameter, string language)

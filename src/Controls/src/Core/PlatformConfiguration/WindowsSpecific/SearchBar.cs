@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -6,32 +7,32 @@ namespace Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific
 {
 	using FormsElement = Maui.Controls.SearchBar;
 
-	/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="Type[@FullName='Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific.SearchBar']/Docs" />
+	/// <summary>Provides control over the spellchecker on search bars.</summary>
 	public static class SearchBar
 	{
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='IsSpellCheckEnabledProperty']/Docs" />
+		/// <summary>Bindable property for <see cref="IsSpellCheckEnabled"/>.</summary>
 		public static readonly BindableProperty IsSpellCheckEnabledProperty =
 			BindableProperty.Create("IsSpellCheckEnabled ", typeof(bool), typeof(SearchBar), false);
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='SetIsSpellCheckEnabled'][1]/Docs" />
+		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='SetIsSpellCheckEnabled'][1]/Docs/*" />
 		public static void SetIsSpellCheckEnabled(BindableObject element, bool value)
 		{
 			element.SetValue(IsSpellCheckEnabledProperty, value);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='GetIsSpellCheckEnabled'][1]/Docs" />
+		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='GetIsSpellCheckEnabled'][1]/Docs/*" />
 		public static bool GetIsSpellCheckEnabled(BindableObject element)
 		{
 			return (bool)element.GetValue(IsSpellCheckEnabledProperty);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='GetIsSpellCheckEnabled'][2]/Docs" />
+		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='GetIsSpellCheckEnabled'][2]/Docs/*" />
 		public static bool GetIsSpellCheckEnabled(this IPlatformElementConfiguration<Windows, FormsElement> config)
 		{
 			return GetIsSpellCheckEnabled(config.Element);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='SetIsSpellCheckEnabled'][2]/Docs" />
+		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='SetIsSpellCheckEnabled'][2]/Docs/*" />
 		public static IPlatformElementConfiguration<Windows, FormsElement> SetIsSpellCheckEnabled(
 			this IPlatformElementConfiguration<Windows, FormsElement> config, bool value)
 		{
@@ -39,19 +40,23 @@ namespace Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific
 			return config;
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='IsSpellCheckEnabled']/Docs" />
+		/// <summary>Returns a Boolean value that tells whether the spellchecker is enabled.</summary>
+		/// <param name="config">The platform configuration for the search bar element.</param>
+		/// <returns><see langword="true"/> if the spellchecker is enabled. Otherwise, <see langword="false"/>.</returns>
 		public static bool IsSpellCheckEnabled(this IPlatformElementConfiguration<Windows, FormsElement> config)
 		{
 			return GetIsSpellCheckEnabled(config.Element);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='EnableSpellCheck']/Docs" />
+		/// <summary>Enables the spellchecker.</summary>
+		/// <param name="config">The platform configuration for the search bar element.</param>
 		public static void EnableSpellCheck(this IPlatformElementConfiguration<Windows, FormsElement> config)
 		{
 			SetIsSpellCheckEnabled(config.Element, true);
 		}
 
-		/// <include file="../../../../docs/Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific/SearchBar.xml" path="//Member[@MemberName='DisableSpellCheck']/Docs" />
+		/// <summary>Disables the spellchecker.</summary>
+		/// <param name="config">The platform configuration for the search bar element.</param>
 		public static void DisableSpellCheck(this IPlatformElementConfiguration<Windows, FormsElement> config)
 		{
 			SetIsSpellCheckEnabled(config.Element, false);

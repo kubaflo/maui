@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using Microsoft.Maui.Controls.Internals;
 using ObjCRuntime;
@@ -23,6 +24,8 @@ namespace Microsoft.Maui.Controls.Platform
 					return UIModalPresentationStyle.OverFullScreen;
 				case PlatformConfiguration.iOSSpecific.UIModalPresentationStyle.PageSheet:
 					return UIModalPresentationStyle.PageSheet;
+				case PlatformConfiguration.iOSSpecific.UIModalPresentationStyle.Popover:
+					return UIModalPresentationStyle.Popover;
 				default:
 					throw new ArgumentOutOfRangeException(nameof(style));
 			}

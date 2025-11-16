@@ -6,8 +6,8 @@ using PlatformView = AndroidX.AppCompat.Widget.AppCompatEditText;
 #elif WINDOWS
 using PlatformView = Microsoft.UI.Xaml.Controls.TextBox;
 #elif TIZEN
-using PlatformView = Tizen.UIExtensions.ElmSharp.Entry;
-#elif NETSTANDARD || (NET6_0 && !IOS && !ANDROID && !TIZEN)
+using PlatformView = Tizen.UIExtensions.NUI.Entry;
+#elif (NETSTANDARD || !PLATFORM) || (NET6_0_OR_GREATER && !IOS && !ANDROID && !TIZEN)
 using PlatformView = System.Object;
 #endif
 
@@ -28,6 +28,7 @@ namespace Microsoft.Maui.Handlers
 			[nameof(IEntry.VerticalTextAlignment)] = MapVerticalTextAlignment,
 			[nameof(IEntry.IsReadOnly)] = MapIsReadOnly,
 			[nameof(IEntry.IsTextPredictionEnabled)] = MapIsTextPredictionEnabled,
+			[nameof(IEntry.IsSpellCheckEnabled)] = MapIsSpellCheckEnabled,
 			[nameof(IEntry.Keyboard)] = MapKeyboard,
 			[nameof(IEntry.MaxLength)] = MapMaxLength,
 			[nameof(IEntry.Placeholder)] = MapPlaceholder,
@@ -41,20 +42,22 @@ namespace Microsoft.Maui.Handlers
 
 		public static CommandMapper<IEntry, IEntryHandler> CommandMapper = new(ViewCommandMapper)
 		{
+#if ANDROID
+			[nameof(IEntry.Focus)] = MapFocus
+#endif
 		};
 
-		static EntryHandler()
-		{
-#if __IOS__
-			Mapper.PrependToMapping(nameof(IView.FlowDirection), (h, __) => h.UpdateValue(nameof(ITextAlignment.HorizontalTextAlignment)));
-#endif
-		}
-
-		public EntryHandler() : base(Mapper)
+		public EntryHandler() : this(Mapper)
 		{
 		}
 
-		public EntryHandler(IPropertyMapper? mapper = null) : base(mapper ?? Mapper)
+		public EntryHandler(IPropertyMapper? mapper)
+			: base(mapper ?? Mapper, CommandMapper)
+		{
+		}
+
+		public EntryHandler(IPropertyMapper? mapper, CommandMapper? commandMapper)
+			: base(mapper ?? Mapper, commandMapper ?? CommandMapper)
 		{
 		}
 

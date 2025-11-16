@@ -1,16 +1,16 @@
 using System.ComponentModel;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
+using static Microsoft.Maui.Controls.Compatibility.Platform.UWP.ViewToRendererConverter;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
 using WThickness = Microsoft.UI.Xaml.Thickness;
-using static Microsoft.Maui.Controls.Compatibility.Platform.UWP.ViewToRendererConverter;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class RadioButtonRenderer : ViewRenderer<RadioButton, FormsRadioButton>
+	public partial class RadioButtonRenderer : ViewRenderer<RadioButton, FormsRadioButton>
 	{
 		bool _fontApplied;
 

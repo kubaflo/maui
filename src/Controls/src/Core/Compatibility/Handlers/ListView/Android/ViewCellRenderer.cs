@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Linq;
 using Android.Content;
@@ -13,20 +14,23 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
 	public class ViewCellRenderer : CellRenderer
 	{
+#pragma warning disable CS0618 // Type or member is obsolete
 		protected override AView GetCellCore(Cell item, AView convertView, ViewGroup parent, Context context)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
-			Performance.Start(out string reference, "GetCellCore");
+#pragma warning disable CS0618 // Type or member is obsolete
 			var cell = (ViewCell)item;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			var container = convertView as ViewCellContainer;
-			if (container != null)
+			if (container is not null)
 			{
 				container.Update(cell);
-				Performance.Stop(reference, "GetCellCore");
 				return container;
 			}
 
 			BindableProperty unevenRows = null, rowHeight = null;
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (ParentView is TableView)
 			{
 				unevenRows = TableView.HasUnevenRowsProperty;
@@ -39,6 +43,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				unevenRows = ListView.HasUnevenRowsProperty;
 				rowHeight = ListView.RowHeightProperty;
 			}
+#pragma warning restore CS0618 // Type or member is obsolete
 
 			if (cell.View == null)
 				throw new InvalidOperationException($"ViewCell must have a {nameof(cell.View)}");
@@ -46,29 +51,48 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			var view = (IPlatformViewHandler)cell.View.ToHandler(cell.FindMauiContext());
 			cell.View.IsPlatformEnabled = true;
 
-			ViewCellContainer c = view.PlatformView.GetParentOfType<ViewCellContainer>();
+			// If the convertView is null we don't want to return the same view, we need to return a new one.
+			// We should probably do this for ListView as well
+#pragma warning disable CS0618 // Type or member is obsolete
+			if (ParentView is TableView)
+			{
+				view.ToPlatform().RemoveFromParent();
+			}
+			else
+			{
+				ViewCellContainer c = view.ToPlatform().GetParentOfType<ViewCellContainer>();
 
-			if (c != null)
-				return c;
+				if (c != null)
+					return c;
+			}
+#pragma warning restore CS0618 // Type or member is obsolete
 
-			c = new ViewCellContainer(context, (IPlatformViewHandler)cell.View.Handler, cell, ParentView, unevenRows, rowHeight);
+			var newContainer = new ViewCellContainer(context, (IPlatformViewHandler)cell.View.Handler, cell, ParentView, unevenRows, rowHeight);
 
-			Performance.Stop(reference, "GetCellCore");
-
-			return c;
+			return newContainer;
 		}
 
-		internal class ViewCellContainer : ViewGroup, INativeElementView
+		protected override void DisconnectHandler(AView platformView)
+		{
+			base.DisconnectHandler(platformView);
+			ViewCellContainer c = platformView.GetParentOfType<ViewCellContainer>();
+			c?.DisconnectHandler();
+		}
+
+		internal sealed class ViewCellContainer : ViewGroup, INativeElementView
 		{
 			readonly View _parent;
 			readonly BindableProperty _rowHeight;
 			readonly BindableProperty _unevenRows;
 			IPlatformViewHandler _viewHandler;
+#pragma warning disable CS0618 // Type or member is obsolete
 			ViewCell _viewCell;
+#pragma warning restore CS0618 // Type or member is obsolete
 			GestureDetector _tapGestureDetector;
 			GestureDetector _longPressGestureDetector;
 			ListViewRenderer _listViewRenderer;
 			bool _watchForLongPress;
+			AView _currentView;
 
 			ListViewRenderer ListViewRenderer
 			{
@@ -79,7 +103,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 						return _listViewRenderer;
 					}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 					var listView = _parent as ListView;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 					if (listView == null)
 					{
@@ -125,7 +151,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				// Added default constructor to prevent crash when accessing selected row in ListViewAdapter.Dispose
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			public ViewCellContainer(Context context, IPlatformViewHandler view, ViewCell viewCell, View parent,
+#pragma warning restore CS0618 // Type or member is obsolete
 				BindableProperty unevenRows, BindableProperty rowHeight) : base(context)
 			{
 				_viewHandler = (IPlatformViewHandler)view;
@@ -133,25 +161,16 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				_unevenRows = unevenRows;
 				_rowHeight = rowHeight;
 				_viewCell = viewCell;
-				AddView(view.PlatformView);
+				AddView(view.ToPlatform());
 				UpdateIsEnabled();
 				UpdateWatchForLongPress();
 			}
 
-			protected bool ParentHasUnevenRows
-			{
-				get { return (bool)_parent.GetValue(_unevenRows); }
-			}
+			private bool ParentHasUnevenRows => (bool)_parent.GetValue(_unevenRows);
 
-			protected int ParentRowHeight
-			{
-				get { return (int)_parent.GetValue(_rowHeight); }
-			}
+			private int ParentRowHeight => (int)_parent.GetValue(_rowHeight);
 
-			public Element Element
-			{
-				get { return _viewCell; }
-			}
+			public Element Element => _viewCell;
 
 			public override bool OnInterceptTouchEvent(MotionEvent ev)
 			{
@@ -183,32 +202,43 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				return handled;
 			}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			public void Update(ViewCell cell)
+#pragma warning restore CS0618 // Type or member is obsolete
 			{
-				// This cell could have a handler that was used for the measure pass for the Listview height calculations
+				// This cell could have a handler that was used for the measure pass for the ListView height calculations
 				//cell.View.Handler.DisconnectHandler();
 
-				Performance.Start(out string reference);
 				var viewHandlerType = _viewHandler.MauiContext.Handlers.GetHandlerType(cell.View.GetType());
 				var reflectableType = _viewHandler as System.Reflection.IReflectableType;
 				var rendererType = reflectableType != null ? reflectableType.GetTypeInfo().AsType() : (_viewHandler != null ? _viewHandler.GetType() : typeof(System.Object));
 				if (_viewHandler != null && rendererType == viewHandlerType)
 				{
-					Performance.Start(reference, "Reuse");
 					_viewCell = cell;
 
-					Performance.Start(reference, "Reuse.SetElement");
-					_viewHandler.SetVirtualView(cell.View);
-					Performance.Stop(reference, "Reuse.SetElement");
+					if (_viewHandler != cell.View.Handler)
+					{
+						if (cell.View.Handler?.PlatformView is AView oldCellView &&
+							oldCellView.GetParentOfType<ViewCellContainer>() is ViewCellContainer vc)
+						{
+							vc.DisconnectHandler();
+						}
+
+						var oldView = _currentView ?? _viewHandler.PlatformView;
+						if (oldView != null)
+							RemoveView(oldView);
+
+						cell.View.Handler?.DisconnectHandler();
+						_viewHandler.SetVirtualView(cell.View);
+						AddView(_viewHandler.PlatformView);
+					}
 
 					Invalidate();
 
-					Performance.Stop(reference, "Reuse");
-					Performance.Stop(reference);
 					return;
 				}
 
-				RemoveView(_viewHandler.PlatformView);
+				RemoveView(_currentView ?? _viewHandler.PlatformView);
 				_viewCell.View.Handler?.DisconnectHandler();
 				_viewCell.View.IsPlatformEnabled = false;
 
@@ -218,12 +248,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 				var platformView = _viewCell.View.ToPlatform(Element.FindMauiContext());
 				_viewHandler = (IPlatformViewHandler)_viewCell.View.Handler;
+				platformView.RemoveFromParent();
 				AddView(platformView);
 
 				UpdateIsEnabled();
 				UpdateWatchForLongPress();
-
-				Performance.Stop(reference);
 			}
 
 			public void UpdateIsEnabled()
@@ -231,9 +260,33 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				Enabled = _parent.IsEnabled && _viewCell.IsEnabled;
 			}
 
+			public void DisconnectHandler()
+			{
+				var oldView = _currentView ?? _viewHandler.ToPlatform();
+				if (oldView != null)
+					RemoveView(oldView);
+
+				_viewCell?.View?.Handler?.DisconnectHandler();
+
+			}
+
+			public override void AddView(AView child)
+			{
+				if (child.Parent is WrapperView wrapperView)
+				{
+					base.AddView(wrapperView);
+					_currentView = wrapperView;
+				}
+				else
+				{
+					base.AddView(child);
+					_currentView = child;
+				}
+			}
+
 			protected override void OnLayout(bool changed, int l, int t, int r, int b)
 			{
-				if (_viewHandler.PlatformView == null || Context == null)
+				if (_viewHandler.PlatformView is null || Context is null)
 				{
 					return;
 				}
@@ -243,14 +296,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			protected override void OnMeasure(int widthMeasureSpec, int heightMeasureSpec)
 			{
-				Performance.Start(out string reference);
-
 				int width = MeasureSpec.GetSize(widthMeasureSpec);
 				int height;
 
 				if (ParentHasUnevenRows)
 				{
-					if (_viewHandler.PlatformView == null)
+					if (_viewHandler.PlatformView is null)
 					{
 						SetMeasuredDimension(0, 0);
 						return;
@@ -267,8 +318,6 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				}
 
 				SetMeasuredDimension(width, height);
-
-				Performance.Stop(reference);
 			}
 
 			bool WatchForSwipeViewTap()
@@ -320,7 +369,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				ListViewRenderer?.LongClickOn(this);
 			}
 
-			internal class TapGestureListener : Java.Lang.Object, GestureDetector.IOnGestureListener
+			internal sealed class TapGestureListener : Java.Lang.Object, GestureDetector.IOnGestureListener
 			{
 				readonly Action _onClick;
 
@@ -365,7 +414,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				}
 			}
 
-			internal class LongPressGestureListener : Java.Lang.Object, GestureDetector.IOnGestureListener
+			internal sealed class LongPressGestureListener : Java.Lang.Object, GestureDetector.IOnGestureListener
 			{
 				readonly Action _onLongClick;
 

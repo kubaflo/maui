@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,28 +8,28 @@ using Microsoft.Maui.Controls.Internals;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../../docs/Microsoft.Maui.Controls/EventTrigger.xml" path="Type[@FullName='Microsoft.Maui.Controls.EventTrigger']/Docs" />
+	/// <include file="../../../docs/Microsoft.Maui.Controls/EventTrigger.xml" path="Type[@FullName='Microsoft.Maui.Controls.EventTrigger']/Docs/*" />
 	[ContentProperty("Actions")]
 	public sealed class EventTrigger : TriggerBase
 	{
 		static readonly MethodInfo s_handlerinfo = typeof(EventTrigger).GetRuntimeMethods().Single(mi => mi.Name == "OnEventTriggered" && mi.IsPublic == false);
-		readonly List<BindableObject> _associatedObjects = new List<BindableObject>();
+		readonly List<WeakReference<BindableObject>> _associatedObjects = new List<WeakReference<BindableObject>>();
 
 		EventInfo _eventinfo;
 
 		string _eventname;
 		Delegate _handlerdelegate;
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/EventTrigger.xml" path="//Member[@MemberName='.ctor']/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/EventTrigger.xml" path="//Member[@MemberName='.ctor']/Docs/*" />
 		public EventTrigger() : base(typeof(BindableObject))
 		{
 			Actions = new SealedList<TriggerAction>();
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/EventTrigger.xml" path="//Member[@MemberName='Actions']/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/EventTrigger.xml" path="//Member[@MemberName='Actions']/Docs/*" />
 		public IList<TriggerAction> Actions { get; }
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/EventTrigger.xml" path="//Member[@MemberName='Event']/Docs" />
+		/// <include file="../../../docs/Microsoft.Maui.Controls/EventTrigger.xml" path="//Member[@MemberName='Event']/Docs/*" />
 		public string Event
 		{
 			get { return _eventname; }
@@ -49,13 +50,20 @@ namespace Microsoft.Maui.Controls
 			base.OnAttachedTo(bindable);
 			if (!string.IsNullOrEmpty(Event))
 				AttachHandlerTo(bindable);
-			_associatedObjects.Add(bindable);
+			_associatedObjects.Add(new WeakReference<BindableObject>(bindable));
 		}
 
 		internal override void OnDetachingFrom(BindableObject bindable)
 		{
-			_associatedObjects.Remove(bindable);
-			DetachHandlerFrom(bindable);
+			_associatedObjects.RemoveAll(wr =>
+			{
+				if (wr.TryGetTarget(out var target) && target == bindable)
+				{
+					DetachHandlerFrom(bindable);
+					return true;
+				}
+				return false;
+			});
 			base.OnDetachingFrom(bindable);
 		}
 
@@ -70,7 +78,7 @@ namespace Microsoft.Maui.Controls
 			try
 			{
 				_eventinfo = bindable.GetType().GetRuntimeEvent(Event);
-				_handlerdelegate = s_handlerinfo.CreateDelegate(_eventinfo.EventHandlerType, this);
+				_handlerdelegate = ((EventHandler)OnEventTriggered).Method.CreateDelegate(_eventinfo.EventHandlerType, this);
 			}
 			catch (Exception)
 			{
@@ -86,7 +94,6 @@ namespace Microsoft.Maui.Controls
 				_eventinfo.RemoveEventHandler(bindable, _handlerdelegate);
 		}
 
-		[Preserve]
 		void OnEventTriggered(object sender, EventArgs e)
 		{
 			var bindable = (BindableObject)sender;

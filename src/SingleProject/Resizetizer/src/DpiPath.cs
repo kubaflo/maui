@@ -3,9 +3,17 @@ using SkiaSharp;
 
 namespace Microsoft.Maui.Resizetizer
 {
+	internal enum ClipShape
+	{
+		None,
+		// RoundedSquare,
+		Circle,
+		// Squircle
+	}
+
 	internal class DpiPath
 	{
-		public DpiPath(string path, decimal scale, string nameSuffix = null, string scaleSuffix = null, SKSize? size = null, string[] idioms = null)
+		public DpiPath(string path, decimal scale, string nameSuffix = null, string scaleSuffix = null, SKSize? size = null, string[] idioms = null, ClipShape clip = ClipShape.None)
 		{
 			Path = path;
 			Scale = scale;
@@ -13,6 +21,7 @@ namespace Microsoft.Maui.Resizetizer
 			ScaleSuffix = scaleSuffix;
 			Size = size;
 			Idioms = idioms;
+			ClipShape = clip;
 		}
 
 		public string Path { get; set; }
@@ -32,6 +41,8 @@ namespace Microsoft.Maui.Resizetizer
 
 		public string[] Idioms { get; set; }
 
+		public ClipShape ClipShape { get; set; }
+
 		public static class Android
 		{
 			public static DpiPath Original =>
@@ -50,11 +61,18 @@ namespace Microsoft.Maui.Resizetizer
 			public static DpiPath[] AppIcon
 				=> new[]
 				{
+					// legacy square
 					new DpiPath("mipmap-mdpi", 1.0m, size: new SKSize(48, 48)),
 					new DpiPath("mipmap-hdpi", 1.5m, size: new SKSize(48, 48)),
 					new DpiPath("mipmap-xhdpi", 2.0m, size: new SKSize(48, 48)),
 					new DpiPath("mipmap-xxhdpi", 3.0m, size: new SKSize(48, 48)),
 					new DpiPath("mipmap-xxxhdpi", 4.0m, size: new SKSize(48, 48)),
+					// legacy round for Android 7
+					new DpiPath("mipmap-mdpi", 1.0m, "_round", size: new SKSize(48, 48), clip: ClipShape.Circle),
+					new DpiPath("mipmap-hdpi", 1.5m, "_round", size: new SKSize(48, 48), clip: ClipShape.Circle),
+					new DpiPath("mipmap-xhdpi", 2.0m, "_round", size: new SKSize(48, 48), clip: ClipShape.Circle),
+					new DpiPath("mipmap-xxhdpi", 3.0m, "_round", size: new SKSize(48, 48), clip: ClipShape.Circle),
+					new DpiPath("mipmap-xxxhdpi", 4.0m, "_round", size: new SKSize(48, 48), clip: ClipShape.Circle),
 				};
 
 			public static DpiPath[] AppIconParts
@@ -142,11 +160,30 @@ namespace Microsoft.Maui.Resizetizer
 			public static DpiPath[] Logo
 				=> new[]
 				{
+					// normal
 					new DpiPath(OutputPath, 1.00m, "Logo", ".scale-100", new SKSize(44, 44)),
 					new DpiPath(OutputPath, 1.25m, "Logo", ".scale-125", new SKSize(44, 44)),
 					new DpiPath(OutputPath, 1.50m, "Logo", ".scale-150", new SKSize(44, 44)),
 					new DpiPath(OutputPath, 2.00m, "Logo", ".scale-200", new SKSize(44, 44)),
 					new DpiPath(OutputPath, 4.00m, "Logo", ".scale-400", new SKSize(44, 44)),
+					// targetsize
+					new DpiPath(OutputPath, 1.00m, "Logo", ".targetsize-16", new SKSize(16, 16)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".targetsize-24", new SKSize(24, 24)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".targetsize-32", new SKSize(32, 32)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".targetsize-48", new SKSize(48, 48)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".targetsize-256", new SKSize(256, 256)),
+					// altform-unplated_targetsize
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-unplated_targetsize-16", new SKSize(16, 16)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-unplated_targetsize-24", new SKSize(24, 24)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-unplated_targetsize-32", new SKSize(32, 32)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-unplated_targetsize-48", new SKSize(48, 48)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-unplated_targetsize-256", new SKSize(256, 256)),
+					// altform-lightunplated_targetsize
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-lightunplated_targetsize-16", new SKSize(16, 16)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-lightunplated_targetsize-24", new SKSize(24, 24)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-lightunplated_targetsize-32", new SKSize(32, 32)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-lightunplated_targetsize-48", new SKSize(48, 48)),
+					new DpiPath(OutputPath, 1.00m, "Logo", ".altform-lightunplated_targetsize-256", new SKSize(256, 256)),
 				};
 
 			// Store Logo

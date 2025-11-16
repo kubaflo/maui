@@ -7,6 +7,9 @@
     <FirstParty Include="Microsoft.AspNetCore.Components.WebView.*.dll" />
     <FirstParty Include="Microsoft.Extensions*.dll" />
     <FirstParty Include="System.CodeDom.dll" />
+    <FirstParty Include="Microsoft.Bcl.AsyncInterfaces.dll" />
+    <FirstParty Include="System.Text.Json.dll" />
+    <FirstParty Include="System.Text.Encodings.Web.dll" />
 
     <!-- SkiaSharp -->
     <FirstParty Include="SkiaSharp*.dll" />
@@ -29,15 +32,18 @@
 
   <ItemGroup>
     <ThirdParty Include="Svg.*.dll" />
+    <ThirdParty Include="ShimSkiaSharp.dll" />
     <ThirdParty Include="Fizzler.dll" />
+    <ThirdParty Include="ExCSS.dll" />
     <ThirdParty Include="Newtonsoft.Json.dll;" />
-    <ThirdParty Include="Svg2VectorDrawable.Net.dll" />
   </ItemGroup>
 
   <ItemGroup>
     <ThirdPartyScript Include="OpenSans-Regular.ttf" />
     <ThirdPartyScript Include="OpenSans-Semibold.ttf" />
     <ThirdPartyScript Include="open-iconic.ttf" />
+    <ThirdPartyScript Include="FluentSystemIcons-Regular.ttf" />
+    <ThirdPartyScript Include="SegoeUI-Semibold.ttf " />
   </ItemGroup>
 
   <ItemGroup>

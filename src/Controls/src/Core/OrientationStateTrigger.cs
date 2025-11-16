@@ -1,27 +1,28 @@
+#nullable disable
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Devices;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls/OrientationStateTrigger.xml" path="Type[@FullName='Microsoft.Maui.Controls.OrientationStateTrigger']/Docs" />
+	/// <include file="../../docs/Microsoft.Maui.Controls/OrientationStateTrigger.xml" path="Type[@FullName='Microsoft.Maui.Controls.OrientationStateTrigger']/Docs/*" />
 	public sealed class OrientationStateTrigger : StateTriggerBase
 	{
-		/// <include file="../../docs/Microsoft.Maui.Controls/OrientationStateTrigger.xml" path="//Member[@MemberName='.ctor']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/OrientationStateTrigger.xml" path="//Member[@MemberName='.ctor']/Docs/*" />
 		public OrientationStateTrigger()
 		{
 			UpdateState();
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/OrientationStateTrigger.xml" path="//Member[@MemberName='Orientation']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/OrientationStateTrigger.xml" path="//Member[@MemberName='Orientation']/Docs/*" />
 		public DisplayOrientation Orientation
 		{
 			get => (DisplayOrientation)GetValue(OrientationProperty);
 			set => SetValue(OrientationProperty, value);
 		}
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/OrientationStateTrigger.xml" path="//Member[@MemberName='OrientationProperty']/Docs" />
+		/// <summary>Bindable property for <see cref="Orientation"/>.</summary>
 		public static readonly BindableProperty OrientationProperty =
-			BindableProperty.Create(nameof(Orientation), typeof(DisplayOrientation), typeof(OrientationStateTrigger), null,
+			BindableProperty.Create(nameof(Orientation), typeof(DisplayOrientation), typeof(OrientationStateTrigger), DisplayOrientation.Unknown,
 				propertyChanged: OnOrientationChanged);
 
 		static void OnOrientationChanged(BindableObject bindable, object oldvalue, object newvalue)
@@ -55,8 +56,9 @@ namespace Microsoft.Maui.Controls
 			var currentOrientation = DeviceDisplay.MainDisplayInfo.Orientation;
 			if (Orientation.IsLandscape())
 				SetActive(currentOrientation.IsLandscape());
-			else
+			else if (Orientation.IsPortrait())
 				SetActive(currentOrientation.IsPortrait());
+			else SetActive(false);
 		}
 	}
 }

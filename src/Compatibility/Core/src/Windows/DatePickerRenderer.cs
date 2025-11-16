@@ -1,21 +1,21 @@
 using System;
 using System.ComponentModel;
 using System.Linq;
-using Windows.UI.Text;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.Maui.Controls.Internals;
+using Windows.UI.Text;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class DatePickerRenderer : ViewRenderer<DatePicker, Microsoft.UI.Xaml.Controls.DatePicker>
+	public partial class DatePickerRenderer : ViewRenderer<DatePicker, Microsoft.UI.Xaml.Controls.DatePicker>
 	{
 		WBrush _defaultBrush;
 		bool _fontApplied;
@@ -127,9 +127,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 			if (Element == null)
 				return;
 
-			if (Element.Date.CompareTo(e.NewDate.Date) != 0)
+			if (Element.Date == null || Element.Date?.CompareTo(e.NewDate.Date) != 0)
 			{
-				var date = e.NewDate.Date.Clamp(Element.MinimumDate, Element.MaximumDate);
+				var date = e.NewDate.Date.Clamp(Element.MinimumDate ?? DateTime.MinValue, Element.MaximumDate ?? DateTime.MaxValue);
 				Element.Date = date;
 
 				// set the control date-time to clamped value, if it exceeded the limits at the time of installation.
@@ -148,10 +148,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		}
 
 		[PortHandler]
-		void UpdateDate(DateTime date)
+		void UpdateDate(DateTime? date)
 		{
 			if (Control != null)
-				Control.Date = new DateTimeOffset(new DateTime(date.Ticks, DateTimeKind.Unspecified));
+				Control.Date = new DateTimeOffset(new DateTime(date?.Ticks ?? 0, DateTimeKind.Unspecified));
 
 			UpdateDay();
 			UpdateMonth();
@@ -202,7 +202,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				if (day == 0)
 					Control.DayVisible = false;
 				else if (day == 3)
-					Control.DayFormat = "day dayofweek.abbreviated";
+					Control.DayFormat = "dayofweek.abbreviated";
 				else if (day == 4)
 					Control.DayFormat = "dayofweek.full";
 				else
@@ -288,18 +288,18 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		void UpdateMaximumDate()
 		{
 			if (Element != null && Control != null)
-				Control.MaxYear = new DateTimeOffset(new DateTime(Element.MaximumDate.Ticks, DateTimeKind.Unspecified));			
+				Control.MaxYear = new DateTimeOffset(new DateTime(Element.MaximumDate?.Ticks ?? DateTime.MaxValue.Ticks, DateTimeKind.Unspecified));
 		}
 
 		[PortHandler]
 		void UpdateMinimumDate()
 		{
-			DateTime mindate = Element.MinimumDate;
+			DateTime mindate = Element.MinimumDate ?? DateTime.MinValue;
 
 			try
 			{
 				if (Element != null && Control != null)
-					Control.MinYear = new DateTimeOffset(new DateTime(Element.MinimumDate.Ticks, DateTimeKind.Unspecified));
+					Control.MinYear = new DateTimeOffset(new DateTime(Element.MinimumDate?.Ticks ?? DateTime.MinValue.Ticks, DateTimeKind.Unspecified));
 			}
 			catch (ArgumentOutOfRangeException)
 			{

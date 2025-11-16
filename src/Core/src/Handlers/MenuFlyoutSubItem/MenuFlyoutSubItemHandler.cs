@@ -8,8 +8,8 @@ using PlatformView = Android.Views.View;
 #elif WINDOWS
 using PlatformView = Microsoft.UI.Xaml.Controls.MenuFlyoutSubItem;
 #elif TIZEN
-using PlatformView = ElmSharp.EvasObject;
-#elif NETSTANDARD || (NET6_0 && !IOS && !ANDROID && !TIZEN)
+using PlatformView = Tizen.NUI.BaseComponents.View;
+#elif (NETSTANDARD || !PLATFORM) || (NET6_0_OR_GREATER && !IOS && !ANDROID && !TIZEN)
 using PlatformView = System.Object;
 #endif
 
@@ -21,7 +21,11 @@ namespace Microsoft.Maui.Handlers
 		{
 #if WINDOWS
 			[nameof(IMenuFlyoutSubItem.Text)] = MapText,
-			[nameof(IMenuFlyoutSubItem.Source)] = MapSource
+			[nameof(IMenuFlyoutSubItem.KeyboardAccelerators)] = MapKeyboardAccelerators,
+			[nameof(IMenuFlyoutSubItem.Source)] = MapSource,
+#endif
+#if MACCATALYST || IOS || WINDOWS
+			[nameof(IMenuFlyoutSubItem.IsEnabled)] = MapIsEnabled,
 #endif
 		};
 

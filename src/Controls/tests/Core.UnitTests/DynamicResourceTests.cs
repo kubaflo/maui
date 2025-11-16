@@ -1,31 +1,34 @@
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
-	[TestFixture]
 	public class DynamicResourceTests : BaseTestFixture
 	{
-		[SetUp]
-		public override void Setup()
+		public DynamicResourceTests()
 		{
-			base.Setup();
 			Application.Current = new MockApplication();
 		}
 
-		[TearDown]
-		public override void TearDown()
+		protected override void Dispose(bool disposing)
 		{
-			Application.Current = null;
+			if (disposing)
+			{
+				Application.Current = null;
+			}
+
+			base.Dispose(disposing);
 		}
 
-		[Test]
+		[Fact]
 		public void TestDynamicResourceOverride()
 		{
-			Application.Current.Resources = new ResourceDictionary();
-			Application.Current.Resources.Add("GreenColor", Colors.Green);
-			Application.Current.Resources.Add("RedColor", Colors.Red);
+			Application.Current.Resources = new ResourceDictionary
+			{
+				{ "GreenColor", Colors.Green },
+				{ "RedColor", Colors.Red }
+			};
 
 			var setter = new Setter()
 			{
@@ -50,10 +53,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				}
 			});
 
-			Assert.AreEqual(Colors.Green, label.TextColor);
+			Assert.Equal(Colors.Green, label.TextColor);
 		}
 
-		[Test]
+		[Fact]
 		public void TestDynamicResource()
 		{
 			var label = new Label();
@@ -65,85 +68,90 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				}
 			};
 
-			Assert.AreEqual(Label.TextProperty.DefaultValue, label.Text);
+			Assert.Equal(Label.TextProperty.DefaultValue, label.Text);
 
 			layout.Resources = new ResourceDictionary {
 				{ "foo", "FOO" }
 			};
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		public void SetResourceTriggerSetValue()
 		{
 			var label = new Label();
 			label.SetDynamicResource(Label.TextProperty, "foo");
-			Assert.AreEqual(Label.TextProperty.DefaultValue, label.Text);
+			Assert.Equal(Label.TextProperty.DefaultValue, label.Text);
 			label.Resources = new ResourceDictionary {
 				{"foo", "FOO"}
 			};
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		public void SetResourceOnParentTriggerSetValue()
 		{
 			var label = new Label();
 			var layout = new StackLayout { Children = { label } };
 			label.SetDynamicResource(Label.TextProperty, "foo");
-			Assert.AreEqual(Label.TextProperty.DefaultValue, label.Text);
+			Assert.Equal(Label.TextProperty.DefaultValue, label.Text);
 			layout.Resources = new ResourceDictionary {
 				{"foo", "FOO"}
 			};
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		public void SettingResourceTriggersValueChanged()
 		{
 			var label = new Label();
 			label.SetDynamicResource(Label.TextProperty, "foo");
-			Assert.AreEqual(Label.TextProperty.DefaultValue, label.Text);
-			label.Resources = new ResourceDictionary();
-			label.Resources.Add("foo", "FOO");
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal(Label.TextProperty.DefaultValue, label.Text);
+			label.Resources = new ResourceDictionary {
+				{ "foo", "FOO" }
+			};
+			Assert.Equal("FOO", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		public void AddingAResourceDictionaryTriggersValueChangedForExistingValues()
 		{
 			var label = new Label();
 			label.SetDynamicResource(Label.TextProperty, "foo");
-			Assert.AreEqual(Label.TextProperty.DefaultValue, label.Text);
+			Assert.Equal(Label.TextProperty.DefaultValue, label.Text);
 			var rd = new ResourceDictionary { { "foo", "FOO" } };
 			label.Resources = rd;
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		public void ValueChangedTriggeredOnSubscribeIfKeyAlreadyExists()
 		{
-			var label = new Label();
-			label.Resources = new ResourceDictionary { { "foo", "FOO" } };
-			Assert.AreEqual(Label.TextProperty.DefaultValue, label.Text);
+			var label = new Label
+			{
+				Resources = new ResourceDictionary { { "foo", "FOO" } }
+			};
+			Assert.Equal(Label.TextProperty.DefaultValue, label.Text);
 			label.SetDynamicResource(Label.TextProperty, "foo");
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		public void RemoveDynamicResourceStopsUpdating()
 		{
-			var label = new Label();
-			label.Resources = new ResourceDictionary { { "foo", "FOO" } };
-			Assert.AreEqual(Label.TextProperty.DefaultValue, label.Text);
+			var label = new Label
+			{
+				Resources = new ResourceDictionary { { "foo", "FOO" } }
+			};
+			Assert.Equal(Label.TextProperty.DefaultValue, label.Text);
 			label.SetDynamicResource(Label.TextProperty, "foo");
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 			label.RemoveDynamicResource(Label.TextProperty);
 			label.Resources["foo"] = "BAR";
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		public void ReparentResubscribe()
 		{
 			var layout0 = new ContentView { Resources = new ResourceDictionary { { "foo", "FOO" } } };
@@ -151,17 +159,17 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			var label = new Label();
 			label.SetDynamicResource(Label.TextProperty, "foo");
-			Assert.AreEqual(Label.TextProperty.DefaultValue, label.Text);
+			Assert.Equal(Label.TextProperty.DefaultValue, label.Text);
 
 			layout0.Content = label;
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 
 			layout0.Content = null;
 			layout1.Content = label;
-			Assert.AreEqual("BAR", label.Text);
+			Assert.Equal("BAR", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		public void ClearedResourcesDoesNotClearValues()
 		{
 			var layout0 = new ContentView { Resources = new ResourceDictionary { { "foo", "FOO" } } };
@@ -169,13 +177,13 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			label.SetDynamicResource(Label.TextProperty, "foo");
 			layout0.Content = label;
 
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 
 			layout0.Resources.Clear();
-			Assert.AreEqual("FOO", label.Text);
+			Assert.Equal("FOO", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		//Issue 2608
 		public void ResourcesCanBeChanged()
 		{
@@ -185,14 +193,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			label.SetDynamicResource(Label.TextProperty, "foo");
 			label.Resources = new ResourceDictionary { { "foo", "FOO" } };
 
-			Assume.That(label.Text, Is.EqualTo("FOO"));
+			Assert.Equal("FOO", label.Text);
 
 			label.Resources["foo"] = "BAR";
 
-			Assert.AreEqual("BAR", label.Text);
+			Assert.Equal("BAR", label.Text);
 		}
 
-		[Test]
+		[Fact]
 		public void FallbackToApplicationCurrent()
 		{
 			Application.Current.Resources = new ResourceDictionary { { "foo", "FOO" } };
@@ -202,7 +210,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			label.SetBinding(Label.TextProperty, "Text", BindingMode.TwoWay);
 			label.SetDynamicResource(Label.TextProperty, "foo");
 
-			Assert.That(label.Text, Is.EqualTo("FOO"));
+			Assert.Equal("FOO", label.Text);
 		}
 	}
 }

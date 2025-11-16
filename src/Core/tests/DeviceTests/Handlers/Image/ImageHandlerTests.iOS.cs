@@ -1,9 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.DeviceTests.Stubs;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Handlers;
-using ObjCRuntime;
 using UIKit;
 using Xunit;
 
@@ -12,118 +10,84 @@ namespace Microsoft.Maui.DeviceTests
 	public partial class ImageHandlerTests<TImageHandler, TStub>
 	{
 		[Theory]
-		[InlineData("#FF0000")]
-		[InlineData("#00FF00")]
-		[InlineData("#000000")]
-		public async Task InitializingNullSourceOnlyUpdatesNull(string colorHex)
+		[InlineData("red.png", false)]
+		[InlineData("dotnet_bot.png", false)]
+		[InlineData("animated_heart.gif", true)]
+		public Task ImageSourcesLoadCorrectly(string filename, bool isAnimated)
 		{
-			var expectedColor = Color.FromArgb(colorHex);
-
 			var image = new TStub
 			{
-				Background = new SolidPaintStub(expectedColor),
+				Source = new FileImageSourceStub(filename),
 			};
 
-			await InvokeOnMainThreadAsync(async () =>
+			return InvokeOnMainThreadAsync(async () =>
 			{
-				var handler = CreateHandler<CountedImageHandler>(image);
+				var handler = CreateHandler(image);
 
-				await image.Wait();
+				await image.WaitUntilLoaded();
 
-				Assert.Single(handler.ImageEvents);
-				Assert.Equal("Image", handler.ImageEvents[0].Member);
-				Assert.Null(handler.ImageEvents[0].Value);
+				var platformImageView = GetPlatformImageView(handler);
 
-				await handler.PlatformView.AssertContainsColor(expectedColor);
+				await platformImageView.AttachAndRun(() =>
+				{
+					if (isAnimated && UsesAnimatedImages)
+					{
+						Assert.NotNull(platformImageView.AnimationImages);
+						Assert.NotEmpty(platformImageView.AnimationImages);
+						Assert.Equal(platformImageView.AnimationImages[0], platformImageView.Image);
+					}
+					else
+					{
+						Assert.NotNull(platformImageView.Image);
+						Assert.Null(platformImageView.AnimationImages);
+					}
+				});
 			});
 		}
 
-		[Fact]
-		public async Task InitializingSourceOnlyUpdatesImageOnce()
+		[Theory]
+		[InlineData("red.png", "dotnet_bot.png", false)]
+		[InlineData("dotnet_bot.png", "animated_heart.gif", true)]
+		[InlineData("animated_heart.gif", "numbers.gif", true)]
+		[InlineData("animated_heart.gif", "dotnet_bot.png", false)]
+		public Task ImageSourcesChangeCorrectly(string initial, string changed, bool isAnimated)
 		{
 			var image = new TStub
 			{
-				Background = new SolidPaintStub(Colors.Black),
-				Source = new FileImageSourceStub("red.png"),
+				Source = new FileImageSourceStub(initial),
 			};
 
-			await InvokeOnMainThreadAsync(async () =>
+			return InvokeOnMainThreadAsync(async () =>
 			{
-				var handler = CreateHandler<CountedImageHandler>(image);
+				var handler = CreateHandler(image);
 
-				await image.Wait();
+				await image.WaitUntilLoaded();
 
-				await handler.PlatformView.AssertContainsColor(Colors.Red);
-
-				Assert.Equal(2, handler.ImageEvents.Count);
-				Assert.Equal("Image", handler.ImageEvents[0].Member);
-				Assert.Null(handler.ImageEvents[0].Value);
-				Assert.Equal("Image", handler.ImageEvents[1].Member);
-				Assert.IsType<UIImage>(handler.ImageEvents[1].Value);
-			});
-		}
-
-		[Fact]
-		public async Task UpdatingSourceOnlyUpdatesDrawableTwice()
-		{
-			var image = new TStub
-			{
-				Background = new SolidPaintStub(Colors.Black),
-				Source = new FileImageSourceStub("red.png"),
-			};
-
-			await InvokeOnMainThreadAsync(async () =>
-			{
-				var handler = CreateHandler<CountedImageHandler>(image);
-
-				await image.Wait();
-
-				await handler.PlatformView.AssertContainsColor(Colors.Red);
-
-				handler.ImageEvents.Clear();
-
-				image.Source = new FileImageSourceStub("blue.png");
+				image.Source = new FileImageSourceStub(changed);
 				handler.UpdateValue(nameof(IImage.Source));
 
-				await image.Wait();
+				await image.WaitUntilLoaded();
 
-				await handler.PlatformView.AssertContainsColor(Colors.Blue);
+				var platformImageView = GetPlatformImageView(handler);
 
-				Assert.Equal(2, handler.ImageEvents.Count);
-				Assert.Equal("Image", handler.ImageEvents[0].Member);
-				Assert.Null(handler.ImageEvents[0].Value);
-				Assert.Equal("Image", handler.ImageEvents[1].Member);
-				Assert.IsType<UIImage>(handler.ImageEvents[1].Value);
+				await platformImageView.AttachAndRun(() =>
+				{
+					if (isAnimated && UsesAnimatedImages)
+					{
+						Assert.NotNull(platformImageView.AnimationImages);
+						Assert.NotEmpty(platformImageView.AnimationImages);
+						Assert.Equal(platformImageView.AnimationImages[0], platformImageView.Image);
+					}
+					else
+					{
+						Assert.NotNull(platformImageView.Image);
+						Assert.Null(platformImageView.AnimationImages);
+					}
+				});
 			});
 		}
 
-		[Fact]
-		public async Task ImageLoadSequenceIsCorrectWithChecks()
-		{
-			var events = await ImageLoadSequenceIsCorrect();
-
-			Assert.Equal(2, events.Count);
-			Assert.Equal("Image", events[0].Member);
-			Assert.Null(events[0].Value);
-			Assert.Equal("Image", events[1].Member);
-			var image = Assert.IsType<UIImage>(events[1].Value);
-			image.AssertContainsColor(Colors.Blue.ToPlatform());
-		}
-
-		[Fact]
-		public async Task InterruptingLoadCancelsAndStartsOverWithChecks()
-		{
-			var events = await InterruptingLoadCancelsAndStartsOver();
-
-			Assert.Equal(3, events.Count);
-			Assert.Equal("Image", events[0].Member);
-			Assert.Null(events[0].Value);
-			Assert.Equal("Image", events[1].Member);
-			Assert.Null(events[1].Value);
-			Assert.Equal("Image", events[2].Member);
-			var image = Assert.IsType<UIImage>(events[2].Value);
-			image.AssertContainsColor(Colors.Red.ToPlatform());
-		}
+		protected virtual bool UsesAnimatedImages => true;
 
 		UIImageView GetPlatformImageView(IImageHandler imageHandler) =>
 			imageHandler.PlatformView;

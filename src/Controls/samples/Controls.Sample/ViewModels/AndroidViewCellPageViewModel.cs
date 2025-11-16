@@ -2,8 +2,8 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using Microsoft.Maui.Controls;
 using Maui.Controls.Sample.Models;
+using Microsoft.Maui.Controls;
 
 namespace Maui.Controls.Sample.ViewModels
 {
@@ -59,9 +59,9 @@ namespace Maui.Controls.Sample.ViewModels
 
 		#region INotifyPropertyChanged
 
-		public event PropertyChangedEventHandler PropertyChanged;
+		public event PropertyChangedEventHandler? PropertyChanged;
 
-		void OnPropertyChanged([CallerMemberName] string propertyName = null)
+		void OnPropertyChanged([CallerMemberName] string propertyName = "")
 		{
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 		}

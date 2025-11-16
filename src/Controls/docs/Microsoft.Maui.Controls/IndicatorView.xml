@@ -20,8 +20,6 @@
     </Attribute>
   </Attributes>
   <Docs>
-    <summary>To be added.</summary>
-    <remarks>To be added.</remarks>
   </Docs>
   <Members>
     <Member MemberName=".ctor">
@@ -35,8 +33,6 @@
       </AssemblyInfo>
       <Parameters />
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Count">
@@ -53,9 +49,6 @@
         <ReturnType>System.Int32</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="CountProperty">
@@ -72,8 +65,6 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="HideSingle">
@@ -90,9 +81,6 @@
         <ReturnType>System.Boolean</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="HideSingleProperty">
@@ -109,27 +97,22 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IndicatorColor">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.Color IndicatorColor { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.Color IndicatorColor" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.Graphics.Color IndicatorColor { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Graphics.Color IndicatorColor" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.IndicatorView.IndicatorColor" />
-      <MemberSignature Language="F#" Value="member this.IndicatorColor : Microsoft.Maui.Controls.Color with get, set" Usage="Microsoft.Maui.Controls.IndicatorView.IndicatorColor" />
+      <MemberSignature Language="F#" Value="member this.IndicatorColor : Microsoft.Maui.Graphics.Color with get, set" Usage="Microsoft.Maui.Controls.IndicatorView.IndicatorColor" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.Color</ReturnType>
+        <ReturnType>Microsoft.Maui.Graphics.Color</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IndicatorColorProperty">
@@ -146,13 +129,11 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IndicatorLayout">
       <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.Layout&lt;Microsoft.Maui.Controls.View&gt; IndicatorLayout { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance class Microsoft.Maui.Controls.Layout`1&lt;class Microsoft.Maui.Controls.View&gt; IndicatorLayout" />
+      <MemberSignature Language="ILAsm" Value=".property instance class Microsoft.Maui.Controls.Layout&lt;class Microsoft.Maui.Controls.View&gt; IndicatorLayout" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.IndicatorView.IndicatorLayout" />
       <MemberSignature Language="F#" Value="member this.IndicatorLayout : Microsoft.Maui.Controls.Layout&lt;Microsoft.Maui.Controls.View&gt; with get, set" Usage="Microsoft.Maui.Controls.IndicatorView.IndicatorLayout" />
       <MemberType>Property</MemberType>
@@ -164,9 +145,6 @@
         <ReturnType>Microsoft.Maui.Controls.Layout&lt;Microsoft.Maui.Controls.View&gt;</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IndicatorSize">
@@ -183,9 +161,6 @@
         <ReturnType>System.Double</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IndicatorSizeProperty">
@@ -202,8 +177,6 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IndicatorsShape">
@@ -220,9 +193,6 @@
         <ReturnType>Microsoft.Maui.Controls.IndicatorShape</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IndicatorsShapeProperty">
@@ -239,8 +209,6 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IndicatorTemplate">
@@ -257,9 +225,6 @@
         <ReturnType>Microsoft.Maui.Controls.DataTemplate</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="IndicatorTemplateProperty">
@@ -276,8 +241,6 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="ItemsSource">
@@ -294,9 +257,6 @@
         <ReturnType>System.Collections.IEnumerable</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="ItemsSourceProperty">
@@ -313,8 +273,6 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="MaximumVisible">
@@ -331,9 +289,6 @@
         <ReturnType>System.Int32</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="MaximumVisibleProperty">
@@ -350,22 +305,20 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="OnMeasure">
-      <MemberSignature Language="C#" Value="protected override Microsoft.Maui.Controls.SizeRequest OnMeasure (double widthConstraint, double heightConstraint);" />
-      <MemberSignature Language="ILAsm" Value=".method familyhidebysig virtual instance valuetype Microsoft.Maui.Controls.SizeRequest OnMeasure(float64 widthConstraint, float64 heightConstraint) cil managed" />
+      <MemberSignature Language="C#" Value="protected override Microsoft.Maui.SizeRequest OnMeasure (double widthConstraint, double heightConstraint);" />
+      <MemberSignature Language="ILAsm" Value=".method familyhidebysig virtual instance valuetype Microsoft.Maui.SizeRequest OnMeasure(float64 widthConstraint, float64 heightConstraint) cil managed" />
       <MemberSignature Language="DocId" Value="M:Microsoft.Maui.Controls.IndicatorView.OnMeasure(System.Double,System.Double)" />
-      <MemberSignature Language="F#" Value="override this.OnMeasure : double * double -&gt; Microsoft.Maui.Controls.SizeRequest" Usage="indicatorView.OnMeasure (widthConstraint, heightConstraint)" />
+      <MemberSignature Language="F#" Value="override this.OnMeasure : double * double -&gt; Microsoft.Maui.SizeRequest" Usage="indicatorView.OnMeasure (widthConstraint, heightConstraint)" />
       <MemberType>Method</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.SizeRequest</ReturnType>
+        <ReturnType>Microsoft.Maui.SizeRequest</ReturnType>
       </ReturnValue>
       <Parameters>
         <Parameter Name="widthConstraint" Type="System.Double" />
@@ -374,9 +327,6 @@
       <Docs>
         <param name="widthConstraint">To be added.</param>
         <param name="heightConstraint">To be added.</param>
-        <summary>To be added.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="Position">
@@ -393,9 +343,6 @@
         <ReturnType>System.Int32</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="PositionProperty">
@@ -412,27 +359,22 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="SelectedIndicatorColor">
-      <MemberSignature Language="C#" Value="public Microsoft.Maui.Controls.Color SelectedIndicatorColor { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Controls.Color SelectedIndicatorColor" />
+      <MemberSignature Language="C#" Value="public Microsoft.Maui.Graphics.Color SelectedIndicatorColor { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance valuetype Microsoft.Maui.Graphics.Color SelectedIndicatorColor" />
       <MemberSignature Language="DocId" Value="P:Microsoft.Maui.Controls.IndicatorView.SelectedIndicatorColor" />
-      <MemberSignature Language="F#" Value="member this.SelectedIndicatorColor : Microsoft.Maui.Controls.Color with get, set" Usage="Microsoft.Maui.Controls.IndicatorView.SelectedIndicatorColor" />
+      <MemberSignature Language="F#" Value="member this.SelectedIndicatorColor : Microsoft.Maui.Graphics.Color with get, set" Usage="Microsoft.Maui.Controls.IndicatorView.SelectedIndicatorColor" />
       <MemberType>Property</MemberType>
       <AssemblyInfo>
         <AssemblyName>Microsoft.Maui.Controls.Core</AssemblyName>
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
-        <ReturnType>Microsoft.Maui.Controls.Color</ReturnType>
+        <ReturnType>Microsoft.Maui.Graphics.Color</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="SelectedIndicatorColorProperty">
@@ -449,8 +391,6 @@
         <ReturnType>Microsoft.Maui.Controls.BindableProperty</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
   </Members>

@@ -1,35 +1,38 @@
+#nullable disable
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Windows.Foundation;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Controls.Platform.Compatibility;
+using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
+using Microsoft.Maui.Devices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using WListView = Microsoft.UI.Xaml.Controls.ListView;
-using WBinding = Microsoft.UI.Xaml.Data.Binding;
-using WApp = Microsoft.UI.Xaml.Application;
-using WRect = Windows.Foundation.Rect;
-using Microsoft.Maui.Controls.Internals;
-using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
-using Microsoft.Maui.Devices;
+using Windows.Foundation;
 using Specifics = Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific.ListView;
-using System.Collections.ObjectModel;
-using Microsoft.Maui.Controls.Platform;
 using UwpScrollBarVisibility = Microsoft.UI.Xaml.Controls.ScrollBarVisibility;
+using WApp = Microsoft.UI.Xaml.Application;
+using WBinding = Microsoft.UI.Xaml.Data.Binding;
+using WListView = Microsoft.UI.Xaml.Controls.ListView;
+using WRect = Windows.Foundation.Rect;
 using WSelectionChangedEventArgs = Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs;
-using Microsoft.Maui.Controls.Platform.Compatibility;
 
 namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
-	public class ListViewRenderer : ViewRenderer<ListView, FrameworkElement>
+#pragma warning disable CS0618 // Type or member is obsolete
+	public partial class ListViewRenderer : ViewRenderer<ListView, FrameworkElement>
 	{
 		public static PropertyMapper<ListView, ListViewRenderer> Mapper =
 				new PropertyMapper<ListView, ListViewRenderer>(VisualElementRendererMapper);
@@ -38,6 +41,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			new CommandMapper<ListView, ListViewRenderer>(VisualElementRendererCommandMapper);
 
 		ITemplatedItemsView<Cell> TemplatedItemsView => Element;
+#pragma warning restore CS0618 // Type or member is obsolete
 		bool _collectionIsWrapped;
 		IList _collection = null;
 		bool _itemWasClicked;
@@ -56,11 +60,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			AutoPackage = false;
 		}
 
-		internal class ListViewTransparent : WListView
+		internal sealed partial class ListViewTransparent : WListView
 		{
 			internal ListViewRenderer ListViewRenderer { get; }
 			public ListViewTransparent(ListViewRenderer listViewRenderer) : base()
 			{
+				this.ApplyListViewStyles();
 				ListViewRenderer = listViewRenderer;
 			}
 
@@ -78,7 +83,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			}
 		}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		protected override void OnElementChanged(ElementChangedEventArgs<ListView> e)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 			base.OnElementChanged(e);
 
@@ -86,7 +93,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				e.OldElement.ItemSelected -= OnElementItemSelected;
 				e.OldElement.ScrollToRequested -= OnElementScrollToRequested;
+#pragma warning disable CS0618 // Type or member is obsolete
 				((ITemplatedItemsView<Cell>)e.OldElement).TemplatedItems.CollectionChanged -= OnCollectionChanged;
+#pragma warning restore CS0618 // Type or member is obsolete
 				if (Control != null)
 				{
 					Control.Loaded -= ControlOnLoaded;
@@ -97,7 +106,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				e.NewElement.ItemSelected += OnElementItemSelected;
 				e.NewElement.ScrollToRequested += OnElementScrollToRequested;
+#pragma warning disable CS0618 // Type or member is obsolete
 				((ITemplatedItemsView<Cell>)e.NewElement).TemplatedItems.CollectionChanged += OnCollectionChanged;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 				if (List == null)
 				{
@@ -258,34 +269,39 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				ClearSizeEstimate();
 				ReloadData();
 			}
-
-			Element.Dispatcher.DispatchIfRequired(() => List?.UpdateLayout());
 		}
 
 		protected override void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
 			base.OnElementPropertyChanged(sender, e);
 
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (e.PropertyName == ListView.IsGroupingEnabledProperty.PropertyName)
 			{
 				UpdateGrouping();
 			}
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == ListView.HeaderProperty.PropertyName || e.PropertyName == "HeaderElement")
 			{
 				UpdateHeader();
 			}
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == ListView.FooterProperty.PropertyName || e.PropertyName == "FooterElement")
 			{
 				UpdateFooter();
 			}
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == ListView.RowHeightProperty.PropertyName)
 			{
 				ClearSizeEstimate();
 			}
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == ListView.HasUnevenRowsProperty.PropertyName)
 			{
 				ClearSizeEstimate();
 			}
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == ListView.ItemTemplateProperty.PropertyName)
 			{
 				ClearSizeEstimate();
@@ -294,10 +310,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				UpdateSelectionMode();
 			}
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == Specifics.SelectionModeProperty.PropertyName)
 			{
 				UpdateWindowsSpecificSelectionMode();
 			}
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == ListView.VerticalScrollBarVisibilityProperty.PropertyName)
 			{
 				UpdateVerticalScrollBarVisibility();
@@ -306,6 +324,15 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			{
 				UpdateHorizontalScrollBarVisibility();
 			}
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		protected override void Dispose(bool disposing)
@@ -319,47 +346,51 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			if (disposing)
 			{
-				if (List != null)
-				{
-					foreach (ViewToHandlerConverter.WrapperControl wrapperControl in FindDescendants<ViewToHandlerConverter.WrapperControl>(List))
-					{
-						wrapperControl.CleanUp();
-					}
-
-					if (_subscribedToTapped)
-					{
-						_subscribedToTapped = false;
-						List.Tapped -= ListOnTapped;
-					}
-					if (_subscribedToItemClick)
-					{
-						_subscribedToItemClick = false;
-						List.ItemClick -= OnListItemClicked;
-					}
-
-					List.SelectionChanged -= OnControlSelectionChanged;
-					if (_collectionViewSource != null)
-						_collectionViewSource.Source = null;
-
-					List.DataContext = null;
-
-					// Leaving this here as a warning because setting this to null causes
-					// an AccessViolationException if you run Issue1975
-					// List.ItemsSource = null;
-
-					List = null;
-				}
-
-				if (_zoom != null)
-				{
-					_zoom.ViewChangeCompleted -= OnViewChangeCompleted;
-					_zoom = null;
-				}
+				CleanUpResources();
 			}
 
 			base.Dispose(disposing);
 		}
 
+		void CleanUpResources()
+		{
+			if (List != null)
+			{
+				foreach (ViewToHandlerConverter.WrapperControl wrapperControl in FindDescendants<ViewToHandlerConverter.WrapperControl>(List))
+				{
+					wrapperControl.CleanUp();
+				}
+
+				if (_subscribedToTapped)
+				{
+					_subscribedToTapped = false;
+					List.Tapped -= ListOnTapped;
+				}
+				if (_subscribedToItemClick)
+				{
+					_subscribedToItemClick = false;
+					List.ItemClick -= OnListItemClicked;
+				}
+
+				List.SelectionChanged -= OnControlSelectionChanged;
+				if (_collectionViewSource != null)
+					_collectionViewSource.Source = null;
+
+				List.DataContext = null;
+
+				// Leaving this here as a warning because setting this to null causes
+				// an AccessViolationException if you run Issue1975
+				// List.ItemsSource = null;
+
+				List = null;
+			}
+
+			if (_zoom != null)
+			{
+				_zoom.ViewChangeCompleted -= OnViewChangeCompleted;
+				_zoom = null;
+			}
+		}
 		static IEnumerable<T> FindDescendants<T>(DependencyObject dobj) where T : DependencyObject
 		{
 			int count = VisualTreeHelper.GetChildrenCount(dobj);
@@ -474,6 +505,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		void UpdateWindowsSpecificSelectionMode()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (Element.OnThisPlatform().GetSelectionMode() == PlatformConfiguration.WindowsSpecific.ListViewSelectionMode.Accessible)
 			{
 				// Using Tapped will disable the ability to use the Enter key
@@ -508,6 +540,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					List.ItemClick -= OnListItemClicked;
 				}
 			}
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void UpdateVerticalScrollBarVisibility()
@@ -593,12 +626,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			if (viewer == null)
 			{
 				RoutedEventHandler loadedHandler = null;
-				loadedHandler = async (o, e) =>
+				loadedHandler = (o, e) =>
 				{
 					List.Loaded -= loadedHandler;
 
 					// Here we try to avoid an exception, see explanation at bottom
-					await Control.Dispatcher.RunIdleAsync(args => { ScrollTo(group, item, toPosition, shouldAnimate, includeGroup); });
+					MainThread.BeginInvokeOnMainThread(() => { ScrollTo(group, item, toPosition, shouldAnimate, includeGroup); });
 				};
 				List.Loaded += loadedHandler;
 				return;
@@ -619,8 +652,8 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			var semanticLocation = new SemanticZoomLocation { Item = c };
 
-			// async scrolling
-			await Control.Dispatcher.RunAsync(global::Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+			// NOTE: For now, WinUI Dispatcher and CoreDisptacher are null. We use DispatcherQueue instead.
+			Control.DispatcherQueue.TryEnqueue(UI.Dispatching.DispatcherQueuePriority.Normal, () =>
 			{
 				switch (toPosition)
 				{
@@ -800,6 +833,19 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			}
 		}
 
+		private protected override void DisconnectHandlerCore()
+		{
+#pragma warning disable CS0618 // Type or member is obsolete
+			if (Element is ITemplatedItemsView<Cell> templatedItemsView)
+			{
+				templatedItemsView.TemplatedItems.CollectionChanged -= OnCollectionChanged;
+			}
+#pragma warning restore CS0618 // Type or member is obsolete
+
+			CleanUpResources();
+			base.DisconnectHandlerCore();
+		}
+
 		void OnControlSelectionChanged(object sender, WSelectionChangedEventArgs e)
 		{
 			bool areEqual = false;
@@ -814,7 +860,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				if (_itemWasClicked)
 					List.SelectedItem = Element.SelectedItem;
 				else
+#pragma warning disable CS0618 // Type or member is obsolete
 					((IElementController)Element).SetValueFromRenderer(ListView.SelectedItemProperty, List.SelectedItem);
+#pragma warning restore CS0618 // Type or member is obsolete
 			}
 
 			_itemWasClicked = false;

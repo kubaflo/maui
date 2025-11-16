@@ -4,7 +4,7 @@ using UIKit;
 
 namespace Microsoft.Maui.Platform
 {
-	internal static class UIApplicationExtensions
+	public static class UIApplicationExtensions
 	{
 		internal static UIEdgeInsets GetSafeAreaInsetsForWindow(this UIApplication application)
 		{
@@ -12,6 +12,7 @@ namespace Microsoft.Maui.Platform
 
 			if (!OperatingSystem.IsIOSVersionAtLeast(11))
 				safeAreaInsets = new UIEdgeInsets(UIApplication.SharedApplication.StatusBarFrame.Size.Height, 0, 0, 0);
+#pragma warning disable CA1422 // Validate platform compatibility
 			else if (application.GetKeyWindow() is UIWindow keyWindow)
 				safeAreaInsets = keyWindow.SafeAreaInsets;
 #pragma warning disable CA1416 // TODO: 'UIApplication.Windows' is unsupported on: 'ios' 15.0 and later.
@@ -20,6 +21,7 @@ namespace Microsoft.Maui.Platform
 #pragma warning restore CA1416
 			else
 				safeAreaInsets = UIEdgeInsets.Zero;
+#pragma warning restore CA1422 // Validate platform compatibility
 
 			return safeAreaInsets;
 		}
@@ -27,7 +29,9 @@ namespace Microsoft.Maui.Platform
 		public static UIWindow? GetKeyWindow(this UIApplication application)
 		{
 #pragma warning disable CA1416 // TODO: 'UIApplication.Windows' is unsupported on: 'ios' 15.0 and later.
+#pragma warning disable CA1422 // Validate platform compatibility
 			var windows = application.Windows;
+#pragma warning restore CA1422 // Validate platform compatibility
 #pragma warning restore CA1416
 
 			for (int i = 0; i < windows.Length; i++)
@@ -40,39 +44,34 @@ namespace Microsoft.Maui.Platform
 			return null;
 		}
 
-		public static IWindow? GetWindow(this UIApplication application) =>
-			application.GetKeyWindow().GetWindow();
-
-		public static IWindow? GetWindow(this UIWindow? platformWindow)
+		public static IWindow? GetWindow(this UIApplication application)
 		{
-			if (platformWindow is null)
-				return null;
+			// If there's only one window to return then just return that window
+			var windows = IPlatformApplication.Current?.Application?.Windows ?? Array.Empty<IWindow>();
 
-			foreach (var window in MauiUIApplicationDelegate.Current.Application.Windows)
+			if (windows.Count == 1)
+				return windows[0];
+
+			if (OperatingSystem.IsIOSVersionAtLeast(13))
 			{
-				if (window?.Handler?.PlatformView == platformWindow)
-					return window;
+				foreach (var windowScene in application.ConnectedScenes)
+				{
+					if (windowScene is UIWindowScene uiWindowScene)
+					{
+						if (uiWindowScene.Windows.Length == 1 && uiWindowScene.Windows[0].GetWindow() is IWindow window)
+						{
+							return window;
+						}
+					}
+				}
+			}
+			else
+			{
+				if (application.Windows.Length == 1)
+					return application.Windows[0].GetWindow();
 			}
 
-			return null;
-		}
-
-		public static IWindow? GetWindow(this UIWindowScene? windowScene)
-		{
-			if (windowScene is null)
-				return null;
-
-#pragma warning disable CA1416 // TODO: 'UIApplication.Windows' is unsupported on: 'ios' 15.0 and later
-			foreach (var window in windowScene.Windows)
-			{
-				var managedWindow = window.GetWindow();
-
-				if (managedWindow is not null)
-					return managedWindow;
-			}
-#pragma warning restore CA1416
-
-			return null;
+			return application.GetKeyWindow().GetWindow();
 		}
 	}
 }

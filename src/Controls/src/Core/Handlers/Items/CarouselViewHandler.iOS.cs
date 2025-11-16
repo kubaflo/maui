@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable disable
+using System;
+using Microsoft.Maui.Graphics;
 
 namespace Microsoft.Maui.Controls.Handlers.Items
 {
@@ -56,12 +58,41 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public static void MapPosition(CarouselViewHandler handler, CarouselView carouselView)
 		{
-			(handler.Controller as CarouselViewController)?.UpdateFromPosition();
+			// If the initial position hasn't been set, we have a UpdateInitialPosition call on CarouselViewController
+			// that will handle this so we want to skip this mapper call. We need to wait for the CollectionView to be ready
+			if (handler.Controller is CarouselViewController carouselViewController && carouselViewController.InitialPositionSet)
+			{
+				carouselViewController.UpdateFromPosition();
+			}
 		}
 
 		public static void MapLoop(CarouselViewHandler handler, CarouselView carouselView)
 		{
 			(handler.Controller as CarouselViewController)?.UpdateLoop();
+		}
+
+		public override Size GetDesiredSize(double widthConstraint, double heightConstraint)
+		{
+			var size = this.GetDesiredSizeFromHandler(widthConstraint, heightConstraint);
+
+			// Clamp size to constraints to prevent exceeding them on Mac Catalyst
+			if (!double.IsInfinity(widthConstraint) && size.Width > widthConstraint)
+			{
+				size.Width = widthConstraint;
+			}
+
+			if (!double.IsInfinity(heightConstraint) && size.Height > heightConstraint)
+			{
+				size.Height = heightConstraint;
+			}
+
+			return size;
+		}
+
+		public override void PlatformArrange(Rect rect)
+		{
+			(Controller.Layout as CarouselViewLayout)?.UpdateConstraints(rect.Size);
+			base.PlatformArrange(rect);
 		}
 	}
 }

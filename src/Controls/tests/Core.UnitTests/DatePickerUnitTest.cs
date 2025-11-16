@@ -1,44 +1,66 @@
 using System;
-
-using NUnit.Framework;
+using System.Collections.Generic;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
-	[TestFixture]
+
 	public class DatePickerUnitTest : BaseTestFixture
 	{
-		[Test]
-		public void TestMinimumDateException()
+		[Fact]
+		public void TestMinimumDate()
 		{
 			DatePicker picker = new DatePicker();
 
 			picker.MinimumDate = new DateTime(1950, 1, 1);
 
-			Assert.AreEqual(new DateTime(1950, 1, 1), picker.MinimumDate);
+			Assert.Equal(new DateTime(1950, 1, 1), picker.MinimumDate);
 
-			Assert.That(() => picker.MinimumDate = new DateTime(2200, 1, 1), Throws.ArgumentException);
+			picker.MinimumDate = new DateTime(2200, 1, 1);
+			Assert.Equal(new DateTime(1950, 1, 1), picker.MinimumDate);
 		}
 
-		[Test]
-		public void TestMaximumDateException()
+		[Fact]
+		public void TestMinimumDateNull()
+		{
+			DatePicker picker = new DatePicker();
+
+			picker.MinimumDate = null;
+
+			Assert.Null(picker.MinimumDate);
+		}
+
+		[Fact]
+		public void TestMaximumDate()
 		{
 			DatePicker picker = new DatePicker();
 
 			picker.MaximumDate = new DateTime(2050, 1, 1);
 
-			Assert.AreEqual(new DateTime(2050, 1, 1), picker.MaximumDate);
+			Assert.Equal(new DateTime(2050, 1, 1), picker.MaximumDate);
 
-			Assert.That(() => picker.MaximumDate = new DateTime(1800, 1, 1), Throws.ArgumentException);
+			picker.MaximumDate = new DateTime(1800, 1, 1);
+			Assert.Equal(new DateTime(2050, 1, 1), picker.MaximumDate);
 		}
 
-		[Test]
+		[Fact]
+		public void TestMaximumDateNull()
+		{
+			DatePicker picker = new DatePicker();
+
+			picker.MaximumDate = null;
+
+			Assert.Null(picker.MaximumDate);
+		}
+
+		[Fact]
 		public void TestMaximumDateClamping()
 		{
 			DatePicker picker = new DatePicker();
 
 			picker.Date = new DateTime(2050, 1, 1);
 
-			Assert.AreEqual(new DateTime(2050, 1, 1), picker.Date);
+			Assert.Equal(new DateTime(2050, 1, 1), picker.Date);
 
 			bool dateChanged = false;
 			bool maximumDateChanged = false;
@@ -51,7 +73,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 						break;
 					case "Date":
 						dateChanged = true;
-						Assert.IsFalse(maximumDateChanged);
+						Assert.False(maximumDateChanged);
 						break;
 				}
 			};
@@ -59,22 +81,22 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			var newDate = new DateTime(2000, 1, 1);
 			picker.MaximumDate = newDate;
 
-			Assert.IsTrue(maximumDateChanged);
-			Assert.IsTrue(dateChanged);
+			Assert.True(maximumDateChanged);
+			Assert.True(dateChanged);
 
-			Assert.AreEqual(newDate, picker.MaximumDate);
-			Assert.AreEqual(newDate, picker.Date);
-			Assert.AreEqual(picker.MaximumDate, picker.Date);
+			Assert.Equal(newDate, picker.MaximumDate);
+			Assert.Equal(newDate, picker.Date);
+			Assert.Equal(picker.MaximumDate, picker.Date);
 		}
 
-		[Test]
+		[Fact]
 		public void TestMinimumDateClamping()
 		{
 			DatePicker picker = new DatePicker();
 
 			picker.Date = new DateTime(1950, 1, 1);
 
-			Assert.AreEqual(new DateTime(1950, 1, 1), picker.Date);
+			Assert.Equal(new DateTime(1950, 1, 1), picker.Date);
 
 			bool dateChanged = false;
 			bool minimumDateChanged = false;
@@ -87,7 +109,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 						break;
 					case "Date":
 						dateChanged = true;
-						Assert.IsFalse(minimumDateChanged);
+						Assert.False(minimumDateChanged);
 						break;
 				}
 			};
@@ -95,29 +117,29 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			var newDate = new DateTime(2000, 1, 1);
 			picker.MinimumDate = newDate;
 
-			Assert.IsTrue(minimumDateChanged);
-			Assert.IsTrue(dateChanged);
+			Assert.True(minimumDateChanged);
+			Assert.True(dateChanged);
 
-			Assert.AreEqual(newDate, picker.MinimumDate);
-			Assert.AreEqual(newDate, picker.Date);
-			Assert.AreEqual(picker.MinimumDate, picker.Date);
+			Assert.Equal(newDate, picker.MinimumDate);
+			Assert.Equal(newDate, picker.Date);
+			Assert.Equal(picker.MinimumDate, picker.Date);
 		}
 
-		[Test]
+		[Fact]
 		public void TestDateClamping()
 		{
 			DatePicker picker = new DatePicker();
 
 			picker.Date = new DateTime(1500, 1, 1);
 
-			Assert.AreEqual(picker.MinimumDate, picker.Date);
+			Assert.Equal(picker.MinimumDate, picker.Date);
 
 			picker.Date = new DateTime(2500, 1, 1);
 
-			Assert.AreEqual(picker.MaximumDate, picker.Date);
+			Assert.Equal(picker.MaximumDate, picker.Date);
 		}
 
-		[Test]
+		[Fact]
 		public void TestDateSelected()
 		{
 			var picker = new DatePicker();
@@ -131,21 +153,31 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.True(selected);
 		}
 
-		public static object[] DateTimes = {
+		readonly static object[] DateTimes = {
 			new object[] { new DateTime (2006, 12, 20), new DateTime (2011, 11, 30) },
 			new object[] { new DateTime (1900, 1, 1), new DateTime (1999, 01, 15) }, // Minimum Date
-			new object[] { new DateTime (2006, 12, 20), new DateTime (2100, 12, 31) } // Maximum Date
+			new object[] { new DateTime (2006, 12, 20), new DateTime (2100, 12, 31) }, // Maximum Date
+			new object[] { new DateTime (2006, 12, 20), null },
+			new object[] { null, new DateTime (2006, 12, 20) },
 		};
 
-		[Test, TestCaseSource(nameof(DateTimes))]
-		public void DatePickerSelectedEventArgs(DateTime initialDate, DateTime finalDate)
+		public static IEnumerable<object[]> DateTimesData()
+		{
+			foreach (var o in DateTimes)
+			{
+				yield return o as object[];
+			}
+		}
+
+		[Theory, MemberData(nameof(DateTimesData))]
+		public void DatePickerSelectedEventArgs(DateTime? initialDate, DateTime? finalDate)
 		{
 			var datePicker = new DatePicker();
 			datePicker.Date = initialDate;
 
 			DatePicker pickerFromSender = null;
-			DateTime oldDate = new DateTime();
-			DateTime newDate = new DateTime();
+			DateTime? oldDate = new DateTime();
+			DateTime? newDate = new DateTime();
 
 			datePicker.DateSelected += (s, e) =>
 			{
@@ -156,37 +188,76 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 
 			datePicker.Date = finalDate;
 
-			Assert.AreEqual(datePicker, pickerFromSender);
-			Assert.AreEqual(initialDate, oldDate);
-			Assert.AreEqual(finalDate, newDate);
+			Assert.Equal(datePicker, pickerFromSender);
+			Assert.Equal(initialDate, oldDate);
+			Assert.Equal(finalDate, newDate);
 		}
 
-		[Test]
+		readonly static object[] DateTimesForSelectedTrigger = [
+			new object[] { new DateTime (2006, 12, 20), new DateTime (2011, 11, 30), true },
+			new object[] { new DateTime (1900, 1, 1), new DateTime (1999, 01, 15), true }, // Minimum Date
+			new object[] { new DateTime (2006, 12, 20), new DateTime (2100, 12, 31), true }, // Maximum Date
+			new object[] { new DateTime (2006, 12, 20), null, true },
+			new object[] { null, new DateTime (2006, 12, 20), true },
+			new object[] { new DateTime(2006, 12, 20), new DateTime (2006, 12, 20), false },
+			new object[] { null, null, false },
+		];
+
+		public static IEnumerable<object[]> DateTimesForSelectedTriggerData()
+		{
+			foreach (var o in DateTimesForSelectedTrigger)
+			{
+				yield return o as object[];
+			}
+		}
+
+		[Theory, MemberData(nameof(DateTimesForSelectedTriggerData))]
+		public void DatePickerSelectedEventTriggered(DateTime? initialDate, DateTime? finalDate, bool shouldDateSelectedTrigger)
+		{
+			bool isDateSelectedTriggered = false;
+
+			var datePicker = new DatePicker();
+			datePicker.Date = initialDate;
+
+			DateTime? oldDate = new DateTime();
+			DateTime? newDate = new DateTime();
+
+			datePicker.DateSelected += (s, e) =>
+			{
+				isDateSelectedTriggered = true;
+			};
+
+			datePicker.Date = finalDate;
+
+			Assert.Equal(shouldDateSelectedTrigger, isDateSelectedTriggered);
+		}
+
+		[Fact]
 		//https://bugzilla.xamarin.com/show_bug.cgi?id=32144
 		public void SetNullValueDoesNotThrow()
 		{
 			var datePicker = new DatePicker();
-			Assert.DoesNotThrow(() => datePicker.SetValue(DatePicker.DateProperty, null));
-			Assert.AreEqual(DateTime.Today, datePicker.Date);
+			datePicker.SetValue(DatePicker.DateProperty, null);
+			Assert.Null(datePicker.Date);
 		}
 
-		[Test]
+		[Fact]
 		public void SetNullableDateTime()
 		{
 			var datePicker = new DatePicker();
 			var dateTime = new DateTime(2015, 7, 21);
 			DateTime? nullableDateTime = dateTime;
 			datePicker.SetValue(DatePicker.DateProperty, nullableDateTime);
-			Assert.AreEqual(dateTime, datePicker.Date);
+			Assert.Equal(dateTime, datePicker.Date);
 		}
 
-		[Test]
-		//https://github.com/xamarin/Microsoft.Maui.Controls/issues/5784
+		[Fact]
+		//https://github.com/xamarin/Xamarin.Forms/issues/5784
 		public void SetMaxAndMinDateTimeToNow()
 		{
 			var datePicker = new DatePicker();
 			datePicker.SetValue(DatePicker.MaximumDateProperty, DateTime.Now);
-			Assert.DoesNotThrow(() => datePicker.SetValue(DatePicker.MinimumDateProperty, DateTime.Now));
+			datePicker.SetValue(DatePicker.MinimumDateProperty, DateTime.Now);
 		}
 	}
 }

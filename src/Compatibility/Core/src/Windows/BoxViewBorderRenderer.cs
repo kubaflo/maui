@@ -1,15 +1,15 @@
 using System.ComponentModel;
+using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
-using WShape = Microsoft.UI.Xaml.Shapes.Shape;
-using Microsoft.Maui.Controls.Platform;
 using WBorder = Microsoft.UI.Xaml.Controls.Border;
+using WShape = Microsoft.UI.Xaml.Shapes.Shape;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class BoxViewBorderRenderer : ViewRenderer<BoxView, WBorder>
+	public partial class BoxViewBorderRenderer : ViewRenderer<BoxView, WBorder>
 	{
 		protected override void OnElementChanged(ElementChangedEventArgs<BoxView> e)
 		{
@@ -42,7 +42,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				SetCornerRadius(Element.CornerRadius);
 			else if (e.PropertyName == BoxView.ColorProperty.PropertyName)
 				UpdateBackgroundColor();
-			
+
 		}
 
 		protected override AutomationPeer OnCreateAutomationPeer()

@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using System.Linq;
 using Android.Graphics.Drawables;
 using Android.Util;
@@ -33,6 +34,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				SetSelectionStates(_isSelected);
 
 				ItemView.Activated = _isSelected;
+				ItemView.Selected = _isSelected;
 				OnSelectedChanged();
 			}
 		}

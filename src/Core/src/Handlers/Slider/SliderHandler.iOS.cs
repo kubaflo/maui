@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using ObjCRuntime;
 using UIKit;
 
@@ -6,24 +6,28 @@ namespace Microsoft.Maui.Handlers
 {
 	public partial class SliderHandler : ViewHandler<ISlider, UISlider>
 	{
-		protected override UISlider CreatePlatformView() => new UISlider { Continuous = true };
+		readonly SliderProxy _proxy = new();
+
+		protected override UISlider CreatePlatformView()
+		{
+			var platformSlider = new UISlider { Continuous = true };
+
+			if (OperatingSystem.IsMacCatalystVersionAtLeast(15) && platformSlider.TraitCollection.UserInterfaceIdiom == UIUserInterfaceIdiom.Mac)
+				platformSlider.PreferredBehavioralStyle = UIBehavioralStyle.Pad;
+
+			return platformSlider;
+		}
 
 		protected override void ConnectHandler(UISlider platformView)
 		{
 			base.ConnectHandler(platformView);
-
-			platformView.ValueChanged += OnControlValueChanged;
-			platformView.AddTarget(OnTouchDownControlEvent, UIControlEvent.TouchDown);
-			platformView.AddTarget(OnTouchUpControlEvent, UIControlEvent.TouchUpInside | UIControlEvent.TouchUpOutside);
+			_proxy.Connect(VirtualView, platformView);
 		}
 
 		protected override void DisconnectHandler(UISlider platformView)
 		{
 			base.DisconnectHandler(platformView);
-
-			platformView.ValueChanged -= OnControlValueChanged;
-			platformView.RemoveTarget(OnTouchDownControlEvent, UIControlEvent.TouchDown);
-			platformView.RemoveTarget(OnTouchUpControlEvent, UIControlEvent.TouchUpInside | UIControlEvent.TouchUpOutside);
+			_proxy.Disconnect(platformView);
 		}
 
 		public static void MapMinimum(ISliderHandler handler, ISlider slider)
@@ -64,22 +68,42 @@ namespace Microsoft.Maui.Handlers
 				.FireAndForget(handler);
 		}
 
-		void OnControlValueChanged(object? sender, EventArgs eventArgs)
+		class SliderProxy
 		{
-			if (PlatformView == null || VirtualView == null)
-				return;
+			WeakReference<ISlider>? _virtualView;
 
-			VirtualView.Value = PlatformView.Value;
-		}
+			ISlider? VirtualView => _virtualView is not null && _virtualView.TryGetTarget(out var v) ? v : null;
 
-		void OnTouchDownControlEvent(object? sender, EventArgs e)
-		{
-			VirtualView?.DragStarted();
-		}
+			public void Connect(ISlider virtualView, UISlider platformView)
+			{
+				_virtualView = new(virtualView);
+				platformView.ValueChanged += OnControlValueChanged;
+				platformView.AddTarget(OnTouchDownControlEvent, UIControlEvent.TouchDown);
+				platformView.AddTarget(OnTouchUpControlEvent, UIControlEvent.TouchUpInside | UIControlEvent.TouchUpOutside);
+			}
 
-		void OnTouchUpControlEvent(object? sender, EventArgs e)
-		{
-			VirtualView?.DragCompleted();
+			public void Disconnect(UISlider platformView)
+			{
+				platformView.ValueChanged -= OnControlValueChanged;
+				platformView.RemoveTarget(OnTouchDownControlEvent, UIControlEvent.TouchDown);
+				platformView.RemoveTarget(OnTouchUpControlEvent, UIControlEvent.TouchUpInside | UIControlEvent.TouchUpOutside);
+			}
+
+			void OnControlValueChanged(object? sender, EventArgs eventArgs)
+			{
+				if (VirtualView is ISlider virtualView && sender is UISlider platformView)
+					virtualView.Value = platformView.Value;
+			}
+
+			void OnTouchDownControlEvent(object? sender, EventArgs e)
+			{
+				VirtualView?.DragStarted();
+			}
+
+			void OnTouchUpControlEvent(object? sender, EventArgs e)
+			{
+				VirtualView?.DragCompleted();
+			}
 		}
 	}
 }

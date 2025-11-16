@@ -67,7 +67,7 @@
         <Border BorderBrush="{TemplateBinding BorderBrush}" Background="{TemplateBinding Background}" BorderThickness="{TemplateBinding BorderThickness}">
             <Grid>
                 <ContentControl x:Name="EmptyViewContentControl" 
-                                HorizontalContentAlignment="Stretch" VerticalAlignment="Stretch"/>
+                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
                 <ScrollViewer x:Name="ScrollViewer" 
                                 TabNavigation="{TemplateBinding TabNavigation}"
                                 HorizontalScrollMode="{TemplateBinding ScrollViewer.HorizontalScrollMode}"
@@ -99,7 +99,7 @@
     get to a point where we don't have to support these earlier versions, we can replace this style with just the 
     template. (See also FormsGridView.cs) -->
     <Style TargetType="local:FormsGridView">
-        <Setter Property="Padding" Value="0,0,0,10" />
+        <Setter Property="Padding" Value="0,0,0,0" />
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="TabNavigation" Value="Once" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />

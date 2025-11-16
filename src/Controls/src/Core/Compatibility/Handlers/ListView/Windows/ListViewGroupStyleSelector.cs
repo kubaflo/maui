@@ -1,8 +1,9 @@
+#nullable disable
 using Microsoft.UI.Xaml.Controls;
 
 namespace Microsoft.Maui.Controls.Platform.Compatibility
 {
-	public class ListViewGroupStyleSelector : GroupStyleSelector
+	public partial class ListViewGroupStyleSelector : GroupStyleSelector
 	{
 		protected override GroupStyle SelectGroupStyleCore(object group, uint level)
 		{

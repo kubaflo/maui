@@ -2,18 +2,19 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.Maui.Graphics;
 using WBrush = Microsoft.UI.Xaml.Media.Brush;
-using WVisualStateManager = Microsoft.UI.Xaml.VisualStateManager;
-using WVisualStateGroup = Microsoft.UI.Xaml.VisualStateGroup;
 using WVisualState = Microsoft.UI.Xaml.VisualState;
+using WVisualStateGroup = Microsoft.UI.Xaml.VisualStateGroup;
+using WVisualStateManager = Microsoft.UI.Xaml.VisualStateManager;
 
 namespace Microsoft.Maui.Platform
 {
-	public class MauiStepper : Control
+	public partial class MauiStepper : Control
 	{
 		Button _plus;
 		Button _minus;
@@ -98,14 +99,21 @@ namespace Microsoft.Maui.Platform
 		{
 			base.OnApplyTemplate();
 
+			var mauiStepperAutomationId = AutomationProperties.GetAutomationId(this);
+
 			_plus = GetTemplateChild("Plus") as Button;
 			if (_plus != null)
+			{
+				AutomationProperties.SetAutomationId(_plus, mauiStepperAutomationId + "Plus");
 				_plus.Click += OnPlusClicked;
+			}
 
 			_minus = GetTemplateChild("Minus") as Button;
 			if (_minus != null)
+			{
+				AutomationProperties.SetAutomationId(_minus, mauiStepperAutomationId + "Minus");
 				_minus.Click += OnMinusClicked;
-
+			}
 			UpdateEnabled(Value);
 			UpdateButtonBackground();
 		}
@@ -120,7 +128,7 @@ namespace Microsoft.Maui.Platform
 			UpdateValue(+Increment);
 		}
 
-		VisualStateCache PseudoDisable(Control control)
+		static VisualStateCache PseudoDisable(Control control)
 		{
 			if (VisualTreeHelper.GetChildrenCount(control) == 0)
 				control.ApplyTemplate();
@@ -180,7 +188,7 @@ namespace Microsoft.Maui.Platform
 		cause, so this will have to suffice for now.
 		*/
 
-		void PsuedoEnable(Control control, ref VisualStateCache cache)
+		static void PsuedoEnable(Control control, ref VisualStateCache cache)
 		{
 			if (cache == null || VisualTreeHelper.GetChildrenCount(control) == 0)
 				return;
@@ -250,9 +258,6 @@ namespace Microsoft.Maui.Platform
 		void UpdateValue(double delta)
 		{
 			double newValue = Value + delta;
-			if (newValue > Maximum || newValue < Minimum)
-				return;
-
 			Value = newValue;
 		}
 

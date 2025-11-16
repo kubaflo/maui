@@ -1,4 +1,17 @@
+#addin "nuget:?package=NuGet.Packaging&version=6.7.0"
+#addin "nuget:?package=NuGet.Protocol&version=6.7.0"
+
+using System.Threading.Tasks;
+using NuGet.Common;
+using NuGet.Configuration;
+using NuGet.Protocol;
+using NuGet.Protocol.Core.Types;
+using NuGet.Versioning;
+
+bool isCleanSet = HasArgument("clean") || IsTarget("clean");
+
 Task("Clean")
+    .WithCriteria(isCleanSet)
     .Description("Deletes all the obj/bin directories")
     .Does(() =>
 {
@@ -21,7 +34,34 @@ Task("Clean")
     } 
 });
 
+DirectoryPath _artifactStagingDirectory;
+DirectoryPath GetArtifactStagingDirectory() =>
+    _artifactStagingDirectory ??= MakeAbsolute(Directory(EnvironmentVariable("BUILD_ARTIFACTSTAGINGDIRECTORY", "artifacts")));
 
+DirectoryPath _logDirectory;
+DirectoryPath GetLogDirectory() => 
+    _logDirectory ??= MakeAbsolute(Directory(EnvironmentVariable("LogDirectory", $"{GetArtifactStagingDirectory()}/logs")));
+
+DirectoryPath _testResultsDirectory;
+DirectoryPath GetTestResultsDirectory() => 
+    _testResultsDirectory ??= MakeAbsolute(Directory(EnvironmentVariable("TestResultsDirectory", $"{GetArtifactStagingDirectory()}/test-results")));
+
+DirectoryPath _diffDirectory;
+DirectoryPath GetDiffDirectory() => 
+    _diffDirectory ??= MakeAbsolute(Directory(EnvironmentVariable("ApiDiffDirectory", $"{GetArtifactStagingDirectory()}/api-diff")));
+
+DirectoryPath _tempDirectory;
+DirectoryPath GetTempDirectory() => 
+    _tempDirectory ??= MakeAbsolute(Directory(EnvironmentVariable("AGENT_TEMPDIRECTORY", EnvironmentVariable("TEMP", EnvironmentVariable("TMPDIR", "../maui-temp")) + "/" + Guid.NewGuid())));
+
+string GetAgentName() =>
+    EnvironmentVariable("AGENT_NAME", "");
+
+bool IsCIBuild() =>
+    !String.IsNullOrWhiteSpace(GetAgentName());
+
+bool IsHostedAgent() =>
+    GetAgentName().StartsWith("Azure Pipelines") || GetAgentName().StartsWith("Hosted Agent");
 
 T GetBuildVariable<T>(string key, T defaultValue)
 {
@@ -62,18 +102,6 @@ public void PrintEnvironmentVariables()
     };
 }
 
-void SetDotNetEnvironmentVariables(string dotnetDir)
-{
-    var dotnet = dotnetDir ?? MakeAbsolute(Directory("./bin/dotnet/")).ToString();
-
-    SetEnvironmentVariable("DOTNET_INSTALL_DIR", dotnet);
-    SetEnvironmentVariable("DOTNET_ROOT", dotnet);
-    SetEnvironmentVariable("DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR", dotnet);
-    SetEnvironmentVariable("DOTNET_MULTILEVEL_LOOKUP", "0");
-    SetEnvironmentVariable("MSBuildEnableWorkloadResolver", "true");
-    SetEnvironmentVariable("PATH", dotnet, prepend: true);
-}
-
 void SetEnvironmentVariable(string name, string value, bool prepend = false)
 {
     var target = EnvironmentVariableTarget.Process;
@@ -84,4 +112,42 @@ void SetEnvironmentVariable(string name, string value, bool prepend = false)
     Environment.SetEnvironmentVariable(name, value, target);
 
     Information("Setting environment variable: {0} = '{1}'", name, value);
+}
+
+bool IsTarget(string target) =>
+    Argument<string>("target", "Default").Equals(target, StringComparison.InvariantCultureIgnoreCase);
+
+bool TargetStartsWith(string target) =>
+    Argument<string>("target", "Default").StartsWith(target, StringComparison.InvariantCultureIgnoreCase);
+
+public async Task DownloadNuGetPackageAsync(string packageId, string version, string outputDirectory, string feedUri)
+{
+    // Create a source repository
+    var repository = Repository.Factory.GetCoreV3(feedUri);
+    
+    // Find the package
+    var resource = await repository.GetResourceAsync<FindPackageByIdResource>();
+    var packageVersion = NuGetVersion.Parse(version);
+    var cacheContext = new SourceCacheContext();
+    
+    // Set up logging (optional, use NullLogger if you don't need logging)
+    ILogger logger = NullLogger.Instance;
+
+    // Download the package to the output directory
+    EnsureDirectoryExists(outputDirectory);
+    var packagePath = System.IO.Path.Combine(outputDirectory, $"{packageId}.{version}.nupkg");
+    
+    using (var fileStream = new FileStream(packagePath, FileMode.Create, FileAccess.Write, FileShare.None))
+    {
+        // Download package
+        var success = await resource.CopyNupkgToStreamAsync(
+            packageId, packageVersion, fileStream, cacheContext, logger, default);
+
+        if (!success)
+        {
+            throw new Exception("Failed to download the package.");
+        }
+
+        Information("Package '{0} v{1}' downloaded successfully to {2}", packageId, version, packagePath);
+    }
 }

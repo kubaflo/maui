@@ -1,15 +1,17 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Microsoft.Maui.Controls.Handlers;
+using Microsoft.Maui.Platform;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.Maui.Controls.Handlers;
 
 namespace Microsoft.Maui.Controls.Platform
 {
 	[Microsoft.UI.Xaml.Data.Bindable]
-	public class ShellView : RootNavigationView, IAppearanceObserver, IFlyoutBehaviorObserver
+	public partial class ShellView : RootNavigationView, IAppearanceObserver, IFlyoutBehaviorObserver
 	{
 		internal static readonly global::Windows.UI.Color DefaultBackgroundColor = global::Windows.UI.Color.FromArgb(255, 3, 169, 244);
 		internal static readonly global::Windows.UI.Color DefaultForegroundColor = Microsoft.UI.Colors.White;
@@ -120,20 +122,39 @@ namespace Microsoft.Maui.Controls.Platform
 			{
 				_flyoutGrouping = newGrouping;
 				var newItems = IterateItems(newGrouping).ToList();
+				var newItemsSet = new HashSet<object>(newItems);
+				var flyoutItemsSet = new HashSet<object>(FlyoutItems);
 
-				foreach (var item in newItems)
+				for (int index = 0; index < newItems.Count; index++)
 				{
-					if (!FlyoutItems.Contains(item))
-						FlyoutItems.Add(item);
+					var item = newItems[index];
+
+					if (!flyoutItemsSet.Contains(item))
+					{
+						// Use Insert when within bounds, otherwise Add
+						if (index < FlyoutItems.Count)
+						{
+							FlyoutItems.Insert(index, item);
+						}
+						else
+						{
+							FlyoutItems.Add(item);
+						}
+					}
 				}
 
 				for (var i = FlyoutItems.Count - 1; i >= 0; i--)
 				{
 					var item = FlyoutItems[i];
-					if (!newItems.Contains(item))
+					if (!newItemsSet.Contains(item))
+					{
 						FlyoutItems.RemoveAt(i);
+					}
 				}
 			}
+
+			if (!FlyoutItems.Contains(SelectedItem))
+				SelectedItem = null;
 		}
 
 		IEnumerable<object> IterateItems(List<List<Element>> groups)
@@ -145,14 +166,33 @@ namespace Microsoft.Maui.Controls.Platform
 				{
 					yield return new FlyoutItemMenuSeparator(separatorNumber++); // Creates a separator
 				}
+
 				foreach (var item in group)
 				{
-					yield return item;
+					bool foundExistingVM = false;
+
+					// Check to see if this element already has a VM counter part
+					foreach (var navItem in FlyoutItems)
+					{
+						if (navItem is NavigationViewItemViewModel viewModel && viewModel.Data == item)
+						{
+							foundExistingVM = true;
+							yield return viewModel;
+						}
+					}
+
+					if (!foundExistingVM)
+					{
+						yield return new NavigationViewItemViewModel()
+						{
+							Data = item
+						};
+					}
 				}
 			}
 		}
 
-		class FlyoutItemMenuSeparator : MenuFlyoutSeparator
+		partial class FlyoutItemMenuSeparator : Microsoft.UI.Xaml.Controls.MenuFlyoutSeparator
 		{
 			public FlyoutItemMenuSeparator(int separatorNumber)
 			{
@@ -167,19 +207,29 @@ namespace Microsoft.Maui.Controls.Platform
 
 		internal void SwitchShellItem(ShellItem newItem, bool animate = true)
 		{
+			var navItems = FlyoutItems.OfType<NavigationViewItemViewModel>();
+
 			// Implicit items aren't items that are surfaced to the user 
 			// or data structures. So, we just want to find the element
 			// the user defined on Shell
 			if (Routing.IsImplicit(newItem))
 			{
 				if (Routing.IsImplicit(newItem.CurrentItem))
-					SelectedItem = newItem.CurrentItem.CurrentItem;
+					SelectedItem = navItems.GetWithData(newItem.CurrentItem.CurrentItem);
 				else
-					SelectedItem = newItem.CurrentItem;
+					SelectedItem = navItems.GetWithData(newItem.CurrentItem);
 			}
 			else
 			{
-				SelectedItem = newItem;
+				if (navItems.TryGetWithData(newItem, out NavigationViewItemViewModel vm1))
+					SelectedItem = vm1;
+				else if (newItem.CurrentItem is not null)
+				{
+					if (navItems.TryGetWithData(newItem.CurrentItem, out NavigationViewItemViewModel vm2))
+						SelectedItem = vm2;
+					else if (navItems.TryGetWithData(newItem.CurrentItem.CurrentItem, out NavigationViewItemViewModel vm3))
+						SelectedItem = vm3;
+				}
 			}
 
 			var handler = CreateShellItemView();
@@ -219,7 +269,14 @@ namespace Microsoft.Maui.Controls.Platform
 
 		ShellItemHandler CreateShellItemView()
 		{
-			ItemRenderer ??= (ShellItemHandler)Element.CurrentItem.ToHandler(MauiContext);
+			if (ItemRenderer == null)
+			{
+				ItemRenderer = (ShellItemHandler)Element.CurrentItem.ToHandler(MauiContext);
+				if (ItemRenderer.PlatformView is NavigationView nv)
+				{
+					nv.SelectionChanged += TabSelectionChanged;
+				}
+			}
 
 			if (ItemRenderer.PlatformView != (Content as FrameworkElement))
 				Content = ItemRenderer.PlatformView;
@@ -229,5 +286,8 @@ namespace Microsoft.Maui.Controls.Platform
 
 			return ItemRenderer;
 		}
+
+		void TabSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args) =>
+			Element?.Handler?.UpdateValue(nameof(Shell.CurrentItem));
 	}
 }

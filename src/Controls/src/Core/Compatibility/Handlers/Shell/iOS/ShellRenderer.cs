@@ -1,9 +1,11 @@
+#nullable disable
 using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Controls.Platform.Compatibility;
+using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
 using Microsoft.Maui.Graphics;
 using UIKit;
 
@@ -19,6 +21,29 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		{
 
 		}
+
+		public override bool PrefersHomeIndicatorAutoHidden
+			=> Shell?.CurrentPage?.OnThisPlatform()?.PrefersHomeIndicatorAutoHidden() ?? base.PrefersHomeIndicatorAutoHidden;
+
+
+		public override bool PrefersStatusBarHidden()
+			=> Shell?.CurrentPage?.OnThisPlatform()?.PrefersStatusBarHidden() == StatusBarHiddenMode.True;
+
+		public override UIKit.UIStatusBarAnimation PreferredStatusBarUpdateAnimation
+		{
+			get
+			{
+				var mode = Shell?.CurrentPage?.OnThisPlatform()?.PreferredStatusBarUpdateAnimation();
+				return mode switch
+				{
+					PlatformConfiguration.iOSSpecific.UIStatusBarAnimation.None => UIKit.UIStatusBarAnimation.None,
+					PlatformConfiguration.iOSSpecific.UIStatusBarAnimation.Fade => UIKit.UIStatusBarAnimation.Fade,
+					PlatformConfiguration.iOSSpecific.UIStatusBarAnimation.Slide => UIKit.UIStatusBarAnimation.Slide,
+					_ => base.PreferredStatusBarUpdateAnimation,
+				};
+			}
+		}
+
 
 		#region IShellContext
 
@@ -106,9 +131,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			Mapper.UpdateProperties(this, Element);
 		}
 
+		[Obsolete]
 		public virtual void SetElementSize(Size size)
 		{
-			Element.Layout(new Rect(Element.X, Element.Y, size.Width, size.Height));
 		}
 
 		public override void ViewDidLayoutSubviews()
@@ -116,8 +141,6 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			base.ViewDidLayoutSubviews();
 			if (_currentShellItemRenderer != null)
 				_currentShellItemRenderer.ViewController.View.Frame = View.Bounds;
-
-			SetElementSize(new Size(View.Bounds.Width, View.Bounds.Height));
 		}
 
 		public override void ViewDidLoad()

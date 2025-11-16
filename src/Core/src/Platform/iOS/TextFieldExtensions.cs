@@ -1,4 +1,5 @@
 ﻿using System;
+using CoreGraphics;
 using Foundation;
 using Microsoft.Maui.Graphics;
 using ObjCRuntime;
@@ -31,17 +32,14 @@ namespace Microsoft.Maui.Platform
 			}
 			else
 				textField.SecureTextEntry = entry.IsPassword;
+#if MACCATALYST
+			textField.TextContentType = UITextContentType.OneTimeCode;
+#endif
 		}
 
 		public static void UpdateHorizontalTextAlignment(this UITextField textField, ITextAlignment textAlignment)
 		{
-			if (textAlignment is IView view)
-			{
-				textField.TextAlignment = textAlignment.HorizontalTextAlignment.ToPlatformHorizontal().AdjustForFlowDirection(view);
-				return;
-			}
-
-			textField.TextAlignment = textAlignment.HorizontalTextAlignment.ToPlatformHorizontal();
+			textField.TextAlignment = textAlignment.HorizontalTextAlignment.ToPlatformHorizontal(textField.EffectiveUserInterfaceLayoutDirection);
 		}
 
 		public static void UpdateVerticalTextAlignment(this UITextField textField, ITextAlignment textAlignment)
@@ -55,6 +53,14 @@ namespace Microsoft.Maui.Platform
 				textField.AutocorrectionType = UITextAutocorrectionType.Yes;
 			else
 				textField.AutocorrectionType = UITextAutocorrectionType.No;
+		}
+
+		public static void UpdateIsSpellCheckEnabled(this UITextField textField, IEntry entry)
+		{
+			if (entry.IsSpellCheckEnabled)
+				textField.SpellCheckingType = UITextSpellCheckingType.Yes;
+			else
+				textField.SpellCheckingType = UITextSpellCheckingType.No;
 		}
 
 		public static void UpdateMaxLength(this UITextField textField, IEntry entry)
@@ -117,7 +123,10 @@ namespace Microsoft.Maui.Platform
 			textField.ApplyKeyboard(keyboard);
 
 			if (keyboard is not CustomKeyboard)
+			{
 				textField.UpdateIsTextPredictionEnabled(entry);
+				textField.UpdateIsSpellCheckEnabled(entry);
+			}
 
 			textField.ReloadInputViews();
 		}
@@ -145,8 +154,6 @@ namespace Microsoft.Maui.Platform
 		{
 			if (!entry.IsReadOnly)
 			{
-				if (!textField.IsFirstResponder)
-					textField.BecomeFirstResponder();
 				UITextPosition start = GetSelectionStart(textField, entry, out int startOffset);
 				UITextPosition end = GetSelectionEnd(textField, entry, start, startOffset);
 
@@ -184,7 +191,79 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateClearButtonVisibility(this UITextField textField, IEntry entry)
 		{
-			textField.ClearButtonMode = entry.ClearButtonVisibility == ClearButtonVisibility.WhileEditing ? UITextFieldViewMode.WhileEditing : UITextFieldViewMode.Never;
+			if (entry.ClearButtonVisibility == ClearButtonVisibility.WhileEditing)
+			{
+				textField.ClearButtonMode = UITextFieldViewMode.WhileEditing;
+				textField.UpdateClearButtonColor(entry);
+			}
+			else
+				textField.ClearButtonMode = UITextFieldViewMode.Never;
+		}
+
+		internal static void UpdateClearButtonColor(this UITextField textField, IEntry entry)
+		{
+			if (textField.ValueForKey(new NSString("clearButton")) is UIButton clearButton)
+			{
+				UIImage defaultClearImage = clearButton.ImageForState(UIControlState.Highlighted);
+
+				if (entry.TextColor is null)
+				{
+					clearButton.SetImage(defaultClearImage, UIControlState.Normal);
+					clearButton.SetImage(defaultClearImage, UIControlState.Highlighted);
+				}
+				else
+				{
+					clearButton.TintColor = entry.TextColor.ToPlatform();
+
+					var tintedClearImage = GetClearButtonTintImage(defaultClearImage, entry.TextColor.ToPlatform());
+					clearButton.SetImage(tintedClearImage, UIControlState.Normal);
+					clearButton.SetImage(tintedClearImage, UIControlState.Highlighted);
+				}
+			}
+		}
+
+		internal static UIImage? GetClearButtonTintImage(UIImage image, UIColor color)
+		{
+			var size = image.Size;
+
+			var renderer = new UIGraphicsImageRenderer(size, new UIGraphicsImageRendererFormat()
+			{
+				Opaque = false,
+				Scale = UIScreen.MainScreen.Scale,
+			});
+
+			if (renderer is null)
+			{
+				return null;
+			}
+
+			return renderer.CreateImage((context) =>
+			{
+				image.Draw(CGPoint.Empty, CGBlendMode.Normal, 1.0f);
+				color.ColorWithAlpha(1.0f).SetFill();
+
+				var rect = new CGRect(CGPoint.Empty.X, CGPoint.Empty.Y, image.Size.Width, image.Size.Height);
+				context?.FillRect(rect, CGBlendMode.SourceIn);
+			});
+		}
+
+		internal static void AddMauiDoneAccessoryView(this UITextField textField, IViewHandler handler)
+		{
+#if !MACCATALYST
+			var accessoryView = new MauiDoneAccessoryView();
+			accessoryView.SetDataContext(handler);
+			accessoryView.SetDoneClicked(OnDoneClicked);
+			textField.InputAccessoryView = accessoryView;
+#endif
+		}
+
+		static void OnDoneClicked(object sender)
+		{
+			if (sender is IEntryHandler entryHandler)
+			{
+				entryHandler.PlatformView.ResignFirstResponder();
+				entryHandler.VirtualView.Completed();
+			}
 		}
 	}
 }

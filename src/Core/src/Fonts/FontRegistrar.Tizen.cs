@@ -3,6 +3,7 @@ using System.IO;
 
 namespace Microsoft.Maui
 {
+	/// <inheritdoc/>
 	public partial class FontRegistrar : IFontRegistrar
 	{
 		string? LoadNativeAppFont(string font, string filename, string? alias)
@@ -12,7 +13,7 @@ namespace Microsoft.Maui
 			return LoadEmbeddedFont(font, filename, alias, stream);
 		}
 
-		Stream GetNativeFontStream(string filename, string? alias)
+		static FileStream GetNativeFontStream(string filename, string? alias)
 		{
 			// TODO: check other folders as well
 			var resDirPath = Tizen.Applications.Application.Current.DirectoryInfo.Resource;

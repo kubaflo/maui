@@ -1,20 +1,20 @@
+#nullable disable
 using System;
 using System.ComponentModel;
 using Microsoft.Maui.Controls.Internals;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls/PanGestureRecognizer.xml" path="Type[@FullName='Microsoft.Maui.Controls.PanGestureRecognizer']/Docs" />
+	/// <summary>A gesture recognizer for panning content that is larger than its parent view.</summary>
 	public class PanGestureRecognizer : GestureRecognizer, IPanGestureController
 	{
-		/// <include file="../../docs/Microsoft.Maui.Controls/PanGestureRecognizer.xml" path="//Member[@MemberName='CurrentId']/Docs" />
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		public static AutoId CurrentId { get; } = new();
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/PanGestureRecognizer.xml" path="//Member[@MemberName='TouchPointsProperty']/Docs" />
-		public static readonly BindableProperty TouchPointsProperty = BindableProperty.Create("TouchPoints", typeof(int), typeof(PanGestureRecognizer), 1);
+		/// <summary>Bindable property for <see cref="TouchPoints"/>.</summary>
+		public static readonly BindableProperty TouchPointsProperty = BindableProperty.Create(nameof(TouchPoints), typeof(int), typeof(PanGestureRecognizer), 1);
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/PanGestureRecognizer.xml" path="//Member[@MemberName='TouchPoints']/Docs" />
+		/// <summary>Gets or sets the number of touch points in the gesture. This is a bindable property.</summary>
 		public int TouchPoints
 		{
 			get { return (int)GetValue(TouchPointsProperty); }

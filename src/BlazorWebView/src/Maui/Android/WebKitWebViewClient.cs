@@ -4,6 +4,8 @@ using Android.Content;
 using Android.Runtime;
 using Android.Webkit;
 using Java.Net;
+using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Platform;
 using AWebView = Android.Webkit.WebView;
 
 namespace Microsoft.AspNetCore.Components.WebView.Maui
@@ -20,8 +22,9 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 
 		private readonly BlazorWebViewHandler? _webViewHandler;
 
-		public WebKitWebViewClient(BlazorWebViewHandler webViewHandler!!)
+		public WebKitWebViewClient(BlazorWebViewHandler webViewHandler)
 		{
+			ArgumentNullException.ThrowIfNull(webViewHandler);
 			_webViewHandler = webViewHandler;
 		}
 
@@ -48,9 +51,11 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			// so we know we can safely invoke the UrlLoading event.
 			var callbackArgs = UrlLoadingEventArgs.CreateWithDefaultLoadingStrategy(uri, AppOriginUri);
 			_webViewHandler.UrlLoading(callbackArgs);
+			_webViewHandler.Logger.NavigationEvent(uri, callbackArgs.UrlLoadingStrategy);
 
 			if (callbackArgs.UrlLoadingStrategy == UrlLoadingStrategy.OpenExternally)
 			{
+				_webViewHandler.Logger.LaunchExternalBrowser(uri);
 				try
 				{
 					var intent = Intent.ParseUri(uri.OriginalString, IntentUriType.Scheme);
@@ -80,8 +85,40 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			}
 
 			var requestUri = request?.Url?.ToString();
+
+			var logger = _webViewHandler?.Logger;
+
+			logger?.LogDebug("Intercepting request for {Url}.", requestUri);
+
+			if (view is not null && request is not null && !string.IsNullOrEmpty(requestUri))
+			{
+				// 1. Check if the app wants to modify or override the request
+				var response = WebRequestInterceptingWebView.TryInterceptResponseStream(_webViewHandler, view, request, requestUri, logger);
+				if (response is not null)
+				{
+					return response;
+				}
+
+				// 2. Check if the request is for a Blazor resource
+				response = GetResponse(requestUri, _webViewHandler?.Logger);
+				if (response is not null)
+				{
+					return response;
+				}
+			}
+
+			// 3. Otherwise, we let the request go through as is
+			logger?.LogDebug("Request for {Url} was not handled.", requestUri);
+
+			return base.ShouldInterceptRequest(view, request);
+		}
+
+		private WebResourceResponse? GetResponse(string requestUri, ILogger? logger)
+		{
 			var allowFallbackOnHostPage = AppOriginUri.IsBaseOfPage(requestUri);
 			requestUri = QueryStringHelper.RemovePossibleQueryString(requestUri);
+
+			logger?.HandlingWebRequest(requestUri);
 
 			if (requestUri != null &&
 				_webViewHandler != null &&
@@ -90,10 +127,16 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 			{
 				var contentType = headers["Content-Type"];
 
+				logger?.ResponseContentBeingSent(requestUri, statusCode);
+
 				return new WebResourceResponse(contentType, "UTF-8", statusCode, statusMessage, headers, content);
 			}
+			else
+			{
+				logger?.ResponseContentNotFound(requestUri ?? string.Empty);
+			}
 
-			return base.ShouldInterceptRequest(view, request);
+			return null;
 		}
 
 		public override void OnPageFinished(AWebView? view, string? url)
@@ -110,6 +153,8 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 
 		private void RunBlazorStartupScripts(AWebView view)
 		{
+			_webViewHandler?.Logger.RunningBlazorStartupScripts();
+
 			// Confirm Blazor hasn't already initialized
 			view.EvaluateJavascript(@"
 				(function() { return typeof(window.__BlazorStarted); })();
@@ -170,6 +215,7 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 						", new JavaScriptValueCallback(_ =>
 						{
 							// Done; no more action required
+							_webViewHandler?.Logger.BlazorStartupScriptsFinished();
 						}));
 					}));
 			}));
@@ -188,8 +234,9 @@ namespace Microsoft.AspNetCore.Components.WebView.Maui
 		{
 			private readonly Action<Java.Lang.Object?> _callback;
 
-			public JavaScriptValueCallback(Action<Java.Lang.Object?> callback!!)
+			public JavaScriptValueCallback(Action<Java.Lang.Object?> callback)
 			{
+				ArgumentNullException.ThrowIfNull(callback);
 				_callback = callback;
 			}
 

@@ -56,7 +56,7 @@ namespace Microsoft.Maui
 		/// </summary>
 		/// <param name="graphicsView"><see cref="PlatformGraphicsView"/>.</param>
 		/// <returns>Offset Rectangle.</returns>
-		Point GenerateAdornerOffset(View graphicsView)
+		static Point GenerateAdornerOffset(View graphicsView)
 		{
 			if (graphicsView == null || graphicsView.Context?.GetActivity() is not Activity nativeActivity)
 				return new Point();
@@ -65,12 +65,9 @@ namespace Microsoft.Maui
 				return new Point();
 
 			var decorView = nativeActivity.Window?.DecorView;
-			var rectangle = new Android.Graphics.Rect();
+			var rectangle = new global::Android.Graphics.Rect();
 
-			if (decorView is not null)
-			{
-				decorView.GetWindowVisibleDisplayFrame(rectangle);
-			}
+			decorView?.GetWindowVisibleDisplayFrame(rectangle);
 
 			float dpi = nativeActivity.Resources.DisplayMetrics.Density;
 			return new Point(0, -(rectangle.Top / dpi));

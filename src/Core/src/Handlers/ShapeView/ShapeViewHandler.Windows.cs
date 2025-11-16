@@ -1,4 +1,5 @@
-﻿using Microsoft.Maui.Graphics.Win2D;
+﻿using Microsoft.Maui.Graphics.Platform;
+using Microsoft.Maui.Graphics.Win2D;
 
 namespace Microsoft.Maui.Handlers
 {
@@ -10,14 +11,6 @@ namespace Microsoft.Maui.Handlers
 		public override bool NeedsContainer =>
 			VirtualView?.Background != null ||
 			base.NeedsContainer;
-
-		public static void MapBackground(IShapeViewHandler handler, IShapeView shapeView)
-		{
-			handler.UpdateValue(nameof(IViewHandler.ContainerView));
-			handler.ToPlatform().UpdateBackground(shapeView);
-
-			handler.PlatformView?.InvalidateShape(shapeView);
-		}
 
 		public static void MapShape(IShapeViewHandler handler, IShapeView shapeView)
 		{

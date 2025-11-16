@@ -13,84 +13,107 @@ namespace Microsoft.Maui.Platform
 	// so we'd like to stick with the older one for now
 	public class MauiWebViewNavigationDelegate : NSObject, IWKNavigationDelegate
 	{
-		readonly WebViewHandler _handler;
+		readonly WeakReference<IWebViewHandler> _handler;
 		WebNavigationEvent _lastEvent;
 
-		public MauiWebViewNavigationDelegate(WebViewHandler handler)
+		public MauiWebViewNavigationDelegate(IWebViewHandler handler)
 		{
-			_handler = handler ?? throw new ArgumentNullException("handler");
+			_ = handler ?? throw new ArgumentNullException(nameof(handler));
+			_handler = new WeakReference<IWebViewHandler>(handler);
 		}
 
 		[Export("webView:didFinishNavigation:")]
-		public void DidFinishNavigation(WKWebView webView, WKNavigation navigation)
+		public virtual void DidFinishNavigation(WKWebView webView, WKNavigation navigation)
 		{
-			if (_handler == null)
+			var handler = Handler;
+
+			if (handler is null || !handler.IsConnected())
 				return;
 
-			if (_handler != null)
-				_handler.PlatformView.UpdateCanGoBackForward(_handler.VirtualView);
+			var platformView = handler?.PlatformView;
+			var virtualView = handler?.VirtualView;
+
+			if (platformView is null || virtualView is null)
+				return;
+
+			platformView.UpdateCanGoBackForward(virtualView);
 
 			if (webView.IsLoading)
 				return;
 
 			var url = GetCurrentUrl();
 
-			if (url == $"file://{NSBundle.MainBundle.BundlePath}/")
-				return;
-
-			var virtualView = _handler?.VirtualView;
-
-			if (virtualView == null)
-				return;
-
 			virtualView.Navigated(_lastEvent, url, WebNavigationResult.Success);
 
-			_handler?.PlatformView.UpdateCanGoBackForward(virtualView);
+			// ProcessNavigatedAsync calls UpdateCanGoBackForward
+			if (handler is WebViewHandler webViewHandler)
+				webViewHandler.ProcessNavigatedAsync(url).FireAndForget();
+			else
+				platformView.UpdateCanGoBackForward(virtualView);
 		}
 
 		[Export("webView:didFailNavigation:withError:")]
-		public void DidFailNavigation(WKWebView webView, WKNavigation navigation, NSError error)
+		public virtual void DidFailNavigation(WKWebView webView, WKNavigation navigation, NSError error)
 		{
-			if (_handler == null)
+			var handler = Handler;
+
+			if (handler is null || !handler.IsConnected())
+				return;
+
+			var platformView = handler?.PlatformView;
+			var virtualView = handler?.VirtualView;
+
+			if (platformView is null || virtualView is null)
 				return;
 
 			var url = GetCurrentUrl();
 
-			var virtualView = _handler.VirtualView;
-
-			if (virtualView == null)
-				return;
-
 			virtualView.Navigated(_lastEvent, url, WebNavigationResult.Failure);
 
-			_handler.PlatformView?.UpdateCanGoBackForward(virtualView);
+			platformView.UpdateCanGoBackForward(virtualView);
 		}
 
 		[Export("webView:didFailProvisionalNavigation:withError:")]
-		public void DidFailProvisionalNavigation(WKWebView webView, WKNavigation navigation, NSError error)
+		public virtual void DidFailProvisionalNavigation(WKWebView webView, WKNavigation navigation, NSError error)
 		{
-			if (_handler == null)
+			var handler = Handler;
+
+			if (handler is null || !handler.IsConnected())
+				return;
+
+			var platformView = handler?.PlatformView;
+			var virtualView = handler?.VirtualView;
+
+			if (platformView is null || virtualView is null)
 				return;
 
 			var url = GetCurrentUrl();
 
-			var virtualView = _handler.VirtualView;
-
-			if (virtualView == null)
-				return;
-
 			virtualView.Navigated(_lastEvent, url, WebNavigationResult.Failure);
 
-			_handler.PlatformView?.UpdateCanGoBackForward(virtualView);
-
+			platformView.UpdateCanGoBackForward(virtualView);
 		}
 
 		// https://stackoverflow.com/questions/37509990/migrating-from-uiwebview-to-wkwebview
 		[Export("webView:decidePolicyForNavigationAction:decisionHandler:")]
-		public void DecidePolicy(WKWebView webView, WKNavigationAction navigationAction, Action<WKNavigationActionPolicy> decisionHandler)
+		public virtual void DecidePolicy(WKWebView webView, WKNavigationAction navigationAction, Action<WKNavigationActionPolicy> decisionHandler)
 		{
-			if (_handler == null)
+			var handler = Handler;
+
+			if (handler is null || !handler.IsConnected())
+			{
+				decisionHandler.Invoke(WKNavigationActionPolicy.Cancel);
 				return;
+			}
+
+			var platformView = handler?.PlatformView;
+			var virtualView = handler?.VirtualView;
+
+			if (platformView is null || virtualView is null)
+			{
+				decisionHandler.Invoke(WKNavigationActionPolicy.Cancel);
+				return;
+			}
 
 			var navEvent = WebNavigationEvent.NewPage;
 			var navigationType = navigationAction.NavigationType;
@@ -108,7 +131,7 @@ namespace Microsoft.Maui.Platform
 					navEvent = WebNavigationEvent.NewPage;
 					break;
 				case WKNavigationType.BackForward:
-					navEvent = _handler.CurrentNavigationEvent;
+					navEvent = CurrentNavigationEvent;
 					break;
 				case WKNavigationType.Reload:
 					navEvent = WebNavigationEvent.Refresh;
@@ -123,22 +146,36 @@ namespace Microsoft.Maui.Platform
 
 			_lastEvent = navEvent;
 
-			var virtualView = _handler.VirtualView;
-
-			if (virtualView == null)
-				return;
-
 			var request = navigationAction.Request;
 			var lastUrl = request.Url.ToString();
 
 			bool cancel = virtualView.Navigating(navEvent, lastUrl);
-			_handler.PlatformView?.UpdateCanGoBackForward(virtualView);
+			platformView.UpdateCanGoBackForward(virtualView);
 			decisionHandler(cancel ? WKNavigationActionPolicy.Cancel : WKNavigationActionPolicy.Allow);
 		}
 
 		string GetCurrentUrl()
 		{
-			return _handler.PlatformView?.Url?.AbsoluteUrl?.ToString() ?? string.Empty;
+			return Handler?.PlatformView?.Url?.AbsoluteUrl?.ToString() ?? string.Empty;
+		}
+
+		internal WebNavigationEvent CurrentNavigationEvent
+		{
+			get;
+			set;
+		}
+
+		IWebViewHandler? Handler
+		{
+			get
+			{
+				if (_handler.TryGetTarget(out var handler))
+				{
+					return handler;
+				}
+
+				return null;
+			}
 		}
 	}
 }

@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -33,9 +34,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		protected virtual void SetAppearance(ShellAppearance appearance)
 		{
-			SetValues(appearance.BackgroundColor == null ? _defaultBackgroundColor : appearance.BackgroundColor,
-				appearance.ForegroundColor == null ? _defaultForegroundColor : appearance.ForegroundColor,
-				appearance.UnselectedColor == null ? _defaultUnselectedColor : appearance.UnselectedColor);
+			SetValues(appearance.BackgroundColor ?? _defaultBackgroundColor,
+				appearance.ForegroundColor ?? _defaultForegroundColor,
+				appearance.UnselectedColor ?? _defaultUnselectedColor);
 		}
 
 		void SetValues(Color backgroundColor, Color foregroundColor, Color unselectedColor)
@@ -199,6 +200,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			UpdateSelectedIndex();
 			ShellSection.PropertyChanged += OnShellSectionPropertyChanged;
+			foreach (var shellContent in ShellSectionController.GetItems())
+			{
+				shellContent.PropertyChanged += OnShellContentPropertyChanged;
+			}
 		}
 
 		protected virtual Type GetCellType()
@@ -216,6 +221,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				((IShellController)_shellContext.Shell).RemoveAppearanceObserver(this);
 				ShellSectionController.ItemsCollectionChanged -= OnShellSectionItemsChanged;
 				ShellSection.PropertyChanged -= OnShellSectionPropertyChanged;
+				foreach (var shellContent in ShellSectionController.GetItems())
+				{
+					shellContent.PropertyChanged -= OnShellContentPropertyChanged;
+				}
 
 				ShellSection = null;
 				_bar.RemoveFromSuperview();
@@ -278,7 +287,51 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		void OnShellSectionItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
 		{
+			HandleEventsOnItemsChange(e);
 			ReloadData();
+		}
+
+		void HandleEventsOnItemsChange(NotifyCollectionChangedEventArgs e)
+		{
+			if (e.OldItems != null)
+			{
+				foreach (ShellContent item in e.OldItems)
+				{
+					item.PropertyChanged -= OnShellContentPropertyChanged;
+				}
+			}
+
+			if (e.NewItems != null)
+			{
+				foreach (ShellContent item in e.NewItems)
+				{
+					item.PropertyChanged += OnShellContentPropertyChanged;
+				}
+			}
+		}
+
+		void OnShellContentPropertyChanged(object sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName == nameof(ShellContent.Title))
+			{
+				if (sender is ShellContent shellContent)
+				{
+					int index = ShellSectionController.GetItems().IndexOf(shellContent);
+					if (index >= 0)
+					{
+						UpdateHeaderTitle(index, shellContent);
+					}
+				}
+			}
+		}
+
+		void UpdateHeaderTitle(int index, ShellContent shellContent)
+		{
+			if (CollectionView.CellForItem(NSIndexPath.FromItemSection(index, 0)) is ShellSectionHeaderCell cell)
+			{
+				cell.Label.Text = shellContent.Title;
+				CollectionView.CollectionViewLayout.InvalidateLayout();
+			}
 		}
 
 		void ReloadData()

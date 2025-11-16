@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("Microsoft.AspNetCore.Components.WebView.Maui")]
+
 [assembly: InternalsVisibleTo("iOSUnitTests")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility")]
@@ -10,6 +12,10 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.Tizen")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.ControlGallery")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.ControlGallery.Android")]
+[assembly: InternalsVisibleTo("Microsoft.Maui.Compatibility.Core.UnitTests")]
+[assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Android.UITests")]
+[assembly: InternalsVisibleTo("Microsoft.Maui.Controls.iOS.UITests")]
+[assembly: InternalsVisibleTo("WinUI.UITests")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Compatibility.ControlGallery.Tizen")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Xaml")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Xaml.UnitTests")]
@@ -25,6 +31,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.DeviceTests")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Controls.Core.UnitTests")]
 [assembly: InternalsVisibleTo("Microsoft.Maui.Benchmarks.Droid")]
+[assembly: InternalsVisibleTo("Core.Benchmarks")]
 [assembly: InternalsVisibleTo("Comet")]
 [assembly: InternalsVisibleTo("Comet.Tests")]
 [assembly: InternalsVisibleTo("CommunityToolkit.Maui")]
@@ -33,3 +40,6 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("CommunityToolkit.Maui.Markup")]
 [assembly: InternalsVisibleTo("CommunityToolkit.Maui.Markup.UnitTests")]
 [assembly: InternalsVisibleTo("Reloadify-emit")]
+[assembly: InternalsVisibleTo("Microsoft.Maui.TestUtils.DeviceTests.Runners")]
+[assembly: InternalsVisibleTo("Microsoft.Maui.TestUtils.DeviceTests")]
+[assembly: InternalsVisibleTo("Microsoft.Maui.DeviceTests.Shared")]

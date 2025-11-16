@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -7,20 +8,21 @@ using Microsoft.Maui.Controls.Xaml;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls/Setter.xml" path="Type[@FullName='Microsoft.Maui.Controls.Setter']/Docs" />
+	/// <include file="../../docs/Microsoft.Maui.Controls/Setter.xml" path="Type[@FullName='Microsoft.Maui.Controls.Setter']/Docs/*" />
 	[ContentProperty(nameof(Value))]
 	[ProvideCompiled("Microsoft.Maui.Controls.XamlC.SetterValueProvider")]
+	[RequireService(
+		[typeof(IValueConverterProvider),
+		 typeof(IXmlLineInfoProvider)])]
 	public sealed class Setter : IValueProvider
 	{
-		readonly ConditionalWeakTable<BindableObject, object> _originalValues = new ConditionalWeakTable<BindableObject, object>();
-
-		/// <include file="../../docs/Microsoft.Maui.Controls/Setter.xml" path="//Member[@MemberName='TargetName']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/Setter.xml" path="//Member[@MemberName='TargetName']/Docs/*" />
 		public string TargetName { get; set; }
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/Setter.xml" path="//Member[@MemberName='Property']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/Setter.xml" path="//Member[@MemberName='Property']/Docs/*" />
 		public BindableProperty Property { get; set; }
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/Setter.xml" path="//Member[@MemberName='Value']/Docs" />
+		/// <include file="../../docs/Microsoft.Maui.Controls/Setter.xml" path="//Member[@MemberName='Value']/Docs/*" />
 		public object Value { get; set; }
 
 		object IValueProvider.ProvideValue(IServiceProvider serviceProvider)
@@ -57,7 +59,7 @@ namespace Microsoft.Maui.Controls
 			return this;
 		}
 
-		internal void Apply(BindableObject target, bool fromStyle = false)
+		internal void Apply(BindableObject target, SetterSpecificity specificity)
 		{
 			if (target == null)
 				throw new ArgumentNullException(nameof(target));
@@ -65,32 +67,22 @@ namespace Microsoft.Maui.Controls
 			var targetObject = target;
 
 			if (!string.IsNullOrEmpty(TargetName) && target is Element element)
-				targetObject = element.FindByName(TargetName) as BindableObject ?? throw new ArgumentNullException(nameof(targetObject));
+				targetObject = element.FindByName(TargetName) as BindableObject ?? throw new XamlParseException($"Cannot resolve '{TargetName}' as Setter Target for '{target}'.");
 
 			if (Property == null)
 				return;
-
-			object originalValue = targetObject.GetValue(Property);
-			if (!Equals(originalValue, Property.DefaultValue))
-			{
-				_originalValues.Remove(targetObject);
-				_originalValues.Add(targetObject, originalValue);
-			}
 
 			if (Value is BindingBase binding)
-				targetObject.SetBinding(Property, binding.Clone(), fromStyle);
+				targetObject.SetBinding(Property, binding.Clone(), specificity);
 			else if (Value is DynamicResource dynamicResource)
-				targetObject.SetDynamicResource(Property, dynamicResource.Key, fromStyle);
+				targetObject.SetDynamicResource(Property, dynamicResource.Key, specificity);
+			else if (Value is IList<VisualStateGroup> visualStateGroupCollection)
+				targetObject.SetValue(Property, visualStateGroupCollection.Clone(), specificity);
 			else
-			{
-				if (Value is IList<VisualStateGroup> visualStateGroupCollection)
-					targetObject.SetValue(Property, visualStateGroupCollection.Clone(), fromStyle);
-				else
-					targetObject.SetValue(Property, Value, fromStyle);
-			}
+				targetObject.SetValue(Property, Value, specificity: specificity);
 		}
 
-		internal void UnApply(BindableObject target, bool fromStyle = false)
+		internal void UnApply(BindableObject target, SetterSpecificity specificity)
 		{
 			if (target == null)
 				throw new ArgumentNullException(nameof(target));
@@ -102,24 +94,11 @@ namespace Microsoft.Maui.Controls
 
 			if (Property == null)
 				return;
-
-			object actual = targetObject.GetValue(Property);
-			if (!Equals(actual, Value) && Value is not BindingBase && Value is not DynamicResource)
-			{
-
-				//Do not reset default value if the value has been changed
-				_originalValues.Remove(targetObject);
-				return;
-			}
-
-			if (_originalValues.TryGetValue(targetObject, out object defaultValue))
-			{
-				//reset default value, unapply bindings and dynamicResource
-				targetObject.SetValue(Property, defaultValue, fromStyle);
-				_originalValues.Remove(targetObject);
-			}
-			else
-				targetObject.ClearValue(Property, fromStyle);
+			if (Value is BindingBase binding)
+				targetObject.RemoveBinding(Property, specificity);
+			else if (Value is DynamicResource dynamicResource)
+				targetObject.RemoveDynamicResource(Property, specificity);
+			targetObject.ClearValue(Property, specificity);
 		}
 	}
 }

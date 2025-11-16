@@ -1,6 +1,6 @@
 <Type Name="ImageSourceConverter" FullName="Microsoft.Maui.Controls.ImageSourceConverter">
-  <TypeSignature Language="C#" Value="public sealed class ImageSourceConverter : Microsoft.Maui.Controls.TypeConverter" />
-  <TypeSignature Language="ILAsm" Value=".class public auto ansi sealed beforefieldinit ImageSourceConverter extends Microsoft.Maui.Controls.TypeConverter" />
+  <TypeSignature Language="C#" Value="public sealed class ImageSourceConverter : System.ComponentModel.TypeConverter" />
+  <TypeSignature Language="ILAsm" Value=".class public auto ansi sealed beforefieldinit ImageSourceConverter extends System.ComponentModel.TypeConverter" />
   <TypeSignature Language="DocId" Value="T:Microsoft.Maui.Controls.ImageSourceConverter" />
   <TypeSignature Language="F#" Value="type ImageSourceConverter = class&#xA;    inherit TypeConverter" />
   <AssemblyInfo>
@@ -10,7 +10,7 @@
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
   </AssemblyInfo>
   <Base>
-    <BaseTypeName>Microsoft.Maui.Controls.TypeConverter</BaseTypeName>
+    <BaseTypeName>System.ComponentModel.TypeConverter</BaseTypeName>
   </Base>
   <Interfaces />
   <Attributes>
@@ -20,7 +20,6 @@
   </Attributes>
   <Docs>
     <summary>Class that takes a string representation of an image file location and returns a <see cref="T:Microsoft.Maui.Controls.ImageSource" /> from the specified resource.</summary>
-    <remarks>To be added.</remarks>
   </Docs>
   <Members>
     <Member MemberName=".ctor">
@@ -37,7 +36,6 @@
       <Parameters />
       <Docs>
         <summary>Creates a new <see cref="T:Microsoft.Maui.Controls.ImageSourceConverter" /> with default values.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="ConvertFromInvariantString">
@@ -60,8 +58,6 @@
       <Docs>
         <param name="value">The value to convert.</param>
         <summary>Returns an image source created from a URI that is contained in <paramref name="value" />.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
   </Members>

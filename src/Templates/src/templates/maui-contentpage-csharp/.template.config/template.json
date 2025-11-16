@@ -1,9 +1,12 @@
 {
     "$schema": "http://json.schemastore.org/template",
     "author": "Microsoft",
-    "classifications": [ "MAUI", "Android", "iOS", "macOS", "Mac Catalyst", "WinUI", "Tizen", "Xaml", "Code" ],
-    "identity": "Microsoft.Maui.CSharpContentPage",
+    "classifications": [ "MAUI", "Android", "iOS", "macOS", "Mac Catalyst", "WinUI", "Xaml", "Code" ],
+    "identity": "Microsoft.Maui.CSharpContentPage.DOTNET_TFM_VERSION_VALUE",
+    "groupIdentity": "Microsoft.Maui.CSharpContentPage",
+    "precedence": "DOTNET_TFM_VERSION_MAJOR_VALUE",
     "name": ".NET MAUI ContentPage (C#)",
+    "description": "A page for displaying content using C#.",
     "shortName": "maui-page-csharp",
     "tags": {
       "language": "C#",
@@ -35,6 +38,10 @@
         "description": "Namespace for the generated code.",
         "replaces": "MauiApp1",
         "type": "parameter"
+      },
+      "HostIdentifier": {
+          "type": "bind",
+          "binding": "HostIdentifier"
       }
     }
   }

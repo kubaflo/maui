@@ -1,12 +1,12 @@
 using System;
+using Microsoft.Maui.Devices;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.Maui.Devices;
 using WVisualState = Microsoft.UI.Xaml.VisualState;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
-	public class FormsComboBox : ComboBox
+	public partial class FormsComboBox : ComboBox
 	{
 		public FormsComboBox()
 		{
@@ -34,7 +34,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		protected override void OnApplyTemplate()
 		{
 			base.OnApplyTemplate();
-			
+
 			if (DeviceInfo.Idiom == DeviceIdiom.Phone)
 			{
 				// If we're running on the phone, we have to give the PickerRenderer hooks

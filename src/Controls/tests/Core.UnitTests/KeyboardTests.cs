@@ -4,14 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Maui.Converters;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
-	[TestFixture]
-	internal class KeyboardTests : BaseTestFixture
+
+	public class KeyboardTests : BaseTestFixture
 	{
-		[Test]
+		[Fact]
 		public void KeyboardTypesAreCorrect()
 		{
 			Assert.True(Keyboard.Chat is ChatKeyboard);
@@ -20,13 +20,16 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.True(Keyboard.Telephone is TelephoneKeyboard);
 			Assert.True(Keyboard.Text is TextKeyboard);
 			Assert.True(Keyboard.Url is UrlKeyboard);
+			Assert.True(Keyboard.Date is DateKeyboard);
+			Assert.True(Keyboard.Time is TimeKeyboard);
+			Assert.True(Keyboard.Password is PasswordKeyboard);
 		}
 	}
 
-	[TestFixture]
-	internal class KeyboardTypeConverterTests : BaseTestFixture
+
+	public class KeyboardTypeConverterTests : BaseTestFixture
 	{
-		[Test]
+		[Fact]
 		public void ConversionConvert()
 		{
 
@@ -39,11 +42,14 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				{"Keyboard.Url", Keyboard.Url},
 				{"Keyboard.Telephone", Keyboard.Telephone},
 				{"Keyboard.Chat", Keyboard.Chat},
+				{"Keyboard.Date", Keyboard.Date},
+				{"Keyboard.Time", Keyboard.Time},
+				{"Keyboard.Password", Keyboard.Password},
 			})
-				Assert.AreSame(kvp.Value, converter.ConvertFromInvariantString(kvp.Key));
+				Assert.Same(kvp.Value, converter.ConvertFromInvariantString(kvp.Key));
 		}
 
-		[Test]
+		[Fact]
 		public void ConversionFail()
 		{
 			var converter = new KeyboardTypeConverter();

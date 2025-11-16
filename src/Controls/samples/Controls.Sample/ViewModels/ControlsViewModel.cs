@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Maui.Controls.Sample.Models;
 using Maui.Controls.Sample.Pages;
+using Maui.Controls.Sample.Pages.WebViewGalleries;
 using Maui.Controls.Sample.ViewModels.Base;
 
 namespace Maui.Controls.Sample.ViewModels
@@ -11,8 +12,8 @@ namespace Maui.Controls.Sample.ViewModels
 		{
 			new SectionModel(typeof(ActivityIndicatorPage), "ActivityIndicator",
 				"Displays an animation to show that the application is engaged in a lengthy activity."),
-					
-			new SectionModel(typeof(BordersPage), "Border",
+
+			new SectionModel(typeof(BorderPage), "Border",
 				"Draws a border around a View."),
 
 			new SectionModel(typeof(BoxViewPage), "BoxView",
@@ -39,6 +40,9 @@ namespace Maui.Controls.Sample.ViewModels
 			new SectionModel(typeof(EntryPage), "Entry",
 				"The Entry control is used for single-line text input."),
 
+			new SectionModel(typeof(HybridWebViewPage), "HybridWebView",
+				"The HybridWebView control embeds web content locally and natively in an app."),
+
 			new SectionModel(typeof(ImagePage), "Image",
 				"Displays an image."),
 
@@ -50,6 +54,9 @@ namespace Maui.Controls.Sample.ViewModels
 
 			new SectionModel(typeof(LabelPage), "Label",
 				"The Label view is used for displaying text, both single and multi-line."),
+
+			new SectionModel(typeof(Pages.MapsGalleries.MapsGallery), "Maps",
+				"The Maps controls is used for showing a map including pins, traffic information, etc."),
 
 			new SectionModel(typeof(PickerPage), "Picker",
 				"The Picker view is a control for selecting a text item from a list of data."),
@@ -84,7 +91,7 @@ namespace Maui.Controls.Sample.ViewModels
 			new SectionModel(typeof(TimePickerPage), "TimePicker",
 				"A view that allows the user to select a time."),
 
-			new SectionModel(typeof(WebViewPage), "WebView",
+			new SectionModel(typeof(WebViewGalleries), "WebView",
 				"WebView is a view for displaying web and HTML content in your app.")
 		};
 	}

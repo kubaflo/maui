@@ -1,12 +1,13 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Controls.Internals;
 using Microsoft.UI.Xaml;
 using WinRT;
-using Microsoft.Maui.Controls.Internals;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
@@ -18,8 +19,12 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		public NativeEventWrapper(object target, string targetProperty, string updateSourceEventName)
 		{
 			TargetProperty = targetProperty;
-			try {
+			try
+			{
+
+#pragma warning disable IL2072 // Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.
 				var updateSourceEvent = target.GetType().GetRuntimeEvent(updateSourceEventName);
+#pragma warning restore IL2072 // Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.
 				MethodInfo addMethod = updateSourceEvent.AddMethod;
 				MethodInfo removeMethod = updateSourceEvent.RemoveMethod;
 				ParameterInfo[] addParameters = addMethod.GetParameters();
@@ -31,8 +36,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				// TODO WINUI3
 				//WindowsRuntimeMarshal.AddEventHandler(add, remove, s_handlerinfo);
 			}
-			catch (Exception) {
-				Application.Current?.FindMauiContext()?.CreateLogger<NativeEventWrapper>()?.LogWarning("Can not attach NativeEventWrapper.");
+			catch (Exception)
+			{
+				Application.Current?.FindMauiContext()?.CreateLogger<NativeEventWrapper>()?.LogWarning("Cannot attach NativeEventWrapper.");
 			}
 		}
 

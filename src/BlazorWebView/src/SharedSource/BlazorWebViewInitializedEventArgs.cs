@@ -5,7 +5,7 @@ using Microsoft.Web.WebView2.Core;
 using WebView2Control = Microsoft.Web.WebView2.WinForms.WebView2;
 #elif WEBVIEW2_WPF
 using Microsoft.Web.WebView2.Core;
-using WebView2Control = Microsoft.Web.WebView2.Wpf.WebView2;
+using WebView2Control = Microsoft.Web.WebView2.Wpf.WebView2CompositionControl;
 #elif WINDOWS && WEBVIEW2_MAUI
 using Microsoft.Web.WebView2.Core;
 using WebView2Control = Microsoft.UI.Xaml.Controls.WebView2;
@@ -14,7 +14,7 @@ using AWebView = Android.Webkit.WebView;
 #elif IOS || MACCATALYST
 using WebKit;
 #elif TIZEN
-using TWebView = Tizen.WebView.WebView;
+using TWebView = Tizen.NUI.BaseComponents.WebView;
 #endif
 
 namespace Microsoft.AspNetCore.Components.WebView

@@ -1,9 +1,11 @@
 #nullable enable
+using System;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Media;
 using Microsoft.Maui.Primitives;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -12,14 +14,11 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using WFlowDirection = Microsoft.UI.Xaml.FlowDirection;
 using WinPoint = Windows.Foundation.Point;
-using Microsoft.Maui.Media;
 
 namespace Microsoft.Maui.Platform
 {
 	public static partial class ViewExtensions
 	{
-		internal static Page? ContainingPage; // Cache of containing page used for unfocusing
-
 		public static void TryMoveFocus(this FrameworkElement platformView, FocusNavigationDirection direction)
 		{
 			if (platformView?.XamlRoot?.Content is UIElement elem)
@@ -31,13 +30,15 @@ namespace Microsoft.Maui.Platform
 
 		public static void Focus(this FrameworkElement platformView, FocusRequest request)
 		{
-			request.IsFocused = platformView.Focus(FocusState.Programmatic);
+			request.TrySetResult(platformView.Focus(FocusState.Programmatic));
 		}
 
 		public static void Unfocus(this FrameworkElement platformView, IView view)
 		{
 			if (platformView is Control control)
+			{
 				UnfocusControl(control);
+			}
 		}
 
 		public static void UpdateVisibility(this FrameworkElement platformView, IView view)
@@ -84,6 +85,7 @@ namespace Microsoft.Maui.Platform
 			}
 		}
 
+		[Obsolete("IBorder is not used and will be removed in a future release.")]
 		public static void UpdateBorder(this FrameworkElement platformView, IView view)
 		{
 			var border = (view as IBorder)?.Border;
@@ -93,12 +95,16 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateOpacity(this FrameworkElement platformView, IView view)
 		{
-			platformView.Opacity = view.Visibility == Visibility.Hidden ? 0 : view.Opacity;
+			var opacity = view.Visibility == Visibility.Hidden ? 0 : view.Opacity;
+
+			platformView.UpdateOpacity(opacity);
 		}
+
+		internal static void UpdateOpacity(this FrameworkElement platformView, double opacity) => platformView.Opacity = (float)opacity;
 
 		public static void UpdateBackground(this ContentPanel platformView, IBorderStroke border)
 		{
-			var hasBorder = border.Shape != null && border.Stroke != null;
+			var hasBorder = border.Shape != null;
 
 			if (hasBorder)
 			{
@@ -192,9 +198,13 @@ namespace Microsoft.Maui.Platform
 
 			if (Dimension.IsMinimumSet(minHeight))
 			{
-				// We only use the minimum value if it's been explicitly set; otherwise, leave it alone
-				// because the platform/theme may have a minimum height for this control
+				// We only use the minimum value if it's been explicitly set; otherwise, clear the local
+				// value so that the platform/theme can use the default minimum height for this control
 				platformView.MinHeight = minHeight;
+			}
+			else
+			{
+				platformView.ClearValue(FrameworkElement.MinHeightProperty);
 			}
 		}
 
@@ -204,9 +214,13 @@ namespace Microsoft.Maui.Platform
 
 			if (Dimension.IsMinimumSet(minWidth))
 			{
-				// We only use the minimum value if it's been explicitly set; otherwise, leave it alone
-				// because the platform/theme may have a minimum width for this control
+				// We only use the minimum value if it's been explicitly set; otherwise, clear the local
+				// value so that the platform/theme can use the default minimum width for this control
 				platformView.MinWidth = minWidth;
+			}
+			else
+			{
+				platformView.ClearValue(FrameworkElement.MinWidthProperty);
 			}
 		}
 
@@ -222,9 +236,8 @@ namespace Microsoft.Maui.Platform
 
 		internal static void UpdateBorderBackground(this FrameworkElement platformView, IBorderStroke border)
 		{
-
-			if (border is IView v)
-				(platformView as ContentPanel)?.UpdateBackground(v.Background);
+			if (border is IView view)
+				(platformView as ContentPanel)?.UpdateBackground(view.Background);
 
 			if (platformView is Control control)
 				control.UpdateBackground((Paint?)null);
@@ -254,10 +267,17 @@ namespace Microsoft.Maui.Platform
 				await panel.UpdateBackgroundImageSourceAsync(imageSource, provider);
 		}
 
+		public static void UpdateToolTip(this FrameworkElement platformView, ToolTip? tooltip)
+		{
+			ToolTipService.SetToolTip(platformView, tooltip?.Content);
+		}
+
+		/// <summary>
+		/// Background and InputTransparent for Windows layouts are heavily intertwined, so setting one
+		/// usually requires setting the other at the same time.
+		/// </summary>
 		internal static void UpdatePlatformViewBackground(this LayoutPanel layoutPanel, ILayout layout)
 		{
-			// Background and InputTransparent for Windows layouts are heavily intertwined, so setting one
-			// usuall requires setting the other at the same time
 			layoutPanel.UpdateInputTransparent(layout.InputTransparent, layout?.Background?.ToPlatform());
 		}
 
@@ -272,9 +292,7 @@ namespace Microsoft.Maui.Platform
 		internal static Matrix4x4 GetViewTransform(this FrameworkElement element)
 		{
 			var root = element?.XamlRoot;
-			if (root == null)
-				return new Matrix4x4();
-			var offset = element?.TransformToVisual(root.Content) as MatrixTransform;
+			var offset = element?.TransformToVisual(root?.Content ?? element) as MatrixTransform;
 			if (offset == null)
 				return new Matrix4x4();
 			Matrix matrix = offset.Matrix;
@@ -353,44 +371,26 @@ namespace Microsoft.Maui.Platform
 			return null;
 		}
 
+		internal static T? GetChildAt<T>(this DependencyObject view, int index) where T : DependencyObject
+		{
+			if (VisualTreeHelper.GetChildrenCount(view) >= index)
+				return null;
+
+			return VisualTreeHelper.GetChild(view, index) as T;
+		}
+
 		internal static void UnfocusControl(Control control)
 		{
-			if (control == null || !control.IsEnabled)
+			if (!control.IsEnabled)
+			{
 				return;
-
-			// "Unfocusing" doesn't really make sense on Windows; for accessibility reasons,
-			// something always has focus. So forcing the unfocusing of a control would normally 
-			// just move focus to the next control, or leave it on the current control if no other
-			// focus targets are available. This is what happens if you use the "disable/enable"
-			// hack. What we *can* do is set the focus to the Page which contains Control;
-			// this will cause Control to lose focus without shifting focus to, say, the next Entry 
-
-			if (ContainingPage == null)
-			{
-				// Work our way up the tree to find the containing Page
-				DependencyObject parent = control;
-
-				while (parent != null && parent is not Page)
-				{
-					parent = VisualTreeHelper.GetParent(parent);
-				}
-
-				ContainingPage = parent as Page;
 			}
 
-			if (ContainingPage != null)
-			{
-				// Cache the tabstop setting
-				var wasTabStop = ContainingPage.IsTabStop;
-
-				// Controls can only get focus if they're a tabstop
-				ContainingPage.IsTabStop = true;
-				ContainingPage.Focus(FocusState.Programmatic);
-
-				// Restore the tabstop setting; that may cause the Page to lose focus,
-				// but it won't restore the focus to Control
-				ContainingPage.IsTabStop = wasTabStop;
-			}
+			var isTabStop = control.IsTabStop;
+			control.IsTabStop = false;
+			control.IsEnabled = false;
+			control.IsEnabled = true;
+			control.IsTabStop = isTabStop;
 		}
 
 		internal static IWindow? GetHostedWindow(this IView? view)

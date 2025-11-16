@@ -5,7 +5,7 @@ using Microsoft.Maui.Controls.Platform;
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class StepperRenderer : ViewRenderer<Stepper, StepperControl>
+	public partial class StepperRenderer : ViewRenderer<Stepper, StepperControl>
 	{
 		bool _isDisposed;
 
@@ -24,7 +24,7 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 				UpdateMaximum();
 				UpdateMinimum();
 				UpdateValue();
-				UpdateIncrement(); 
+				UpdateIncrement();
 				UpdateFlowDirection();
 			}
 		}

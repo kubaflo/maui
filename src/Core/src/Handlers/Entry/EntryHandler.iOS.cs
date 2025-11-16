@@ -1,6 +1,7 @@
 ﻿using System;
 using Foundation;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Platform;
 using ObjCRuntime;
 using UIKit;
 
@@ -8,32 +9,35 @@ namespace Microsoft.Maui.Handlers
 {
 	public partial class EntryHandler : ViewHandler<IEntry, MauiTextField>
 	{
-		protected override MauiTextField CreatePlatformView() =>
-			new MauiTextField
+		readonly MauiTextFieldProxy _proxy = new();
+
+		protected override MauiTextField CreatePlatformView()
+		{
+			var platformEntry = new MauiTextField
 			{
 				BorderStyle = UITextBorderStyle.RoundedRect,
 				ClipsToBounds = true
 			};
 
+			platformEntry.AddMauiDoneAccessoryView(this);
+			return platformEntry;
+		}
+
+		public override void SetVirtualView(IView view)
+		{
+			base.SetVirtualView(view);
+
+			_proxy.SetVirtualView(PlatformView);
+		}
+
 		protected override void ConnectHandler(MauiTextField platformView)
 		{
-			platformView.ShouldReturn = OnShouldReturn;
-			platformView.EditingDidBegin += OnEditingBegan;
-			platformView.EditingChanged += OnEditingChanged;
-			platformView.EditingDidBegin += OnEditingBegan;
-			platformView.EditingDidEnd += OnEditingEnded;
-			platformView.TextPropertySet += OnTextPropertySet;
-			platformView.ShouldChangeCharacters += OnShouldChangeCharacters;
+			_proxy.Connect(VirtualView, platformView);
 		}
 
 		protected override void DisconnectHandler(MauiTextField platformView)
 		{
-			platformView.EditingDidBegin -= OnEditingBegan;
-			platformView.EditingChanged -= OnEditingChanged;
-			platformView.EditingDidBegin -= OnEditingBegan;
-			platformView.EditingDidEnd -= OnEditingEnded;
-			platformView.TextPropertySet -= OnTextPropertySet;
-			platformView.ShouldChangeCharacters -= OnShouldChangeCharacters;
+			_proxy.Disconnect(platformView);
 		}
 
 		public static void MapText(IEntryHandler handler, IEntry entry)
@@ -44,8 +48,14 @@ namespace Microsoft.Maui.Handlers
 			MapFormatting(handler, entry);
 		}
 
-		public static void MapTextColor(IEntryHandler handler, IEntry entry) =>
+		public static void MapTextColor(IEntryHandler handler, IEntry entry)
+		{
 			handler.PlatformView?.UpdateTextColor(entry);
+			if (entry.ClearButtonVisibility == ClearButtonVisibility.WhileEditing)
+			{
+				handler.PlatformView?.UpdateClearButtonColor(entry);
+			}
+		}
 
 		public static void MapIsPassword(IEntryHandler handler, IEntry entry) =>
 			handler.PlatformView?.UpdateIsPassword(entry);
@@ -58,6 +68,9 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapIsTextPredictionEnabled(IEntryHandler handler, IEntry entry) =>
 			handler.PlatformView?.UpdateIsTextPredictionEnabled(entry);
+
+		public static void MapIsSpellCheckEnabled(IEntryHandler handler, IEntry entry) =>
+			handler.PlatformView?.UpdateIsSpellCheckEnabled(entry);
 
 		public static void MapMaxLength(IEntryHandler handler, IEntry entry) =>
 			handler.PlatformView?.UpdateMaxLength(entry);
@@ -104,43 +117,119 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView?.UpdateHorizontalTextAlignment(entry);
 		}
 
-		protected virtual bool OnShouldReturn(UITextField view)
+		protected virtual bool OnShouldReturn(UITextField view) =>
+			_proxy.OnShouldReturn(view);
+
+		class MauiTextFieldProxy
 		{
-			view.ResignFirstResponder();
+			bool _set;
+			WeakReference<IEntry>? _virtualView;
 
-			// TODO: Focus next View
+			IEntry? VirtualView => _virtualView is not null && _virtualView.TryGetTarget(out var v) ? v : null;
 
-			VirtualView?.Completed();
+			public void Connect(IEntry virtualView, MauiTextField platformView)
+			{
+				_virtualView = new(virtualView);
 
-			return false;
+				platformView.ShouldReturn += OnShouldReturn;
+				platformView.EditingDidBegin += OnEditingBegan;
+				platformView.EditingChanged += OnEditingChanged;
+				platformView.EditingDidEnd += OnEditingEnded;
+				platformView.TextPropertySet += OnTextPropertySet;
+				platformView.ShouldChangeCharacters += OnShouldChangeCharacters;
+			}
+
+			public void Disconnect(MauiTextField platformView)
+			{
+				_virtualView = null;
+
+				platformView.ShouldReturn -= OnShouldReturn;
+				platformView.EditingDidBegin -= OnEditingBegan;
+				platformView.EditingChanged -= OnEditingChanged;
+				platformView.EditingDidEnd -= OnEditingEnded;
+				platformView.TextPropertySet -= OnTextPropertySet;
+				platformView.ShouldChangeCharacters -= OnShouldChangeCharacters;
+
+				if (_set)
+					platformView.SelectionChanged -= OnSelectionChanged;
+
+				_set = false;
+			}
+
+			public void SetVirtualView(MauiTextField platformView)
+			{
+				if (!_set)
+					platformView.SelectionChanged += OnSelectionChanged;
+				_set = true;
+			}
+
+			public bool OnShouldReturn(UITextField view)
+			{
+				KeyboardAutoManager.GoToNextResponderOrResign(view);
+
+				VirtualView?.Completed();
+
+				return false;
+			}
+
+			void OnEditingBegan(object? sender, EventArgs e)
+			{
+				if (sender is MauiTextField platformView && VirtualView is IEntry virtualView)
+				{
+					if (virtualView.SelectionLength > 0)
+					{
+						platformView.UpdateSelectionLength(virtualView);
+					}
+					else
+					{
+						platformView.UpdateCursorPosition(virtualView);
+					}
+					virtualView.IsFocused = true;
+				}
+			}
+
+			void OnEditingChanged(object? sender, EventArgs e)
+			{
+				if (sender is MauiTextField platformView)
+				{
+					VirtualView?.UpdateText(platformView.Text);
+				}
+			}
+
+			void OnEditingEnded(object? sender, EventArgs e)
+			{
+				if (sender is MauiTextField platformView && VirtualView is IEntry virtualView)
+				{
+					virtualView.UpdateText(platformView.Text);
+					virtualView.IsFocused = false;
+				}
+			}
+
+			void OnTextPropertySet(object? sender, EventArgs e)
+			{
+				if (sender is MauiTextField platformView)
+				{
+					VirtualView?.UpdateText(platformView.Text);
+				}
+			}
+
+			bool OnShouldChangeCharacters(UITextField textField, NSRange range, string replacementString) =>
+				VirtualView?.TextWithinMaxLength(textField.Text, range, replacementString) ?? false;
+
+			void OnSelectionChanged(object? sender, EventArgs e)
+			{
+				if (sender is MauiTextField platformView && VirtualView is IEntry virtualView)
+				{
+					var cursorPosition = platformView.GetCursorPosition();
+					var selectedTextLength = platformView.GetSelectedTextLength();
+
+					if (virtualView.CursorPosition != cursorPosition)
+						virtualView.CursorPosition = cursorPosition;
+
+					if (virtualView.SelectionLength != selectedTextLength)
+						virtualView.SelectionLength = selectedTextLength;
+				}
+			}
 		}
-
-		void OnEditingBegan(object? sender, EventArgs e)
-		{
-			if (VirtualView == null || PlatformView == null)
-				return;
-
-			PlatformView?.UpdateSelectionLength(VirtualView);
-
-			VirtualView.IsFocused = true;
-		}
-
-		void OnEditingChanged(object? sender, EventArgs e) =>
-			VirtualView.UpdateText(PlatformView.Text);
-
-		void OnEditingEnded(object? sender, EventArgs e)
-		{
-			if (VirtualView == null || PlatformView == null)
-				return;
-
-			VirtualView.UpdateText(PlatformView.Text);
-			VirtualView.IsFocused = false;
-		}
-
-		void OnTextPropertySet(object? sender, EventArgs e) =>
-			VirtualView.UpdateText(PlatformView.Text);
-
-		bool OnShouldChangeCharacters(UITextField textField, NSRange range, string replacementString) =>
-			VirtualView.TextWithinMaxLength(textField.Text, range, replacementString);
 	}
 }

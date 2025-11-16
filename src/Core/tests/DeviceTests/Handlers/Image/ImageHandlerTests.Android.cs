@@ -9,35 +9,8 @@ namespace Microsoft.Maui.DeviceTests
 {
 	public partial class ImageHandlerTests<TImageHandler, TStub>
 	{
-		[Theory]
-		[InlineData("#FF0000")]
-		[InlineData("#00FF00")]
-		[InlineData("#000000")]
-		public async Task InitializingNullSourceOnlyUpdatesTransparent(string colorHex)
-		{
-			var expectedColor = Color.FromArgb(colorHex);
-
-			var image = new TStub
-			{
-				Background = new SolidPaintStub(expectedColor)
-			};
-
-			await InvokeOnMainThreadAsync(async () =>
-			{
-				var handler = CreateHandler<CountedImageHandler>(image);
-
-				await image.Wait();
-
-				Assert.Single(handler.ImageEvents);
-				Assert.Equal("SetImageResource", handler.ImageEvents[0].Member);
-				Assert.Equal(Android.Resource.Color.Transparent, handler.ImageEvents[0].Value);
-
-				await handler.PlatformView.AssertContainsColor(expectedColor);
-			});
-		}
-
 		[Fact]
-		public async Task InitializingSourceOnlyUpdatesDrawableOnce()
+		public async Task UpdatingSourceWorks()
 		{
 			var image = new TStub
 			{
@@ -48,81 +21,14 @@ namespace Microsoft.Maui.DeviceTests
 			await InvokeOnMainThreadAsync(async () =>
 			{
 				var handler = CreateHandler<CountedImageHandler>(image);
-
-				await image.Wait();
-
-				await handler.PlatformView.AssertContainsColor(Colors.Red);
-
-				Assert.Equal(2, handler.ImageEvents.Count);
-				Assert.Equal("SetImageResource", handler.ImageEvents[0].Member);
-				Assert.Equal(Android.Resource.Color.Transparent, handler.ImageEvents[0].Value);
-				Assert.Equal("SetImageResource", handler.ImageEvents[1].Member);
-				Assert.IsType<int>(handler.ImageEvents[1].Value);
-			});
-		}
-
-		[Fact]
-		public async Task UpdatingSourceOnlyUpdatesDrawableTwice()
-		{
-			var image = new TStub
-			{
-				Background = new SolidPaintStub(Colors.Black),
-				Source = new FileImageSourceStub("red.png"),
-			};
-
-			await InvokeOnMainThreadAsync(async () =>
-			{
-				var handler = CreateHandler<CountedImageHandler>(image);
-
-				await image.Wait();
-
-				await handler.PlatformView.AssertContainsColor(Colors.Red);
-
-				handler.ImageEvents.Clear();
+				await image.WaitUntilLoaded();
+				await handler.PlatformView.AssertContainsColor(Colors.Red, MauiContext);
 
 				image.Source = new FileImageSourceStub("blue.png");
 				handler.UpdateValue(nameof(IImage.Source));
-
-				await image.Wait();
-
-				await handler.PlatformView.AssertContainsColor(Colors.Blue);
-
-				Assert.Equal(2, handler.ImageEvents.Count);
-				Assert.Equal("SetImageResource", handler.ImageEvents[0].Member);
-				Assert.Equal(Android.Resource.Color.Transparent, handler.ImageEvents[0].Value);
-				Assert.Equal("SetImageResource", handler.ImageEvents[1].Member);
-
-				var r = MauiProgram.DefaultContext.Resources.GetDrawableId(MauiProgram.DefaultContext.PackageName, "blue");
-				Assert.Equal(r, handler.ImageEvents[1].Value);
+				await image.WaitUntilLoaded();
+				await handler.PlatformView.AssertContainsColor(Colors.Blue, MauiContext);
 			});
-		}
-
-		[Fact]
-		public async Task ImageLoadSequenceIsCorrectWithChecks()
-		{
-			var events = await ImageLoadSequenceIsCorrect();
-
-			Assert.Equal(2, events.Count);
-			Assert.Equal("SetImageResource", events[0].Member);
-			Assert.Equal(Android.Resource.Color.Transparent, events[0].Value);
-			Assert.Equal("SetImageDrawable", events[1].Member);
-			var drawable = Assert.IsType<ColorDrawable>(events[1].Value);
-			drawable.Color.IsEquivalent(Colors.Blue.ToPlatform());
-		}
-
-		[Fact]
-		public async Task InterruptingLoadCancelsAndStartsOverWithChecks()
-		{
-			var events = await InterruptingLoadCancelsAndStartsOver();
-
-			Assert.Equal(3, events.Count);
-			Assert.Equal("SetImageResource", events[0].Member);
-			Assert.Equal(Android.Resource.Color.Transparent, events[0].Value);
-			Assert.Equal("SetImageResource", events[1].Member);
-			Assert.Equal(Android.Resource.Color.Transparent, events[1].Value);
-			Assert.Equal("SetImageDrawable", events[2].Member);
-			var drawable = Assert.IsType<ColorDrawable>(events[2].Value);
-			drawable.Color.IsEquivalent(Colors.Red.ToPlatform());
 		}
 
 		[Fact]
@@ -153,6 +59,46 @@ namespace Microsoft.Maui.DeviceTests
 						Task.Delay(5_000));
 
 					Assert.Equal(TaskStatus.RanToCompletion, secondResultTask.Status);
+
+					// now try without awaiting (Glide cache should return the same drawable immediately)
+					var thirdResultTask = service.LoadDrawableAsync(imageSource, handler.PlatformView);
+					var fourthResultTask = service.LoadDrawableAsync(imageSource, handler.PlatformView);
+
+					// make sure we wait, but only for 5 seconds
+					await Task.WhenAny(
+						Task.WhenAll(thirdResultTask, fourthResultTask),
+						Task.Delay(5_000));
+
+					Assert.Equal(TaskStatus.RanToCompletion, thirdResultTask.Status);
+					Assert.Equal(TaskStatus.RanToCompletion, fourthResultTask.Status);
+				});
+			});
+		}
+
+		[Theory]
+		[InlineData("#FF0000")]
+		[InlineData("#00FF00")]
+		[InlineData("#000000")]
+		public async Task LoadDrawableAsyncWithFileLoadsFileInsteadOfResource(string colorHex)
+		{
+			var expectedColor = Color.FromArgb(colorHex);
+
+			var service = new FileImageSourceService();
+
+			var filename = BaseImageSourceServiceTests.CreateBitmapFile(100, 100, expectedColor, "blue.png");
+			var imageSource = new FileImageSourceStub(filename);
+
+			var image = new TStub();
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var handler = CreateHandler<TImageHandler>(image);
+
+				await handler.PlatformView.AttachAndRun(async () =>
+				{
+					var result = await service.LoadDrawableAsync(imageSource, handler.PlatformView);
+
+					await handler.PlatformView.AssertColorAtCenterAsync(expectedColor.ToPlatform(), MauiContext);
 				});
 			});
 		}

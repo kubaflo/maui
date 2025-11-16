@@ -13,10 +13,8 @@ namespace Microsoft.Maui.Media
 {
 	partial class ScreenshotImplementation : IPlatformScreenshot, IScreenshot
 	{
-		static IWindowManager windowManager;
-
 		static IWindowManager WindowManager =>
-			windowManager ??= Application.Context.GetSystemService(Context.WindowService) as IWindowManager;
+			Application.Context.GetSystemService(Context.WindowService) as IWindowManager;
 
 		public bool IsCaptureSupported => true;
 
@@ -44,7 +42,7 @@ namespace Microsoft.Maui.Media
 			_ = view ?? throw new ArgumentNullException(nameof(view));
 
 			var bitmap = Render(view);
-			var result = new ScreenshotResult(bitmap);
+			var result = bitmap is null ? null : new ScreenshotResult(bitmap);
 
 			return Task.FromResult<IScreenshotResult>(result);
 		}
@@ -86,6 +84,8 @@ namespace Microsoft.Maui.Media
 		static Bitmap RenderUsingDrawingCache(View view)
 		{
 #pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CA1416 // Validate platform compatibility
+#pragma warning disable CA1422 // Validate platform compatibility
 			try
 			{
 				var enabled = view.DrawingCacheEnabled;
@@ -102,6 +102,8 @@ namespace Microsoft.Maui.Media
 			{
 				return null;
 			}
+#pragma warning restore CA1422 // Validate platform compatibility
+#pragma warning restore CA1416 // Validate platform compatibility
 #pragma warning restore CS0618 // Type or member is obsolete
 		}
 	}

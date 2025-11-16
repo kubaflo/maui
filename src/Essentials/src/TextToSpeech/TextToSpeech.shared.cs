@@ -7,30 +7,64 @@ using Debug = System.Diagnostics.Debug;
 
 namespace Microsoft.Maui.Media
 {
+	/// <summary>
+	/// The TextToSpeech API enables an application to utilize the built-in text-to-speech engines to speak back text from the device and also to query available languages that the engine can support.
+	/// </summary>
 	public interface ITextToSpeech
 	{
+		/// <summary>
+		/// Gets a list of languages supported by text-to-speech.
+		/// </summary>
+		/// <returns>A collection of <see cref="Locale"/> objects with languages supported by text-to-speech on this device.</returns>
 		Task<IEnumerable<Locale>> GetLocalesAsync();
 
+		/// <summary>
+		/// Speaks the given text through the device's speech-to-text.
+		/// </summary>
+		/// <param name="text">The text to speak.</param>
+		/// <param name="options">The options to use for speaking.</param>
+		/// <param name="cancelToken">Optional cancellation token to stop speaking.</param>
+		/// <returns>A <see cref="Task"/> object with the current status of the asynchronous operation.</returns>
 		Task SpeakAsync(string text, SpeechOptions? options = default, CancellationToken cancelToken = default);
 	}
 
-	/// <include file="../../docs/Microsoft.Maui.Essentials/TextToSpeech.xml" path="Type[@FullName='Microsoft.Maui.Essentials.TextToSpeech']/Docs" />
+	/// <summary>
+	/// The TextToSpeech API enables an application to utilize the built-in text-to-speech engines to speak back text from the device and also to query available languages that the engine can support.
+	/// </summary>
+	/// <remarks>When using this on Android targeting Android 11 (R API 30) you must update your Android Manifest with queries that are used with the new package visibility requirements. See the conceptual docs for more information.</remarks>
 	public static partial class TextToSpeech
 	{
-		/// <include file="../../docs/Microsoft.Maui.Essentials/TextToSpeech.xml" path="//Member[@MemberName='GetLocalesAsync']/Docs" />
+		/// <summary>
+		/// Gets a list of languages supported by text-to-speech.
+		/// </summary>
+		/// <returns>A collection of <see cref="Locale"/> objects with languages supported by text-to-speech on this device.</returns>
 		public static Task<IEnumerable<Locale>> GetLocalesAsync() =>
 			Default.GetLocalesAsync();
 
-		/// <include file="../../docs/Microsoft.Maui.Essentials/TextToSpeech.xml" path="//Member[@MemberName='SpeakAsync'][1]/Docs" />
+		/// <summary>
+		/// Speaks the given text through the device's speech-to-text.
+		/// </summary>
+		/// <param name="text">The text to speak.</param>
+		/// <param name="cancelToken">Optional cancellation token to stop speaking.</param>
+		/// <returns>A <see cref="Task"/> object with the current status of the asynchronous operation.</returns>
 		public static Task SpeakAsync(string text, CancellationToken cancelToken = default) =>
 			Default.SpeakAsync(text, default, cancelToken);
 
-		/// <include file="../../docs/Microsoft.Maui.Essentials/TextToSpeech.xml" path="//Member[@MemberName='SpeakAsync'][2]/Docs" />
+		/// <summary>
+		/// Speaks the given text through the device's speech-to-text.
+		/// </summary>
+		/// <param name="text">The text to speak.</param>
+		/// <param name="options">The options to use for speaking.</param>
+		/// <param name="cancelToken">Optional cancellation token to stop speaking.</param>
+		/// <returns>A <see cref="Task"/> object with the current status of the asynchronous operation.</returns>
 		public static Task SpeakAsync(string text, SpeechOptions? options, CancellationToken cancelToken = default) =>
 			Default.SpeakAsync(text, options, cancelToken);
 
 		static ITextToSpeech? defaultImplementation;
 
+		/// <summary>
+		/// Provides the default implementation for static usage of this API.
+		/// </summary>
 		public static ITextToSpeech Default =>
 			defaultImplementation ??= new TextToSpeechImplementation();
 
@@ -114,6 +148,10 @@ namespace Microsoft.Maui.Media
 		internal const float VolumeDefault = 0.5f;
 		internal const float VolumeMin = 0.0f;
 
+		internal const float RateMax = 2.0f;
+		internal const float RateDefault = 1.0f;
+		internal const float RateMin = 0.1f;
+
 		SemaphoreSlim? semaphore;
 
 		public Task<IEnumerable<Locale>> GetLocalesAsync() =>
@@ -136,6 +174,12 @@ namespace Microsoft.Maui.Media
 					throw new ArgumentOutOfRangeException($"Pitch must be >= {PitchMin} and <= {PitchMin}");
 			}
 
+			if (options?.Rate.HasValue ?? false)
+			{
+				if (options.Rate.Value < RateMin || options.Rate.Value > RateMax)
+					throw new ArgumentOutOfRangeException($"Rate must be >= {RateMin} and <= {RateMin}");
+			}
+
 			if (semaphore == null)
 				semaphore = new SemaphoreSlim(1, 1);
 
@@ -152,19 +196,42 @@ namespace Microsoft.Maui.Media
 		}
 	}
 
-	/// <include file="../../docs/Microsoft.Maui.Essentials/Locale.xml" path="Type[@FullName='Microsoft.Maui.Essentials.Locale']/Docs" />
+	/// <summary>
+	/// Represents a specific geographical, political, or cultural region.
+	/// </summary>
 	public class Locale
 	{
-		/// <include file="../../docs/Microsoft.Maui.Essentials/Locale.xml" path="//Member[@MemberName='Language']/Docs" />
+		/// <summary>
+		/// Gets the language name or code.
+		/// </summary>
+		/// <remarks>
+		/// <para>This value may vary between platforms.</para>
+		/// <para>
+		/// For Android this used the ISO 639 alpha-2 or alpha-3 language code, or registered language subtags up to 8 alpha letters (for future enhancements).
+		/// When a language has both an alpha-2 code and an alpha-3 code, the alpha-2 code must be used.
+		/// </para>
+		/// <para>For iOS and Windows this uses the BCP-47 language code.</para>
+		/// </remarks>
 		public string Language { get; }
 
-		/// <include file="../../docs/Microsoft.Maui.Essentials/Locale.xml" path="//Member[@MemberName='Country']/Docs" />
+		/// <summary>
+		/// Gets the country name or code.
+		/// </summary>
+		/// <remarks>
+		/// <para>This value may vary between platforms.</para>
+		/// <para>For Android this used the ISO 3166 alpha-2 country code or UN M.49 numeric-3 area code.</para>
+		/// <para>For iOS and Windows this field is not used and <see langword="null"/> .</para>
+		/// </remarks>
 		public string Country { get; }
 
-		/// <include file="../../docs/Microsoft.Maui.Essentials/Locale.xml" path="//Member[@MemberName='Name']/Docs" />
+		/// <summary>
+		/// Gets the display name of the locale.
+		/// </summary>
 		public string Name { get; }
 
-		/// <include file="../../docs/Microsoft.Maui.Essentials/Locale.xml" path="//Member[@MemberName='Id']/Docs" />
+		/// <summary>
+		/// Gets the unique identifier of the locale.
+		/// </summary>
 		public string Id { get; }
 
 		internal Locale(string language, string country, string name, string id)
@@ -176,16 +243,33 @@ namespace Microsoft.Maui.Media
 		}
 	}
 
-	/// <include file="../../docs/Microsoft.Maui.Essentials/SpeechOptions.xml" path="Type[@FullName='Microsoft.Maui.Essentials.SpeechOptions']/Docs" />
+	/// <summary>
+	/// Represents options that can be used to influence the <see cref="ITextToSpeech"/> behavior.
+	/// </summary>
 	public class SpeechOptions
 	{
-		/// <include file="../../docs/Microsoft.Maui.Essentials/SpeechOptions.xml" path="//Member[@MemberName='Locale']/Docs" />
+		/// <summary>
+		/// Gets or sets the locale to use with text-to-speech.
+		/// </summary>
+		/// <remarks>The <see cref="Locale.Language"/> property should match a <see cref="Locale.Language"/> value returned by <see cref="ITextToSpeech.GetLocalesAsync"/>.</remarks>
 		public Locale? Locale { get; set; }
 
-		/// <include file="../../docs/Microsoft.Maui.Essentials/SpeechOptions.xml" path="//Member[@MemberName='Pitch']/Docs" />
+		/// <summary>
+		/// The pitch to use when speaking.
+		/// </summary>
+		/// <remarks>This value should be between <c>0f</c> and <c>2.0f</c>.</remarks>
 		public float? Pitch { get; set; }
 
-		/// <include file="../../docs/Microsoft.Maui.Essentials/SpeechOptions.xml" path="//Member[@MemberName='Volume']/Docs" />
+		/// <summary>
+		/// The volume to use when speaking.
+		/// </summary>
+		/// <remarks>This value should be between <c>0f</c> and <c>1.0f</c>.</remarks>
 		public float? Volume { get; set; }
+
+		/// <summary>
+		/// The speech rate to use when speaking.
+		/// </summary>
+		/// <remarks>This value should be between <c>0.1f</c> and <c>2.0f</c>.</remarks>
+		public float? Rate { get; set; }
 	}
 }

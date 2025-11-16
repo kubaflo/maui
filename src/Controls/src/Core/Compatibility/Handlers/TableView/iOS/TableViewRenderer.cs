@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using Microsoft.Maui.Controls.Platform;
@@ -8,10 +9,11 @@ using RectangleF = CoreGraphics.CGRect;
 
 namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
+#pragma warning disable CS0618 // Type or member is obsolete
 	public class TableViewRenderer : ViewRenderer<TableView, UITableView>
+#pragma warning restore CS0618 // Type or member is obsolete
 	{
 		const int DefaultRowHeight = 44;
-		KeyboardInsetTracker _insetTracker;
 		UIView _originalBackgroundView;
 		RectangleF _previousFrame;
 
@@ -27,23 +29,20 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		public override void LayoutSubviews()
 		{
-			_insetTracker?.OnLayoutSubviews();
 			base.LayoutSubviews();
 
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (_previousFrame != Frame)
-			{
+#pragma warning disable CS0618 // Type or member is obsolete
 				_previousFrame = Frame;
-				_insetTracker?.UpdateInsets();
-			}
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		protected override void Dispose(bool disposing)
 		{
-			if (disposing && _insetTracker != null)
+			if (disposing)
 			{
-				_insetTracker.Dispose();
-				_insetTracker = null;
-
 				var viewsToLookAt = new Stack<UIView>(Subviews);
 				while (viewsToLookAt.Count > 0)
 				{
@@ -72,7 +71,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			return intent == TableIntent.Data ? UITableViewStyle.Plain : UITableViewStyle.Grouped;
 		}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		protected override void OnElementChanged(ElementChangedEventArgs<TableView> e)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 			if (e.NewElement != null)
 			{
@@ -80,24 +81,13 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 				if (Control == null || Control.Style != style)
 				{
-					if (Control != null)
-					{
-						_insetTracker.Dispose();
-						Control.Dispose();
-					}
+					Control?.Dispose();
 
 					var tv = CreateNativeControl();
 					_originalBackgroundView = tv.BackgroundView;
 
 					SetNativeControl(tv);
 					tv.CellLayoutMarginsFollowReadableWidth = false;
-
-					_insetTracker = new KeyboardInsetTracker(tv, () => Control.Window, insets => Control.ContentInset = Control.ScrollIndicatorInsets = insets, point =>
-					{
-						var offset = Control.ContentOffset;
-						offset.Y += point.Y;
-						Control.SetContentOffset(offset, true);
-					}, this);
 				}
 
 				SetSource();
@@ -113,12 +103,16 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		{
 			base.OnElementPropertyChanged(sender, e);
 
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (e.PropertyName == TableView.RowHeightProperty.PropertyName)
 				UpdateRowHeight();
 			else if (e.PropertyName == TableView.HasUnevenRowsProperty.PropertyName)
 				SetSource();
 			else if (e.PropertyName == VisualElement.BackgroundColorProperty.PropertyName || e.PropertyName == VisualElement.BackgroundProperty.PropertyName)
 				UpdateBackgroundView();
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		protected override void UpdateNativeWidget()
@@ -139,7 +133,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		public override void TraitCollectionDidChange(UITraitCollection previousTraitCollection)
 		{
+#pragma warning disable CA1422 // Validate platform compatibility
 			base.TraitCollectionDidChange(previousTraitCollection);
+#pragma warning restore CA1422 // Validate platform compatibility
 			// Make sure the cells adhere to changes UI theme
 			if (OperatingSystem.IsIOSVersionAtLeast(13) && previousTraitCollection?.UserInterfaceStyle != TraitCollection.UserInterfaceStyle)
 				Control.ReloadData();

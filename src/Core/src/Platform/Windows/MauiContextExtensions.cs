@@ -17,7 +17,7 @@ namespace Microsoft.Maui.Platform
 
 		public static IServiceProvider GetApplicationServices(this IMauiContext mauiContext)
 		{
-			return MauiWinUIApplication.Current.Services
+			return IPlatformApplication.Current?.Services
 				?? throw new InvalidOperationException("Unable to find Application Services");
 		}
 
@@ -28,7 +28,7 @@ namespace Microsoft.Maui.Platform
 
 			if (registerNewNavigationRoot)
 			{
-				scopedContext.AddWeakSpecific(new NavigationRootManager(scopedContext.GetPlatformWindow()));
+				scopedContext.AddSpecific(new NavigationRootManager(scopedContext.GetPlatformWindow()));
 			}
 
 			return scopedContext;

@@ -11,6 +11,8 @@ namespace Microsoft.Maui.Controls.Design
 		{
 		}
 
+		protected override bool ExclusiveToKnownValues => true;
+
 		protected override string[] KnownValues
 			=> new[]
 			{
@@ -21,7 +23,10 @@ namespace Microsoft.Maui.Controls.Design
 				"Numeric",
 				"Telephone",
 				"Text",
-				"Url"
+				"Url",
+				"Password",
+				"Date",
+				"Time"
 			};
 	}
 }

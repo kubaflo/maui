@@ -1,4 +1,5 @@
-﻿using Microsoft.Maui.Handlers;
+﻿using System.Threading.Tasks;
+using Microsoft.Maui.Handlers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -15,9 +16,27 @@ namespace Microsoft.Maui.DeviceTests
 		// But for now we have to preserve the old Forms behavior and make the tests pass, so
 		// these tests will consider Windows's "LineBreakMode" to be it's text trimming mode
 		TextTrimming GetPlatformLineBreakMode(LabelHandler labelHandler) =>
-			GetPlatformLabel(labelHandler).TextTrimming; 
+			GetPlatformLabel(labelHandler).TextTrimming;
 
 		int GetPlatformMaxLines(LabelHandler labelHandler) =>
 			GetPlatformLabel(labelHandler).MaxLines;
+
+		Task<float> GetPlatformOpacity(LabelHandler labelHandler)
+		{
+			return InvokeOnMainThreadAsync(() =>
+			{
+				var nativeView = GetPlatformLabel(labelHandler);
+				return (float)nativeView.Opacity;
+			});
+		}
+
+		Task<bool> GetPlatformIsVisible(LabelHandler labelHandler)
+		{
+			return InvokeOnMainThreadAsync(() =>
+			{
+				var nativeView = GetPlatformLabel(labelHandler);
+				return nativeView.Visibility == Microsoft.UI.Xaml.Visibility.Visible;
+			});
+		}
 	}
 }

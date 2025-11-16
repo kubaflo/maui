@@ -6,6 +6,7 @@ using Xunit;
 
 namespace Microsoft.Maui.Essentials.DeviceTests
 {
+	[Category("Share")]
 	public class Share_Tests
 	{
 		[Fact]
@@ -16,14 +17,14 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 				Text = null,
 				Uri = null
 			};
-			await Assert.ThrowsAsync<ArgumentException>(() => Share.RequestAsync(request));
+			await Assert.ThrowsAsync<ArgumentException>(() => Share.RequestAsync(request)).ConfigureAwait(false);
 		}
 
 		[Fact]
 		public async Task Share_NullShareTextRequest()
 		{
 			ShareTextRequest request = null;
-			await Assert.ThrowsAsync<ArgumentNullException>(() => Share.RequestAsync(request));
+			await Assert.ThrowsAsync<ArgumentNullException>(() => Share.RequestAsync(request)).ConfigureAwait(false);
 		}
 
 		[Fact]
@@ -33,14 +34,14 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 			{
 				File = null
 			};
-			await Assert.ThrowsAsync<ArgumentException>(() => Share.RequestAsync(request));
+			await Assert.ThrowsAsync<ArgumentException>(() => Share.RequestAsync(request)).ConfigureAwait(false);
 		}
 
 		[Fact]
 		public async Task Share_NullShareFileRequest()
 		{
 			ShareFileRequest request = null;
-			await Assert.ThrowsAsync<ArgumentNullException>(() => Share.RequestAsync(request));
+			await Assert.ThrowsAsync<ArgumentNullException>(() => Share.RequestAsync(request)).ConfigureAwait(false);
 		}
 
 		[Fact]
@@ -50,7 +51,7 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 			{
 				Files = new List<ShareFile>()
 			};
-			await Assert.ThrowsAsync<ArgumentException>(() => Share.RequestAsync(request));
+			await Assert.ThrowsAsync<ArgumentException>(() => Share.RequestAsync(request)).ConfigureAwait(false);
 		}
 
 		[Fact]
@@ -60,14 +61,14 @@ namespace Microsoft.Maui.Essentials.DeviceTests
 			{
 				Files = new List<ShareFile>() { null }
 			};
-			await Assert.ThrowsAsync<ArgumentException>(() => Share.RequestAsync(request));
+			await Assert.ThrowsAsync<ArgumentException>(() => Share.RequestAsync(request)).ConfigureAwait(false);
 		}
 
 		[Fact]
 		public async Task Share_NullShareMultipleFilesRequest()
 		{
 			ShareMultipleFilesRequest request = null;
-			await Assert.ThrowsAsync<ArgumentNullException>(() => Share.RequestAsync(request));
+			await Assert.ThrowsAsync<ArgumentNullException>(() => Share.RequestAsync(request)).ConfigureAwait(false);
 		}
 
 		[Fact]

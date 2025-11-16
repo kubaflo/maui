@@ -34,6 +34,7 @@ namespace Microsoft.Maui.DeviceTests.Stubs
 				Log(drawable);
 			}
 
+			[System.Runtime.Versioning.SupportedOSPlatform("android23.0")]
 			public override void SetImageIcon(Icon icon)
 			{
 				base.SetImageIcon(icon);
@@ -46,7 +47,7 @@ namespace Microsoft.Maui.DeviceTests.Stubs
 				Log(resId);
 			}
 
-			public override void SetImageURI(Android.Net.Uri uri)
+			public override void SetImageURI(global::Android.Net.Uri uri)
 			{
 				base.SetImageURI(uri);
 				Log(uri);

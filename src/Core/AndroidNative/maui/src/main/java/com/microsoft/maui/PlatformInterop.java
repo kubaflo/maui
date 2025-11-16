@@ -1,26 +1,45 @@
 package com.microsoft.maui;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.BlendMode;
+import android.graphics.BlendModeColorFilter;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PathEffect;
+import android.graphics.PorterDuff;
+import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.PaintDrawable;
 import android.net.Uri;
+import android.os.Build;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.util.DisplayMetrics;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.TintTypedArray;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
+import androidx.window.layout.WindowMetricsCalculator;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
@@ -36,16 +55,45 @@ import com.google.android.material.tabs.TabLayoutMediator;
 
 import com.microsoft.maui.glide.MauiCustomTarget;
 import com.microsoft.maui.glide.MauiCustomViewTarget;
+import com.microsoft.maui.glide.MauiTarget;
 import com.microsoft.maui.glide.font.FontModel;
 
-import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class PlatformInterop {
+
     public static void requestLayoutIfNeeded(View view) {
-        if (!view.isInLayout())
+        
+        // If the view isn't currently in the layout process, then we simply request
+        // that layout happen next time around
+        if (!view.isInLayout())	{
             view.requestLayout();
+            return;
+        }
+        
+        /* 
+            Something is requesting layout while the view is already in the middle of a layout pass. This is most 
+            likely because a layout-affecting property has been data bound to another layout-affecting property, e.g. 
+            binding the width of a child control to the ActualWidth of its parent.
+            
+            If we simply call `requestLayout()` again right now, it will set a flag which will be cleared at the end 
+            of the current layout pass, and the view will not be arranged with the updated values.
+
+            Instead, we post the layout request to the UI thread's queue, ensuring that it will happen after the current
+            layout pass has finished. Layout will happen again with the updated values.
+        */
+
+        Runnable runnable = () -> { 
+            if (!view.isInLayout())	{
+                view.requestLayout();
+            }
+        };
+        
+        view.post(runnable);
     }
 
     public static void removeFromParent(View view) {
@@ -84,7 +132,7 @@ public class PlatformInterop {
 
     public static View getSemanticPlatformElement(View view) {
         if (view instanceof SearchView) {
-            view = view.findViewById(androidx.appcompat.R.id.search_button);
+            view = view.findViewById(androidx.appcompat.R.id.search_src_text);
         }
 
         return view;
@@ -212,7 +260,43 @@ public class PlatformInterop {
         return pager;
     }
 
-    private static void prepare(RequestBuilder<Drawable> builder, Target<Drawable> target, Boolean cachingEnabled, ImageLoaderCallback callback) {
+    /**
+     * Call setColorFilter on a Drawable, passing in (int)Microsoft.Maui.FilterMode
+     * Calls the appropriate methods for Android API 29/Q+
+     * @param drawable android.graphics.Drawable
+     * @param color android.graphics.Color
+     * @param mode (int)Microsoft.Maui.FilterMode
+     */
+    public static void setColorFilter(@NonNull Drawable drawable, int color, int mode) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            drawable.setColorFilter(new BlendModeColorFilter(color, getBlendMode(mode)));
+        } else {
+            drawable.setColorFilter(color, getPorterMode(mode));
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.Q)
+    static BlendMode getBlendMode(int mode) {
+        // NOTE: keep in sync with src/Core/src/Primitives/FilterMode.cs
+        switch (mode) {
+            case 0: return BlendMode.SRC_IN;
+            case 1: return BlendMode.MULTIPLY;
+            case 2: return BlendMode.SRC_ATOP;
+            default: throw new RuntimeException("Invalid Mode");
+        }
+    }
+
+    static PorterDuff.Mode getPorterMode(int mode) {
+        // NOTE: keep in sync with src/Core/src/Primitives/FilterMode.cs
+        switch (mode) {
+            case 0: return PorterDuff.Mode.SRC_IN;
+            case 1: return PorterDuff.Mode.MULTIPLY;
+            case 2: return PorterDuff.Mode.SRC_ATOP;
+            default: throw new RuntimeException("Invalid Mode");
+        }
+    }
+
+    private static void prepare(RequestBuilder<Drawable> builder, MauiTarget target, boolean cachingEnabled, ImageLoaderCallback callback) {
         // A special value to work around https://github.com/dotnet/maui/issues/6783 where targets
         // are actually re-used if all the variables are the same.
         // Adding this "error image" that will always load a null image makes each request unique,
@@ -226,17 +310,20 @@ public class PlatformInterop {
                 .skipMemoryCache(true);
         }
 
-        builder
-            .into(target);
+        target.load(builder);
     }
 
-    private static void loadInto(RequestBuilder<Drawable> builder, ImageView imageView, Boolean cachingEnabled, ImageLoaderCallback callback) {
-        MauiCustomViewTarget target = new MauiCustomViewTarget(imageView, callback);
+    public static String getGlyphHex(String glyph) {
+        return FontModel.getGlyphHex(glyph);
+    }
+
+    private static void loadInto(RequestBuilder<Drawable> builder, ImageView imageView, boolean cachingEnabled, ImageLoaderCallback callback, Object model) {
+        MauiCustomViewTarget target = new MauiCustomViewTarget(imageView, callback, model);
         prepare(builder, target, cachingEnabled, callback);
     }
 
-    private static void load(RequestBuilder<Drawable> builder, Context context, Boolean cachingEnabled, ImageLoaderCallback callback) {
-        MauiCustomTarget target = new MauiCustomTarget(context, callback);
+    private static void load(RequestBuilder<Drawable> builder, Context context, boolean cachingEnabled, ImageLoaderCallback callback, Object model) {
+        MauiCustomTarget target = new MauiCustomTarget(context, callback, model);
         prepare(builder, target, cachingEnabled, callback);
     }
 
@@ -244,10 +331,10 @@ public class PlatformInterop {
         RequestBuilder<Drawable> builder = Glide
             .with(imageView)
             .load(file);
-        loadInto(builder, imageView, true, callback);
+        loadInto(builder, imageView, true, callback, file);
     }
 
-    public static void loadImageFromUri(ImageView imageView, String uri, Boolean cachingEnabled, ImageLoaderCallback callback) {
+    public static void loadImageFromUri(ImageView imageView, String uri, boolean cachingEnabled, ImageLoaderCallback callback) {
         Uri androidUri = Uri.parse(uri);
         if (androidUri == null) {
             callback.onComplete(false, null, null);
@@ -256,14 +343,14 @@ public class PlatformInterop {
         RequestBuilder<Drawable> builder = Glide
             .with(imageView)
             .load(androidUri);
-        loadInto(builder, imageView, cachingEnabled, callback);
+        loadInto(builder, imageView, cachingEnabled, callback, androidUri);
     }
 
     public static void loadImageFromStream(ImageView imageView, InputStream inputStream, ImageLoaderCallback callback) {
         RequestBuilder<Drawable> builder = Glide
             .with(imageView)
             .load(inputStream);
-        loadInto(builder, imageView, true, callback);
+        loadInto(builder, imageView, false, callback, inputStream);
     }
 
     public static void loadImageFromFont(ImageView imageView, @ColorInt int color, String glyph, Typeface typeface, float textSize, ImageLoaderCallback callback) {
@@ -272,17 +359,17 @@ public class PlatformInterop {
             .with(imageView)
             .load(fontModel)
             .override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL);
-        loadInto(builder, imageView, true, callback);
+        loadInto(builder, imageView, true, callback, fontModel);
     }
 
     public static void loadImageFromFile(Context context, String file, ImageLoaderCallback callback) {
         RequestBuilder<Drawable> builder = Glide
             .with(context)
             .load(file);
-        load(builder, context, true, callback);
+        load(builder, context, true, callback, file);
     }
 
-    public static void loadImageFromUri(Context context, String uri, Boolean cachingEnabled, ImageLoaderCallback callback) {
+    public static void loadImageFromUri(Context context, String uri, boolean cachingEnabled, ImageLoaderCallback callback) {
         Uri androidUri = Uri.parse(uri);
         if (androidUri == null) {
             callback.onComplete(false, null, null);
@@ -291,14 +378,14 @@ public class PlatformInterop {
         RequestBuilder<Drawable> builder = Glide
             .with(context)
             .load(androidUri);
-        load(builder, context, cachingEnabled, callback);
+        load(builder, context, cachingEnabled, callback, androidUri);
     }
 
     public static void loadImageFromStream(Context context, InputStream inputStream, ImageLoaderCallback callback) {
         RequestBuilder<Drawable> builder = Glide
             .with(context)
             .load(inputStream);
-        load(builder, context, true, callback);
+        load(builder, context, false, callback, inputStream);
     }
 
     public static void loadImageFromFont(Context context, @ColorInt int color, String glyph, Typeface typeface, float textSize, ImageLoaderCallback callback) {
@@ -307,15 +394,314 @@ public class PlatformInterop {
             .with(context)
             .load(fontModel)
             .override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL);
-        load(builder, context, true, callback);
+        load(builder, context, true, callback, fontModel);
     }
 
     public static ColorStateList getColorStateListForToolbarStyleableAttribute(Context context, int resId, int index) {
-        TintTypedArray styledAttributes = TintTypedArray.obtainStyledAttributes(context, null, R.styleable.Toolbar, resId, 0);
+        // Use the appcompat styleable resource ID instead
+        TintTypedArray styledAttributes = TintTypedArray.obtainStyledAttributes(context, null, androidx.appcompat.R.styleable.Toolbar, resId, 0);
         try {
             return styledAttributes.getColorStateList(index);
         } finally {
             styledAttributes.recycle();
         }
+    }
+    
+    public static long measureAndGetWidthAndHeight(View view, int widthMeasureSpec, int heightMeasureSpec) {
+        view.measure(widthMeasureSpec, heightMeasureSpec);
+        int width = view.getMeasuredWidth();
+        int height = view.getMeasuredHeight();
+        return ((long)width << 32) | (height & 0xffffffffL);
+    }
+
+    @NonNull
+    public static ColorStateList getDefaultColorStateList(int color)
+    {
+        return new ColorStateList(ColorStates.DEFAULT, new int[] { color });
+    }
+
+    @NonNull
+    public static ColorStateList getEditTextColorStateList(int enabled, int disabled)
+    {
+        return new ColorStateList(ColorStates.getEditTextState(), new int[] { enabled, disabled });
+    }
+
+    @NonNull
+    public static ColorStateList getCheckBoxColorStateList(int enabledChecked, int enabledUnchecked, int disabledChecked, int disabledUnchecked)
+    {
+        return new ColorStateList(ColorStates.getCheckBoxState(), new int[] { enabledChecked, enabledUnchecked, disabledChecked, disabledUnchecked });
+    }
+
+    @NonNull
+    public static ColorStateList getSwitchColorStateList(int disabled, int on, int normal)
+    {
+        return new ColorStateList(ColorStates.getSwitchState(), new int[] { disabled, on, normal });
+    }
+
+    @NonNull
+    public static ColorStateList getButtonColorStateList(int enabled, int disabled, int off, int pressed)
+    {
+        return new ColorStateList(ColorStates.getButtonState(), new int[] { enabled, disabled, off, pressed });
+    }
+
+    /**
+     * Creates a ColorStateList for EditText if the existing colors do not match
+     * @return a ColorStateList, or null if one is not needed
+     */
+    public static ColorStateList createEditTextColorStateList(ColorStateList colorStateList, int color)
+    {
+        if (colorStateList == null) {
+            return getEditTextColorStateList(color, color);
+        }
+        int[][] editTextState = ColorStates.getEditTextState();
+        for (int i = 0; i < editTextState.length; i++) {
+            if (colorStateList.getColorForState(editTextState[i], color) != color) {
+                return getEditTextColorStateList(color, color);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Sets many values at once on a Paint object
+     * @param paint
+     * @param strokeWidth
+     * @param strokeJoin
+     * @param strokeCap
+     * @param strokeMiter
+     * @param pathEffect
+     */
+    public static void setPaintValues(Paint paint, float strokeWidth, Paint.Join strokeJoin, Paint.Cap strokeCap, float strokeMiter, PathEffect pathEffect)
+    {
+        paint.setStrokeWidth(strokeWidth);
+        paint.setStrokeJoin(strokeJoin);
+        paint.setStrokeCap(strokeCap);
+        paint.setStrokeMiter(strokeMiter);
+        if (pathEffect != null) {
+            paint.setPathEffect(pathEffect);
+        }
+    }
+
+    /**
+     * Draws the background and the border (if any).
+     * @param drawable
+     * @param canvas
+     * @param width
+     * @param height
+     * @param clipPath
+     * @param borderPaint
+     */
+    public static void drawMauiDrawablePath(PaintDrawable drawable, Canvas canvas, int width, int height, @NonNull Path clipPath, Paint borderPaint)
+    {
+        Paint paint = drawable.getPaint();
+        if (paint != null) {
+            canvas.drawPath(clipPath, paint);
+        }
+        if (borderPaint != null) {
+            canvas.drawPath(clipPath, borderPaint);
+        }
+    }
+
+    /**
+     * Gets the value of android.R.attr.windowBackground from the given Context
+     * @param context
+     * @return the color or -1 if not found
+     */
+    public static int getWindowBackgroundColor(Context context)
+    {
+        TypedValue value = new TypedValue();
+        if (!context.getTheme().resolveAttribute(android.R.attr.windowBackground, value, true) && isColorType(value)) {
+            return value.data;
+        } else {
+            return -1;
+        }
+    }
+
+    /**
+     * Needed because TypedValue.isColorType() is only API Q+
+     * https://github.com/aosp-mirror/platform_frameworks_base/blob/1d896eeeb8744a1498128d62c09a3aa0a2a29a16/core/java/android/util/TypedValue.java#L266-L268
+     * @param value
+     * @return true if the TypedValue is a Color
+     */
+    private static boolean isColorType(TypedValue value)
+    {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return value.isColorType();
+        } else {
+            // Implementation from AOSP
+            return (value.type >= TypedValue.TYPE_FIRST_COLOR_INT && value.type <= TypedValue.TYPE_LAST_COLOR_INT);
+        }
+    }
+
+    /**
+     * Sets the maxLength of an EditText
+     * @param editText
+     * @param maxLength
+     */
+    public static void updateMaxLength(@NonNull EditText editText, int maxLength)
+    {
+        setLengthFilter(editText, maxLength);
+
+        if (maxLength < 0)
+            return;
+
+        Editable currentText = editText.getText();
+        if (currentText.length() > maxLength) {
+            editText.setText(currentText.subSequence(0, maxLength));
+        }
+    }
+
+    /**
+     * Updates the InputFilter[] of an EditText. Used for Entry and SearchBar.
+     * @param editText
+     * @param maxLength
+     */
+    public static void setLengthFilter(@NonNull EditText editText, int maxLength)
+    {
+        if (maxLength == -1)
+            maxLength = Integer.MAX_VALUE;
+
+        List<InputFilter> currentFilters = new ArrayList<>(Arrays.asList(editText.getFilters()));
+        boolean changed = false;
+        for (int i = 0; i < currentFilters.size(); i++) {
+            InputFilter filter = currentFilters.get(i);
+            if (filter instanceof InputFilter.LengthFilter) {
+                currentFilters.remove(i);
+                changed = true;
+                break;
+            }
+        }
+
+        if (maxLength >= 0) {
+            currentFilters.add(new InputFilter.LengthFilter(maxLength));
+            changed = true;
+        }
+        if (changed) {
+            InputFilter[] newFilter = new InputFilter[currentFilters.size()];
+            editText.setFilters(currentFilters.toArray(newFilter));
+        }
+    }
+
+    /**
+     * Computes the current WindowMetrics' bounds
+     * @param activity
+     * @return Rect value of the bounds
+     */
+    @NonNull
+    public static Rect getCurrentWindowMetrics(Activity activity) {
+        return WindowMetricsCalculator.Companion
+            .getOrCreate()
+            .computeCurrentWindowMetrics(activity)
+            .getBounds();
+    }
+
+    /**
+     * Gets font metrics based on the given context and default font size
+     * @param context
+     * @param defaultFontSize
+     * @return FontMetrics object or null if context or display metrics is null
+     */
+    public static Paint.FontMetrics getFontMetrics(Context context, float defaultFontSize) {
+        if (context == null)
+            return null;
+
+        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+        if (metrics != null) {
+            return new Paint() {{
+                setTextSize(
+                    TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_SP,
+                        defaultFontSize,
+                        metrics
+                ));
+            }}.getFontMetrics();
+        } else {
+            return null;
+        }
+    }
+
+    private static class ColorStates
+    {
+        static final int[] EMPTY = new int[] { };
+        static final int[][] DEFAULT = new int[][] { EMPTY };
+
+        private static int[][] editTextState, checkBoxState, switchState, buttonState;
+
+        static int[][] getEditTextState()
+        {
+            if (editTextState == null) {
+                editTextState = new int[][] {
+                  new int[] {  android.R.attr.state_enabled },
+                  new int[] { -android.R.attr.state_enabled },
+                };
+            }
+            return editTextState;
+        }
+
+        static int[][] getCheckBoxState()
+        {
+            if (checkBoxState == null) {
+                checkBoxState = new int[][] {
+                    new int[] {  android.R.attr.state_enabled,  android.R.attr.state_checked },
+                    new int[] {  android.R.attr.state_enabled, -android.R.attr.state_checked },
+                    new int[] { -android.R.attr.state_enabled,  android.R.attr.state_checked },
+                    new int[] { -android.R.attr.state_enabled, -android.R.attr.state_pressed },
+                };
+            }
+            return checkBoxState;
+        }
+
+        static int[][] getSwitchState()
+        {
+            if (switchState == null) {
+                switchState = new int[][] {
+                    new int[] { -android.R.attr.state_enabled },
+                    new int[] {  android.R.attr.state_checked },
+                    EMPTY,
+                };
+            }
+            return switchState;
+        }
+
+        static int[][] getButtonState()
+        {
+            if (buttonState == null) {
+                buttonState = new int[][] {
+                    new int[] {  android.R.attr.state_enabled },
+                    new int[] { -android.R.attr.state_enabled },
+                    new int[] { -android.R.attr.state_checked },
+                    new int[] {  android.R.attr.state_pressed },
+                };
+            }
+            return buttonState;
+        }
+    }
+
+    /*
+     * This method is used to get the Animatable object from a Drawable.
+     * This is useful when we need to start/stop animations on a drawable.
+     * @param drawable The drawable to get the Animatable object from.
+     * @return The Animatable object if the drawable is an instance of Animatable, otherwise null.
+     */
+    public static Animatable getAnimatable(Drawable drawable) {
+        if (drawable instanceof Animatable) {
+            return (Animatable) drawable;
+        }
+        return null;
+    }
+
+    /*
+     * Checks if the ScaleType of the ImageView is CENTER_CROP.
+     * Avoids returning an object to C#.
+     */
+    public static boolean isImageViewCenterCrop(@NonNull ImageView imageView) {
+        return imageView.getScaleType() == ImageView.ScaleType.CENTER_CROP;
+    }
+
+    /*
+     * Sets View.ClipBounds without creating a Rect object in C#
+     */
+    public static void setClipBounds(@NonNull View view, int left, int top, int right, int bottom) {
+        view.setClipBounds(new Rect(left, top, right, bottom));
     }
 }

@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.ComponentModel;
 using Microsoft.Maui.Controls.Compatibility;
@@ -8,7 +9,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 {
 	public class CellTableViewCell : UITableViewCell, INativeElementView
 	{
-		Cell _cell;
+#pragma warning disable CS0618 // Type or member is obsolete
+		WeakReference<Cell> _cell;
+#pragma warning restore CS0618 // Type or member is obsolete
 
 		public Action<object, PropertyChangedEventArgs> PropertyChanged;
 
@@ -18,25 +21,32 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		{
 		}
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		public Cell Cell
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
-			get { return _cell; }
+			get => _cell?.GetTargetOrDefault();
 			set
 			{
-				if (_cell == value)
-					return;
-
-				if (_cell != null)
+				if (_cell is not null)
 				{
-					_cell.PropertyChanged -= HandlePropertyChanged;
-					BeginInvokeOnMainThread(_cell.SendDisappearing);
+					if (_cell.TryGetTarget(out var cell) && cell == value)
+						return;
+
+					if (cell is not null)
+					{
+						BeginInvokeOnMainThread(cell.SendDisappearing);
+					}
 				}
-				_cell = value;
 
-				if (_cell != null)
+				if (value is not null)
 				{
-					_cell.PropertyChanged += HandlePropertyChanged;
-					BeginInvokeOnMainThread(_cell.SendAppearing);
+					_cell = new(value);
+					BeginInvokeOnMainThread(value.SendAppearing);
+				}
+				else
+				{
+					_cell = null;
 				}
 			}
 		}
@@ -45,7 +55,9 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		public void HandlePropertyChanged(object sender, PropertyChangedEventArgs e) => PropertyChanged?.Invoke(sender, e);
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		internal static UITableViewCell GetPlatformCell(UITableView tableView, Cell cell, bool recycleCells = false, string templateId = "")
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
 			var id = cell.GetType().FullName;
 
@@ -71,7 +83,6 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			else
 				reusableCell = tableView.DequeueReusableCell(id);
 
-			cell.Handler?.DisconnectHandler();
 			cell.ReusableCell = reusableCell;
 			cell.TableView = tableView;
 			var handler = cell.ToHandler(cell.FindMauiContext());
@@ -96,8 +107,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			}
 
 			// Because the layer was hidden we need to layout the cell by hand
-			if (cellWithContent != null)
-				cellWithContent.LayoutSubviews();
+			cellWithContent?.LayoutSubviews();
 
 			return platformCell;
 		}
@@ -109,13 +119,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			if (disposing)
 			{
-				PropertyChanged = null;
-
-				if (_cell != null)
+#pragma warning disable CS0618 // Type or member is obsolete
+				if (Cell is Cell cell)
 				{
-					_cell.PropertyChanged -= HandlePropertyChanged;
-					CellRenderer.SetRealCell(_cell, null);
+					CellRenderer.SetRealCell(cell, null);
 				}
+#pragma warning restore CS0618 // Type or member is obsolete
 				_cell = null;
 			}
 

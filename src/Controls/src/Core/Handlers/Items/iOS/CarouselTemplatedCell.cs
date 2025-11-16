@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using CoreGraphics;
 using Foundation;
@@ -9,7 +10,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 {
 	public class CarouselTemplatedCell : TemplatedCell
 	{
-		public static NSString ReuseId = new NSString("Microsoft.Maui.Controls.Compatibility.Platform.iOS.CarouselTemplatedCell");
+		public static NSString ReuseId = new NSString("Microsoft.Maui.Controls.CarouselTemplatedCell");
 		CGSize _constraint;
 
 		[Export("initWithFrame:")]
@@ -31,7 +32,10 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public override CGSize Measure()
 		{
-			return new CGSize(_constraint.Width, _constraint.Height);
+			// Go through the measure pass even if the constraints are fixed
+			// to ensure arrange pass has the appropriate desired size in place.
+			PlatformHandler.VirtualView.Measure(_constraint.Width, _constraint.Height);
+			return _constraint;
 		}
 
 		protected override (bool, Size) NeedsContentSizeUpdate(Size currentSize)
@@ -41,7 +45,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		protected override bool AttributesConsistentWithConstrainedDimension(UICollectionViewLayoutAttributes attributes)
 		{
-			return false;
+			return _constraint.IsCloseTo(attributes.Frame.Size);
 		}
 	}
 }

@@ -447,11 +447,8 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 				templatedItems.GroupedCollectionChanged -= OnGroupedCollectionChanged;
 				_listView.ItemSelected -= OnItemSelected;
 
-				if (_lastSelected != null)
-				{
-					_lastSelected.Dispose();
-					_lastSelected = null;
-				}
+				_lastSelected?.Dispose();
+				_lastSelected = null;
 
 				DisposeCells();
 			}
@@ -736,7 +733,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.Android
 			else
 			{
 				groupHeaderCell = new TextCell();
-				groupHeaderCell.SetBinding(TextCell.TextProperty, nameof(group.Name));
+				groupHeaderCell.SetBinding(
+					TextCell.TextProperty,
+					static (ITemplatedItemsList<Cell> g) => g.Name);
 				groupHeaderCell.BindingContext = group;
 			}
 

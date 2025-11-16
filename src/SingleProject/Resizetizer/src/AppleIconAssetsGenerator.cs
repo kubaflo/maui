@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Maui.Resizetizer
 {
@@ -37,12 +36,18 @@ namespace Microsoft.Maui.Resizetizer
 			var assetContentsFile = Path.Combine(outputAssetsDir, "Contents.json");
 			var appIconSetContentsFile = Path.Combine(outputAppIconSetDir, "Contents.json");
 
-			var infoJsonProp = new JObject(
-				new JProperty("info", new JObject(
-					new JProperty("version", 1),
-					new JProperty("author", "xcode"))));
+			var (sourceExists, sourceModified) = Utils.FileExists(Info.Filename);
+			var (destinationExists, destinationModified) = Utils.FileExists(appIconSetContentsFile);
 
-			var appIconImagesJson = new List<JObject>();
+			if (destinationModified > sourceModified)
+			{
+				Logger.Log($"Skipping `{Info.Filename}` => `{appIconSetContentsFile}` file is up to date.");
+				return new List<ResizedImageInfo> {
+					new ResizedImageInfo { Dpi = new DpiPath("", 1), Filename = appIconSetContentsFile }
+				};
+			}
+
+			var appIconImagesJson = new List<string>();
 
 			foreach (var dpi in Dpis)
 			{
@@ -52,23 +57,35 @@ namespace Microsoft.Maui.Resizetizer
 					var h = dpi.Size.Value.Height.ToString("0.#", CultureInfo.InvariantCulture);
 					var s = dpi.Scale.ToString("0", CultureInfo.InvariantCulture);
 
-					appIconImagesJson.Add(new JObject(
-						new JProperty("idiom", idiom),
-						new JProperty("size", $"{w}x{h}"),
-						new JProperty("scale", $"{s}x"),
-						new JProperty("filename", AppIconName + dpi.FileSuffix + ".png")));
+					var imageIcon =
+					$$"""
+							{
+								"idiom": "{{idiom}}",
+								"size": "{{w}}x{{h}}",
+								"scale": "{{s}}x",
+								"filename": "{{AppIconName + dpi.FileSuffix + Resizer.RasterFileExtension}}"
+							}
+					""";
+
+					appIconImagesJson.Add(imageIcon);
 				}
 			}
 
-			var appIconContentsJson = new JObject(
-				new JProperty("images", appIconImagesJson.ToArray()),
-				new JProperty("properties", new JObject()),
-				new JProperty("info", new JObject(
-					new JProperty("version", 1),
-					new JProperty("author", "xcode"))));
+			var appIconContentsJson =
+			$$"""
+			{
+				"images": [
+			{{string.Join("," + Environment.NewLine, appIconImagesJson)}}
+				],
+				"properties": {},
+				"info": {
+					"version": 1,
+					"author": "xcode"
+				}
+			}
+			""";
 
-			//File.WriteAllText(assetContentsFile, infoJsonProp.ToString());
-			File.WriteAllText(appIconSetContentsFile, appIconContentsJson.ToString());
+			File.WriteAllText(appIconSetContentsFile, appIconContentsJson.Replace("\t", "  "));
 
 			return new List<ResizedImageInfo> {
 				//new ResizedImageInfo { Dpi = new DpiPath("", 1), Filename = assetContentsFile },

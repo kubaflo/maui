@@ -1,12 +1,14 @@
-﻿using System.Threading.Tasks;
+﻿using System.ComponentModel;
+using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Handlers;
 using Xunit;
 
 namespace Microsoft.Maui.DeviceTests
 {
 	[Category(TestCategory.Button)]
-	public partial class ButtonTests : HandlerTestBase
+	public partial class ButtonTests : ControlsHandlerTestBase
 	{
 		[Theory]
 		[ClassData(typeof(TextTransformCases))]
@@ -28,10 +30,16 @@ namespace Microsoft.Maui.DeviceTests
 			Assert.Equal(expected, platformText);
 		}
 
-		[Fact(DisplayName = "LineBreakMode Initializes Correctly")]
-		public async Task LineBreakModeInitializesCorrectly()
+		[Theory(DisplayName = "LineBreakMode Initializes Correctly")]
+		[InlineData(LineBreakMode.MiddleTruncation)]
+		[InlineData(LineBreakMode.HeadTruncation)]
+		[InlineData(LineBreakMode.TailTruncation)]
+		[InlineData(LineBreakMode.WordWrap)]
+		[InlineData(LineBreakMode.CharacterWrap)]
+		[InlineData(LineBreakMode.NoWrap)]
+		public async Task LineBreakModeInitializesCorrectly(LineBreakMode lineBreakMode)
 		{
-			var xplatLineBreakMode = LineBreakMode.TailTruncation;
+			var xplatLineBreakMode = lineBreakMode;
 
 			var button = new Button()
 			{
@@ -45,6 +53,37 @@ namespace Microsoft.Maui.DeviceTests
 			await InvokeOnMainThreadAsync(() =>
 			{
 				Assert.Equal(expectedValue, GetPlatformLineBreakMode(handler));
+			});
+		}
+
+		[Fact]
+		[Description("The BackgroundColor of a Button should match with native background color")]
+		public async Task ButtonBackgroundColorConsistent()
+		{
+			var expected = Colors.AliceBlue;
+			var button = new Button()
+			{
+				BackgroundColor = expected,
+				HeightRequest = 100,
+				WidthRequest = 200
+			};
+
+			await ValidateHasColor(button, expected, typeof(ButtonHandler));
+		}
+
+		[Fact]
+		[Description("The IsVisible property of a Button should match with native IsVisible")]
+		public async Task VerifyButtonIsVisibleProperty()
+		{
+			var button = new Button();
+			button.IsVisible = false;
+			var expectedValue = button.IsVisible;
+
+			var handler = await CreateHandlerAsync<ButtonHandler>(button);
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var isVisible = await GetPlatformIsVisible(handler);
+				Assert.Equal(expectedValue, isVisible);
 			});
 		}
 	}

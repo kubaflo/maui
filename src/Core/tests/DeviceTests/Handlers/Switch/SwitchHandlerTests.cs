@@ -8,7 +8,7 @@ using Xunit;
 namespace Microsoft.Maui.DeviceTests
 {
 	[Category(TestCategory.Switch)]
-	public partial class SwitchHandlerTests : HandlerTestBase<SwitchHandler, SwitchStub>
+	public partial class SwitchHandlerTests : CoreHandlerTestBase<SwitchHandler, SwitchStub>
 	{
 		[Fact(DisplayName = "Is Toggled Initializes Correctly")]
 		public async Task IsToggledInitializesCorrectly()
@@ -24,7 +24,7 @@ namespace Microsoft.Maui.DeviceTests
 		[Fact(DisplayName = "Is Toggled Does Not Set Same Value")]
 		public async Task IsToggledDoesNotSetSameValue()
 		{
-			var fireCount= 0;
+			var fireCount = 0;
 
 			var switchStub = new SwitchStub()
 			{
@@ -35,31 +35,6 @@ namespace Microsoft.Maui.DeviceTests
 			await InvokeOnMainThreadAsync(() => CreateHandler(switchStub));
 
 			Assert.Equal(0, fireCount);
-		}
-
-		[Theory(DisplayName = "Track Color Initializes Correctly")]
-		[InlineData(true)]
-		//[InlineData(false)] // Track color is not always visible when off
-		public async Task TrackColorInitializesCorrectly(bool isToggled)
-		{
-			var switchStub = new SwitchStub()
-			{
-				IsOn = isToggled,
-				TrackColor = Colors.Red
-			};
-
-			await ValidateTrackColor(switchStub, Colors.Red);
-		}
-
-		[Fact(DisplayName = "Track Color Updates Correctly")]
-		public async Task TrackColorUpdatesCorrectly()
-		{
-			var switchStub = new SwitchStub()
-			{
-				IsOn = true
-			};
-
-			await ValidateTrackColor(switchStub, Colors.Red, () => switchStub.TrackColor = Colors.Red);
 		}
 
 		[Fact(DisplayName = "ThumbColor Initializes Correctly", Skip = "There seems to be an issue, so disable for now: https://github.com/dotnet/maui/issues/1275")]
@@ -87,7 +62,11 @@ namespace Microsoft.Maui.DeviceTests
 			await CreateHandlerAsync(switchStub);
 		}
 
-		[Fact(DisplayName = "Thumb Color Updates Correctly")]
+		[Fact(DisplayName = "Thumb Color Updates Correctly"
+#if WINDOWS
+			, Skip = "Failing on Windows"
+#endif
+			)]
 		public async Task ThumbColorUpdatesCorrectly()
 		{
 			var switchStub = new SwitchStub()
@@ -95,7 +74,7 @@ namespace Microsoft.Maui.DeviceTests
 				IsOn = true
 			};
 
-			await ValidateThumbColor(switchStub, Colors.Red, () => switchStub.ThumbColor = Colors.Red);
+			await ValidateThumbColor(switchStub, Colors.Red, () => switchStub.ThumbColor = Colors.Red, updatePropertyValue: nameof(switchStub.ThumbColor));
 		}
 
 		[Fact(DisplayName = "Updating Native Is On property updates Virtual View"

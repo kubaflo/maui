@@ -1,9 +1,9 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
-using CoreGraphics;
 using Foundation;
 using Microsoft.Maui.Graphics;
 using ObjCRuntime;
@@ -13,6 +13,8 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 {
 	public class ShellItemRenderer : UITabBarController, IShellItemRenderer, IAppearanceObserver, IUINavigationControllerDelegate, IDisconnectable
 	{
+		readonly static UITableViewCell[] EmptyUITableViewCellArray = Array.Empty<UITableViewCell>();
+
 		#region IShellItemRenderer
 
 		public ShellItem ShellItem
@@ -56,6 +58,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		public ShellItemRenderer(IShellContext context)
 		{
+			this.DisableiOS18ToolbarTabs();
 			_context = context;
 		}
 
@@ -71,7 +74,6 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				{
 					ShellItem.SetValueFromRenderer(ShellItem.CurrentItemProperty, renderer.ShellSection);
 					CurrentRenderer = renderer;
-					MoreNavigationController?.PopToRootViewController(false);
 				}
 
 				if (ReferenceEquals(value, MoreNavigationController))
@@ -95,12 +97,24 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			}
 			UpdateMoreCellsEnabled();
 		}
+		
+		public override void TraitCollectionDidChange(UITraitCollection previousTraitCollection)
+		{
+			if (previousTraitCollection.VerticalSizeClass == TraitCollection.VerticalSizeClass)
+				return;
+
+			foreach (var item in TabBar.Items)
+			{
+				item.Image = TabbedViewExtensions.AutoResizeTabBarImage(TraitCollection, item.Image);
+			}
+		}
 
 		public override void ViewDidLayoutSubviews()
 		{
 			base.ViewDidLayoutSubviews();
 
 			_appearanceTracker?.UpdateLayout(this);
+			UpdateNavBarHidden();
 		}
 
 		public override void ViewDidLoad()
@@ -111,7 +125,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				bool accept = true;
 				var r = RendererForViewController(viewController);
-				if (r != null)
+				if (r is not null)
 					accept = ((IShellItemController)ShellItem).ProposeSection(r.ShellSection, false);
 
 				return accept;
@@ -322,7 +336,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				var renderer = RendererForViewController(ViewControllers[i]);
 				var cell = moreNavigationCells[i - 4];
 
-#pragma warning disable CA1416 // TODO: 'UITableViewCell.TextLabel' is unsupported on: 'ios' 14.0 and later
+#pragma warning disable CA1416, CA1422 // TODO: 'UITableViewCell.TextLabel' is unsupported on: 'ios' 14.0 and later
 				if (!renderer.ShellSection.IsEnabled)
 				{
 					cell.UserInteractionEnabled = false;
@@ -337,15 +351,15 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 					cell.UserInteractionEnabled = true;
 					cell.TextLabel.TextColor = _defaultMoreTextLabelTextColor;
 				}
-#pragma warning restore CA1416
+#pragma warning restore CA1416, CA1422
 			}
 
 			UITableViewCell[] GetMoreNavigationCells()
 			{
-				if (MoreNavigationController.TopViewController.View is UITableView uITableView)
+				if (MoreNavigationController.TopViewController.View is UITableView uITableView && uITableView.Window is not null)
 					return uITableView.VisibleCells;
 
-				return new UITableViewCell[0];
+				return EmptyUITableViewCellArray;
 			}
 		}
 
@@ -430,12 +444,32 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			base.ViewWillLayoutSubviews();
 		}
 
+		void UpdateNavBarHidden()
+		{
+			if (SelectedViewController is UINavigationController navigationController && _displayedPage is not null)
+			{
+				navigationController.SetNavigationBarHidden(!Shell.GetNavBarIsVisible(_displayedPage), Shell.GetNavBarVisibilityAnimationEnabled(_displayedPage));
+			}
+		}
+
 		void UpdateTabBarHidden()
 		{
 			if (ShellItemController == null)
 				return;
 
-			TabBar.Hidden = !ShellItemController.ShowTabs;
+			if (OperatingSystem.IsMacCatalystVersionAtLeast(18) || OperatingSystem.IsIOSVersionAtLeast(18))
+			{
+				if (TabBarHidden == !ShellItemController.ShowTabs)
+				{
+					return;
+				}
+	   
+				TabBarHidden = !ShellItemController.ShowTabs;
+			}
+			else
+			{
+				TabBar.Hidden = !ShellItemController.ShowTabs;
+			}
 		}
 	}
 }

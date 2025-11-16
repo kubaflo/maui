@@ -1,16 +1,18 @@
+#nullable disable
 using System;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../../docs/Microsoft.Maui.Controls/ImageCell.xml" path="Type[@FullName='Microsoft.Maui.Controls.ImageCell']/Docs" />
+	/// <summary>A <see cref="Microsoft.Maui.Controls.TextCell"/> that has an image.</summary>
+	[Obsolete("The controls which use ImageCell (ListView and TableView) are obsolete. Please use CollectionView instead.")]
 	public class ImageCell : TextCell
 	{
-		/// <include file="../../../docs/Microsoft.Maui.Controls/ImageCell.xml" path="//Member[@MemberName='ImageSourceProperty']/Docs" />
-		public static readonly BindableProperty ImageSourceProperty = BindableProperty.Create("ImageSource", typeof(ImageSource), typeof(ImageCell), null,
+		/// <summary>Bindable property for <see cref="ImageSource"/>.</summary>
+		public static readonly BindableProperty ImageSourceProperty = BindableProperty.Create(nameof(ImageSource), typeof(ImageSource), typeof(ImageCell), null,
 			propertyChanging: (bindable, oldvalue, newvalue) => ((ImageCell)bindable).OnSourcePropertyChanging((ImageSource)oldvalue, (ImageSource)newvalue),
 			propertyChanged: (bindable, oldvalue, newvalue) => ((ImageCell)bindable).OnSourcePropertyChanged((ImageSource)oldvalue, (ImageSource)newvalue));
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/ImageCell.xml" path="//Member[@MemberName='.ctor']/Docs" />
+		/// <summary>Initializes a new instance of the ImageCell class.</summary>
 		public ImageCell()
 		{
 			Disappearing += (sender, e) =>
@@ -21,7 +23,7 @@ namespace Microsoft.Maui.Controls
 			};
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/ImageCell.xml" path="//Member[@MemberName='ImageSource']/Docs" />
+		/// <summary>Gets or sets the ImageSource from which the Image is loaded. This is a bindable property.</summary>
 		[System.ComponentModel.TypeConverter(typeof(ImageSourceConverter))]
 		public ImageSource ImageSource
 		{

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using ObjCRuntime;
 using UIKit;
 
@@ -53,6 +53,14 @@ namespace Microsoft.Maui.Platform
 				textView.AutocorrectionType = UITextAutocorrectionType.No;
 		}
 
+		public static void UpdateIsSpellCheckEnabled(this UITextView textView, IEditor editor)
+		{
+			if (editor.IsSpellCheckEnabled)
+				textView.SpellCheckingType = UITextSpellCheckingType.Yes;
+			else
+				textView.SpellCheckingType = UITextSpellCheckingType.No;
+		}
+
 		public static void UpdateFont(this UITextView textView, ITextStyle textStyle, IFontManager fontManager)
 		{
 			var font = textStyle.Font;
@@ -62,7 +70,24 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateIsReadOnly(this UITextView textView, IEditor editor)
 		{
-			textView.UserInteractionEnabled = !(editor.IsReadOnly || editor.InputTransparent);
+			textView.UpdateEditable(editor);
+		}
+
+		public static void UpdateIsEnabled(this UITextView textView, IEditor editor)
+		{
+			textView.UpdateEditable(editor);
+		}
+
+		internal static void UpdateEditable(this UITextView textView, IEditor editor)
+		{
+			var isEditable = editor.IsEnabled && !editor.IsReadOnly;
+
+			textView.Editable = isEditable;
+
+			// If the input accessory view is set, we need to hide it when the editor is read-only
+			// otherwise it will appear when the editor recieves focus.
+			if (textView.InputAccessoryView is { } view)
+				view.Hidden = !isEditable;
 		}
 
 		public static void UpdateKeyboard(this UITextView textView, IEditor editor)
@@ -72,7 +97,10 @@ namespace Microsoft.Maui.Platform
 			textView.ApplyKeyboard(keyboard);
 
 			if (keyboard is not CustomKeyboard)
+			{
 				textView.UpdateIsTextPredictionEnabled(editor);
+				textView.UpdateIsSpellCheckEnabled(editor);
+			}
 
 			textView.ReloadInputViews();
 		}
@@ -97,7 +125,7 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateHorizontalTextAlignment(this UITextView textView, IEditor editor)
 		{
-			textView.TextAlignment = editor.HorizontalTextAlignment.ToPlatformHorizontal().AdjustForFlowDirection(editor);
+			textView.TextAlignment = editor.HorizontalTextAlignment.ToPlatformHorizontal(textView.EffectiveUserInterfaceLayoutDirection);
 		}
 
 		public static void UpdateVerticalTextAlignment(this MauiTextView textView, IEditor editor)
@@ -115,8 +143,6 @@ namespace Microsoft.Maui.Platform
 		{
 			if (!editor.IsReadOnly)
 			{
-				if (!textView.IsFirstResponder)
-					textView.BecomeFirstResponder();
 				UITextPosition start = GetSelectionStart(textView, editor, out int startOffset);
 				UITextPosition end = GetSelectionEnd(textView, editor, start, startOffset);
 
@@ -150,6 +176,25 @@ namespace Microsoft.Maui.Platform
 				editor.SelectionLength = newSelectionLength;
 
 			return end;
+		}
+
+		internal static void AddMauiDoneAccessoryView(this UITextView textView, IViewHandler handler)
+		{
+#if !MACCATALYST
+			var accessoryView = new MauiDoneAccessoryView();
+			accessoryView.SetDataContext(handler);
+			accessoryView.SetDoneClicked(OnDoneClicked);
+			textView.InputAccessoryView = accessoryView;
+#endif
+		}
+
+		static void OnDoneClicked(object sender)
+		{
+			if (sender is IEditorHandler entryHandler)
+			{
+				entryHandler.PlatformView.ResignFirstResponder();
+				entryHandler.VirtualView.Completed();
+			}
 		}
 	}
 }

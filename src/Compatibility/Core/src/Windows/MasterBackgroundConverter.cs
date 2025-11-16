@@ -1,14 +1,14 @@
 using System;
-using Windows.UI;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 using WSolidColorBrush = Microsoft.UI.Xaml.Media.SolidColorBrush;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
-	public class MasterBackgroundConverter : Microsoft.UI.Xaml.Data.IValueConverter
+	public partial class MasterBackgroundConverter : Microsoft.UI.Xaml.Data.IValueConverter
 	{
 		// Obtained by comparing the Mail apps master section background to the detail background
 		const double Shift = 0.03;

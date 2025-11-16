@@ -10,7 +10,7 @@ namespace Microsoft.Maui.Handlers
 {
 	public partial class ApplicationHandler : ElementHandler<IApplication, IUIApplicationDelegate>
 	{
-		public static void MapTerminate(ApplicationHandler handler, IApplication application, object? args)
+		public static partial void MapTerminate(ApplicationHandler handler, IApplication application, object? args)
 		{
 #if __MACCATALYST__
 			NSApplication.SharedApplication.Terminate();
@@ -21,14 +21,14 @@ namespace Microsoft.Maui.Handlers
 
 		[SupportedOSPlatform("ios13.0")]
 		[SupportedOSPlatform("tvos13.0")]
-		public static void MapOpenWindow(ApplicationHandler handler, IApplication application, object? args)
+		public static partial void MapOpenWindow(ApplicationHandler handler, IApplication application, object? args)
 		{
 			handler.PlatformView?.RequestNewWindow(application, args as OpenWindowRequest);
 		}
 
 		[SupportedOSPlatform("ios13.0")]
 		[SupportedOSPlatform("tvos13.0")]
-		public static void MapCloseWindow(ApplicationHandler handler, IApplication application, object? args)
+		public static partial void MapCloseWindow(ApplicationHandler handler, IApplication application, object? args)
 		{
 			if (args is IWindow window)
 			{
@@ -38,10 +38,40 @@ namespace Microsoft.Maui.Handlers
 				if (sceneSession != null)
 				{
 					// Request that the scene be destroyed
-					// TODO: Error handler?
-					UIApplication.SharedApplication.RequestSceneSessionDestruction(sceneSession, null, null);
+					UIApplication.SharedApplication.RequestSceneSessionDestruction(sceneSession, null, errorHandler: (Foundation.NSError error) =>
+					{
+						handler.Logger?.LogWarning("Error during window closing. Error: {}", error);
+					});
 				}
 			}
+		}
+
+		public static partial void MapActivateWindow(ApplicationHandler handler, IApplication application, object? args)
+		{
+			// ActivateSceneSession requires 17+
+			if (!OperatingSystem.IsIOSVersionAtLeast(17) && !OperatingSystem.IsMacCatalyst())
+			{
+				return;
+			}
+
+			if (args is IWindow window)
+			{
+				var sceneSession = (window.Handler?.PlatformView as UIWindow)?.WindowScene?.Session;
+
+				if (sceneSession is not null)
+				{
+					UISceneSessionActivationRequest activationRequest = UISceneSessionActivationRequest.Create(sceneSession);
+					UIApplication.SharedApplication.ActivateSceneSession(activationRequest, errorHandler: (Foundation.NSError error) =>
+					{
+						handler.Logger?.LogWarning("Error during window activation. Error: {}", error);
+					});
+				}
+			}
+		}
+
+		internal static partial void MapAppTheme(ApplicationHandler handler, IApplication application)
+		{
+			application?.UpdateUserInterfaceStyle();
 		}
 
 #if __MACCATALYST__

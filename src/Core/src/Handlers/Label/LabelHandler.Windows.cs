@@ -43,7 +43,6 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapOpacity(ILabelHandler handler, ILabel label)
 		{
-			handler.UpdateValue(nameof(IViewHandler.ContainerView));
 			handler.PlatformView.UpdateOpacity(label);
 			handler.ToPlatform().UpdateOpacity(label);
 		}
@@ -54,8 +53,15 @@ namespace Microsoft.Maui.Handlers
 		public static void MapTextColor(ILabelHandler handler, ILabel label) =>
 			handler.PlatformView?.UpdateTextColor(label);
 
-		public static void MapCharacterSpacing(ILabelHandler handler, ILabel label) =>
+		public static void MapCharacterSpacing(ILabelHandler handler, ILabel label)
+		{
+			if (handler.IsConnectingHandler() && label.CharacterSpacing == 0)
+			{
+				return;
+			}
+
 			handler.PlatformView?.UpdateCharacterSpacing(label);
+		}
 
 		public static void MapFont(ILabelHandler handler, ILabel label)
 		{

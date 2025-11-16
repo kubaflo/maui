@@ -1,13 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
+using CoreAnimation;
 using CoreGraphics;
 using Foundation;
-using Microsoft.Maui.Devices;
 using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Media;
-using ObjCRuntime;
 using UIKit;
 using static Microsoft.Maui.Primitives.Dimension;
 
@@ -27,7 +25,7 @@ namespace Microsoft.Maui.Platform
 
 		public static void Focus(this UIView platformView, FocusRequest request)
 		{
-			platformView.BecomeFirstResponder();
+			request.TrySetResult(platformView.BecomeFirstResponder());
 		}
 
 		public static void Unfocus(this UIView platformView, IView view)
@@ -40,55 +38,51 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateVisibility(this UIView platformView, Visibility visibility)
 		{
-			var shouldLayout = false;
-
 			switch (visibility)
 			{
 				case Visibility.Visible:
-					shouldLayout = platformView.Inflate();
+					platformView.Inflate();
 					platformView.Hidden = false;
 					break;
 				case Visibility.Hidden:
-					shouldLayout = platformView.Inflate();
+					platformView.Inflate();
 					platformView.Hidden = true;
 					break;
 				case Visibility.Collapsed:
 					platformView.Hidden = true;
 					platformView.Collapse();
-					shouldLayout = true;
 					break;
-			}
-
-			// If the view is just switching between Visible and Hidden, then a re-layout isn't necessary. The return value
-			// from Inflate will tell us if the view was previously collapsed. If the view is switching to or from a collapsed
-			// state, then we'll have to ask for a re-layout.
-
-			if (shouldLayout)
-			{
-				platformView.Superview?.SetNeedsLayout();
 			}
 		}
 
 		public static void UpdateBackground(this ContentView platformView, IBorderStroke border)
 		{
-			bool hasBorder = border.Shape != null && border.Stroke != null;
+			bool hasShape = border.Shape != null;
 
-			if (hasBorder)
+			if (hasShape)
 			{
 				platformView.UpdateMauiCALayer(border);
 			}
 		}
 
-		public static void UpdateBackground(this UIView platformView, IView view) =>
-			platformView.UpdateBackground(view.Background);
+		public static void UpdateBackground(this UIView platformView, IView view)
+		{
+			platformView.UpdateBackground(view.Background, view as IButtonStroke);
+		}
 
-		public static void UpdateBackground(this UIView platformView, Paint? paint)
+		public static void UpdateBackground(this UIView platformView, Paint? paint, IButtonStroke? stroke = null)
 		{
 			// Remove previous background gradient layer if any
 			platformView.RemoveBackgroundLayer();
 
 			if (paint.IsNullOrEmpty())
-				return;
+			{
+				if (platformView is LayoutView)
+					platformView.BackgroundColor = null;
+				else
+					return;
+			}
+
 
 			if (paint is SolidPaint solidPaint)
 			{
@@ -109,6 +103,9 @@ namespace Microsoft.Maui.Platform
 				{
 					backgroundLayer.Name = BackgroundLayerName;
 					platformView.BackgroundColor = UIColor.Clear;
+
+					backgroundLayer.UpdateLayerBorder(stroke);
+
 					platformView.InsertBackgroundLayer(backgroundLayer, 0);
 				}
 			}
@@ -121,7 +118,7 @@ namespace Microsoft.Maui.Platform
 			switch (view.FlowDirection)
 			{
 				case FlowDirection.MatchParent:
-					updateValue = UISemanticContentAttribute.Unspecified;
+					updateValue = GetParentMatchingSemanticContentAttribute(view);
 					break;
 				case FlowDirection.LeftToRight:
 					updateValue = UISemanticContentAttribute.ForceLeftToRight;
@@ -132,13 +129,76 @@ namespace Microsoft.Maui.Platform
 			}
 
 			if (updateValue != platformView.SemanticContentAttribute)
+			{
 				platformView.SemanticContentAttribute = updateValue;
+
+				if (view is ITextAlignment)
+				{
+					// A change in flow direction may mean a change in text alignment
+					view.Handler?.UpdateValue(nameof(ITextAlignment.HorizontalTextAlignment));
+				}
+
+				PropagateFlowDirection(updateValue, view);
+			}
 		}
 
-		public static void UpdateOpacity(this UIView platformView, IView view)
+		static UISemanticContentAttribute GetParentMatchingSemanticContentAttribute(IView view)
 		{
-			platformView.Alpha = (float)view.Opacity;
+			var parent = view.Parent?.Handler?.PlatformView as UIView;
+
+			if (parent == null)
+			{
+				// No parent, no direction we need to match
+				return UISemanticContentAttribute.Unspecified;
+			}
+
+			var parentSemanticContentAttribute = parent.SemanticContentAttribute;
+
+			if (parentSemanticContentAttribute == UISemanticContentAttribute.ForceLeftToRight
+				|| parentSemanticContentAttribute == UISemanticContentAttribute.ForceRightToLeft)
+			{
+				return parentSemanticContentAttribute;
+			}
+
+			// The parent view isn't using an explicit direction, so there's nothing for us to match
+			return UISemanticContentAttribute.Unspecified;
 		}
+
+		static void PropagateFlowDirection(UISemanticContentAttribute semanticContentAttribute, IView view)
+		{
+			if (semanticContentAttribute != UISemanticContentAttribute.ForceLeftToRight
+				&& semanticContentAttribute != UISemanticContentAttribute.ForceRightToLeft)
+			{
+				// If the current view isn't using an explicit LTR/RTL value, there's nothing to propagate
+				return;
+			}
+
+			// If this view has any child/content views, we'll need to call UpdateFlowDirection on them
+			// because they _may_ need to update their FlowDirection to match this view
+
+			if (view is IContainer container)
+			{
+				foreach (var child in container)
+				{
+					if (child.Handler?.PlatformView is UIView uiView)
+					{
+						uiView.UpdateFlowDirection(child);
+					}
+				}
+			}
+			else if (view is IContentView contentView
+				&& contentView.PresentedContent is IView child)
+			{
+				if (child.Handler?.PlatformView is UIView uiView)
+				{
+					uiView.UpdateFlowDirection(child);
+				}
+			}
+		}
+
+		public static void UpdateOpacity(this UIView platformView, IView view) => platformView.UpdateOpacity(view.Opacity);
+
+		internal static void UpdateOpacity(this UIView platformView, double opacity) => platformView.Alpha = (float)opacity;
 
 		public static void UpdateAutomationId(this UIView platformView, IView view) =>
 			platformView.AccessibilityIdentifier = view.AutomationId;
@@ -152,22 +212,14 @@ namespace Microsoft.Maui.Platform
 		public static void UpdateShadow(this UIView platformView, IView view)
 		{
 			var shadow = view.Shadow;
-			var clip = view.Clip;
 
-			// If there is a clip shape, then the shadow should be applied to the clip layer, not the view layer
-			if (clip == null)
-			{
-				if (shadow == null)
-					platformView.ClearShadow();
-				else
-					platformView.SetShadow(shadow);
-			}
+			if (shadow == null)
+				platformView.ClearShadow();
 			else
-			{
-				if (platformView is WrapperView wrapperView)
-					wrapperView.Shadow = view.Shadow;
-			}
+				platformView.SetShadow(shadow);
 		}
+
+		[Obsolete("IBorder is not used and will be removed in a future release.")]
 		public static void UpdateBorder(this UIView platformView, IView view)
 		{
 			var border = (view as IBorder)?.Border;
@@ -175,49 +227,126 @@ namespace Microsoft.Maui.Platform
 				wrapperView.Border = border;
 		}
 
-		public static T? FindDescendantView<T>(this UIView view) where T : UIView
+		internal static T? GetChildAt<T>(this UIView view, int index) where T : UIView
 		{
-			var queue = new Queue<UIView>();
-			queue.Enqueue(view);
-
-			while (queue.Count > 0)
-			{
-				var descendantView = queue.Dequeue();
-
-				if (descendantView is T result)
-					return result;
-
-				for (var i = 0; i < descendantView.Subviews?.Length; i++)
-					queue.Enqueue(descendantView.Subviews[i]);
-			}
+			if (index < view.Subviews.Length)
+				return (T?)view.Subviews[index];
 
 			return null;
 		}
 
-		public static void UpdateBackgroundLayerFrame(this UIView view)
+		public static T? FindDescendantView<T>(this UIView view) where T : UIView =>
+			FindDescendantView<T>(view, (_) => true);
+
+		[Obsolete("MAUI background layers now automatically update their Frame when their SuperLayer Frame changes. This method will be removed in a future release.")]
+		public static void UpdateBackgroundLayerFrame(this UIView view) =>
+			view.UpdateBackgroundLayerFrame(BackgroundLayerName);
+
+		[Obsolete("MAUI background layers now automatically update their Frame when their SuperLayer Frame changes. This method will be removed in a future release.")]
+		internal static void UpdateBackgroundLayerFrame(this UIView view, string layerName)
 		{
-			if (view == null || view.Frame.IsEmpty)
+			if (view.Frame.IsEmpty)
+			{
 				return;
+			}
 
 			var layer = view.Layer;
-
-			if (layer == null || layer.Sublayers == null || layer.Sublayers.Length == 0)
-				return;
-
-			foreach (var sublayer in layer.Sublayers)
+			if (layer?.Sublayers is { Length: > 0 } sublayers)
 			{
-				if (sublayer.Name == BackgroundLayerName && sublayer.Frame != view.Bounds)
+				var bounds = view.Bounds;
+				UpdateBackgroundLayers(sublayers, layerName, bounds);
+			}
+		}
+
+		static void UpdateBackgroundLayers(this CALayer[] layers, string layerName, CGRect bounds)
+		{
+			foreach (var layer in layers)
+			{
+				if (layer.Sublayers is { Length: > 0 } sublayers)
 				{
-					sublayer.Frame = view.Bounds;
-					break;
+					UpdateBackgroundLayers(sublayers, layerName, bounds);
+				}
+
+				if (layer.Name == layerName && layer.Frame != bounds)
+				{
+					layer.Frame = bounds;
 				}
 			}
 		}
 
+		/// <summary>
+		/// Invalidates the measure of the view and all its ancestors through <see cref="UIView.SetNeedsLayout"/> propagation.
+		/// </summary>
+		/// <remarks>
+		/// Stops when it reaches the page view or a scrollable area, including <see cref="UICollectionView"/>.
+		/// </remarks>
 		public static void InvalidateMeasure(this UIView platformView, IView view)
 		{
-			platformView.SetNeedsLayout();
-			platformView.Superview?.SetNeedsLayout();
+			InvalidateMeasure(platformView);
+		}
+
+		internal static void InvalidateMeasure(this UIView platformView)
+		{
+			var propagate = true;
+
+			if (platformView is IPlatformMeasureInvalidationController mauiPlatformView)
+			{
+				propagate = mauiPlatformView.InvalidateMeasure();
+			}
+			else
+			{
+				platformView.SetNeedsLayout();
+			}
+
+			if (propagate)
+			{
+				platformView.InvalidateAncestorsMeasures();
+			}
+		}
+
+		internal static void InvalidateAncestorsMeasures(this UIView child)
+		{
+			var childMauiPlatformLayout = child as IPlatformMeasureInvalidationController;
+
+			while (true)
+			{
+				// We verify the presence of a Window to prevent scenarios where an invalidate might propagate up the view hierarchy  
+				// to a SuperView that has already been disposed. Accessing such a disposed view would result in a crash (see #24032).  
+				// This validation is only possible using `IMauiPlatformView`, as it provides a way to schedule an invalidation when the view is moved to window.  
+				// For other cases, we accept the risk since avoiding it could lead to the layout not being updated properly.
+				if (childMauiPlatformLayout is not null && child.Window is null)
+				{
+					childMauiPlatformLayout.InvalidateAncestorsMeasuresWhenMovedToWindow();
+					return;
+				}
+
+				var superview = child.Superview;
+				if (superview is null)
+				{
+					return;
+				}
+
+				// Now invalidate the parent view
+				var propagate = true;
+				var superviewMauiPlatformLayout = superview as IPlatformMeasureInvalidationController;
+				if (superviewMauiPlatformLayout is not null)
+				{
+					propagate = superviewMauiPlatformLayout.InvalidateMeasure(isPropagating: true);
+				}
+				else
+				{
+					superview.SetNeedsLayout();
+				}
+
+				if (!propagate)
+				{
+					// We've been asked to stop propagation, so let's stop here
+					return;
+				}
+
+				child = superview;
+				childMauiPlatformLayout = superviewMauiPlatformLayout;
+			}
 		}
 
 		public static void UpdateWidth(this UIView platformView, IView view)
@@ -261,6 +390,7 @@ namespace Microsoft.Maui.Platform
 			// Updating the frame (assuming it's an actual change) will kick off a layout update
 			// Handling of the default width/height will be taken care of by GetDesiredSize
 			var currentFrame = platformView.Frame;
+
 			platformView.Frame = new CoreGraphics.CGRect(currentFrame.X, currentFrame.Y, view.Width, view.Height);
 		}
 
@@ -272,7 +402,9 @@ namespace Microsoft.Maui.Platform
 			if (imageSource != null)
 			{
 				var service = provider.GetRequiredImageSourceService(imageSource);
-				var result = await service.GetImageAsync(imageSource);
+
+				var scale = platformView.GetDisplayDensity();
+				var result = await service.GetImageAsync(imageSource, scale);
 				var backgroundImage = result?.Value;
 
 				if (backgroundImage == null)
@@ -394,6 +526,21 @@ namespace Microsoft.Maui.Platform
 		internal static Matrix4x4 GetViewTransform(this UIView view)
 			=> view.Layer.GetViewTransform();
 
+		internal static Point GetLocationOnScreen(this UIView view) =>
+			view.GetPlatformViewBounds().Location;
+
+		internal static Point? GetLocationOnScreen(this IElement element)
+		{
+			if (element.Handler?.MauiContext == null)
+				return null;
+
+			return (element.ToPlatform())?.GetLocationOnScreen();
+		}
+
+		internal static Rect GetViewBounds(this UIView platformView) => platformView.GetPlatformViewBounds();
+
+		internal static Rect GetViewBounds(this IView view) => view.ToPlatform().GetViewBounds();
+
 		internal static Graphics.Rect GetBoundingBox(this IView view)
 			=> view.ToPlatform().GetBoundingBox();
 
@@ -409,19 +556,21 @@ namespace Microsoft.Maui.Platform
 			return new Rect(nvb.X, nvb.Y, nvb.Width, nvb.Height);
 		}
 
+		internal static Rect GetFrameRelativeTo(this UIView view, UIView relativeTo)
+		{
+			var viewWindowLocation = view.GetLocationOnScreen();
+			var relativeToLocation = relativeTo.GetLocationOnScreen();
+
+			return
+				new Rect(
+						new Point(viewWindowLocation.X - relativeToLocation.X, viewWindowLocation.Y - relativeToLocation.Y),
+						new Graphics.Size(view.Bounds.Width, view.Bounds.Height)
+					);
+		}
+
 		internal static UIView? GetParent(this UIView? view)
 		{
 			return view?.Superview;
-		}
-
-		internal static void LayoutToSize(this IView view, double width, double height)
-		{
-			var platformFrame = new CGRect(0, 0, width, height);
-
-			if (view.Handler is IPlatformViewHandler viewHandler && viewHandler.PlatformView != null)
-				viewHandler.PlatformView.Frame = platformFrame;
-
-			view.Arrange(platformFrame.ToRectangle());
 		}
 
 		internal static Size LayoutToMeasuredSize(this IView view, double width, double height)
@@ -438,7 +587,9 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateInputTransparent(this UIView platformView, IViewHandler handler, IView view)
 		{
-			if (view is ITextInput textInput)
+			// Interaction should not be disabled for an editor if it is set as read-only
+			// because this prevents users from scrolling the content inside an editor.
+			if (view is not IEditor && view is ITextInput textInput)
 			{
 				platformView.UpdateInputTransparent(textInput.IsReadOnly, view.InputTransparent);
 				return;
@@ -452,14 +603,74 @@ namespace Microsoft.Maui.Platform
 			platformView.UserInteractionEnabled = !(isReadOnly || inputTransparent);
 		}
 
+
+		internal static UIToolTipInteraction? GetToolTipInteraction(this UIView platformView)
+		{
+			UIToolTipInteraction? interaction = default;
+
+			if (OperatingSystem.IsMacCatalystVersionAtLeast(15)
+				|| OperatingSystem.IsIOSVersionAtLeast(15))
+			{
+				if (platformView is UIControl control)
+				{
+					interaction = control.ToolTipInteraction;
+				}
+				else
+				{
+					if (platformView.Interactions is not null)
+					{
+						foreach (var ia in platformView.Interactions)
+						{
+							if (ia is UIToolTipInteraction toolTipInteraction)
+							{
+								interaction = toolTipInteraction;
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			return interaction;
+		}
+
+		public static void UpdateToolTip(this UIView platformView, ToolTip? tooltip)
+		{
+			// UpdateToolTips were added in 15.0 for both iOS and MacCatalyst
+			if (OperatingSystem.IsMacCatalystVersionAtLeast(15)
+				|| OperatingSystem.IsIOSVersionAtLeast(15))
+			{
+				string? text = tooltip?.Content?.ToString();
+				var interaction = platformView.GetToolTipInteraction();
+
+				if (interaction is null)
+				{
+					if (!string.IsNullOrEmpty(text))
+					{
+						interaction = new UIToolTipInteraction(text);
+						platformView.AddInteraction(interaction);
+					}
+				}
+				else
+				{
+					interaction.DefaultToolTip = text;
+				}
+			}
+		}
+
 		internal static IWindow? GetHostedWindow(this IView? view)
 			=> GetHostedWindow(view?.Handler?.PlatformView as UIView);
 
 		internal static IWindow? GetHostedWindow(this UIView? view)
 			=> GetHostedWindow(view?.Window);
 
-		internal static bool IsLoaded(this UIView uiView) =>
-			uiView.Window != null;
+		internal static bool IsLoaded(this UIView uiView)
+		{
+			if (uiView == null)
+				return false;
+
+			return uiView.Window != null;
+		}
 
 		internal static IDisposable OnLoaded(this UIView uiView, Action action)
 		{
@@ -469,32 +680,76 @@ namespace Microsoft.Maui.Platform
 				return new ActionDisposable(() => { });
 			}
 
-			Dictionary<NSString, NSObject> observers = new Dictionary<NSString, NSObject>();
-			ActionDisposable? disposable = new ActionDisposable(() =>
+			var observers = new List<IDisposable>(2);
+			ActionDisposable? disposable = null;
+			disposable = new ActionDisposable(() =>
 			{
-				foreach (var thing in observers)
-					uiView.Layer.RemoveObserver(thing.Value, thing.Key);
+				disposable = null;
+				foreach (var observer in observers)
+				{
+					observer.Dispose();
+				}
+				observers.Clear();
 			});
 
 			// Ideally we could wire into UIView.MovedToWindow but there's no way to do that without just inheriting from every single
-			// UIView. So we just make our best attempt by observering some properties that are going to fire once UIView is attached to a window.			
-			observers.Add(new NSString("bounds"), (NSObject)uiView.Layer.AddObserver("bounds", Foundation.NSKeyValueObservingOptions.OldNew, (_) => OnLoadedCheck()));
-			observers.Add(new NSString("frame"), (NSObject)uiView.Layer.AddObserver("frame", Foundation.NSKeyValueObservingOptions.OldNew, (_) => OnLoadedCheck()));
+			// UIView. So we just make our best attempt by observering some properties that are going to fire once UIView is attached to a window.
+
+			if (uiView is IUIViewLifeCycleEvents lifeCycleEvents)
+			{
+				lifeCycleEvents.MovedToWindow += OnLifeCycleEventsMovedToWindow;
+
+				observers.Add(new ActionDisposable(() =>
+				{
+					lifeCycleEvents.MovedToWindow -= OnLifeCycleEventsMovedToWindow;
+				}));
+
+				void OnLifeCycleEventsMovedToWindow(object? sender, EventArgs e)
+				{
+					//The MovedToWindow fires multiple times during navigation animations, causing repeated OnLoadedCheck calls. 
+					//BeginInvokeOnMainThread ensures OnLoadedCheck executes after all window transitions are complete.
+					uiView.BeginInvokeOnMainThread(() => OnLoadedCheck(null));
+				}
+			}
+			else
+			{
+				var boundKey = new NSString("bounds");
+				var frameKey = new NSString("frame");
+
+				var boundObserver = (NSObject)uiView.Layer.AddObserver(boundKey, Foundation.NSKeyValueObservingOptions.OldNew, (oc) => OnLoadedCheck(oc));
+				var frameObserver = (NSObject)uiView.Layer.AddObserver(frameKey, Foundation.NSKeyValueObservingOptions.OldNew, (oc) => OnLoadedCheck(oc));
+
+				observers.Add(new ActionDisposable(() => uiView.Layer.RemoveObserver(boundObserver, boundKey)));
+				observers.Add(new ActionDisposable(() => uiView.Layer.RemoveObserver(frameObserver, frameKey)));
+			}
 
 			// OnLoaded is called at the point in time where the xplat view knows it's going to be attached to the window.
 			// So this just serves as a way to queue a call on the UI Thread to see if that's enough time for the window
 			// to get attached.
-			uiView.BeginInvokeOnMainThread(OnLoadedCheck);
+			uiView.BeginInvokeOnMainThread(() => OnLoadedCheck(null));
 
-			void OnLoadedCheck()
+			void OnLoadedCheck(NSObservedChange? nSObservedChange = null)
 			{
-				if (uiView.IsLoaded() && disposable != null)
+				if (disposable is not null)
 				{
-					disposable.Dispose();
-					disposable = null;
-					action();
+					if (uiView.IsLoaded())
+					{
+						disposable.Dispose();
+						disposable = null;
+						action();
+					}
+					else if (nSObservedChange != null)
+					{
+						// In some cases (FlyoutPage) the arrange and measure all take place before
+						// the view is added to the screen so this queues up a second check that
+						// hopefully will fire loaded once the view is added to the window.
+						// None of this code is great but I haven't found a better way
+						// for an outside observer to know when a subview is added to a window
+						uiView.BeginInvokeOnMainThread(() => OnLoadedCheck(null));
+					}
 				}
-			};
+			}
+			;
 
 			return disposable;
 		}
@@ -508,17 +763,38 @@ namespace Microsoft.Maui.Platform
 				return new ActionDisposable(() => { });
 			}
 
-			Dictionary<NSString, NSObject> observers = new Dictionary<NSString, NSObject>();
-			ActionDisposable? disposable = new ActionDisposable(() =>
+			var observers = new List<IDisposable>(2);
+			ActionDisposable? disposable = null;
+			disposable = new ActionDisposable(() =>
 			{
-				foreach (var thing in observers)
-					uiView.Layer.RemoveObserver(thing.Value, thing.Key);
+				disposable = null;
+				foreach (var observer in observers)
+				{
+					observer.Dispose();
+				}
+				observers.Clear();
 			});
 
 			// Ideally we could wire into UIView.MovedToWindow but there's no way to do that without just inheriting from every single
-			// UIView. So we just make our best attempt by observering some properties that are going to fire once UIView is attached to a window.	
-			observers.Add(new NSString("bounds"), (NSObject)uiView.Layer.AddObserver("bounds", Foundation.NSKeyValueObservingOptions.OldNew, (_) => UnLoadedCheck()));
-			observers.Add(new NSString("frame"), (NSObject)uiView.Layer.AddObserver("frame", Foundation.NSKeyValueObservingOptions.OldNew, (_) => UnLoadedCheck()));
+			// UIView. So we just make our best attempt by observering some properties that are going to fire once UIView is attached to a window.			
+
+			if (uiView is IUIViewLifeCycleEvents lifeCycleEvents)
+			{
+				lifeCycleEvents.MovedToWindow += OnLifeCycleEventsMovedToWindow;
+
+				observers.Add(new ActionDisposable(() =>
+				{
+					lifeCycleEvents.MovedToWindow -= OnLifeCycleEventsMovedToWindow;
+				}));
+
+				void OnLifeCycleEventsMovedToWindow(object? sender, EventArgs e)
+				{
+					//The MovedToWindow fires multiple times during navigation animations, causing repeated UnLoadedCheck calls. 
+					//BeginInvokeOnMainThread ensures UnLoadedCheck executes after all window transitions are complete.
+					uiView.BeginInvokeOnMainThread(UnLoadedCheck);
+				}
+			}
+
 
 			// OnUnloaded is called at the point in time where the xplat view knows it's going to be detached from the window.
 			// So this just serves as a way to queue a call on the UI Thread to see if that's enough time for the window
@@ -533,9 +809,225 @@ namespace Microsoft.Maui.Platform
 					disposable = null;
 					action();
 				}
-			};
+			}
+			;
 
 			return disposable;
+		}
+
+		internal static void UpdateLayerBorder(this CoreAnimation.CALayer layer, IButtonStroke? stroke)
+		{
+			if (stroke == null)
+				return;
+
+			if (stroke.StrokeColor != null)
+				layer.BorderColor = stroke.StrokeColor.ToCGColor();
+
+			if (stroke.StrokeThickness >= 0)
+				layer.BorderWidth = (float)stroke.StrokeThickness;
+
+			if (stroke.CornerRadius >= 0)
+				layer.CornerRadius = stroke.CornerRadius;
+		}
+
+		internal static T? FindResponder<T>(this UIView view) where T : UIResponder
+		{
+			var nextResponder = view as UIResponder;
+			while (nextResponder is not null)
+			{
+				// We check for Window to avoid scenarios where an invalidate might propagate up the tree
+				// To a SuperView that's been disposed which will cause a crash when trying to access it
+				if (nextResponder is UIView uiview && uiview.Window is null)
+				{
+					return null;
+				}
+
+				nextResponder = nextResponder.NextResponder;
+
+				if (nextResponder is T responder)
+					return responder;
+			}
+			return null;
+		}
+
+		internal static T? FindResponder<T>(this UIViewController controller) where T : UIViewController
+		{
+			var nextResponder = controller.View as UIResponder;
+			while (nextResponder is not null)
+			{
+				// We check for Window to avoid scenarios where an invalidate might propagate up the tree
+				// To a SuperView that's been disposed which will cause a crash when trying to access it
+				if (nextResponder is UIView uiview && uiview.Window is null)
+				{
+					return null;
+				}
+
+				nextResponder = nextResponder.NextResponder;
+
+				if (nextResponder is T responder && responder != controller)
+					return responder;
+			}
+			return null;
+		}
+
+		internal static T? FindTopController<T>(this UIView view) where T : UIViewController
+		{
+			var bestController = view.FindResponder<T>();
+			var tempController = bestController;
+
+			while (tempController is not null)
+			{
+				tempController = tempController.FindResponder<T>();
+
+				if (tempController is not null)
+					bestController = tempController;
+			}
+
+			return bestController;
+		}
+
+		internal static UIView? FindNextView(this UIView? view, UIView containerView, Func<UIView, bool> isValidType)
+		{
+			UIView? nextView = null;
+
+			while (view is not null && view != containerView && nextView is null)
+			{
+				var siblings = view.Superview?.Subviews;
+
+				if (siblings is null)
+					break;
+
+				// TableView and ListView cells may not be in order so handle separately
+				if (view.FindResponder<UITableView>() is UITableView tableView)
+				{
+					nextView = view.FindNextInTableView(tableView, isValidType);
+
+					if (nextView is null)
+						view = tableView;
+				}
+
+				else
+					nextView = view.FindNextView(siblings.IndexOf(view) + 1, isValidType);
+
+				view = view.Superview;
+			}
+
+			// if we did not find the next view, try to find the first one
+			nextView ??= containerView.Subviews?[0]?.FindNextView(0, isValidType);
+
+			return nextView;
+		}
+
+		static UIView? FindNextView(this UIView? view, int index, Func<UIView, bool> isValidType)
+		{
+			// search through the view's siblings and traverse down their branches
+			var siblings = view is UITableView table ? table.VisibleCells : view?.Superview?.Subviews;
+
+			if (siblings is null)
+				return null;
+
+			for (int i = index; i < siblings.Length; i++)
+			{
+				var sibling = siblings[i];
+
+				if (!sibling.Hidden && sibling.Subviews?.Length > 0)
+				{
+					var childVal = sibling.Subviews[0].FindNextView(0, isValidType);
+					if (childVal is not null)
+						return childVal;
+				}
+
+				if (isValidType(sibling))
+					return sibling;
+			}
+
+			return null;
+		}
+
+		static UIView? FindNextInTableView(this UIView view, UITableView table, Func<UIView, bool> isValidType)
+		{
+			if (isValidType(view))
+			{
+				var index = view.FindTableViewCellIndex(table);
+
+				return index == -1 ? null : table.FindNextView(index + 1, isValidType);
+			}
+
+			return null;
+		}
+
+		static int FindTableViewCellIndex(this UIView view, UITableView table)
+		{
+			var cells = table.VisibleCells;
+			var viewCell = view.FindResponder<UITableViewCell>();
+
+			for (int i = 0; i < cells.Length; i++)
+			{
+				if (cells[i] == viewCell)
+					return i;
+			}
+			return -1;
+		}
+
+		internal static void ChangeFocusedView(this UIView view, UIView? newView)
+		{
+			if (newView is null)
+				view.ResignFirstResponder();
+
+			else
+				newView.BecomeFirstResponder();
+		}
+
+		internal static UIView? GetContainerView(this UIView? startingPoint)
+		{
+			var rootView = startingPoint?.FindResponder<ContainerViewController>()?.View;
+
+			if (rootView is not null)
+				return rootView;
+
+			var firstViewController = startingPoint?.FindTopController<UIViewController>();
+
+			if (firstViewController?.ViewIfLoaded is not null)
+				return firstViewController.ViewIfLoaded.FindDescendantView<ContentView>();
+
+			return null;
+		}
+
+		internal static UIView? FindFirstResponder(this UIView? superview)
+		{
+			if (superview is null)
+				return null;
+
+			if (superview.IsFirstResponder)
+				return superview;
+
+			foreach (var subview in superview.Subviews)
+			{
+				var subviewFirstResponder = subview.FindFirstResponder();
+				if (subviewFirstResponder is not null)
+					return subviewFirstResponder;
+			}
+
+			return null;
+		}
+
+		internal static float GetDisplayDensity(this UIView? view) =>
+			view?.Window?.GetDisplayDensity() ?? 1.0f;
+
+		internal static bool HideSoftInput(this UIView inputView) => inputView.ResignFirstResponder();
+
+		internal static bool ShowSoftInput(this UIView inputView) => inputView.BecomeFirstResponder();
+
+		internal static bool IsSoftInputShowing(this UIView inputView) => inputView.IsFirstResponder;
+
+		private const nint NativeViewControlledByCrossPlatformLayout = 0x63D2A1;
+
+		internal static bool IsFinalMeasureHandledBySuperView(this UIView? view)
+			=> view?.Superview is ICrossPlatformLayoutBacking { CrossPlatformLayout: not null } or { Tag: NativeViewControlledByCrossPlatformLayout };
+
+		internal static void MarkAsCrossPlatformLayoutBacking(this UIView view)
+		{
+			view.Tag = NativeViewControlledByCrossPlatformLayout;
 		}
 	}
 }

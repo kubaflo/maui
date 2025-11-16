@@ -1,14 +1,14 @@
 using System.ComponentModel;
+using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.Maui.Controls.Internals;
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Platform;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class ProgressBarRenderer : ViewRenderer<ProgressBar, Microsoft.UI.Xaml.Controls.ProgressBar>
+	public partial class ProgressBarRenderer : ViewRenderer<ProgressBar, Microsoft.UI.Xaml.Controls.ProgressBar>
 	{
 		object _foregroundDefault;
 

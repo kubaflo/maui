@@ -1,17 +1,17 @@
 using System.ComponentModel;
-using Windows.UI;
+using Microsoft.Maui.Controls.Platform;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 using WRect = Windows.Foundation.Rect;
 using WSolidColorBrush = Microsoft.UI.Xaml.Media.SolidColorBrush;
-using Microsoft.UI;
-using Microsoft.Maui.Controls.Platform;
 
 namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 {
 	[System.Obsolete(Compatibility.Hosting.MauiAppBuilderExtensions.UseMapperInstead)]
-	public class LayoutRenderer : ViewRenderer<Layout, FrameworkElement>
+	public partial class LayoutRenderer : ViewRenderer<Layout, FrameworkElement>
 	{
 		protected override void OnElementChanged(ElementChangedEventArgs<Layout> e)
 		{
@@ -40,7 +40,9 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.UWP
 		{
 			base.UpdateBackgroundColor();
 
+#pragma warning disable RS0030 // Do not use banned APIs; Panel.Children is banned for performance reasons.
 			if (GetValue(BackgroundProperty) == null && Children.Count == 0)
+#pragma warning restore RS0030 // Do not use banned APIs
 			{
 				// Forces the layout to take up actual space if it's otherwise empty
 				Background = new WSolidColorBrush(Colors.Transparent);

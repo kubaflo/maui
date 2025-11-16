@@ -1,16 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls.Maps;
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Microsoft.Maui.Maps;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Core.UnitTests
 {
 	using Grid = Microsoft.Maui.Controls.Compatibility.Grid;
 	using StackLayout = Microsoft.Maui.Controls.Compatibility.StackLayout;
 
-	[TestFixture]
+
 	public class NotifiedPropertiesTests : BaseTestFixture
 	{
 		public abstract class PropertyTestCase
@@ -49,7 +51,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 					return init();
 				if (typeof(TView) == typeof(View))
 					return new View();
-				return (TView)Activator.CreateInstance(typeof(TView), new object[] { });
+				return (TView)Activator.CreateInstance(typeof(TView), Array.Empty<object>());
 			}
 
 			public override string DebugName
@@ -87,9 +89,9 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			new PropertyTestCase<Button, double> ("FontSize", v => v.FontSize, (v, o) => v.FontSize = o, () => new Button().GetDefaultFontSize(), 123.0),
 			new PropertyTestCase<Button, FontAttributes> ("FontAttributes", v => v.FontAttributes, (v, o) => v.FontAttributes = o, () => FontAttributes.None, FontAttributes.Italic),
 			new PropertyTestCase<CellTests.TestCell, double> ("Height", v => v.Height, (v, o) => v.Height = o, () => -1, 10),
-			new PropertyTestCase<DatePicker, DateTime> ("MinimumDate", v => v.MinimumDate, (v, o) => v.MinimumDate = o, () => new DateTime (1900, 1, 1), new DateTime (2014, 02, 05)),
-			new PropertyTestCase<DatePicker, DateTime> ("MaximumDate", v => v.MaximumDate, (v, o) => v.MaximumDate = o, () => new DateTime (2100, 12, 31), new DateTime (2014, 02, 05)),
-			new PropertyTestCase<DatePicker, DateTime> ("Date", v => v.Date, (v, o) => v.Date = o, () => DateTime.Now.Date, new DateTime (2008, 5, 5)),
+			new PropertyTestCase<DatePicker, DateTime?> ("MinimumDate", v => v.MinimumDate, (v, o) => v.MinimumDate = o, () => new DateTime (1900, 1, 1), new DateTime (2014, 02, 05)),
+			new PropertyTestCase<DatePicker, DateTime?> ("MaximumDate", v => v.MaximumDate, (v, o) => v.MaximumDate = o, () => new DateTime (2100, 12, 31), new DateTime (2014, 02, 05)),
+			new PropertyTestCase<DatePicker, DateTime?> ("Date", v => v.Date, (v, o) => v.Date = o, () => DateTime.Now.Date, new DateTime (2008, 5, 5)),
 			new PropertyTestCase<DatePicker, string> ("Format", v => v.Format, (v, o) => v.Format = o, () => "d", "D"),
 			new PropertyTestCase<Editor, string> ("Text", v => v.Text, (v, o) => v.Text = o, () => null, "Foo"),
 			new PropertyTestCase<Entry, string> ("Text", v => v.Text, (v, o) => v.Text = o, () => null, "Foo"),
@@ -100,7 +102,6 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			new PropertyTestCase<Frame, bool> ("HasShadow", v => v.HasShadow, (v, o) => v.HasShadow = o, () => true, false),
 			new PropertyTestCase<Grid, double> ("RowSpacing", v => v.RowSpacing, (v, o) => v.RowSpacing = o, () => 6, 12),
 			new PropertyTestCase<Grid, double> ("ColumnSpacing", v => v.ColumnSpacing, (v, o) => v.ColumnSpacing = o, () => 6, 12),
-			new PropertyTestCase<NaiveLayout, Thickness> ("Padding", v => v.Padding, (v, o) => v.Padding = o, () => default(Thickness), new Thickness (20, 20, 10, 10)),
 			new PropertyTestCase<Image, ImageSource> ("Source", v => v.Source, (v, o) => v.Source = o, () => null, ImageSource.FromFile("Foo")),
 			new PropertyTestCase<Image, Aspect> ("Aspect", v => v.Aspect, (v, o) => v.Aspect = o, () => Aspect.AspectFit, Aspect.AspectFill),
 			new PropertyTestCase<Image, bool> ("IsOpaque", v => v.IsOpaque, (v, o) => v.IsOpaque = o, () => false, true),
@@ -113,9 +114,8 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			new PropertyTestCase<Label, FormattedString> ("FormattedText", v => v.FormattedText, (v, o) => v.FormattedText = o, () => default (FormattedString), new FormattedString()),
 			new PropertyTestCase<Map, MapType> ("MapType", v => v.MapType, (v, o) => v.MapType = o, () => MapType.Street, MapType.Satellite),
 			new PropertyTestCase<Map, bool> ("IsShowingUser", v => v.IsShowingUser, (v, o) => v.IsShowingUser = o, () => false, true),
-			new PropertyTestCase<Map, bool> ("HasScrollEnabled", v => v.HasScrollEnabled, (v, o) => v.HasScrollEnabled = o, () => true, false),
-			new PropertyTestCase<Map, bool> ("HasZoomEnabled", v => v.HasZoomEnabled, (v, o) => v.HasZoomEnabled = o, () => true, false),
-			new PropertyTestCase<OpenGLView, bool> ("HasRenderLoop", v => v.HasRenderLoop, (v, o) => v.HasRenderLoop = o, () => false, true),
+			new PropertyTestCase<Map, bool> ("IsScrollEnabled", v => v.IsScrollEnabled, (v, o) => v.IsScrollEnabled = o, () => true, false),
+			new PropertyTestCase<Map, bool> ("IsZoomEnabled", v => v.IsZoomEnabled, (v, o) => v.IsZoomEnabled = o, () => true, false),
 			new PropertyTestCase<Page, ImageSource> ("BackgroundImageSource", v => v.BackgroundImageSource, (v, o) => v.BackgroundImageSource = o, () => null, "Foo"),
 			new PropertyTestCase<Page, Color> ("BackgroundColor", v => v.BackgroundColor, (v, o) => v.BackgroundColor = o, () => default(Color), new Color (0, 1, 0)),
 			new PropertyTestCase<Page, string> ("Title", v => v.Title, (v, o) => v.Title = o, () => null, "Foo"),
@@ -145,7 +145,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			new PropertyTestCase<TextCell, string> ("Detail", v => v.Detail, (v, o) => v.Detail = o, () => null, "Foo"),
 			new PropertyTestCase<TextCell, Color> ("TextColor", v => v.TextColor, (v, o) => v.TextColor = o, () => null, new Color (0, 1, 0)),
 			new PropertyTestCase<TextCell, Color> ("DetailColor", v => v.DetailColor, (v, o) => v.DetailColor = o, () => null, new Color (0, 1, 0)),
-			new PropertyTestCase<TimePicker, TimeSpan> ("Time", v => v.Time, (v, o) => v.Time = o, () => default(TimeSpan), new TimeSpan (8, 0, 0)),
+			new PropertyTestCase<TimePicker, TimeSpan?> ("Time", v => v.Time, (v, o) => v.Time = o, () => default(TimeSpan), new TimeSpan (8, 0, 0)),
 			new PropertyTestCase<TimePicker, string> ("Format", v => v.Format, (v, o) => v.Format = o, () => "t", "T"),
 			new PropertyTestCase<ViewCell, View> ("View", v => v.View, (v, o) => v.View = o, () => null, new View ()),
 			new PropertyTestCase<WebView, WebViewSource> ("Source", v => v.Source, (v, o) => v.Source = o, () => null, new UrlWebViewSource { Url = "Foo" }),
@@ -156,19 +156,27 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			new PropertyTestCase<Entry, bool> ("IsReadOnly", v => v.IsReadOnly, (v, o) => v.IsReadOnly = o, () => false, true),
 			new PropertyTestCase<Editor, bool> ("IsReadOnly", v => v.IsReadOnly, (v, o) => v.IsReadOnly = o, () => false, true)
 		};
+
+		public static IEnumerable<object[]> PropertyTestCases()
+		{
+			foreach (var ptc in Properties)
+			{
+				yield return new object[] { ptc };
+			}
+		}
 #pragma warning restore 0414
 
-		[Test, TestCaseSource("Properties")]
+		[Theory, MemberData(nameof(PropertyTestCases))]
 		public void DefaultValues(PropertyTestCase property)
 		{
 			var view = property.CreateView();
 			var expected = property.ExpectedDefaultValue;
 			var actual = property.PropertyGetter(view);
 
-			Assert.AreEqual(property.ExpectedDefaultValue, property.PropertyGetter(view), property.DebugName);
+			Assert.True(object.Equals(property.ExpectedDefaultValue, actual), property.DebugName);
 		}
 
-		[Test, TestCaseSource("Properties")]
+		[Theory, MemberData(nameof(PropertyTestCases))]
 		public void Set(PropertyTestCase property)
 		{
 			var view = property.CreateView();
@@ -184,10 +192,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			property.PropertySetter(view, testvalue);
 
 			Assert.True(changed, property.DebugName);
-			Assert.AreEqual(testvalue, property.PropertyGetter(view), property.DebugName);
+			Assert.True(object.Equals(testvalue, property.PropertyGetter(view)), property.DebugName);
 		}
 
-		[Test, TestCaseSource("Properties")]
+		[Theory, MemberData(nameof(PropertyTestCases))]
 		public void DoubleSet(PropertyTestCase property)
 		{
 			var view = property.CreateView();
@@ -205,7 +213,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			property.PropertySetter(view, testvalue);
 
 			Assert.False(changed, property.DebugName);
-			Assert.AreEqual(testvalue, property.PropertyGetter(view), property.DebugName);
+			Assert.True(object.Equals(testvalue, property.PropertyGetter(view)), property.DebugName);
 		}
 	}
 }

@@ -10,15 +10,14 @@ using PlatformView = Android.Views.View;
 #elif WINDOWS
 using PlatformView = Microsoft.UI.Xaml.FrameworkElement;
 #elif TIZEN
-using ElmSharp;
-using ElmSharp.Accessible;
-using PlatformView = ElmSharp.EvasObject;
-#elif NETSTANDARD
+using PlatformView = Tizen.NUI.BaseComponents.View;
+#elif (NETSTANDARD || !PLATFORM)
 using PlatformView = System.Object;
 #endif
 
 namespace Microsoft.Maui
 {
+	[Obsolete("Use Microsoft.Maui.Accessibility.SemanticScreenReader")]
 	public static partial class SemanticExtensions
 	{
 		public static void SetSemanticFocus(this IView element)
@@ -30,8 +29,6 @@ namespace Microsoft.Maui
 			platformView.SendAccessibilityEvent(EventTypes.ViewHoverEnter);
 #elif __IOS__ || MACCATALYST
 			UIAccessibility.PostNotification(UIAccessibilityPostNotification.LayoutChanged, platformView);
-#elif TIZEN
-			(platformView as IAccessibleObject)?.Highlight();
 #endif
 		}
 	}

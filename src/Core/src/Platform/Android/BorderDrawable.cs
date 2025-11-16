@@ -17,7 +17,7 @@ namespace Microsoft.Maui.Platform
 	public class BorderDrawable : PaintDrawable
 	{
 		readonly AContext? _context;
-		readonly double _density;
+		readonly float _density;
 
 		bool _invalidatePath;
 
@@ -238,7 +238,7 @@ namespace Microsoft.Maui.Platform
 			InvalidateSelf();
 		}
 
-		protected override void OnBoundsChange(ARect? bounds)
+		protected override void OnBoundsChange(ARect bounds)
 		{
 			if (_bounds != bounds)
 			{
@@ -292,6 +292,7 @@ namespace Microsoft.Maui.Platform
 			{
 				_invalidatePath = false;
 
+				// TODO: Should this do the same thing as MauiDrawable.Android.cs? I suspect it should.
 				var path = GetPath(_width, _height, _cornerRadius, _strokeThickness);
 				var clipPath = path?.AsAndroidPath();
 
@@ -331,11 +332,8 @@ namespace Microsoft.Maui.Platform
 
 			if (disposing)
 			{
-				if (_clipPath != null)
-				{
-					_clipPath.Dispose();
-					_clipPath = null;
-				}
+				_clipPath?.Dispose();
+				_clipPath = null;
 			}
 
 			DisposeBorder(disposing);
@@ -347,11 +345,8 @@ namespace Microsoft.Maui.Platform
 		{
 			if (disposing)
 			{
-				if (_borderPaint != null)
-				{
-					_borderPaint.Dispose();
-					_borderPaint = null;
-				}
+				_borderPaint?.Dispose();
+				_borderPaint = null;
 			}
 		}
 
@@ -387,7 +382,7 @@ namespace Microsoft.Maui.Platform
 				if (_context.Theme.ResolveAttribute(global::Android.Resource.Attribute.WindowBackground, background, true))
 				{
 					var resource = _context.Resources.GetResourceTypeName(background.ResourceId);
-					var type = resource?.ToLower();
+					var type = resource?.ToLowerInvariant();
 
 					if (type == "color")
 					{
@@ -479,7 +474,7 @@ namespace Microsoft.Maui.Platform
 			platformPaint.SetShader(radialGradient);
 		}
 
-		GradientData GetGradientPaintData(GradientPaint gradientPaint)
+		static GradientData GetGradientPaintData(GradientPaint gradientPaint)
 		{
 			var orderStops = gradientPaint.GradientStops;
 
@@ -506,10 +501,10 @@ namespace Microsoft.Maui.Platform
 			float w = (float)(width - strokeThickness);
 			float h = (float)(height - strokeThickness);
 
-			float topLeftCornerRadius = (float)cornerRadius.TopLeft;
-			float topRightCornerRadius = (float)cornerRadius.TopRight;
-			float bottomLeftCornerRadius = (float)cornerRadius.BottomLeft;
-			float bottomRightCornerRadius = (float)cornerRadius.BottomRight;
+			float topLeftCornerRadius = _context.ToPixels(cornerRadius.TopLeft);
+			float topRightCornerRadius = _context.ToPixels(cornerRadius.TopRight);
+			float bottomLeftCornerRadius = _context.ToPixels(cornerRadius.BottomLeft);
+			float bottomRightCornerRadius = _context.ToPixels(cornerRadius.BottomRight);
 
 			path.AppendRoundedRectangle(x, y, w, h, topLeftCornerRadius, topRightCornerRadius, bottomLeftCornerRadius, bottomRightCornerRadius);
 

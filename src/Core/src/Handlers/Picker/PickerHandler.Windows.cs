@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using Microsoft.UI.Xaml.Controls;
 using WSelectionChangedEventArgs = Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs;
@@ -11,40 +12,54 @@ namespace Microsoft.Maui.Handlers
 		protected override ComboBox CreatePlatformView()
 		{
 			var platformPicker = new ComboBox();
-
-			if (VirtualView != null)
-				platformPicker.ItemsSource = new ItemDelegateList<string>(VirtualView);
-
-			platformPicker.DropDownOpened += OnMauiComboBoxDropDownOpened;
-			platformPicker.SelectionChanged += OnMauiComboBoxSelectionChanged;
-
 			return platformPicker;
 		}
 
 		protected override void ConnectHandler(ComboBox platformView)
 		{
 			platformView.SelectionChanged += OnControlSelectionChanged;
-
-			if (VirtualView.Items is INotifyCollectionChanged notifyCollection)
-				notifyCollection.CollectionChanged += OnRowsCollectionChanged;
+			platformView.DropDownOpened += OnMauiComboBoxDropDownOpened;
+			platformView.DropDownClosed += OnMauiComboBoxDropDownClosed;
 		}
 
 		protected override void DisconnectHandler(ComboBox platformView)
 		{
 			platformView.SelectionChanged -= OnControlSelectionChanged;
+			platformView.DropDownOpened -= OnMauiComboBoxDropDownOpened;
+			platformView.DropDownClosed -= OnMauiComboBoxDropDownClosed;
+		}
 
-			if (VirtualView.Items is INotifyCollectionChanged notifyCollection)
-				notifyCollection.CollectionChanged -= OnRowsCollectionChanged;
+		// Updating ItemSource Resets the SelectedIndex.
+		// Which propagates that change to the VirtualView
+		// We don't want the virtual views selected index to change
+		// when updating the ItemSource.
+		// The ItemSource should probably be reworked to just be an OC that's
+		// kept in sync
+		internal bool UpdatingItemSource { get; set; }
+
+		internal void SetUpdatingItemSource(bool updatingItemSource)
+		{
+			UpdatingItemSource = updatingItemSource;
+
+			if (!updatingItemSource && VirtualView is not null && (VirtualView.SelectedIndex < VirtualView.GetCount()))
+				UpdateValue(nameof(IPicker.SelectedIndex));
 		}
 
 		static void Reload(IPickerHandler handler)
 		{
-			if (handler.VirtualView == null || handler.PlatformView == null)
-				return;
-			handler.PlatformView.ItemsSource = new ItemDelegateList<string>(handler.VirtualView!);
+			if (handler is PickerHandler ph1)
+				ph1.SetUpdatingItemSource(true);
+
+			handler.PlatformView.ItemsSource = new ItemDelegateList<string>(handler.VirtualView);
+
+			if (handler is PickerHandler ph2)
+				ph2.SetUpdatingItemSource(false);
 		}
 
+		[Obsolete("Use Microsoft.Maui.Handlers.PickerHandler.MapItems instead")]
 		public static void MapReload(IPickerHandler handler, IPicker picker, object? args) => Reload(handler);
+
+		internal static void MapItems(IPickerHandler handler, IPicker picker) => Reload(handler);
 
 		public static void MapTitle(IPickerHandler handler, IPicker picker)
 		{
@@ -81,10 +96,7 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapTextColor(IPickerHandler handler, IPicker picker)
 		{
-			if (handler is PickerHandler platformHandler)
-			{
-				platformHandler.PlatformView?.UpdateTextColor(picker);
-			}
+			handler.PlatformView.UpdateTextColor(picker);
 		}
 
 		public static void MapHorizontalTextAlignment(IPickerHandler handler, IPicker picker)
@@ -97,31 +109,43 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView?.UpdateVerticalTextAlignment(picker);
 		}
 
+		internal static void MapIsOpen(IPickerHandler handler, IPicker picker)
+		{
+			handler.PlatformView?.UpdateIsOpen(picker);
+		}
+
 		void OnControlSelectionChanged(object? sender, WSelectionChangedEventArgs e)
 		{
-			if (VirtualView != null && PlatformView != null)
+			if (PlatformView == null)
+				return;
+
+			if (VirtualView != null && !UpdatingItemSource)
 				VirtualView.SelectedIndex = PlatformView.SelectedIndex;
+
+			PlatformView.MinWidth = 0;
 		}
 
-		void OnRowsCollectionChanged(object? sender, EventArgs e)
-		{
-			Reload(this);
-		}
-
-		static void OnMauiComboBoxDropDownOpened(object? sender, object e)
+		void OnMauiComboBoxDropDownOpened(object? sender, object e)
 		{
 			ComboBox? comboBox = sender as ComboBox;
-			if (comboBox == null)
+
+			if (comboBox is null)
 				return;
+
 			comboBox.MinWidth = comboBox.ActualWidth;
+
+			if (VirtualView is null)
+				return;
+
+			VirtualView.IsOpen = true;
 		}
 
-		static void OnMauiComboBoxSelectionChanged(object? sender, SelectionChangedEventArgs e)
+		void OnMauiComboBoxDropDownClosed(object? sender, object e)
 		{
-			ComboBox? comboBox = sender as ComboBox;
-			if (comboBox == null)
+			if (VirtualView is null)
 				return;
-			comboBox.MinWidth = 0;
+
+			VirtualView.IsOpen = false;
 		}
 	}
 }

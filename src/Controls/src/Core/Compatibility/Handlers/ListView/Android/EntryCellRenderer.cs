@@ -1,3 +1,4 @@
+#nullable disable
 using System.ComponentModel;
 using Android.Content;
 using Android.Text;
@@ -10,15 +11,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 	{
 		EntryCellView _view;
 
+#pragma warning disable CS0618 // Type or member is obsolete
 		protected override global::Android.Views.View GetCellCore(Cell item, global::Android.Views.View convertView, ViewGroup parent, Context context)
+#pragma warning restore CS0618 // Type or member is obsolete
 		{
+			Disconnect();
 			if ((_view = convertView as EntryCellView) == null)
-				_view = new EntryCellView(context, item);
-			else
 			{
-				_view.TextChanged = null;
-				_view.FocusChanged = null;
-				_view.EditingCompleted = null;
+				_view = new EntryCellView(context, item);
 			}
 
 			UpdateLabel();
@@ -47,16 +47,23 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			base.OnCellPropertyChanged(sender, e);
 
+#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
 			if (e.PropertyName == EntryCell.LabelProperty.PropertyName)
 				UpdateLabel();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == EntryCell.TextProperty.PropertyName)
 				UpdateText();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == EntryCell.PlaceholderProperty.PropertyName)
 				UpdatePlaceholder();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == EntryCell.KeyboardProperty.PropertyName)
 				UpdateKeyboard();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == EntryCell.LabelColorProperty.PropertyName)
 				UpdateLabelColor();
+#pragma warning disable CS0618 // Type or member is obsolete
 			else if (e.PropertyName == EntryCell.HorizontalTextAlignmentProperty.PropertyName)
 				UpdateHorizontalTextAlignment();
 			else if (e.PropertyName == EntryCell.VerticalTextAlignmentProperty.PropertyName)
@@ -70,6 +77,13 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				UpdateFlowDirection();
 				UpdateHorizontalTextAlignment();
 			}
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		protected virtual NumberKeyListener GetDigitsKeyListener(InputTypes inputTypes)
@@ -88,8 +102,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		void OnTextChanged(string text)
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			var entryCell = (EntryCell)Cell;
-			entryCell.Text = text;
+#pragma warning restore CS0618 // Type or member is obsolete
+
+#pragma warning disable CS0618 // Type or member is obsolete
+			entryCell
+				.SetValue(EntryCell.TextProperty, text, specificity: SetterSpecificity.FromHandler);
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void UpdateHeight()
@@ -99,25 +119,33 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		void UpdateHorizontalTextAlignment()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			var entryCell = (EntryCell)Cell;
+#pragma warning restore CS0618 // Type or member is obsolete
 			_view.EditText.UpdateHorizontalAlignment(entryCell.HorizontalTextAlignment);
 		}
 
 		void UpdateVerticalTextAlignment()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			var entryCell = (EntryCell)Cell;
+#pragma warning restore CS0618 // Type or member is obsolete
 			_view.EditText.UpdateVerticalAlignment(entryCell.VerticalTextAlignment);
 		}
 
 		void UpdateIsEnabled()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			var entryCell = (EntryCell)Cell;
+#pragma warning restore CS0618 // Type or member is obsolete
 			_view.EditText.Enabled = entryCell.IsEnabled;
 		}
 
 		void UpdateKeyboard()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			var entryCell = (EntryCell)Cell;
+#pragma warning restore CS0618 // Type or member is obsolete
 			var keyboard = entryCell.Keyboard;
 			_view.EditText.InputType = keyboard.ToInputType();
 
@@ -129,12 +157,16 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		void UpdateLabel()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			_view.LabelText = ((EntryCell)Cell).Label;
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void UpdateLabelColor()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			_view.SetLabelTextColor(((EntryCell)Cell).LabelColor, global::Android.Resource.Attribute.TextColor);
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		void UpdateFlowDirection()
@@ -144,17 +176,31 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 		void UpdatePlaceholder()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			var entryCell = (EntryCell)Cell;
+#pragma warning restore CS0618 // Type or member is obsolete
 			_view.EditText.Hint = entryCell.Placeholder;
 		}
 
 		void UpdateText()
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			var entryCell = (EntryCell)Cell;
+#pragma warning restore CS0618 // Type or member is obsolete
 			if (_view.EditText.Text == entryCell.Text)
 				return;
 
 			_view.EditText.Text = entryCell.Text;
+		}
+
+		void Disconnect()
+		{
+			if (_view is null)
+				return;
+
+			_view.TextChanged = null;
+			_view.FocusChanged = null;
+			_view.EditingCompleted = null;
 		}
 	}
 }

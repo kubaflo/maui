@@ -4,7 +4,6 @@ using Android.Runtime;
 using Android.Views;
 using Android.Views.Animations;
 using AndroidX.Fragment.App;
-using AndroidX.Navigation;
 using AView = Android.Views.View;
 
 namespace Microsoft.Maui.Platform
@@ -13,14 +12,19 @@ namespace Microsoft.Maui.Platform
 	{
 		AView? _currentView;
 		FragmentContainerView? _fragmentContainerView;
+		StackNavigationManager? _navigationManager;
 
 		FragmentContainerView FragmentContainerView =>
 			_fragmentContainerView ?? throw new InvalidOperationException($"FragmentContainerView cannot be null here");
 
-		StackNavigationManager? _navigationManager;
+		MauiNavHostFragment? NavHostFragment =>
+			this.ParentFragment as MauiNavHostFragment;
 
-		StackNavigationManager NavigationManager => _navigationManager
-			?? throw new InvalidOperationException($"Graph cannot be null here");
+		internal StackNavigationManager NavigationManager
+		{
+			get => _navigationManager ?? NavHostFragment?.StackNavigationManager ?? throw new InvalidOperationException($"NavigationManager cannot be null here");
+			set => _navigationManager = value;
+		}
 
 		protected NavigationViewFragment(IntPtr javaReference, JniHandleOwnership transfer) : base(javaReference, transfer)
 		{
@@ -30,15 +34,9 @@ namespace Microsoft.Maui.Platform
 		{
 		}
 
-		public override AView OnCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
+		public override AView OnCreateView(LayoutInflater inflater, ViewGroup? container, Bundle? savedInstanceState)
 		{
-			var context =
-				(container.Context as StackNavigationManager.StackContext) ??
-				(container.Parent as AView)?.Context as StackNavigationManager.StackContext
-				 ?? throw new InvalidOperationException($"StackNavigationManager.StackContext not found");
-
-			_navigationManager = context.StackNavigationManager;
-			_fragmentContainerView ??= (FragmentContainerView)container;
+			_fragmentContainerView ??= container as FragmentContainerView;
 
 			// When shuffling around the back stack sometimes we'll need a page to detach and then reattach.
 			// This mainly happens when users are removing or inserting pages. If we only have one page
@@ -52,18 +50,17 @@ namespace Microsoft.Maui.Platform
 			// This is all a bit silly because the page is just getting added and removed to the same
 			// view. Unfortunately FragmentContainerView is sealed so we can't inherit from it and influence
 			// when the views are being added and removed. If this ends up causing too much shake up
-			// Then we can try some other approachs like just modifying the navbar ourselves to include a back button
+			// Then we can try some other approaches like just modifying the navbar ourselves to include a back button
 			// Even if there's only one page on the stack
 
 			_currentView =
-				NavigationManager.CurrentPage.Handler?.PlatformView as AView;
+				NavigationManager
+					.CurrentPage
+					.ToPlatform(NavigationManager.MauiContext, RequireContext(), inflater, ChildFragmentManager);
 
-			if (_currentView == null)
-			{
-				var scopedContext = NavigationManager.MauiContext.MakeScoped(inflater, ChildFragmentManager);
-
-				_currentView = NavigationManager.CurrentPage.ToPlatform(scopedContext);
-			}
+			// This shouldn't typically happen, but if a previous animation hasn't finished from a navigation that was interrupted
+			// the opacity of the view will be set to 0. This will reset it to 1.
+			NavigationManager.CurrentPage?.Handler?.UpdateValue(nameof(IView.Opacity));
 
 			_currentView.RemoveFromParent();
 
@@ -72,8 +69,11 @@ namespace Microsoft.Maui.Platform
 
 		public override void OnResume()
 		{
-			if (_currentView == null || NavigationManager.NavHost == null)
+			if (_currentView == null || !NavigationManager.HasNavHost)
+			{
+				base.OnResume();
 				return;
+			}
 
 			if (_currentView.Parent == null)
 			{
@@ -83,6 +83,14 @@ namespace Microsoft.Maui.Platform
 			}
 
 			base.OnResume();
+		}
+
+		public override void OnDestroy()
+		{
+			_currentView = null;
+			_fragmentContainerView = null;
+
+			base.OnDestroy();
 		}
 
 		public override Animation OnCreateAnimation(int transit, bool enter, int nextAnim)
