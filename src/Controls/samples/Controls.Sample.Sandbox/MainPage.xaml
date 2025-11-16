@@ -1,5 +1,52 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
-             xmlns:local="clr-namespace:Maui.Controls.Sample">
+             xmlns:local="clr-namespace:Maui.Controls.Sample"
+             Title="MediaPicker Test">
+    
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="15">
+            <Label Text="MediaPicker.PickPhotosAsync Test"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"/>
+            
+            <Label Text="This test validates that PickPhotosAsync returns an empty list (not null) when cancelled."
+                   TextColor="Gray"
+                   HorizontalOptions="Center"/>
+            
+            <Button x:Name="PickPhotosButton"
+                    Text="Pick Photos (Cancel to Test)"
+                    Clicked="OnPickPhotosClicked"
+                    BackgroundColor="DodgerBlue"
+                    TextColor="White"/>
+            
+            <Button x:Name="PickVideosButton"
+                    Text="Pick Videos (Cancel to Test)"
+                    Clicked="OnPickVideosClicked"
+                    BackgroundColor="MediumSeaGreen"
+                    TextColor="White"/>
+            
+            <Frame BorderColor="LightGray" Padding="10" BackgroundColor="WhiteSmoke">
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="Test Results:" FontAttributes="Bold"/>
+                    <Label x:Name="ResultLabel"
+                           Text="Tap a button above, then cancel the picker to test."
+                           TextColor="Black"/>
+                </VerticalStackLayout>
+            </Frame>
+            
+            <Frame BorderColor="Orange" Padding="10" BackgroundColor="#FFF9E6">
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="Expected Behavior:" FontAttributes="Bold" TextColor="DarkOrange"/>
+                    <Label Text="• When you cancel the picker, result should be an empty list (not null)"
+                           TextColor="DarkOrange"/>
+                    <Label Text="• No NullReferenceException should occur"
+                           TextColor="DarkOrange"/>
+                    <Label Text="• Console should show 'Result Count: 0'"
+                           TextColor="DarkOrange"/>
+                </VerticalStackLayout>
+            </Frame>
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
