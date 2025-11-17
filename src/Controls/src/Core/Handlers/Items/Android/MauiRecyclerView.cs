@@ -597,7 +597,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				// TODO hartez 2018/10/24 17:34:36 If this works, cache this layout manager as _emptyLayoutManager	
 				SetLayoutManager(SelectLayoutManager(ItemsLayout));
 				UpdateEmptyView();
-				
+
 				// Ensure FlowDirection is applied to EmptyView content
 				UpdateEmptyViewFlowDirection();
 			}
