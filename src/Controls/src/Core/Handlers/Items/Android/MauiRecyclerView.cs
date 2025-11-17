@@ -217,6 +217,27 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			this.UpdateFlowDirection(ItemsView);
 
 			ReconcileFlowDirectionAndLayout();
+
+			// Update FlowDirection for EmptyView content
+			UpdateEmptyViewFlowDirection();
+		}
+
+		void UpdateEmptyViewFlowDirection()
+		{
+			if (_emptyViewAdapter == null || GetAdapter() != _emptyViewAdapter)
+			{
+				return;
+			}
+
+			// Update FlowDirection for all logical children of the EmptyView
+			// This ensures that EmptyView content respects the CollectionView's FlowDirection
+			foreach (var child in ItemsView.LogicalChildrenInternal)
+			{
+				if (child is VisualElement ve && ve.Handler?.PlatformView is Android.Views.View platformView)
+				{
+					platformView.UpdateFlowDirection(ve);
+				}
+			}
 		}
 
 		public virtual void UpdateAdapter()
@@ -576,6 +597,9 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				// TODO hartez 2018/10/24 17:34:36 If this works, cache this layout manager as _emptyLayoutManager	
 				SetLayoutManager(SelectLayoutManager(ItemsLayout));
 				UpdateEmptyView();
+				
+				// Ensure FlowDirection is applied to EmptyView content
+				UpdateEmptyViewFlowDirection();
 			}
 			else if (!showEmptyView && currentAdapter != ItemsViewAdapter)
 			{

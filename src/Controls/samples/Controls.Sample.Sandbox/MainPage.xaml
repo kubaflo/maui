@@ -1,5 +1,70 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
-             xmlns:local="clr-namespace:Maui.Controls.Sample">
+             xmlns:local="clr-namespace:Maui.Controls.Sample"
+             Title="Issue #32673 - EmptyView FlowDirection">
+    
+    <VerticalStackLayout Padding="20" Spacing="10">
+        <Label Text="Issue #32673: FlowDirection not working on EmptyView"
+               FontSize="18" 
+               FontAttributes="Bold"/>
+        
+        <Button Text="Toggle FlowDirection"
+                Clicked="OnToggleFlowDirectionClicked"
+                HorizontalOptions="Center"
+                AutomationId="ToggleButton"/>
+        
+        <Label x:Name="FlowDirectionLabel"
+               Text="Current FlowDirection: RightToLeft"
+               HorizontalOptions="Center"
+               FontAttributes="Bold"
+               AutomationId="StatusLabel"/>
+        
+        <!-- Test 1: Simple String EmptyView -->
+        <Label Text="Test 1: Simple String EmptyView" FontAttributes="Bold" Margin="0,20,0,0"/>
+        <CollectionView x:Name="CollectionViewSimple"
+                        FlowDirection="RightToLeft"
+                        BackgroundColor="LightGray"
+                        HeightRequest="100"
+                        EmptyView="No items to display"
+                        AutomationId="CollectionViewSimple"/>
+        
+        <!-- Test 2: View EmptyView (not templated) -->
+        <Label Text="Test 2: View EmptyView (not templated)" FontAttributes="Bold" Margin="0,20,0,0"/>
+        <CollectionView x:Name="CollectionViewView"
+                        FlowDirection="RightToLeft"
+                        BackgroundColor="LightBlue"
+                        HeightRequest="100"
+                        AutomationId="CollectionViewView">
+            <CollectionView.EmptyView>
+                <StackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                    <Label Text="← This arrow should point LEFT in RTL"
+                           FontSize="16"
+                           AutomationId="ViewEmptyLabel"/>
+                    <Label Text="No items available"
+                           FontSize="14"/>
+                </StackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
+        
+        <!-- Test 3: Templated EmptyView -->
+        <Label Text="Test 3: Templated EmptyView" FontAttributes="Bold" Margin="0,20,0,0"/>
+        <CollectionView x:Name="CollectionViewTemplated"
+                        FlowDirection="RightToLeft"
+                        BackgroundColor="LightGreen"
+                        HeightRequest="100"
+                        AutomationId="CollectionViewTemplated">
+            <CollectionView.EmptyViewTemplate>
+                <DataTemplate>
+                    <StackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                        <Label Text="← This arrow should point LEFT in RTL (Template)"
+                               FontSize="16"
+                               AutomationId="TemplateEmptyLabel"/>
+                        <Label Text="No items from template"
+                               FontSize="14"/>
+                    </StackLayout>
+                </DataTemplate>
+            </CollectionView.EmptyViewTemplate>
+        </CollectionView>
+    </VerticalStackLayout>
 </ContentPage>
