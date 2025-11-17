@@ -195,8 +195,28 @@ See UITesting-Guide.md for complete test creation details.
 
 **Create a pull request with your fix:**
 
-1. **PR Title**: `[Issue-Resolver] Fix #XXXXX - <Brief Description>`
-   - Example: `[Issue-Resolver] Fix #12345 - CollectionView RTL padding incorrect`
+1. **PR Title Format**: `[Issue-Resolver] Fix #XXXXX - <Brief Description>`
+   
+   **Structure**:
+   - **Prefix**: `[Issue-Resolver]` (REQUIRED - identifies agent-created PRs)
+   - **Issue reference**: `Fix #XXXXX` (links and auto-closes the issue when merged)
+   - **Description**: Brief, clear summary of what was fixed
+   
+   **Examples**:
+   - `[Issue-Resolver] Fix #12345 - CollectionView RTL padding incorrect on iOS`
+   - `[Issue-Resolver] Fix #67890 - Label text truncation with SafeArea enabled`
+   - `[Issue-Resolver] Fix #11111 - Entry cursor position wrong in RTL mode on Android`
+   
+   **Why the prefix matters**:
+   - Helps maintainers identify PRs created by the issue-resolver agent
+   - Enables tracking of agent effectiveness and contribution patterns
+   - Distinguishes from community-contributed PRs for metrics and triage
+   
+   **Common mistakes to avoid**:
+   - ❌ `Fix #12345 - CollectionView padding` (missing [Issue-Resolver] prefix)
+   - ❌ `[Issue-Resolver] CollectionView RTL fix` (missing "Fix #XXXXX" reference)
+   - ❌ `[Issue-Resolver] Fix #12345` (missing description)
+   - ✅ `[Issue-Resolver] Fix #12345 - CollectionView RTL padding incorrect on iOS` (correct!)
 
 2. **PR Description** must include:
    ```markdown

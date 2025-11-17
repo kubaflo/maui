@@ -240,6 +240,55 @@ namespace Microsoft.Maui.TestCases.Tests.Issues
 - Add to appropriate `[Category]` (CollectionView, Label, Entry, etc.)
 - Keep test simple and focused on the specific issue
 
+#### Step 3: Run Tests and Generate Screenshot Baselines
+
+**Critical**: UI tests with `VerifyScreenshot()` require baseline screenshots to pass in CI.
+
+**Generate baselines locally:**
+
+**Android:**
+```bash
+# Build and deploy test app
+dotnet build src/Controls/tests/TestCases.HostApp/Controls.TestCases.HostApp.csproj \
+  -f net10.0-android -t:Run
+
+# Run the specific test to generate screenshot
+dotnet test src/Controls/tests/TestCases.Android.Tests/Controls.TestCases.Android.Tests.csproj \
+  --filter "FullyQualifiedName~Issue12345"
+
+# Screenshot saved to: src/Controls/tests/TestCases.Android.Tests/snapshots/
+```
+
+**iOS:**
+```bash
+# Find simulator UDID
+UDID=$(xcrun simctl list devices available --json | jq -r '.devices | to_entries | map(select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS"))) | map({key: .key, version: (.key | sub("com.apple.CoreSimulator.SimRuntime.iOS-"; "") | split("-") | map(tonumber)), devices: .value}) | sort_by(.version) | reverse | map(select(.devices | any(.name == "iPhone Xs"))) | first | .devices[] | select(.name == "iPhone Xs") | .udid')
+
+# Build app
+dotnet build src/Controls/tests/TestCases.HostApp/Controls.TestCases.HostApp.csproj -f net10.0-ios
+
+# Boot and install
+xcrun simctl boot $UDID 2>/dev/null || true
+xcrun simctl install $UDID artifacts/bin/Controls.TestCases.HostApp/Debug/net10.0-ios/iossimulator-arm64/Controls.TestCases.HostApp.app
+
+# Run test
+dotnet test src/Controls/tests/TestCases.iOS.Tests/Controls.TestCases.iOS.Tests.csproj \
+  --filter "FullyQualifiedName~Issue12345"
+
+# Screenshot saved to: src/Controls/tests/TestCases.iOS.Tests/snapshots/ios/
+```
+
+**After running tests:**
+1. Locate the generated screenshot file (named after your test method)
+2. Verify the screenshot shows the CORRECT/FIXED behavior
+3. Commit the screenshot file with your PR:
+   ```bash
+   git add src/Controls/tests/TestCases.*.Tests/snapshots/
+   git commit -m "Add UI test screenshots for Issue12345"
+   ```
+
+**Important**: If you don't include screenshot baselines, CI will fail when it tries to verify screenshots.
+
 See `.github/instructions/uitests.instructions.md` for comprehensive UI testing guidance.
 
 ### Code Formatting
@@ -258,25 +307,58 @@ dotnet format Microsoft.Maui.sln --verify-no-changes --no-restore --exclude Temp
 
 **Step-by-step process:**
 
-1. **Commit your changes:**
+1. **Clean up unrelated changes before committing:**
+   
+   **Remove changes to files not related to your fix:**
+   - Revert any modifications to `MainPage.xaml` and `MainPage.xaml.cs` (used for local testing)
+   - Revert changes to any other test/sample files you used during reproduction
+   - Remove any debug logging or temporary instrumentation added during investigation
+   
+   **Check what's staged:**
+   ```bash
+   git status
+   git diff
+   ```
+   
+   **Revert specific unrelated files:**
+   ```bash
+   # Revert Sandbox MainPage files
+   git checkout -- src/Controls/samples/Controls.Sample.Sandbox/MainPage.xaml
+   git checkout -- src/Controls/samples/Controls.Sample.Sandbox/MainPage.xaml.cs
+   
+   # Or use git restore (newer syntax)
+   git restore src/Controls/samples/Controls.Sample.Sandbox/MainPage.xaml
+   git restore src/Controls/samples/Controls.Sample.Sandbox/MainPage.xaml.cs
+   ```
+   
+   **Your PR should only include:**
+   - ✅ The actual fix (modified source files)
+   - ✅ UI test files (TestCases.HostApp/Issues/IssueXXXXX.*)
+   - ✅ NUnit test files (TestCases.Shared.Tests/Tests/Issues/IssueXXXXX.cs)
+   - ✅ Screenshot baselines (if using VerifyScreenshot)
+   - ✅ PublicAPI.Unshipped.txt updates (if you added public APIs)
+   - ❌ NOT: MainPage.xaml/cs changes from Sandbox testing
+   - ❌ NOT: Temporary debug code or console logging
+   - ❌ NOT: Auto-generated files (cgmanifest.json, templatestrings.json)
+
+2. **Commit your changes:**
    ```bash
    git add .
    git commit -m "[Issue-Resolver] Fix #12345 - CollectionView RTL padding"
    ```
 
-2. **Push to your fork:**
+3. **Push to your fork:**
    ```bash
    git push origin fix-issue-12345
    ```
 
-3. **Open PR on GitHub:**
+4. **Open PR on GitHub:**
    - Navigate to https://github.com/dotnet/maui
    - Click "Pull requests" → "New pull request"
    - Select your branch
-   - Use the title format: `[Issue-Resolver] Fix #12345 - CollectionView RTL padding`
-   - Fill in the complete PR description template
+   - Fill in the complete PR description and title template
 
-4. **Add required note at top of description:**
+5. **Add required note at top of description:**
    ```markdown
    <!-- Please let the below note in for people that find this PR -->
    > [!NOTE]
@@ -284,11 +366,11 @@ dotnet format Microsoft.Maui.sln --verify-no-changes --no-restore --exclude Temp
    > It would be very helpful if you could [test the resulting artifacts](https://github.com/dotnet/maui/wiki/Testing-PR-Builds) from this PR and let us know in a comment if this change resolves your issue. Thank you!
    ```
 
-5. **Link the issue:**
+6. **Link the issue:**
    - Use `Fixes #12345` in PR description
    - GitHub will automatically link and close the issue when PR merges
 
-6. **Request review:**
+7. **Request review:**
    - Tag appropriate maintainers if known
    - Wait for CI checks to pass
    - Respond to review feedback promptly
