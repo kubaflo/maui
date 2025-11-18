@@ -175,6 +175,16 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			BindVirtualView(virtualView, itemsView.BindingContext, itemsView, true);
 		}
 
+		void ClearSubviews()
+		{
+			// Remove all subviews from ContentView to prevent stale rendering during cell reuse
+			// This matches the behavior of the original CollectionViewHandler
+			for (int n = ContentView.Subviews.Length - 1; n >= 0; n--)
+			{
+				ContentView.Subviews[n].RemoveFromSuperview();
+			}
+		}
+
 		void BindVirtualView(View virtualView, object bindingContext, ItemsView itemsView, bool needsContainer)
 		{
 			var oldElement = PlatformHandler?.VirtualView as View;
@@ -202,6 +212,11 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 				}
 
 				PlatformHandler = virtualView.Handler as IPlatformViewHandler;
+				
+				// Clear out any old views if this cell is being reused
+				// This ensures that stale content (like BoxViews) doesn't remain from previous bindings
+				ClearSubviews();
+				
 				SetupPlatformView(PlatformView, needsContainer);
 				ContentView.MarkAsCrossPlatformLayoutBacking();
 
