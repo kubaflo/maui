@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue32717"
+             Title="Issue 32717">
+    <Grid x:Name="MainGrid">
+        <!-- Grid with LinearGradientBrush that should persist after overlay changes -->
+        <Grid x:Name="ContentGrid" 
+              AutomationId="ContentGrid"
+              Padding="20">
+            <Grid.Background>
+                <LinearGradientBrush>
+                    <GradientStop Color="#FF0000" Offset="0" />
+                    <GradientStop Color="#0000FF" Offset="1" />
+                </LinearGradientBrush>
+            </Grid.Background>
+            
+            <VerticalStackLayout Spacing="20" VerticalOptions="Center">
+                <Label Text="Issue #32717" 
+                       FontSize="24" 
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center"/>
+                
+                <Label Text="LinearGradientBrush should remain visible after showing overlay"
+                       TextColor="White"
+                       HorizontalOptions="Center"/>
+                
+                <Button x:Name="ShowOverlayButton"
+                        Text="Show Overlay"
+                        Clicked="OnShowOverlayClicked"
+                        AutomationId="ShowOverlayButton"/>
+                
+                <Label x:Name="StatusLabel"
+                       Text="Ready"
+                       TextColor="White"
+                       HorizontalOptions="Center"
+                       AutomationId="StatusLabel"/>
+            </VerticalStackLayout>
+        </Grid>
+        
+        <!-- Simulated popup overlay - initially hidden -->
+        <Grid x:Name="PopupOverlay"
+              AutomationId="PopupOverlay"
+              IsVisible="False"
+              BackgroundColor="#80000000">
+            <Frame BackgroundColor="White"
+                   WidthRequest="300"
+                   HeightRequest="200"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center">
+                <VerticalStackLayout Spacing="20">
+                    <Label Text="Overlay"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center"
+                           AutomationId="OverlayLabel"/>
+                    <Button Text="Close"
+                            Clicked="OnCloseOverlayClicked"
+                            AutomationId="CloseButton"/>
+                </VerticalStackLayout>
+            </Frame>
+        </Grid>
+    </Grid>
+</ContentPage>

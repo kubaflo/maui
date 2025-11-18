@@ -728,6 +728,14 @@ namespace Microsoft.Maui.Platform
 			}
 
 			UpdateKeyboardSubscription();
+
+			// Refresh the background to ensure gradient layers are properly restored
+			// after view hierarchy changes (e.g., when popups are shown/dismissed)
+			// Only update if window is not null (being added to window) and background layer is missing
+			if (Window != null && View != null && View.Background is Graphics.GradientPaint && !this.HasBackgroundLayer())
+			{
+				this.UpdateBackground(View);
+			}
 		}
 	}
 }

@@ -49,5 +49,28 @@ namespace Microsoft.Maui.Platform
 				}
 			}
 		}
+
+		public static bool HasBackgroundLayer(this UIView control)
+		{
+			var layer = control.Layer;
+
+			if (layer == null)
+				return false;
+
+			if (layer.Name == ViewExtensions.BackgroundLayerName)
+				return true;
+
+			var sublayers = layer.Sublayers;
+			if (sublayers is null || sublayers.Length == 0)
+				return false;
+
+			foreach (var subLayer in sublayers)
+			{
+				if (subLayer.Name == ViewExtensions.BackgroundLayerName)
+					return true;
+			}
+
+			return false;
+		}
 	}
 }

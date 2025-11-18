@@ -27,6 +27,14 @@ namespace Microsoft.Maui.Platform
 			base.LayoutSubviews();
 
 			UpdateClip();
+
+			// Ensure background gradients are refreshed after layout changes
+			// This handles cases where view hierarchy changes (e.g., popups) may affect gradient layers
+			// Only update if the background layer is missing but should exist
+			if (View != null && View.Background is Graphics.GradientPaint && !this.HasBackgroundLayer())
+			{
+				this.UpdateBackground(View);
+			}
 		}
 
 		internal IBorderStroke? Clip
