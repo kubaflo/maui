@@ -169,6 +169,15 @@ namespace Microsoft.Maui.Controls.Platform
 				return false;
 			}
 
+			// If we don't have any tap/pan/swipe gestures (only drag/drop gestures),
+			// return false to allow the event to propagate to parent views
+			// This fixes issue #32702 where CollectionView item selection doesn't work
+			// when DragGestureRecognizer or DropGestureRecognizer is attached to item content
+			if (!HasAnyGestures())
+			{
+				return false;
+			}
+
 			// A single tap has occurred and there's no handler for double tap to worry about,
 			// so we can go ahead and run the delegate
 			return _tapDelegate(1, e);
