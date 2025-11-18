@@ -1,5 +1,64 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
-             xmlns:local="clr-namespace:Maui.Controls.Sample">
+             xmlns:local="clr-namespace:Maui.Controls.Sample"
+             x:Name="Root"
+             x:DataType="local:MainPage"
+             Title="Issue #32578 - Grouped CollectionView MeasureFirstItem">
+    
+    <Grid RowDefinitions="Auto,*">
+        <!-- Header with toggle button -->
+        <VerticalStackLayout Padding="10" Spacing="5">
+            <Label Text="Testing Grouped CollectionView ItemSizingStrategy" 
+                   FontSize="18" 
+                   FontAttributes="Bold"/>
+            <Button Text="Toggle Sizing Strategy" 
+                    Clicked="OnToggleSizingStrategy"
+                    AutomationId="ToggleButton"/>
+            <Label x:Name="StatusLabel" 
+                   Text="Current: MeasureFirstItem"
+                   AutomationId="StatusLabel"/>
+        </VerticalStackLayout>
+        
+        <!-- Grouped CollectionView -->
+        <CollectionView Grid.Row="1"
+                        x:Name="TestCollection"
+                        AutomationId="TestCollection"
+                        ItemsSource="{Binding Animals, Source={x:Reference Root}}"
+                        ItemSizingStrategy="MeasureFirstItem"
+                        IsGrouped="true">
+            <CollectionView.GroupHeaderTemplate>
+                <DataTemplate x:DataType="local:AnimalGroup">
+                    <Label Text="{Binding Name}"
+                           BackgroundColor="LightGray"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           Padding="10"/>
+                </DataTemplate>
+            </CollectionView.GroupHeaderTemplate>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="local:Animal">
+                    <Grid RowDefinitions="60"
+                          ColumnDefinitions="60,*"
+                          Padding="10">
+                        <BoxView Grid.RowSpan="2"
+                                 Color="DarkGray"
+                                 HeightRequest="60"
+                                 WidthRequest="60" />
+                        
+                        <Label Grid.Column="1"
+                               Text="{Binding Name}"
+                               FontAttributes="Bold"
+                               VerticalOptions="Center"/>
+                        
+                        <Label Grid.Column="1"
+                               Text="{Binding Location}"
+                               FontAttributes="Italic"
+                               VerticalOptions="End"
+                               Margin="0,0,0,10"/>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
 </ContentPage>
