@@ -1,1 +1,6 @@
 #nullable enable
+Microsoft.Maui.Platform.MauiCheckBox
+Microsoft.Maui.Platform.MauiCheckBox.MauiCheckBox(Android.Content.Context! context) -> void
+Microsoft.Maui.Platform.MauiCheckBox.MauiCheckBox(Android.Content.Context! context, Android.Util.IAttributeSet? attrs) -> void
+Microsoft.Maui.Platform.MauiCheckBox.MauiCheckBox(Android.Content.Context! context, Android.Util.IAttributeSet? attrs, int defStyleAttr) -> void
+Microsoft.Maui.Platform.MauiCheckBox.MauiCheckBox(nint javaReference, Android.Runtime.JniHandleOwnership transfer) -> void

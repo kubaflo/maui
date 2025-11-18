@@ -1,7 +1,7 @@
 ﻿using Android.Views;
 using Android.Widget;
 using AndroidX.AppCompat.Widget;
-using Google.Android.Material.CheckBox;
+using Microsoft.Maui.Platform;
 
 namespace Microsoft.Maui.Handlers
 {
@@ -9,7 +9,7 @@ namespace Microsoft.Maui.Handlers
 	{
 		protected override AppCompatCheckBox CreatePlatformView()
 		{
-			var platformCheckBox = new MaterialCheckBox(Context)
+			var platformCheckBox = new MauiCheckBox(Context)
 			{
 				SoundEffectsEnabled = false
 			};
@@ -46,8 +46,7 @@ namespace Microsoft.Maui.Handlers
 
 		void OnCheckedChange(object? sender, CompoundButton.CheckedChangeEventArgs e)
 		{
-			if (VirtualView != null)
-				VirtualView.IsChecked = e.IsChecked;
+			VirtualView?.IsChecked = e.IsChecked;
 		}
 	}
 }
