@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using Microsoft.Maui.Controls;
-using Microsoft.Maui.Controls.Handlers.Items2;
 
 namespace Maui.Controls.Sample.Issues
 {
