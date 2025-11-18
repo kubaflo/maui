@@ -1,3 +1,4 @@
+using System;
 using Android.Content;
 using Android.Runtime;
 using Android.Util;
@@ -35,10 +36,10 @@ namespace Microsoft.Maui.Platform
 			// MaterialCheckBox enforces a 48dp minimum touch target which can cause
 			// alignment issues. We need to ensure the CheckBox measures correctly
 			// for layout purposes while still maintaining proper touch targets.
-			// Setting MinimumWidth and MinimumHeight to 0 allows the CheckBox
+			// Setting minimum dimensions to 0 allows the CheckBox
 			// to be measured based on its actual content size.
-			MinimumWidth = 0;
-			MinimumHeight = 0;
+			SetMinimumWidth(0);
+			SetMinimumHeight(0);
 		}
 	}
 }

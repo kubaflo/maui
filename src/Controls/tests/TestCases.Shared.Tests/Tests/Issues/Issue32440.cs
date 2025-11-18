@@ -18,7 +18,7 @@ namespace Microsoft.Maui.TestCases.Tests.Issues
 		{
 			// Wait for the test page to load
 			App.WaitForElement("TestGrid");
-			
+
 			// Visual verification via screenshot
 			// The CheckBox should be vertically centered in the Grid,
 			// similar to how the reference dot is centered in its Grid
