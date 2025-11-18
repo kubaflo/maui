@@ -1,36 +1,5 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
-             xmlns:local="clr-namespace:Maui.Controls.Sample"
-             Title="Issue #32407 - BoxView Separator Test">
-    
-    <Grid>
-        <CollectionView x:Name="TestCollection"
-                        ItemsSource="{Binding Items}"
-                        ItemSizingStrategy="MeasureAllItems">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Grid RowSpacing="0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="2" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        
-                        <!-- Blue separator BoxView - this should always be visible -->
-                        <BoxView Grid.Row="0"
-                                 BackgroundColor="Blue"
-                                 HeightRequest="2"
-                                 HorizontalOptions="FillAndExpand" />
-                        
-                        <!-- Content -->
-                        <Grid Grid.Row="1" Padding="10" BackgroundColor="White">
-                            <Label Text="{Binding .}" 
-                                   FontSize="16"
-                                   VerticalOptions="Center"/>
-                        </Grid>
-                    </Grid>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
-    </Grid>
+             xmlns:local="clr-namespace:Maui.Controls.Sample">
 </ContentPage>
