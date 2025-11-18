@@ -108,7 +108,7 @@ echo "Simulator is booted and ready"
 
 ### Android Emulator Startup with Error Checking
 
-**Used in**: Investigation work
+**Used in**: PR reviews, investigation work
 
 **Pattern**:
 ```bash
@@ -117,11 +117,20 @@ pkill -9 qemu-system-x86_64 2>/dev/null || true
 pkill -9 emulator 2>/dev/null || true
 sleep 2
 
-# Restart adb server
-adb kill-server && sleep 1 && adb start-server && sleep 2
+# CRITICAL: Start emulator as background daemon that survives session end
+# Use subshell with & to fully detach from current session
+cd $ANDROID_HOME/emulator && (./emulator -avd Pixel_9 -no-snapshot-load -no-audio -no-boot-anim > /tmp/emulator.log 2>&1 &)
 
-# Start emulator (must run from SDK emulator directory to find dependencies)
-cd $ANDROID_HOME/emulator && ./emulator -avd Nexus_5X_API_30 -no-snapshot-load -no-audio -no-boot-anim &
+# Wait a moment for process to start
+sleep 3
+
+# Verify emulator process started
+EMULATOR_PID=$(ps aux | grep "qemu.*Pixel_9" | grep -v grep | awk '{print $2}')
+if [ -z "$EMULATOR_PID" ]; then
+    echo "❌ ERROR: Emulator failed to start"
+    exit 1
+fi
+echo "✅ Emulator started as background daemon (PID: $EMULATOR_PID)"
 
 # Wait for device to appear
 echo "Waiting for device to appear..."
@@ -151,9 +160,36 @@ echo "✅ Emulator ready: $DEVICE_UDID (API $API_LEVEL)"
 
 **When to use**: Starting Android emulator for testing
 
-**Critical detail**: The emulator command must be run from `$ANDROID_HOME/emulator` directory. Running from other directories causes "Qt library not found" and "qemu-system not found" errors.
+**Why this pattern is critical**:
+
+The subshell `()` with `&` pattern is essential for emulator persistence:
+- **Problem**: Using `mode="async"` attaches the emulator to the bash session, causing it to be killed when the session ends
+- **Root cause**: Background processes attached to sessions are terminated during cleanup, even with `nohup`
+- **Solution**: Subshell `()` creates a new process group that's detached from the current session
+- **Result**: Emulator persists even when AI agent finishes responding or sessions end
+
+**Wrong approach (emulator dies)**:
+```bash
+# DON'T DO THIS - emulator will be killed when session ends
+bash --mode=async ./emulator -avd Pixel_9 &
+```
+
+**Correct approach (emulator persists)**:
+```bash
+# Subshell with & fully detaches the process
+cd $ANDROID_HOME/emulator && (./emulator -avd Pixel_9 ... &)
+```
+
+**Critical details**: 
+- The emulator command must be run from `$ANDROID_HOME/emulator` directory. Running from other directories causes "Qt library not found" and "qemu-system not found" errors
+- **Use subshell `()` with `&`** to start emulator as true background daemon that persists after bash session ends
+- **NEVER use `adb kill-server`** - This disconnects ALL active ADB connections and causes emulators to lose connection. Almost never necessary
+- **NEVER use `mode="async"` for emulators** - Processes will be terminated when the session ends
+- **Check first**: Run `adb devices` before starting - if device is already visible, no action needed
 
 **Available emulators**: List with `emulator -list-avds`
+
+**To verify persistence**: After starting emulator, note the PID, finish the current task, then check if the process still exists with `ps aux | grep <PID>`
 
 ---
 
