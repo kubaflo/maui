@@ -359,6 +359,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				_pageAnimation = null;
 				_pageAnimation = CreateContentAnimator(oldRenderer, currentRenderer, oldIndex, newIndex, _containerArea);
 
+				// Ensure the new content page gets the correct FlowDirection
+				UpdateFlowDirection();
+
 				if (_pageAnimation != null)
 				{
 					_pageAnimation.AddCompletion((p) =>
@@ -490,7 +493,19 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		void UpdateFlowDirection()
 		{
 			if (_shellContext?.Shell?.CurrentItem?.CurrentItem == ShellSection)
+			{
 				this.View.UpdateFlowDirection(_shellContext.Shell);
+
+				// Also update the current content page's platform view to ensure RTL propagates to page content
+				if (_currentContent != null)
+				{
+					var page = ((IShellContentController)_currentContent).GetOrCreateContent();
+					if (page?.Handler?.PlatformView is UIView pageView)
+					{
+						pageView.UpdateFlowDirection(page);
+					}
+				}
+			}
 		}
 
 		void OnShellSectionItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
