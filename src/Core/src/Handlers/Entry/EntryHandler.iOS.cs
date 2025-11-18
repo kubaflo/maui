@@ -190,9 +190,15 @@ namespace Microsoft.Maui.Handlers
 
 			void OnEditingChanged(object? sender, EventArgs e)
 			{
-				if (sender is MauiTextField platformView)
+				if (sender is MauiTextField platformView && VirtualView is IEntry virtualView)
 				{
-					VirtualView?.UpdateText(platformView.Text);
+					// Update cursor position BEFORE updating text to ensure it's available during TextChanged event
+					// This fixes issue #32483 where CursorPosition returns incorrect values during TextChanged
+					var cursorPosition = platformView.GetCursorPosition();
+					if (virtualView.CursorPosition != cursorPosition)
+						virtualView.CursorPosition = cursorPosition;
+
+					virtualView.UpdateText(platformView.Text);
 				}
 			}
 
@@ -207,9 +213,15 @@ namespace Microsoft.Maui.Handlers
 
 			void OnTextPropertySet(object? sender, EventArgs e)
 			{
-				if (sender is MauiTextField platformView)
+				if (sender is MauiTextField platformView && VirtualView is IEntry virtualView)
 				{
-					VirtualView?.UpdateText(platformView.Text);
+					// Update cursor position BEFORE updating text to ensure it's available during TextChanged event
+					// This fixes issue #32483 where CursorPosition returns incorrect values during TextChanged
+					var cursorPosition = platformView.GetCursorPosition();
+					if (virtualView.CursorPosition != cursorPosition)
+						virtualView.CursorPosition = cursorPosition;
+
+					virtualView.UpdateText(platformView.Text);
 				}
 			}
 
