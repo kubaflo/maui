@@ -1,4 +1,6 @@
-﻿namespace Maui.Controls.Sample;
+﻿using Microsoft.Maui.Controls.Handlers.Items2;
+
+namespace Maui.Controls.Sample;
 
 public static class MauiProgram
 {
@@ -21,6 +23,13 @@ public static class MauiProgram
 				fonts.AddFont("SegoeUI-Bold.ttf", "Segoe UI Bold");
 				fonts.AddFont("SegoeUI-Italic.ttf", "Segoe UI Italic");
 				fonts.AddFont("SegoeUI-Bold-Italic.ttf", "Segoe UI Bold Italic");
+			})
+			.ConfigureMauiHandlers(handlers =>
+			{
+				// Register CollectionViewHandler2 to reproduce issue #32407
+#if IOS
+				handlers.AddHandler<CollectionView, CollectionViewHandler2>();
+#endif
 			})
 			.Build();
 }
