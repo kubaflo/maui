@@ -1,5 +1,48 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
-             xmlns:local="clr-namespace:Maui.Controls.Sample">
+             xmlns:local="clr-namespace:Maui.Controls.Sample"
+             Title="Issue #32440 - CheckBox Alignment">
+    
+    <VerticalStackLayout Padding="20" Spacing="20">
+        <Label Text="CheckBox Alignment Test" 
+               FontSize="20" 
+               FontAttributes="Bold"
+               HorizontalOptions="Center"/>
+        
+        <!-- Grid with CheckBox centered (reported issue scenario) -->
+        <Grid x:Name="TestGrid" 
+              BackgroundColor="LightBlue"
+              HeightRequest="100"
+              WidthRequest="300">
+            <CheckBox x:Name="CenteredCheckBox"
+                      HorizontalOptions="Center"
+                      VerticalOptions="Center"
+                      Color="Red"/>
+        </Grid>
+        
+        <!-- Reference: Grid with Label centered (for comparison) -->
+        <Grid BackgroundColor="LightGreen"
+              HeightRequest="100"
+              WidthRequest="300">
+            <Label Text="●" 
+                   FontSize="24"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center"
+                   TextColor="Red"/>
+        </Grid>
+        
+        <!-- Reference: CheckBox without Grid (for comparison) -->
+        <CheckBox x:Name="StandaloneCheckBox"
+                  HorizontalOptions="Center"
+                  Color="Blue"/>
+        
+        <Label x:Name="StatusLabel" 
+               Text="Tap 'Measure' to see positioning details"
+               FontSize="12"/>
+        
+        <Button Text="Measure Positions" 
+                Clicked="OnMeasureClicked"
+                AutomationId="MeasureButton"/>
+    </VerticalStackLayout>
 </ContentPage>
