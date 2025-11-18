@@ -3,27 +3,20 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     x:Class="Maui.Controls.Sample.SandboxShell"
     xmlns:local="clr-namespace:Maui.Controls.Sample"
-    x:Name="shell"
-    Title="RTL Issue Test"
-    FlowDirection="RightToLeft"
-    FlyoutBehavior="Locked">
-    
-    <FlyoutItem Title="Home">
-        <ShellContent
+    x:Name="shell">
+    <TabBar Shell.TabBarForegroundColor="Green"
+        Shell.TabBarUnselectedColor="Red">
+        <Tab Title="MainPage1" Icon="groceries.png">
+            <ShellContent Icon="groceries.png"
             Title="Home"
             ContentTemplate="{DataTemplate local:MainPage}"
             Route="MainPage" />
-        <ShellContent
-            Title="Reports"
+        </Tab>
+        <Tab Title="MainPage2" Icon="dotnet_bot.png">
+            <ShellContent Icon="dotnet_bot.png"
+            Title="Home"
             ContentTemplate="{DataTemplate local:MainPage}"
-            Route="Reports" />
-    </FlyoutItem>
-    
-    <MenuItem
-        Text="About"
-        Clicked="OnAboutClicked" />
-    <MenuItem
-        Text="Settings"
-        Clicked="OnSettingsClicked" />
-        
+            Route="MainPage2" />
+        </Tab>
+    </TabBar>
 </Shell>
