@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       x:Class="Maui.Controls.Sample.Issues.Issue32419"
+       xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+       Title="Issue32419"
+       FlowDirection="RightToLeft"
+       FlyoutBehavior="Locked">
+    
+    <FlyoutItem Title="Home">
+        <ShellContent
+            Title="Home"
+            ContentTemplate="{DataTemplate local:Issue32419Page}"
+            Route="HomePage" />
+        <ShellContent
+            Title="Reports"
+            ContentTemplate="{DataTemplate local:Issue32419Page}"
+            Route="ReportsPage" />
+    </FlyoutItem>
+    
+    <MenuItem
+        Text="About"
+        AutomationId="AboutMenuItem" />
+    <MenuItem
+        Text="Settings"
+        AutomationId="SettingsMenuItem" />
+        
+</Shell>
