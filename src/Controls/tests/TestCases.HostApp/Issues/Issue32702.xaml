@@ -1,27 +1,20 @@
-﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="Maui.Controls.Sample.MainPage"
-             xmlns:local="clr-namespace:Maui.Controls.Sample"
-             Title="Issue #32702 Reproduction">
+             x:Class="Maui.Controls.Sample.Issues.Issue32702"
+             Title="Issue 32702 - CollectionView Selection with Drag/Drop Gestures">
     
     <VerticalStackLayout Padding="20" Spacing="10">
-        <Label Text="CollectionView Selection with Drag/Drop Gestures" 
-               FontSize="18" 
-               FontAttributes="Bold"/>
-        
-        <Label Text="Tap items to select them (selection should work even with gestures)" 
-               FontSize="14"/>
+        <Label Text="Tap items to select them"
+               AutomationId="InstructionLabel"/>
         
         <Label x:Name="StatusLabel" 
-               Text="No selection yet"
-               FontSize="16"
-               TextColor="Blue"
+               Text="No selection"
                AutomationId="StatusLabel"/>
         
         <CollectionView x:Name="TestCollectionView" 
                         SelectionMode="Single" 
                         SelectionChanged="OnSelectionChanged"
-                        HeightRequest="400"
                         AutomationId="TestCollectionView">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
@@ -29,7 +22,8 @@
                            HeightRequest="50"
                            Padding="16,8"
                            BackgroundColor="LightGray"
-                           Margin="4">
+                           Margin="4"
+                           AutomationId="{Binding .}">
                         <Label.GestureRecognizers>
                             <DropGestureRecognizer AllowDrop="True" />
                             <DragGestureRecognizer />
