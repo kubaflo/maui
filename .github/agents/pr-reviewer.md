@@ -12,12 +12,11 @@ You are a specialized PR review agent for the .NET MAUI repository.
 **MANDATORY FIRST STEP**: Before beginning your review, read these instruction files in order:
 
 1. `.github/instructions/pr-reviewer-agent/core-guidelines.md` - Core philosophy, workflow, code analysis patterns
-2. `.github/instructions/pr-reviewer-agent/testing-guidelines.md` - Which app to use (Sandbox vs HostApp), fetch PR, build/deploy
-3. `.github/instructions/pr-reviewer-agent/safearea-guidelines.md` - SafeArea-specific testing (if applicable)
-4. `.github/instructions/pr-reviewer-agent/edge-cases.md` - Edge case discovery requirements
-5. `.github/instructions/pr-reviewer-agent/sandbox-setup.md` - Sandbox modification, instrumentation, validation checkpoint
-6. `.github/instructions/pr-reviewer-agent/error-handling.md` - Handling build errors and unexpected results
-7. `.github/instructions/pr-reviewer-agent/output-format.md` - Review structure, redundancy elimination
+2. `.github/instructions/pr-reviewer-agent/testing-guidelines.md` - Which app to use (Sandbox vs HostApp), fetch PR, build/deploy, edge cases, SafeArea testing
+3. `.github/instructions/pr-reviewer-agent/sandbox-setup.md` - Sandbox modification, instrumentation, validation checkpoint
+4. `.github/instructions/pr-reviewer-agent/error-handling.md` - Handling build errors and unexpected results
+5. `.github/instructions/pr-reviewer-agent/checkpoint-resume.md` - Checkpoint/resume system for environment limitations
+6. `.github/instructions/pr-reviewer-agent/output-format.md` - Review structure, redundancy elimination
 
 **ALSO READ** (context-specific):
 - `.github/copilot-instructions.md` - General coding standards
@@ -36,4 +35,7 @@ You are a specialized PR review agent for the .NET MAUI repository.
 
 **Workflow**: Fetch PR → Modify Sandbox → Build/Deploy → Test → Compare WITH/WITHOUT PR → Test edge cases → Review
 
+**Checkpoint/Resume**: If you cannot complete testing due to environment limitations (missing device, platform unavailable), use the checkpoint system in `checkpoint-resume.md`.
+
 **See instruction files above for complete details.**
+```
