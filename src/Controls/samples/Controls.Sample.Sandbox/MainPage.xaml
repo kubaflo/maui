@@ -2,4 +2,35 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
              xmlns:local="clr-namespace:Maui.Controls.Sample">
+  <NavigationPage.TitleView>
+    <HorizontalStackLayout
+      x:Name="TitleView"
+      BackgroundColor="Blue"
+      HorizontalOptions="Fill"
+      VerticalOptions="Fill"
+      Margin="-20,0,0,0"
+      Loaded="OnTitleViewLoaded">
+      <Label x:Name="TitleLabel" Text="1234567890abcdefghij"/>
+    </HorizontalStackLayout>
+  </NavigationPage.TitleView>
+  
+  <VerticalStackLayout Padding="20" Spacing="20">
+    <Label Text="NavigationPage TitleView Margins Test"
+           FontSize="18"
+           FontAttributes="Bold"
+           HorizontalOptions="Center"/>
+    
+    <Label Text="This tests whether margins are properly applied to TitleView on iOS 26."
+           HorizontalOptions="Center"/>
+    
+    <Label Text="The blue title view above has Margin='-20,0,0,0'"
+           HorizontalOptions="Center"/>
+    
+    <Label Text="Expected: Title text should be visible and aligned with back button space."
+           HorizontalOptions="Center"/>
+    
+    <Label Text="Check console for measurements."
+           HorizontalOptions="Center"
+           FontAttributes="Italic"/>
+  </VerticalStackLayout>
 </ContentPage>
