@@ -1,5 +1,11 @@
 # Error Handling
 
+**For common build/deploy errors**: See [Shared Error Handling](../shared/error-handling-common.md)
+
+This document covers PR reviewer-specific errors and common mistakes.
+
+---
+
 ## 🚫 Common Mistakes & How to Avoid Them
 
 ### Mistake #1: Building the Wrong App ⭐ MOST COMMON
@@ -95,7 +101,83 @@
 
 ---
 
-### Mistake #6: Surface-Level Code Review
+### Mistake #6: Giving Up Without Attempting Solutions ⭐ CRITICAL
+
+**Symptom**: Agent sees "no device connected" or other blocker and skips testing entirely
+
+**Why it happens**:
+- Assumes missing device/platform is an insurmountable blocker
+- Doesn't realize solutions exist (emulator startup, checkpoint for unavailable platforms)
+- Takes the "easy way out" instead of problem-solving
+- Forgets instructions include both solutions and escalation paths
+
+**How to avoid**:
+
+**Step 1: ATTEMPT available solutions first**
+
+For Android:
+```bash
+# 1. Check for device
+export DEVICE_UDID=$(adb devices | grep -v "List" | grep "device" | awk '{print $1}' | head -1)
+
+# 2. If no device, START EMULATOR (don't give up!)
+if [ -z "$DEVICE_UDID" ]; then
+    echo "No device found. Starting emulator..."
+    cd $ANDROID_HOME/emulator && (./emulator -avd Pixel_9 -no-snapshot-load -no-audio -no-boot-anim > /tmp/emulator.log 2>&1 &)
+    adb wait-for-device
+    until [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" = "1" ]; do
+        sleep 2
+    done
+    export DEVICE_UDID=$(adb devices | grep -v "List" | grep "device" | awk '{print $1}' | head -1)
+fi
+
+# 3. If emulator failed, check logs
+if [ -z "$DEVICE_UDID" ]; then
+    echo "Emulator failed to start. Checking logs..."
+    cat /tmp/emulator.log
+    # Now proceed to Step 2 (checkpoint)
+fi
+```
+
+For iOS:
+```bash
+# Check for available simulators
+xcrun simctl list devices | grep iPhone
+# Attempt to boot simulator (see quick-ref.md)
+```
+
+**Step 2: If solutions fail, CREATE CHECKPOINT (don't skip testing!)**
+
+After attempting solutions and hitting genuine blocker:
+- ✅ **DO**: Create manual verification checkpoint (see testing-guidelines.md)
+- ✅ **DO**: Provide user with exact steps to test manually
+- ✅ **DO**: Include comprehensive PR analysis
+- ❌ **DON'T**: Skip testing and do code-only review
+- ❌ **DON'T**: Assume PR works without validation
+
+**The complete sequence**:
+1. Check for device/platform availability
+2. Attempt startup (emulator/simulator) if missing
+3. If startup fails, examine logs/errors
+4. If genuine blocker (platform unavailable, emulator won't start), CREATE CHECKPOINT
+5. Provide user with manual test steps in checkpoint
+6. Wait for user validation before proceeding
+
+**When checkpoint is needed**:
+- Emulator fails to start after attempting startup sequence
+- Platform unavailable (iOS on Linux, Windows on macOS)
+- `$ANDROID_HOME` not set or no AVDs available
+- Other environment issues preventing testing
+
+**Checkpoint template**: See testing-guidelines.md "Manual Verification Required" section
+
+**Cost if not avoided**: 
+- **Without checkpoint**: **Complete testing failure** - PR approved with no validation
+- **Skipping solutions**: Preventable blockers become actual blockers
+
+---
+
+### Mistake #7: Surface-Level Code Review
 
 **Symptom**: Describing WHAT changed without explaining WHY
 
@@ -137,6 +219,8 @@ Before proceeding with each phase, check:
 
 ### ☑️ Implementation Phase:
 - [ ] Created comprehensive test scenarios
+- [ ] If blocked from testing, attempted all available solutions first
+- [ ] If still blocked, created manual verification checkpoint (not skipped testing)
 - [ ] Added instrumentation for measurements
 - [ ] Showed test code to user BEFORE building
 - [ ] Got user approval to proceed
@@ -158,26 +242,19 @@ Before proceeding with each phase, check:
 
 ## Handling Build Errors
 
-If the build fails, follow this 3-step debugging process:
+**For common build errors**: See [Shared Error Handling - Build Errors](../shared/error-handling-common.md#build-errors)
 
-### Step 1: Check for Common Issues
+If the build fails during PR review, follow this debugging process:
 
-**Common Build Failures**:
+### Step 1: Try Common Fixes
 
-```bash
-# Error: Build tasks not found
-dotnet clean ./Microsoft.Maui.BuildTasks.slnf
-dotnet build ./Microsoft.Maui.BuildTasks.slnf
+**Quick fixes for common issues**:
 
-# Error: Dependency version conflicts
-dotnet clean Microsoft.Maui.slnx
-rm -rf bin/ obj/
-dotnet restore Microsoft.Maui.slnx --force
-
-# Error: Android SDK not found
-export ANDROID_HOME=/path/to/android-sdk
-# Or run: android  # Opens Android SDK Manager
-```
+See [Shared Error Handling](../shared/error-handling-common.md#build-errors) for:
+- Build tasks not found
+- Dependency version conflicts
+- PublicAPI analyzer failures
+- Platform SDK not found
 
 ### Step 2: Report the Error
 
@@ -201,8 +278,6 @@ dotnet build src/Controls/samples/Controls.Sample.Sandbox/Maui.Controls.Sample.S
 2. [Second attempt to fix]
 
 **Next steps**:
-- [ ] Try clean build: `dotnet clean && dotnet build`
-- [ ] Try different build configuration
 - [ ] Need help understanding this error
 ```
 
