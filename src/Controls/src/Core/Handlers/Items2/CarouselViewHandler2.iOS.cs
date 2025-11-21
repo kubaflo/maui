@@ -21,6 +21,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 		}
 
 		public static PropertyMapper<CarouselView, CarouselViewHandler2> Mapper = new(ItemsViewMapper)
+	{
+		[Controls.VisualElement.IsEnabledProperty.PropertyName] = MapIsEnabled,
 		{
 
 			[Controls.CarouselView.IsSwipeEnabledProperty.PropertyName] = MapIsSwipeEnabled,
@@ -68,6 +70,12 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 				base.ScrollToRequested(sender, args);
 			}
 		}
+
+	// TODO: Change the modifier to public in .NET 11.
+	internal static void MapIsEnabled(CarouselViewHandler2 handler, CarouselView carouselView)
+	{
+		handler.Controller?.CollectionView?.UpdateIsEnabled(carouselView);
+	}
 
 		public static void MapIsSwipeEnabled(CarouselViewHandler2 handler, CarouselView carouselView)
 		{

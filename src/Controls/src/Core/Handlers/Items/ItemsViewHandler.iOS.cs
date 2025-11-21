@@ -91,6 +91,12 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			handler._layout.ItemsUpdatingScrollMode = itemsView.ItemsUpdatingScrollMode;
 		}
 
+	// TODO: Change the modifier to public in .NET 11.
+	internal static void MapIsEnabled<TItemsView>(ItemsViewHandler<TItemsView> handler, ItemsView itemsView) where TItemsView : ItemsView
+	{
+		handler.Controller?.CollectionView?.UpdateIsEnabled(itemsView);
+	}
+
 		protected virtual void UpdateLayout()
 		{
 			_layout = SelectLayout();
