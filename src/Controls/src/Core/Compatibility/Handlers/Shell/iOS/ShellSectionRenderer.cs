@@ -124,7 +124,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			// Bounds check: ensure we have a valid index for pages array
 			int targetIndex = NavigationBar.Items.Length - 1;
-			if (targetIndex < 0 || targetIndex >= pages.Count)
+			if (targetIndex < 0 || targetIndex >= pages.Count || pages[targetIndex] is null)
 				return true;
 
 			_shellSection.SyncStackDownTo(pages[targetIndex]);
@@ -579,8 +579,8 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				if (child == null)
 					continue;
-				var renderer = (IPlatformViewHandler)child.Handler;
-				if (viewController == renderer.ViewController)
+				var renderer = child.Handler as IPlatformViewHandler;
+				if (viewController == renderer?.ViewController)
 					return child;
 			}
 
