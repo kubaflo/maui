@@ -1,5 +1,125 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
-             xmlns:local="clr-namespace:Maui.Controls.Sample">
+             xmlns:local="clr-namespace:Maui.Controls.Sample"
+             Title="PR #32811 Test - CollectionView + Drag/Drop">
+    
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="15">
+            <!-- Status Label -->
+            <Label x:Name="StatusLabel" 
+                   Text="No selection"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   TextColor="Blue"
+                   AutomationId="StatusLabel"/>
+            
+            <Label Text="Scenario 1: Both DragGestureRecognizer AND DropGestureRecognizer"
+                   FontAttributes="Bold"/>
+            <CollectionView x:Name="BothGesturesCollectionView" 
+                            SelectionMode="Single" 
+                            SelectionChanged="OnSelectionChanged"
+                            AutomationId="BothGesturesCollectionView"
+                            HeightRequest="250">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border StrokeThickness="2"
+                                Stroke="DarkGray"
+                                Padding="12"
+                                Margin="4"
+                                BackgroundColor="LightBlue">
+                            <Label Text="{Binding .}" 
+                                   AutomationId="{Binding .}">
+                                <Label.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" />
+                                    <DragGestureRecognizer />
+                                </Label.GestureRecognizers>
+                            </Label>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            
+            <Label Text="Scenario 2: Only DropGestureRecognizer"
+                   FontAttributes="Bold"/>
+            <CollectionView x:Name="OnlyDropCollectionView" 
+                            SelectionMode="Single" 
+                            SelectionChanged="OnSelectionChanged"
+                            AutomationId="OnlyDropCollectionView"
+                            HeightRequest="250">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border StrokeThickness="2"
+                                Stroke="DarkGray"
+                                Padding="12"
+                                Margin="4"
+                                BackgroundColor="LightGreen">
+                            <Label Text="{Binding .}" 
+                                   AutomationId="{Binding .}">
+                                <Label.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            
+            <Label Text="Scenario 3: Only DragGestureRecognizer"
+                   FontAttributes="Bold"/>
+            <CollectionView x:Name="OnlyDragCollectionView" 
+                            SelectionMode="Single" 
+                            SelectionChanged="OnSelectionChanged"
+                            AutomationId="OnlyDragCollectionView"
+                            HeightRequest="250">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border StrokeThickness="2"
+                                Stroke="DarkGray"
+                                Padding="12"
+                                Margin="4"
+                                BackgroundColor="LightYellow">
+                            <Label Text="{Binding .}" 
+                                   AutomationId="{Binding .}">
+                                <Label.GestureRecognizers>
+                                    <DragGestureRecognizer />
+                                </Label.GestureRecognizers>
+                            </Label>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            
+            <Label Text="Scenario 4: Drag/Drop + TapGestureRecognizer (Should NOT allow selection)"
+                   FontAttributes="Bold"/>
+            <CollectionView x:Name="MixedGesturesCollectionView" 
+                            SelectionMode="Single" 
+                            SelectionChanged="OnSelectionChanged"
+                            AutomationId="MixedGesturesCollectionView"
+                            HeightRequest="250">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border StrokeThickness="2"
+                                Stroke="DarkGray"
+                                Padding="12"
+                                Margin="4"
+                                BackgroundColor="LightCoral">
+                            <Label Text="{Binding .}" 
+                                   AutomationId="{Binding .}">
+                                <Label.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" />
+                                    <DragGestureRecognizer />
+                                    <TapGestureRecognizer Tapped="OnLabelTapped" />
+                                </Label.GestureRecognizers>
+                            </Label>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            
+            <Label x:Name="TapCountLabel" 
+                   Text="Tap count (Scenario 4): 0"
+                   AutomationId="TapCountLabel"/>
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
