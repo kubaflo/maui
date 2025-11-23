@@ -1,5 +1,45 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
-             xmlns:local="clr-namespace:Maui.Controls.Sample">
+             xmlns:local="clr-namespace:Maui.Controls.Sample"
+             Title="TitleView Rotation Test">
+    
+    <NavigationPage.TitleView>
+        <!-- Red background makes it easy to see if TitleView doesn't fill the navigation bar -->
+        <Grid x:Name="TitleViewGrid" 
+              BackgroundColor="Red" 
+              HorizontalOptions="FillAndExpand">
+            <Label Text="TitleView Test" 
+                   x:Name="TitleLabel"
+                   TextColor="White"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"/>
+        </Grid>
+    </NavigationPage.TitleView>
+    
+    <VerticalStackLayout Padding="20" Spacing="10">
+        <Label Text="NavigationPage.TitleView Rotation Test"
+               FontSize="20"
+               FontAttributes="Bold"
+               HorizontalOptions="Center"/>
+        
+        <Label Text="Testing Issue #32722: TitleView should expand to fill navigation bar after rotation on iOS 26+"
+               FontSize="14"
+               HorizontalOptions="Center"/>
+        
+        <Label x:Name="StatusLabel"
+               Text="Rotate device to test..."
+               FontSize="16"
+               TextColor="Gray"
+               Margin="0,20,0,0"
+               HorizontalOptions="Center"/>
+        
+        <Label x:Name="MeasurementsLabel"
+               Text=""
+               FontSize="14"
+               TextColor="Blue"
+               Margin="0,10,0,0"/>
+    </VerticalStackLayout>
 </ContentPage>
