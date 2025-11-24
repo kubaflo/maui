@@ -1,27 +1,46 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
-             xmlns:local="clr-namespace:Maui.Controls.Sample">
+             xmlns:local="clr-namespace:Maui.Controls.Sample"
+             Title="TitleView Rotation Test">
+    
+    <!-- TitleView for testing rotation behavior -->
+    <NavigationPage.TitleView>
+        <Grid x:Name="TitleViewGrid" 
+              BackgroundColor="LightBlue" 
+              HorizontalOptions="FillAndExpand"
+              AutomationId="TitleViewGrid">
+            <Label Text="TitleView - Rotate Test" 
+                   x:Name="TitleLabel"
+                   AutomationId="TitleLabel"
+                   TextColor="White"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"/>
+        </Grid>
+    </NavigationPage.TitleView>
     
     <VerticalStackLayout Spacing="20" Padding="40" VerticalOptions="Center">
         <Label 
-            Text="iOS Crash Test"
-            FontSize="24"
+            Text="PR #32815 Test - NavigationPage.TitleView Rotation"
+            FontSize="20"
+            FontAttributes="Bold"
+            AutomationId="HeaderLabel"
             HorizontalOptions="Center" />
         
-        <Button 
-            x:Name="CrashButton"
-            AutomationId="CrashButton"
-            Text="Click to Crash App"
-            Clicked="OnCrashClicked"
-            BackgroundColor="Red"
-            TextColor="White"
+        <Label 
+            Text="This test verifies that the TitleView expands/contracts when the device is rotated on iOS 26+."
+            FontSize="14"
+            AutomationId="DescriptionLabel"
             HorizontalOptions="Center" />
         
         <Label 
             x:Name="StatusLabel"
             AutomationId="StatusLabel"
-            Text="Ready to crash"
+            Text="Ready for rotation test"
+            FontSize="16"
+            TextColor="Gray"
             HorizontalOptions="Center" />
     </VerticalStackLayout>
     
