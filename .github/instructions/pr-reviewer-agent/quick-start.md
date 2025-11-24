@@ -32,6 +32,12 @@ Read these in order:
    
    **Decision**: If user says "review PR" or "test this fix" → Use Sandbox
    
+   **⚠️ CRITICAL CONFUSION TO AVOID:**
+   - **PR has test files in TestCases.HostApp?** → Still use Sandbox!
+   - Those test files are for AUTOMATED testing (CI runs them)
+   - You are doing MANUAL validation → Use Sandbox
+   - Rule: "Test files in PR" ≠ "What you test with"
+   
    See [testing-guidelines.md](testing-guidelines.md#app-selection) for details.
 
 2. **Workflow Overview** (2 minutes)
@@ -60,6 +66,22 @@ Read these in order:
    **Decision**: If you need to interact with app UI → Use Appium script
    
    See [appium-control.instructions.md](../appium-control.instructions.md) for complete guide.
+
+---
+
+---
+
+## 🛑 Stop and Ask Yourself
+
+**Before proceeding, answer this question:**
+
+**Q: Which app am I using for this PR validation?**
+
+- ✅ If you answered "Sandbox" → Correct! Proceed.
+- ❌ If you answered "HostApp" or "Both" → WRONG! Re-read App Selection Rule above.
+- ❓ If you're unsure → Default to Sandbox
+
+**Even if the PR adds test files to TestCases.HostApp**, you still use Sandbox for validation.
 
 ---
 
@@ -111,34 +133,48 @@ Proceed? Any concerns about this approach?
 
 ## 🛑 Mandatory Checkpoints
 
-### Checkpoint 1: Before Building (MANDATORY)
+### Checkpoint 1: STOP AND ASK BEFORE BUILDING (MANDATORY)
 
-After creating test code, **STOP and show user**:
+**🚨 CRITICAL RULE: NEVER build without showing your plan and getting approval.**
+
+After creating test code, **STOP and ask**:
 
 ```markdown
-## Validation Checkpoint - Before Building
+## 🛑 Checkpoint 1: Show Me Your Plan
 
-**Test code created**:
+I've created test code to validate this PR. Before I build (which takes 10-15 minutes), here's my approach:
+
+**Test code**:
 
 XAML:
 ```xml
-[Show relevant XAML snippet]
+[Show relevant XAML snippet with AutomationIds]
 ```
 
-Code:
+Code-behind:
 ```csharp
-[Show instrumentation code]
+[Show instrumentation code that captures measurements]
 ```
 
-**What I'm measuring**: [Explain]
+**Validation approach**:
+- What I'm measuring: [Specific measurements/properties]
+- How I'll validate: [Appium element queries, not screenshots]
+- Test sequence: [Steps the test will perform]
 
-**Expected WITHOUT PR**: [What you expect]
-**Expected WITH PR**: [What should change]
+**Expected results**:
+- WITHOUT PR fix: [Specific expected behavior/measurements]
+- WITH PR fix: [How behavior should change]
 
-Should I proceed with building? (Build takes 10-15 minutes)
+**Should I proceed with building?** (This will take 10-15 minutes)
 ```
 
-**Do NOT build without approval.**
+**Why this checkpoint is mandatory**:
+- ❌ Building wrong test wastes 10-15 minutes
+- ❌ Measuring wrong things wastes entire test cycle
+- ✅ User validates approach before expensive operation
+- ✅ Catches mistakes early
+
+**NEVER build without explicit approval at this checkpoint.**
 
 ### Checkpoint 2: Before Final Review (Optional but Recommended)
 
@@ -183,8 +219,8 @@ git checkout main -- src/path/to/changed/file.cs
 # Verify no differences remain
 git diff main -- src/path/to/changed/file.cs  # Should be empty
 
-# Build and test
-dotnet build ... -t:Run
+# Build and test using automated script
+pwsh .github/scripts/BuildAndRunSandbox.ps1 -Platform [android|ios]
 
 # Document results: "Bug reproduces"
 ```
@@ -197,8 +233,8 @@ git checkout HEAD -- src/path/to/changed/file.cs
 # Verify PR changes are back
 git diff main -- src/path/to/changed/file.cs  # Should show PR changes
 
-# Build and test
-dotnet build ... -t:Run
+# Build and test using automated script
+pwsh .github/scripts/BuildAndRunSandbox.ps1 -Platform [android|ios]
 
 # Document results: "Bug is fixed"
 ```
@@ -217,40 +253,57 @@ After reverting:
 
 ## 📋 Common Commands (Copy-Paste)
 
-See [quick-ref.md](quick-ref.md) for complete command sequences.
+**🚨 MANDATORY: Always Use BuildAndRunSandbox.ps1**
 
-**iOS Testing**:
-```bash
-# Complete workflow - see quick-ref.md for full version
-UDID=$(xcrun simctl list devices available --json | jq -r '...')
-# ... build, install, launch
+**There is ONLY ONE way to test Sandbox app - use the script:**
+
+```powershell
+# Android
+pwsh .github/scripts/BuildAndRunSandbox.ps1 -Platform android
+
+# iOS
+pwsh .github/scripts/BuildAndRunSandbox.ps1 -Platform ios
 ```
 
-**Android Testing**:
-```bash
-# 1. Check for device
-export DEVICE_UDID=$(adb devices | grep device | awk '{print $1}' | head -1)
+**What the script does for you** (so you don't do these manually):
+- ✅ Detects and boots devices automatically
+- ✅ Builds the Sandbox app
+- ✅ Deploys to device
+- ✅ Starts/stops Appium server
+- ✅ Runs your Appium test script
+- ✅ Captures all logs to `SandboxAppium/` directory
 
-# 2. If no device, START EMULATOR (don't skip!)
-if [ -z "$DEVICE_UDID" ]; then
-    echo "No device found. Starting emulator..."
-    cd $ANDROID_HOME/emulator && (./emulator -avd Pixel_9 -no-snapshot-load -no-audio -no-boot-anim > /tmp/emulator.log 2>&1 &)
-    adb wait-for-device
-fi
+**❌ DO NOT do any of these manually**:
+- ❌ `dotnet build ... -t:Run` - Script handles this
+- ❌ `adb logcat` - Script captures logs automatically
+- ❌ Manually create/run Appium scripts - Script does this
+- ❌ `xcrun simctl launch` - Script handles this
 
-# 3. Build and deploy
-# ... see quick-ref.md for complete workflow
-```
+**✅ YOUR ONLY JOB**: Edit `SandboxAppium/RunWithAppiumTest.cs` with your test logic
 
 ---
 
-## ❌ Top 5 Mistakes to Avoid
+**HostApp UI Testing** (only when writing/validating UI tests):
+```powershell
+# iOS
+pwsh .github/scripts/BuildAndRunHostApp.ps1 -Platform ios -TestFilter "IssueXXXXX"
 
-1. ❌ **Building without showing test code first** → Wasted 15+ minutes if wrong
-2. ❌ **Using HostApp for PR validation** → Should use Sandbox
-3. ❌ **Only testing WITH fix** → Must test baseline too
-4. ❌ **Not checking current branch first** → Might already be on PR branch
-5. ❌ **Forgetting to eliminate redundancy in review** → Read [output-format.md](output-format.md) before posting
+# Android
+pwsh .github/scripts/BuildAndRunHostApp.ps1 -Platform android -TestFilter "IssueXXXXX"
+```
+
+See [quick-ref.md](quick-ref.md) and [Common Testing Patterns](../common-testing-patterns.md) for more details.
+
+---
+
+## ❌ Top 6 Mistakes to Avoid
+
+1. ❌ **Using manual commands instead of BuildAndRunSandbox.ps1** → Script does everything automatically
+2. ❌ **Building without showing test code first** → Wasted 15+ minutes if wrong
+3. ❌ **Using HostApp for PR validation** → Should use Sandbox
+4. ❌ **Only testing WITH fix** → Must test baseline too
+5. ❌ **Not checking current branch first** → Might already be on PR branch
+6. ❌ **Forgetting to eliminate redundancy in review** → Read [output-format.md](output-format.md) before posting
 
 ---
 
@@ -280,11 +333,58 @@ fi
 
 ---
 
+## 🚨 CRITICAL: Validation and Screenshot Rules
+
+### Never Use Screenshots for Validation
+
+**❌ PROHIBITED:**
+- Using screenshot file sizes to determine if bug exists
+- Comparing screenshots visually to validate fixes
+- Making conclusions based on screenshot appearance
+
+**✅ REQUIRED:**
+- **ALWAYS use Appium element queries** to verify UI state
+- Use `FindElement` to check if elements exist/don't exist
+- Programmatically verify which page the app is on
+
+**Example:**
+```csharp
+// ✅ RIGHT: Use Appium to verify state
+try {
+    driver.FindElement(MobileBy.Id("MainPageTitle"));
+    Console.WriteLine("✅ On main page");
+} catch {
+    Console.WriteLine("❌ Not on main page - bug reproduced");
+}
+```
+
+### Screenshot Storage Location
+
+**Screenshots are managed by the Appium test script**:
+
+When creating your Appium test in `SandboxAppium/RunWithAppiumTest.cs`:
+- ✅ **Save screenshots to**: `SandboxAppium/` directory
+- ❌ **Never save to**: `/tmp/` or any other location
+- 📝 **Purpose**: Documentation/debugging only - never for validation
+
+**Example**:
+```csharp
+// In your Appium test script
+var screenshot = driver.GetScreenshot();
+screenshot.SaveAsFile("SandboxAppium/test_before.png");  // ✅ Correct
+// NOT: screenshot.SaveAsFile("/tmp/test_before.png");   // ❌ Wrong
+```
+
+**Automatic cleanup**: BuildAndRunSandbox.ps1 removes all old `*.png` files from `SandboxAppium/` before each test run.
+
+---
+
 ## ✅ Ready to Start
 
 You now know:
 - ✅ Which app to use (Sandbox, not HostApp)
 - ✅ Workflow with mandatory checkpoints
+- ✅ How to validate (Appium, not screenshots)
 - ✅ Where to find detailed instructions
 - ✅ Common mistakes to avoid
 

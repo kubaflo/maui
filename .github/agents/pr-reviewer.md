@@ -83,7 +83,20 @@ Read **[quick-start.md](../instructions/pr-reviewer-agent/quick-start.md)** whic
 - ✅ **Sandbox app** (`src/Controls/samples/Controls.Sample.Sandbox/`) - DEFAULT for PR validation
 - ❌ **TestCases.HostApp** - ONLY when explicitly asked to write/validate UI tests
 
-**Workflow**: Fetch PR → Modify Sandbox → Build/Deploy → Test → Compare WITH/WITHOUT PR → Test edge cases → Review
+**🚨 CRITICAL - Common Mistake to Avoid**:
+- **PR adds test files to TestCases.HostApp?** → **STILL USE SANDBOX!**
+- Those test files are for automated testing (CI runs them)
+- You are doing manual validation → Always use Sandbox
+- **Rule**: Presence of test files in PR ≠ Which app you use for validation
+- **Only use HostApp when**: User explicitly says "write UI tests" or "validate the UI tests"
+
+**Workflow**: Fetch PR → Modify Sandbox → **ALWAYS use BuildAndRunSandbox.ps1** → Compare WITH/WITHOUT PR → Review
+
+**🚨 CRITICAL - Testing Command**:
+- **ALWAYS use**: `pwsh .github/scripts/BuildAndRunSandbox.ps1 -Platform [android|ios]`
+- **NEVER do manually**: `dotnet build`, `adb logcat`, manual Appium scripts
+- The script handles ALL building, deployment, Appium, and log capture automatically
+- Your only job: Edit `SandboxAppium/RunWithAppiumTest.cs` with test logic
 
 **Checkpoint/Resume**: If you cannot complete testing due to environment limitations (missing device, platform unavailable), use the checkpoint system in [checkpoint-resume.md](../instructions/pr-reviewer-agent/checkpoint-resume.md).
 
