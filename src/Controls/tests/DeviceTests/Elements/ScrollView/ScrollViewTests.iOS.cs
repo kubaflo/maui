@@ -143,5 +143,27 @@ namespace Microsoft.Maui.DeviceTests
 				Assert.Equal(0, layout.LastArrangeBounds.Top);
 			});
 		}
+
+		[Fact]
+		public async Task DelaysContentTouchesIsEnabledByDefault()
+		{
+			// This test verifies that DelaysContentTouches is true by default, which is required
+			// for proper scrolling behavior when touch begins on interactive controls like buttons.
+			// Without this, users cannot scroll by dragging from a button or other interactive control.
+			// See https://github.com/dotnet/maui/issues/32852
+			var scrollView = new ScrollView();
+			var layout = new VerticalStackLayout
+			{
+				new Button { Text = "Button" }
+			};
+			scrollView.Content = layout;
+
+			await AttachAndRun<ScrollViewHandler>(scrollView, handler =>
+			{
+				var platformView = handler.PlatformView;
+				Assert.True(platformView.DelaysContentTouches, 
+					"DelaysContentTouches should be true by default to allow scrolling when touch begins on interactive controls");
+			});
+		}
 	}
 }

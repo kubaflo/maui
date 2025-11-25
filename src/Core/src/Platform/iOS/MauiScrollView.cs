@@ -109,6 +109,14 @@ namespace Microsoft.Maui.Platform
 		/// </summary>
 		public MauiScrollView()
 		{
+			// Enable iOS's native touch delay mechanism for scroll views.
+			// When true (the default), UIScrollView delays touch events to content views briefly
+			// to determine if the user's gesture is a scroll or a tap. This allows scrolling
+			// to start even when the touch begins on interactive controls like buttons.
+			// We explicitly set this to true to ensure consistent behavior and to fix a regression
+			// where scrolling wouldn't work when starting a drag gesture from a button or other
+			// interactive control. See https://github.com/dotnet/maui/issues/32852
+			DelaysContentTouches = true;
 		}
 
 		/// <summary>
