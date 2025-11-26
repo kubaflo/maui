@@ -216,8 +216,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				return;
 
 			var footerWidth = View.Frame.Width;
+			var footerY = View.Frame.Height - footerHeight - View.SafeAreaInsets.Bottom;
 
-			_footerView.Frame = new CGRect(0, View.Frame.Height - footerHeight - View.SafeAreaInsets.Bottom, footerWidth, footerHeight);
+			_footerView.Frame = new CGRect(0, footerY, footerWidth, footerHeight);
 
 			_tableViewController.LayoutParallax();
 		}
