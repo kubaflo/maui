@@ -2,4 +2,77 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
              xmlns:local="clr-namespace:Maui.Controls.Sample">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+            
+            <!-- Test 1: Slider with Binding (Issue #32903) -->
+            <VerticalStackLayout Spacing="10" BackgroundColor="LightBlue" Padding="10">
+                <Label Text="Test 1: Slider with Binding (Issue #32903)" FontAttributes="Bold" />
+                <Label Text="Expected: Min=10, Max=100, Value=50" />
+                <Slider Minimum="{Binding SliderMin}" 
+                        Maximum="{Binding SliderMax}" 
+                        Value="{Binding SliderValue, Mode=TwoWay}"
+                        AutomationId="SliderWithBinding" />
+                <Label Text="{Binding SliderValue, StringFormat='Actual Value: {0:F0}'}" 
+                       AutomationId="SliderValueLabel" />
+            </VerticalStackLayout>
+
+            <!-- Test 2: Stepper with Binding -->
+            <VerticalStackLayout Spacing="10" BackgroundColor="LightGreen" Padding="10">
+                <Label Text="Test 2: Stepper with Binding" FontAttributes="Bold" />
+                <Label Text="Expected: Min=10, Max=100, Value=50" />
+                <Stepper Minimum="{Binding StepperMin}" 
+                         Maximum="{Binding StepperMax}" 
+                         Value="{Binding StepperValue, Mode=TwoWay}"
+                         AutomationId="StepperWithBinding" />
+                <Label Text="{Binding StepperValue, StringFormat='Actual Value: {0:F0}'}" 
+                       AutomationId="StepperValueLabel" />
+            </VerticalStackLayout>
+
+            <!-- Test 3: Programmatic Property Order Test -->
+            <VerticalStackLayout Spacing="10" BackgroundColor="LightYellow" Padding="10">
+                <Label Text="Test 3: Programmatic Order Tests" FontAttributes="Bold" />
+                <Button Text="Test Order: Value → Min → Max" 
+                        Clicked="OnTestValueMinMax" 
+                        AutomationId="TestValueMinMaxBtn" />
+                <Button Text="Test Order: Min → Value → Max" 
+                        Clicked="OnTestMinValueMax" 
+                        AutomationId="TestMinValueMaxBtn" />
+                <Button Text="Test Order: Max → Value → Min" 
+                        Clicked="OnTestMaxValueMin" 
+                        AutomationId="TestMaxValueMinBtn" />
+                <Label Text="Test results will appear in console" 
+                       FontSize="12" />
+            </VerticalStackLayout>
+
+            <!-- Test 4: Dynamic Slider -->
+            <VerticalStackLayout Spacing="10" BackgroundColor="LightCoral" Padding="10">
+                <Label Text="Test 4: Dynamic Range Changes" FontAttributes="Bold" />
+                <Label Text="Initial: Min=10, Max=100, Value=50" />
+                <Slider x:Name="DynamicSlider"
+                        Minimum="10"
+                        Maximum="100"
+                        Value="50"
+                        AutomationId="DynamicSlider" />
+                <Label Text="{Binding Source={x:Reference DynamicSlider}, Path=Value, StringFormat='Current Value: {0:F0}'}" 
+                       AutomationId="DynamicSliderValueLabel" />
+                <Button Text="Set Range to 0-10 (Value should stay 50 when expanded back)" 
+                        Clicked="OnShrinkRange" 
+                        AutomationId="ShrinkRangeBtn" />
+                <Button Text="Restore Range to 0-100 (Value should restore to 50)" 
+                        Clicked="OnExpandRange" 
+                        AutomationId="ExpandRangeBtn" />
+            </VerticalStackLayout>
+
+            <!-- Validation Status -->
+            <VerticalStackLayout Spacing="10" BackgroundColor="LightGray" Padding="10">
+                <Label Text="Validation Status" FontAttributes="Bold" />
+                <Label x:Name="ValidationStatusLabel" 
+                       Text="Ready for testing" 
+                       AutomationId="ValidationStatus" />
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
