@@ -18,7 +18,8 @@ parameters:
   - name: pool
     type: object
     default:
-      name: AcesShared
+      name: Azure Pipelines
+      vmImage: macOS-15
 
 variables:
   - template: /eng/pipelines/common/variables.yml@self
@@ -54,8 +55,8 @@ stages:
             parameters:
               skipXcode: false
               skipProvisionator: false
-              skipAndroidCommonSdks: false  # Install base Android SDK (cmdline-tools, emulator, platform-tools)
-              skipAndroidPlatformApis: false  # Install platform APIs
+              skipAndroidCommonSdks: false
+              skipAndroidPlatformApis: false
               skipJdk: false
               skipSimulatorSetup: false
               skipCertificates: true
@@ -63,126 +64,6 @@ stages:
               skipAndroidEmulatorImages: false
               skipAndroidCreateAvds: false
               androidEmulatorApiLevel: '34'
-
-          # Disable hardware acceleration in AVD config (HVF not available on Azure hosted agents)
-          - script: |
-              echo "=== Disabling hardware acceleration in AVD config ==="
-              AVD_CONFIG="$HOME/.android/avd/Emulator_34.avd/config.ini"
-              if [ -f "$AVD_CONFIG" ]; then
-                echo "Found AVD config: $AVD_CONFIG"
-                echo "Current config:"
-                cat "$AVD_CONFIG"
-                echo ""
-                echo "Adding hw.cpu.ncore=2 and removing any accelerator settings..."
-                # Remove any existing accelerator settings and add our own
-                grep -v "hw.accelerator" "$AVD_CONFIG" > "$AVD_CONFIG.tmp" && mv "$AVD_CONFIG.tmp" "$AVD_CONFIG"
-                echo "hw.cpu.ncore=2" >> "$AVD_CONFIG"
-                echo ""
-                echo "Updated config:"
-                cat "$AVD_CONFIG"
-              else
-                echo "##vso[task.logissue type=warning]AVD config not found at: $AVD_CONFIG"
-                ls -la "$HOME/.android/avd/" 2>/dev/null || echo "AVD directory not found"
-              fi
-            displayName: 'Configure AVD for Software Emulation'
-
-          # Set up Android SDK PATH (required on self-hosted agents)
-          - pwsh: |
-              if ($env:ANDROID_SDK_ROOT) {
-                $platformTools = Join-Path $env:ANDROID_SDK_ROOT "platform-tools"
-                $emulatorPath = Join-Path $env:ANDROID_SDK_ROOT "emulator"
-                $cmdlineTools = Join-Path $env:ANDROID_SDK_ROOT "cmdline-tools/latest/bin"
-                
-                # Use Azure Pipelines' prependpath command to persist across steps
-                Write-Host "##vso[task.prependpath]$platformTools"
-                Write-Host "##vso[task.prependpath]$emulatorPath"
-                Write-Host "##vso[task.prependpath]$cmdlineTools"
-                
-                Write-Host "Added to PATH (will apply to subsequent steps):"
-                Write-Host "  platform-tools: $platformTools"
-                Write-Host "  emulator: $emulatorPath"
-                Write-Host "  cmdline-tools: $cmdlineTools"
-                
-                # Verify the tools exist
-                if (Test-Path (Join-Path $platformTools "adb")) {
-                  Write-Host "✅ adb found at: $platformTools/adb"
-                } else {
-                  Write-Host "⚠️ adb NOT found at expected location"
-                }
-                if (Test-Path (Join-Path $emulatorPath "emulator")) {
-                  Write-Host "✅ emulator found at: $emulatorPath/emulator"
-                } else {
-                  Write-Host "⚠️ emulator NOT found at expected location"
-                }
-              } else {
-                Write-Host "##vso[task.logissue type=warning]ANDROID_SDK_ROOT not set, skipping PATH setup"
-              }
-              
-              # Auto-detect and set JAVA_HOME if not already set
-              if (-not $env:JAVA_HOME) {
-                $jvmDir = "/Library/Java/JavaVirtualMachines"
-                $msJdk = Get-ChildItem "$jvmDir/microsoft-*.jdk" -ErrorAction SilentlyContinue | Select-Object -First 1
-                if ($msJdk) {
-                  $javaHome = "$($msJdk.FullName)/Contents/Home"
-                  Write-Host "##vso[task.setvariable variable=JAVA_HOME]$javaHome"
-                  Write-Host "Set JAVA_HOME to: $javaHome"
-                }
-              }
-            displayName: 'Configure Android SDK PATH'
-            env:
-              ANDROID_SDK_ROOT: $(ANDROID_SDK_ROOT)
-
-          # Start Android Emulator EARLY (using Start-Emulator.ps1 script)
-          - pwsh: |
-              Write-Host "=== Starting Android Emulator ==="
-              Write-Host "Working directory: $(Get-Location)"
-              Write-Host "ANDROID_SDK_ROOT: $env:ANDROID_SDK_ROOT"
-              Write-Host "JAVA_HOME: $env:JAVA_HOME"
-              Write-Host "PATH (first 500 chars): $($env:PATH.Substring(0, [Math]::Min(500, $env:PATH.Length)))"
-              
-              # Verify adb is in path
-              $adbPath = Get-Command adb -ErrorAction SilentlyContinue
-              if ($adbPath) {
-                Write-Host "adb found at: $($adbPath.Source)"
-              } else {
-                Write-Host "adb NOT in PATH, checking manually..."
-                $manualAdb = Join-Path $env:ANDROID_SDK_ROOT "platform-tools/adb"
-                if (Test-Path $manualAdb) {
-                  Write-Host "adb exists at $manualAdb but not in PATH"
-                }
-              }
-              
-              $scriptPath = ".github/scripts/shared/Start-Emulator.ps1"
-              Write-Host "Script path: $scriptPath"
-              
-              if (-not (Test-Path $scriptPath)) {
-                Write-Host "##vso[task.logissue type=error]Script not found: $scriptPath"
-                exit 1
-              }
-              Write-Host "Script exists: OK"
-              
-              $ErrorActionPreference = "Continue"
-              try {
-                Write-Host "Invoking Start-Emulator.ps1 -Platform android -DeviceUdid Emulator_34..."
-                & "./$scriptPath" -Platform android -DeviceUdid Emulator_34 2>&1 | ForEach-Object { Write-Host $_ }
-                $exitCode = $LASTEXITCODE
-                Write-Host "Script returned exit code: $exitCode"
-              } catch {
-                Write-Host "##vso[task.logissue type=error]Exception: $_"
-                Write-Host $_.ScriptStackTrace
-                $exitCode = 1
-              }
-              
-              if ($exitCode -ne 0) {
-                Write-Host "##vso[task.logissue type=error]Start-Emulator failed with code $exitCode"
-                exit $exitCode
-              }
-              
-              Write-Host "=== Android Emulator Started Successfully ==="
-            displayName: 'Start Android Emulator'
-            timeoutInMinutes: 35
-            env:
-              ANDROID_SDK_ROOT: $(ANDROID_SDK_ROOT)
 
           # Install .NET and workloads via build.ps1
           - pwsh: ./build.ps1 --target=dotnet --configuration="Release" --verbosity=diagnostic
@@ -276,89 +157,6 @@ stages:
               echo "Tools restored successfully"
             displayName: 'Restore .NET Tools'
 
-          # Boot Android emulator for UI tests
-          - script: |
-              echo "=== Booting Android Emulator ==="
-              
-              # Use swiftshader for software graphics rendering (HVF not available on Azure hosted ARM64 agents)
-              # Use swiftshader for software rendering (more reliable on CI without GPU)
-              # Start emulator in background with logging for debugging
-              EMULATOR_LOG="/tmp/emulator-boot.log"
-              nohup $ANDROID_SDK_ROOT/emulator/emulator -avd Emulator_34 -no-window -no-snapshot -no-audio -no-boot-anim -gpu swiftshader_indirect > "$EMULATOR_LOG" 2>&1 &
-              EMULATOR_PID=$!
-              echo "Emulator started with PID: $EMULATOR_PID"
-              
-              # Give emulator a moment to start and verify process is running
-              sleep 3
-              if ! pgrep -f 'qemu-system' > /dev/null; then
-                echo "##vso[task.logissue type=error]Emulator process did not start"
-                echo "=== Emulator Log ==="
-                cat "$EMULATOR_LOG" 2>/dev/null || echo "No log available"
-                exit 1
-              fi
-              echo "Emulator process verified running"
-              
-              # Wait for device to appear with timeout (don't use adb wait-for-device - can hang forever)
-              echo "Waiting for emulator device..."
-              device_timeout=60
-              device_waited=0
-              while ! adb devices | grep -q "emulator.*device"; do
-                sleep 2
-                device_waited=$((device_waited + 2))
-                if [ $device_waited -ge $device_timeout ]; then
-                  echo "##vso[task.logissue type=error]Emulator device did not appear in time"
-                  echo "=== Emulator Log (last 50 lines) ==="
-                  tail -50 "$EMULATOR_LOG" 2>/dev/null || echo "No log available"
-                  adb devices -l
-                  exit 1
-                fi
-              done
-              echo "Emulator device detected"
-              
-              # Wait for boot_completed
-              echo "Waiting for emulator to finish booting..."
-              timeout=600
-              waited=0
-              while [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
-                sleep 2
-                waited=$((waited + 2))
-                echo "Waiting for boot... ($waited/$timeout seconds)"
-                if [ $waited -ge $timeout ]; then
-                  echo "##vso[task.logissue type=error]Emulator did not boot in time"
-                  echo "=== Emulator Log (last 50 lines) ==="
-                  tail -50 "$EMULATOR_LOG" 2>/dev/null || echo "No log available"
-                  adb devices -l
-                  exit 1
-                fi
-              done
-              echo "Boot completed flag set"
-              
-              # Wait for package manager service to be available (critical for app installation)
-              echo "Waiting for package manager service..."
-              pm_timeout=120
-              pm_waited=0
-              while ! adb shell pm list packages 2>/dev/null | grep -q "package:"; do
-                sleep 3
-                pm_waited=$((pm_waited + 3))
-                echo "Waiting for package manager... ($pm_waited/$pm_timeout seconds)"
-                if [ $pm_waited -ge $pm_timeout ]; then
-                  echo "##vso[task.logissue type=error]Package manager service did not start"
-                  echo "=== Checking services ==="
-                  adb shell service list 2>/dev/null | head -20 || echo "Cannot list services"
-                  exit 1
-                fi
-              done
-              echo "Package manager service is ready"
-              
-              echo "=== Emulator booted successfully! ==="
-              adb devices -l
-            displayName: 'Boot Android Emulator'
-            continueOnError: true
-            timeoutInMinutes: 15
-            env:
-              ANDROID_SDK_ROOT: $(ANDROID_SDK_ROOT)
-              JAVA_HOME: $(JAVA_HOME_17_X64)
-
           - script: |
               echo "Installing Node.js 22..."
               brew install node@22
@@ -438,99 +236,18 @@ stages:
               echo "Copilot CLI installed successfully"
             displayName: 'Install GitHub Copilot CLI'
 
-          # Restart Android emulator to ensure it's fresh before PR Reviewer runs
-          # The emulator can become unstable after running for a long time
-          - script: |
-              echo "=== Restarting Android Emulator for PR Reviewer ==="
-              
-              # Kill any existing emulator
-              echo "Killing existing emulator..."
-              pkill -f 'qemu-system' 2>/dev/null || true
-              sleep 5
-              
-              # Restart ADB server
-              echo "Restarting ADB server..."
-              adb kill-server
-              sleep 2
-              adb start-server
-              sleep 2
-              
-              # Start fresh emulator
-              EMULATOR_LOG="/tmp/emulator-fresh.log"
-              echo "Starting fresh emulator..."
-              nohup $ANDROID_SDK_ROOT/emulator/emulator -avd Emulator_34 -no-window -no-snapshot -no-audio -no-boot-anim -gpu swiftshader_indirect > "$EMULATOR_LOG" 2>&1 &
-              EMULATOR_PID=$!
-              echo "Emulator started with PID: $EMULATOR_PID"
-              
-              # Wait for device to appear
-              echo "Waiting for emulator device..."
-              device_timeout=300
-              device_waited=0
-              while ! adb devices | grep -q "emulator.*device"; do
-                sleep 5
-                device_waited=$((device_waited + 5))
-                if [ $device_waited -ge $device_timeout ]; then
-                  echo "##vso[task.logissue type=error]Emulator device did not appear in time"
-                  cat "$EMULATOR_LOG" 2>/dev/null | tail -30
-                  exit 1
-                fi
-                echo "Waiting for device... ($device_waited/$device_timeout seconds)"
-              done
-              echo "Emulator device detected"
-              
-              # Wait for boot_completed
-              echo "Waiting for boot_completed..."
-              boot_timeout=600
-              boot_waited=0
-              while [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
-                sleep 5
-                boot_waited=$((boot_waited + 5))
-                if [ $boot_waited -ge $boot_timeout ]; then
-                  echo "##vso[task.logissue type=error]Emulator did not boot in time"
-                  exit 1
-                fi
-              done
-              echo "Boot completed"
-              
-              # Wait for package manager
-              echo "Waiting for package manager service..."
-              pm_timeout=120
-              pm_waited=0
-              while ! adb shell pm list packages 2>/dev/null | grep -q "package:"; do
-                sleep 5
-                pm_waited=$((pm_waited + 5))
-                if [ $pm_waited -ge $pm_timeout ]; then
-                  echo "##vso[task.logissue type=error]Package manager service did not start"
-                  adb shell service list 2>/dev/null | head -20
-                  exit 1
-                fi
-                echo "Waiting for package manager... ($pm_waited/$pm_timeout seconds)"
-              done
-              
-              echo "=== Fresh Android Emulator Ready! ==="
-              adb devices -l
-            displayName: 'Restart Android Emulator (Fresh)'
-            timeoutInMinutes: 15
-            env:
-              ANDROID_SDK_ROOT: $(ANDROID_SDK_ROOT)
-
           - script: |
               echo "Running Copilot PR Reviewer Agent via Review-PR.ps1..."
               echo "Reviewing PR #${{ parameters.PRNumber }}..."
-              
-              # Configure git identity (required for merge operations on self-hosted agents)
-              git config user.email "copilot-ci@microsoft.com"
-              git config user.name "Copilot CI"
-              echo "Git identity configured"
               
               # Create artifacts directory for Copilot outputs
               mkdir -p $(Build.ArtifactStagingDirectory)/copilot-logs
               
               # Invoke the PR reviewer using our PowerShell script
               # The script will merge the PR into the current branch
-              # -PostSummaryComment and -RunFinalize handle posting comments
+              # -NoInteractive for CI mode (exits after completion)
               set +e
-              pwsh .github/scripts/Review-PR.ps1 -PRNumber ${{ parameters.PRNumber }} -Platform android -RunFinalize -PostSummaryComment 2>&1 | tee $(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md
+              pwsh .github/scripts/Review-PR.ps1 -PRNumber ${{ parameters.PRNumber }} -NoInteractive 2>&1 | tee $(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md
               COPILOT_EXIT_CODE=$?
               set -e
               
@@ -574,8 +291,91 @@ stages:
               echo "Review output saved to $(Build.ArtifactStagingDirectory)/copilot-logs/"
             displayName: 'Run PR Reviewer Agent'
             env:
-              COPILOT_GITHUB_TOKEN: $(COPILOT_TOKEN)
-              GH_TOKEN: $(GH_COMMENT_TOKEN)
+              GITHUB_TOKEN: $(COPILOT_TOKEN)
+
+          - script: |
+              echo "Posting review comment using skill..."
+              
+              # Create artifacts directory if not exists
+              mkdir -p $(Build.ArtifactStagingDirectory)/copilot-logs
+              
+              # Use Copilot CLI to invoke the post-comment skill
+              set +e
+              copilot -p "Use a skill to post the review feedback as a comment on PR #${{ parameters.PRNumber }}. The review output should be in the CustomAgentLogsTmp or .github/agent-pr-session directories. Clean up ANSI codes and stats before posting." --yolo 2>&1 | tee $(Build.ArtifactStagingDirectory)/copilot-logs/copilot_post_comment_output.md
+              POST_COMMENT_EXIT_CODE=$?
+              set -e
+              
+              echo "Post comment exit code: $POST_COMMENT_EXIT_CODE"
+              
+              if [ $POST_COMMENT_EXIT_CODE -ne 0 ]; then
+                echo "##vso[task.logissue type=warning]Copilot post-comment skill exited with code $POST_COMMENT_EXIT_CODE"
+                echo "##vso[task.setvariable variable=PostCommentFailed]true"
+              fi
+            displayName: 'Post Review Comment Using Skill'
+            env:
+              GITHUB_TOKEN: $(COPILOT_TOKEN)
+            condition: succeededOrFailed()
+
+          - script: |
+              echo "Posting review comment to PR (fallback)..."
+              
+              # Check for the captured output file first
+              REVIEW_FILE="$(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md"
+              CLEANED_FILE="$(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_cleaned.md"
+              
+              # Also check if Copilot created a Review_Feedback file
+              FEEDBACK_FILE=$(find $(Build.ArtifactStagingDirectory)/copilot-logs -name "Review_Feedback_*.md" -type f | head -1)
+              
+              if [ -n "$FEEDBACK_FILE" ]; then
+                echo "Found review feedback file: $FEEDBACK_FILE"
+                REVIEW_FILE="$FEEDBACK_FILE"
+              fi
+              
+              if [ -f "$REVIEW_FILE" ] && [ -s "$REVIEW_FILE" ]; then
+                echo "Cleaning up review output..."
+                
+                # Clean up the content:
+                # 1. Strip all ANSI escape codes (color codes like [37m, [39m, etc.)
+                # 2. Start from the first markdown header (## or #)
+                # 3. Remove stats at the end (Total usage est, API time, Total session, etc.)
+                sed 's/\x1b\[[0-9;]*m//g' "$REVIEW_FILE" | \
+                  sed -n '/^#/,$p' | \
+                  sed '/^Total usage est/,$d' | \
+                  sed '/^API time spent/d' | \
+                  sed '/^Total session time/d' | \
+                  sed '/^Total duration/d' | \
+                  sed '/^Total code changes/d' | \
+                  sed '/^Breakdown by AI model/,$d' | \
+                  sed '/^Usage by model/,$d' | \
+                  sed '/^ *claude-/d' | \
+                  sed '/^ *gpt-/d' > "$CLEANED_FILE"
+                
+                # If cleaning removed everything, fall back to original without ANSI codes
+                if [ ! -s "$CLEANED_FILE" ]; then
+                  echo "Cleaned file is empty, using original without ANSI codes"
+                  sed 's/\x1b\[[0-9;]*m//g' "$REVIEW_FILE" > "$CLEANED_FILE"
+                fi
+                
+                echo "Posting review from: $CLEANED_FILE"
+                echo "--- Review Content Preview ---"
+                head -50 "$CLEANED_FILE"
+                echo "--- End Preview ---"
+                
+                # Post the review as a comment on the PR
+                # Note: GH_COMMENT_TOKEN needs 'repo' scope or 'pull_requests:write' permission
+                if gh pr comment ${{ parameters.PRNumber }} --repo dotnet/maui --body-file "$CLEANED_FILE"; then
+                  echo "Review comment posted successfully"
+                else
+                  echo "##vso[task.logissue type=warning]Failed to post comment. Check that GH_COMMENT_TOKEN has 'repo' or 'pull_requests:write' scope."
+                  echo "Review content is available in the published artifacts."
+                fi
+              else
+                echo "##vso[task.logissue type=warning]No review output found or file is empty"
+              fi
+            displayName: 'Post Review Comment (Fallback)'
+            env:
+              GITHUB_TOKEN: $(GH_COMMENT_TOKEN)
+            condition: and(succeededOrFailed(), eq(variables['PostCommentFailed'], 'true'))
 
           # Publish Copilot logs and session artifacts
           - task: PublishPipelineArtifact@1
@@ -603,45 +403,3 @@ stages:
               fi
             displayName: 'Check Copilot Result'
             condition: succeededOrFailed()
-
-          # Fallback: Post AI summary comment if the PR Reviewer didn't successfully post one
-          # This directly runs the post-ai-summary-comment.ps1 script as a backup
-          - pwsh: |
-              Write-Host "=== Fallback: Running post-ai-summary-comment.ps1 ==="
-              
-              $prNumber = "${{ parameters.PRNumber }}"
-              Write-Host "PR #$prNumber"
-              
-              # Restore tracked files to clean state before running the script.
-              # The PR reviewer's try-fix phase may have left the working tree dirty,
-              # which can corrupt script files and cause parameter binding errors.
-              Write-Host "Restoring working tree to clean state..."
-              git checkout -- . 2>&1 | Write-Host
-              Write-Host "✅ Working tree restored"
-              
-              # Check if a comment was already posted by looking for the AI Summary marker
-              Write-Host "Checking for existing AI summary comment..."
-              $existingComment = gh pr view $prNumber --json comments --jq '.comments[] | select(.body | contains("<!-- AI Summary -->")) | .id' 2>$null | Select-Object -First 1
-              
-              if ($existingComment) {
-                Write-Host "✅ AI summary comment already exists (ID: $existingComment). Skipping fallback."
-                exit 0
-              }
-              
-              Write-Host "No AI summary comment found. Running post-ai-summary-comment.ps1..."
-              
-              # Run the post-ai-summary-comment.ps1 script directly
-              # Uses -PRNumber which auto-loads state from CustomAgentLogsTmp/PRState/pr-$prNumber.md
-              pwsh .github/skills/ai-summary-comment/scripts/post-ai-summary-comment.ps1 -PRNumber $prNumber
-              if ($LASTEXITCODE -eq 0) {
-                Write-Host "✅ AI summary comment posted successfully"
-              } else {
-                Write-Host "##vso[task.logissue type=error]post-ai-summary-comment.ps1 failed with exit code $LASTEXITCODE"
-                exit $LASTEXITCODE
-              }
-            displayName: 'Post AI Summary Comment (Fallback)'
-            condition: succeededOrFailed()
-            continueOnError: true
-            env:
-              GITHUB_TOKEN: $(COPILOT_TOKEN)
-              GH_TOKEN: $(GH_COMMENT_TOKEN)
