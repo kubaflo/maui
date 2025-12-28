@@ -187,6 +187,7 @@ The repository includes specialized custom agents for specific tasks. These agen
    - **Use when**: Working on bug fixes from GitHub issues
    - **Capabilities**: Issue reproduction, root cause analysis, fix implementation, testing
    - **Trigger phrases**: "fix issue #XXXXX", "resolve bug #XXXXX", "implement fix for #XXXXX"
+   - **Skills used**: `reproduce-issue`, `root-cause-analysis`, `implement-fix`, `assess-test-type`, `validate-ui-tests`, `validate-unit-tests`
 
 2. **pr-reviewer** - Specialized agent for conducting thorough, constructive code reviews of .NET MAUI pull requests
    - **Use when**: User requests code review of a pull request
@@ -204,6 +205,40 @@ The repository includes specialized custom agents for specific tasks. These agen
    - **Capabilities**: Sandbox app setup, Appium-based manual testing, PR functional validation
    - **Trigger phrases**: "test this PR", "validate PR #XXXXX in Sandbox", "reproduce issue #XXXXX", "try out in Sandbox"
    - **Do NOT use for**: Code review (use pr-reviewer), writing automated tests (use uitest-coding-agent)
+
+### Reusable Skills
+
+Skills are modular capabilities that agents can invoke. Located in `.github/skills/`:
+
+1. **assess-test-type** (`.github/skills/assess-test-type/SKILL.md`)
+   - **Purpose**: Determines whether tests should be UI tests or unit tests
+   - **Trigger phrases**: "should this be a UI test or unit test", "what type of test is appropriate"
+   - **Used by**: `issue-resolver` agent
+
+2. **validate-ui-tests** (`.github/skills/validate-ui-tests/SKILL.md`)
+   - **Purpose**: Validates UI tests correctly fail without fix and pass with fix
+   - **Trigger phrases**: "validate the UI tests", "check if UI tests catch the regression"
+   - **Used by**: `issue-resolver` agent
+
+3. **validate-unit-tests** (`.github/skills/validate-unit-tests/SKILL.md`)
+   - **Purpose**: Validates unit tests correctly fail without fix and pass with fix
+   - **Trigger phrases**: "validate the unit tests", "check if unit tests catch the regression"
+   - **Used by**: `issue-resolver` agent
+
+4. **reproduce-issue** (`.github/skills/reproduce-issue/SKILL.md`)
+   - **Purpose**: Guides through reproducing a GitHub issue by analyzing the report and creating test cases
+   - **Trigger phrases**: "reproduce issue", "verify this bug", "create a test case"
+   - **Used by**: `issue-resolver` agent
+
+5. **root-cause-analysis** (`.github/skills/root-cause-analysis/SKILL.md`)
+   - **Purpose**: Analyzes git history and code changes to identify what caused a bug
+   - **Trigger phrases**: "find the root cause", "what's causing this bug", "when did this break"
+   - **Used by**: `issue-resolver` agent
+
+6. **implement-fix** (`.github/skills/implement-fix/SKILL.md`)
+   - **Purpose**: Guides through implementing a fix with proper test coverage and validation
+   - **Trigger phrases**: "implement the fix", "create a fix", "how should I fix this"
+   - **Used by**: `issue-resolver` agent
 
 ### Using Custom Agents
 
