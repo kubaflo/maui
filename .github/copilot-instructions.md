@@ -187,6 +187,7 @@ The repository includes specialized custom agents for specific tasks. These agen
    - **Use when**: Working on bug fixes from GitHub issues
    - **Capabilities**: Issue reproduction, root cause analysis, fix implementation, testing
    - **Trigger phrases**: "fix issue #XXXXX", "resolve bug #XXXXX", "implement fix for #XXXXX"
+   - **Skills used**: `reproduce-issue`, `root-cause-analysis`, `implement-fix`, `assess-test-type`, `validate-ui-tests`, `validate-unit-tests`, `label-issues-prs`
 
 2. **pr-reviewer** - Specialized agent for conducting thorough, constructive code reviews of .NET MAUI pull requests
    - **Use when**: User requests code review of a pull request
@@ -250,6 +251,12 @@ Skills are modular capabilities that agents can invoke. Located in `.github/skil
    - **Trigger phrases**: "find issues to triage", "show me old Android issues", "what issues need attention"
    - **Script**: `.github/skills/issue-triage/scripts/QueryTriageIssues.ps1`
    - **Used by**: Any agent or direct invocation
+
+8. **label-issues-prs** (`.github/skills/label-issues-prs/SKILL.md`)
+   - **Purpose**: Analyzes and applies appropriate labels to issues and PRs based on platform, area, and type detection
+   - **Trigger phrases**: "label this issue", "apply labels to PR", "what labels should this have", "label the 10 latest issues", "batch label 20 recent PRs"
+   - **Script**: `.github/skills/label-issues-prs/scripts/apply-labels.ps1` (single), `.github/skills/label-issues-prs/scripts/batch-label.ps1` (batch)
+   - **Used by**: `issue-resolver` agent, any agent or direct invocation
 
 ### Using Custom Agents
 
