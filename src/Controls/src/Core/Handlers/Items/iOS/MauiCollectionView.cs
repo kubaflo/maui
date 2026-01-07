@@ -15,6 +15,7 @@ public class MauiCollectionView : UICollectionView, IUIViewLifeCycleEvents, IPla
 
 	public MauiCollectionView(CGRect frame, UICollectionViewLayout layout) : base(frame, layout)
 	{
+		this.RestorationIdentifier = null;
 	}
 
 	public override void ScrollRectToVisible(CGRect rect, bool animated)

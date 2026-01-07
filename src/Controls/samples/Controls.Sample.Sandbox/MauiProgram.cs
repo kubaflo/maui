@@ -1,4 +1,6 @@
-﻿namespace Maui.Controls.Sample;
+﻿using Microsoft.Maui.Handlers;
+
+namespace Maui.Controls.Sample;
 
 public static class MauiProgram
 {
@@ -9,6 +11,17 @@ public static class MauiProgram
 			.UseMauiMaps()
 #endif
 			.UseMauiApp<App>()
+			.EnableFocusTracking()
+			// .ConfigureMauiHandlers(handlers =>
+			// {
+			// 	ViewHandler.ViewMapper.AppendToMapping("TalkBackTracking", (handler, view) =>
+			// 	{
+			// 		if (handler is ViewHandler viewHandler)
+			// 		{
+			// 			viewHandler.EnableTalkBackTracking();
+			// 		}
+			// 	});
+			// })
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("Dokdo-Regular.ttf", "Dokdo");

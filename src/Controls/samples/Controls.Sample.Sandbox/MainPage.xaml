@@ -1,5 +1,46 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Maui.Controls.Sample.MainPage"
+             Title="Main Page"
              xmlns:local="clr-namespace:Maui.Controls.Sample">
+        <VerticalStackLayout>
+                <Button Text="Go to MainPage2"
+                        Clicked="OnNavigateToSubpage1"/>
+                <Button Text="Go to MainPage2"
+                        Clicked="OnNavigateToSubpage2"/>
+                <Button Text="Go to MainPage2"
+                        Clicked="OnNavigateToSubpage1"/>
+                <Label x:Name="Result"/>
+                <CollectionView
+                        SelectionMode="Single"
+                        SelectionChangedCommandParameter="{Binding SelectedItem,Source={x:Reference MyCollectionView}}"
+                        SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                        SelectionChangedCommand="{Binding SelectionChangedCommand}">
+                        <CollectionView.ItemsSource>
+                                <x:Array Type="{x:Type x:String}">
+                                        <x:String>Item 1</x:String>
+                                        <x:String>Item 2</x:String>
+                                        <x:String>Item 3</x:String>
+                                        <x:String>Item 4</x:String>
+                                        <x:String>Item 5</x:String>
+                                        <x:String>Item 6</x:String>
+                                        <x:String>Item 7</x:String>
+                                        <x:String>Item 8</x:String>
+                                        <x:String>Item 9</x:String>
+                                        <x:String>Item 10</x:String>
+                                </x:Array>
+                        </CollectionView.ItemsSource>
+                        <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                        <Label Text="{Binding .}"
+                                               FontSize="24"
+                                               Padding="10">
+                                                <!-- <Label.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnItemTapped"/>
+                                                </Label.GestureRecognizers> -->
+                                        </Label>
+                                </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                </CollectionView>
+        </VerticalStackLayout>
 </ContentPage>

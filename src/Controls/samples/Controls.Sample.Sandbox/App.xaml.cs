@@ -1,4 +1,8 @@
-﻿namespace Maui.Controls.Sample;
+﻿using Microsoft.Maui.Controls.PlatformConfiguration;
+using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
+using Application = Microsoft.Maui.Controls.Application;
+
+namespace Maui.Controls.Sample;
 
 public partial class App : Application
 {
@@ -10,11 +14,15 @@ public partial class App : Application
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
 		// To test shell scenarios, change this to true
-		bool useShell = false;
+		bool useShell = true;
 
 		if (!useShell)
 		{
-			return new Window(new NavigationPage(new MainPage()));
+			var navPage = new Microsoft.Maui.Controls.NavigationPage(new MainPage());
+			navPage.BarBackgroundColor = Colors.Transparent;
+			navPage.BackgroundColor = Colors.Brown;
+			navPage.On<iOS>().SetPrefersLargeTitles(true);
+			return new Window(navPage);
 		}
 		else
 		{
