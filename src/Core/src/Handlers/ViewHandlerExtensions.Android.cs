@@ -130,6 +130,43 @@ namespace Microsoft.Maui
 
 			platformView.Layout(left, top, right, bottom);
 
+			// Fix for issue #33530: Adjust position for rotated views with non-center alignment
+			// When a view has 90° or -90° rotation and non-center horizontal alignment,
+			// we need to compensate for the fact that rotation swaps width/height
+			if (viewHandler.VirtualView != null)
+			{
+				var virtualView = viewHandler.VirtualView;
+				var rotation = virtualView.Rotation;
+
+				// Check if rotation is 90° or -90° (allowing for floating point precision)
+				var is90DegRotation = Math.Abs(Math.Abs(rotation) - 90) < 0.1;
+
+				if (is90DegRotation && virtualView.HorizontalLayoutAlignment != Primitives.LayoutAlignment.Center)
+				{
+					// Calculate the offset needed to compensate for rotation
+					// When rotated 90° or -90°, the visual width becomes the layout height
+					var layoutWidth = frame.Width;
+					var layoutHeight = frame.Height;
+					var visualWidth = layoutHeight; // After rotation, visual width is the layout height
+
+					// The offset is half the difference between layout width and visual width
+					var offset = (layoutWidth - visualWidth) / 2;
+
+					// Apply the offset based on rotation direction and current translation
+					var currentTranslationX = virtualView.TranslationX;
+					var adjustedTranslationX = rotation < 0 ? currentTranslationX - offset : currentTranslationX + offset;
+
+					// Update the platform view's translation if it differs from the current value
+					var platformTranslationX = platformView.TranslationX;
+					var expectedPlatformTranslationX = platformView.ToPixels(adjustedTranslationX);
+
+					if (Math.Abs(platformTranslationX - expectedPlatformTranslationX) > 1)
+					{
+						platformView.TranslationX = expectedPlatformTranslationX;
+					}
+				}
+			}
+
 			viewHandler.Invoke(nameof(IView.Frame), frame);
 		}
 
