@@ -24,6 +24,16 @@ If Gate is not passed, go back to `.github/agents/pr.md` and complete phases 1-3
 
 If try-fix cannot run due to environment issues, **STOP and ask the user**. Do NOT mark attempts as "BLOCKED" and continue.
 
+### 🚨 CRITICAL: Stop on Environment Blockers (Applies to Phase 4)
+
+The same "Stop on Environment Blockers" rule from `pr.md` applies here. If try-fix cannot run due to:
+- Missing Appium drivers
+- Device/emulator not available
+- WinAppDriver not installed
+- Platform tools missing
+
+**STOP and ask the user** before continuing. Do NOT mark try-fix attempts as "BLOCKED" and continue. Either fix the environment issue or get explicit user permission to skip.
+
 ---
 
 ## 🔧 FIX: Explore and Select Fix (Phase 4)
