@@ -144,33 +144,36 @@ if ($Platform -eq "android") {
             Write-Info "Starting emulator: $selectedAvd"
             Write-Info "This may take 1-2 minutes..."
             
-            # CRITICAL: Must use correct startup pattern for emulator to work
-            # On macOS/Linux, need to cd to emulator directory and use subshell
+            # CRITICAL: Must use nohup to properly detach emulator process
+            # This prevents STDIO stream inheritance issues in CI environments
             if ($IsWindows) {
                 Start-Process "emulator" -ArgumentList "-avd", $selectedAvd, "-no-snapshot-load", "-no-boot-anim" -WindowStyle Hidden
             }
             else {
-                # macOS/Linux: Use bash subshell pattern from platform-workflows.md
-                # This ensures emulator binary can find its dependencies
+                # macOS/Linux: Use nohup to fully detach the emulator process
+                # This ensures the process doesn't inherit STDIO streams and can run independently
                 $androidHome = $env:ANDROID_HOME
+                if (-not $androidHome) {
+                    $androidHome = $env:ANDROID_SDK_ROOT
+                }
                 if (-not $androidHome) {
                     $androidHome = "$env:HOME/Library/Android/sdk"
                 }
                 
-                $emulatorDir = Join-Path $androidHome "emulator"
-                $emulatorBin = Join-Path $emulatorDir "emulator"
+                $emulatorBin = Join-Path $androidHome "emulator/emulator"
                 
                 if (-not (Test-Path $emulatorBin)) {
                     Write-Error "Emulator binary not found at: $emulatorBin"
-                    Write-Info "Please ensure ANDROID_HOME is set correctly or Android SDK is installed."
+                    Write-Info "Please ensure ANDROID_HOME or ANDROID_SDK_ROOT is set correctly."
                     exit 1
                 }
                 
-                # Start emulator using bash subshell pattern (works correctly on macOS)
-                $startScript = "cd '$emulatorDir' && (./emulator -avd '$selectedAvd' -no-snapshot-load -no-audio -no-boot-anim > /tmp/emulator.log 2>&1 &)"
+                # Use nohup to fully detach the emulator process from the terminal
+                # Redirect all output to /dev/null to prevent STDIO inheritance issues
+                $startScript = "nohup '$emulatorBin' -avd '$selectedAvd' -no-snapshot -no-audio -no-boot-anim > /dev/null 2>&1 &"
                 bash -c $startScript
                 
-                Write-Info "Emulator started in background. Log file: /tmp/emulator.log"
+                Write-Info "Emulator started in background (fully detached with nohup)"
             }
             
             # Wait for emulator to appear in adb devices
