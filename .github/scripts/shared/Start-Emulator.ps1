@@ -157,7 +157,7 @@ if ($Platform -eq "android") {
             # CRITICAL: Must use nohup to properly detach emulator process
             # This prevents STDIO stream inheritance issues in CI environments
             if ($IsWindows) {
-                Start-Process "emulator" -ArgumentList "-avd", $selectedAvd, "-no-snapshot-load", "-no-boot-anim" -WindowStyle Hidden
+                Start-Process "emulator" -ArgumentList "-avd", $selectedAvd, "-no-window", "-no-snapshot", "-no-audio", "-no-boot-anim" -WindowStyle Hidden
             }
             else {
                 # macOS/Linux: Use nohup to fully detach the emulator process
@@ -179,23 +179,25 @@ if ($Platform -eq "android") {
                 }
                 
                 # Use nohup to fully detach the emulator process from the terminal
+                # Include -no-window for headless CI environments
                 # Redirect all output to /dev/null to prevent STDIO inheritance issues
-                $startScript = "nohup '$emulatorBin' -avd '$selectedAvd' -no-snapshot -no-audio -no-boot-anim > /dev/null 2>&1 &"
+                $startScript = "nohup '$emulatorBin' -avd '$selectedAvd' -no-window -no-snapshot -no-audio -no-boot-anim > /dev/null 2>&1 &"
                 bash -c $startScript
                 
                 Write-Info "Emulator started in background (fully detached with nohup)"
             }
             
-            # Wait for emulator to appear in adb devices
-            Write-Info "Waiting for emulator to start..."
-            $timeout = 600
+            # Use adb wait-for-device first (like the working bash script)
+            Write-Info "Waiting for emulator device to appear..."
+            adb wait-for-device
+            
+            # Wait for emulator to appear in adb devices with proper state
+            Write-Info "Waiting for emulator to be ready..."
+            $timeout = 120
             $elapsed = 0
             $emulatorStarted = $false
             
             while ($elapsed -lt $timeout) {
-                Start-Sleep -Seconds 2
-                $elapsed += 2
-                
                 $devices = adb devices | Select-String "emulator.*device$"
                 if ($devices.Count -gt 0) {
                     $DeviceUdid = ($devices[0] -split '\s+')[0]
@@ -204,6 +206,9 @@ if ($Platform -eq "android") {
                     break
                 }
                 
+                Start-Sleep -Seconds 2
+                $elapsed += 2
+                
                 if ($elapsed % 10 -eq 0) {
                     Write-Info "Still waiting... ($elapsed seconds elapsed)"
                 }
@@ -211,34 +216,35 @@ if ($Platform -eq "android") {
             
             if (-not $emulatorStarted) {
                 Write-Error "Emulator failed to start within $timeout seconds. Please try starting it manually."
+                adb devices -l
                 exit 1
             }
             
-            # Wait for boot to complete
+            # Wait for boot to complete (poll sys.boot_completed like bash script)
             Write-Info "Waiting for emulator to finish booting..."
             $bootTimeout = 120
             $bootElapsed = 0
             $bootCompleted = $false
             
             while ($bootElapsed -lt $bootTimeout) {
-                Start-Sleep -Seconds 2
-                $bootElapsed += 2
-                
-                $bootStatus = adb -s $DeviceUdid shell getprop sys.boot_completed 2>$null
+                $bootStatus = adb shell getprop sys.boot_completed 2>$null
                 if ($bootStatus -match "1") {
                     $bootCompleted = $true
                     Write-Success "Emulator fully booted: $DeviceUdid"
                     break
                 }
                 
+                Start-Sleep -Seconds 2
+                $bootElapsed += 2
+                
                 if ($bootElapsed % 10 -eq 0) {
-                    Write-Info "Still booting... ($bootElapsed seconds elapsed)"
+                    Write-Info "Waiting for boot... ($bootElapsed/$bootTimeout seconds)"
                 }
             }
             
             if (-not $bootCompleted) {
-                Write-Error "Emulator failed to complete boot within $bootTimeout seconds. It may still be starting."
-                Write-Info "You can check status with: adb -s $DeviceUdid shell getprop sys.boot_completed"
+                Write-Error "Emulator failed to complete boot within $bootTimeout seconds."
+                adb devices -l
                 exit 1
             }
         }
