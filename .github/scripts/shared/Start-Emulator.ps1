@@ -50,6 +50,15 @@ if ($Platform -eq "android") {
         exit 1
     }
     
+    # Restart ADB server to ensure clean connection state
+    # This prevents "Broken pipe" errors from stale connections
+    Write-Info "Restarting ADB server for clean connection..."
+    adb kill-server 2>$null
+    Start-Sleep -Seconds 2
+    adb start-server 2>$null
+    Start-Sleep -Seconds 2
+    Write-Success "ADB server restarted"
+    
     # Get device UDID if not provided OR if it's an AVD name that needs to be booted
     # Check if DeviceUdid is an AVD name (not an emulator-XXXX format)
     if ($DeviceUdid -and $DeviceUdid -notmatch "^emulator-\d+$") {
@@ -232,6 +241,28 @@ if ($Platform -eq "android") {
                 exit 1
             }
         }
+    }
+    
+    # Verify ADB connectivity is healthy (prevents "Broken pipe" errors during build)
+    Write-Info "Verifying ADB connectivity to device..."
+    $connectivityCheck = adb -s $DeviceUdid shell echo "ping" 2>&1
+    if ($connectivityCheck -notmatch "ping") {
+        Write-Info "ADB connectivity issue detected, restarting ADB server..."
+        adb kill-server 2>$null
+        Start-Sleep -Seconds 2
+        adb start-server 2>$null
+        Start-Sleep -Seconds 3
+        
+        # Retry connectivity check
+        $retryCheck = adb -s $DeviceUdid shell echo "ping" 2>&1
+        if ($retryCheck -notmatch "ping") {
+            Write-Error "ADB connectivity failed after restart. Device may need to be rebooted."
+            Write-Info "Try: adb -s $DeviceUdid reboot"
+            exit 1
+        }
+        Write-Success "ADB connectivity restored after restart"
+    } else {
+        Write-Success "ADB connectivity verified"
     }
     
     Write-Success "Using Android device: $DeviceUdid"
