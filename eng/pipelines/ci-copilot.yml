@@ -1,20 +1,12 @@
-# Pipeline for running GitHub Copilot PR Reviewer Agent
-# This pipeline installs the Copilot CLI and invokes the PR reviewer agent
-# to conduct automated code reviews on pull requests.
-#
-# For more information, see:
-# https://github.com/dotnet/maui/wiki/PR-Reviewer-Agent
-
-trigger: none  # Manual trigger only
-
-pr: none  # Not triggered by PRs
+# Simplified pipeline for testing UI Tests on iOS Simulator
+trigger: none
+pr: none
 
 parameters:
   - name: PRNumber
     displayName: 'Pull Request Number'
     type: string
     default: '20537'
-
   - name: pool
     type: object
     default:
@@ -25,47 +17,36 @@ variables:
   - template: /eng/pipelines/common/variables.yml@self
   - name: Codeql.Enabled
     value: false
-  - name: Codeql.SkipTaskAutoInjection
-    value: true
 
 stages:
-  - stage: ReviewPR
-    displayName: 'Review Pull Request'
+  - stage: GatePhase
+    displayName: 'Gate - UI Tests on Simulator'
     jobs:
-      - job: CopilotReview
-        displayName: 'Run Copilot PR Reviewer Agent'
+      - job: RunUITests
+        displayName: 'Build and Run UI Tests'
         pool: ${{ parameters.pool }}
-        timeoutInMinutes: 120
+        timeoutInMinutes: 90
         steps:
           - checkout: self
             fetchDepth: 0
-            persistCredentials: true
 
-          - script: |
-              echo "Validating PR Number parameter..."
-              if [ -z "${{ parameters.PRNumber }}" ]; then
-                echo "##vso[task.logissue type=error]PRNumber parameter is required"
-                exit 1
-              fi
-              echo "PR Number: ${{ parameters.PRNumber }}"
-            displayName: 'Validate Parameters'
+          - script: echo "PR Number:${{ parameters.PRNumber }}"
+            displayName: 'Show Parameters'
 
-          # Provision environment (Xcode, .NET SDK, Android SDK, etc.)
+          # Provision environment
           - template: common/provision.yml
             parameters:
               skipXcode: false
               skipProvisionator: false
-              skipAndroidCommonSdks: false
-              skipAndroidPlatformApis: false
-              skipJdk: false
+              skipAndroidCommonSdks: true
+              skipAndroidPlatformApis: true
+              skipJdk: true
               skipSimulatorSetup: false
               skipCertificates: true
-              # Android emulator setup
-              skipAndroidEmulatorImages: false
-              skipAndroidCreateAvds: false
-              androidEmulatorApiLevel: '34'
+              skipAndroidEmulatorImages: true
+              skipAndroidCreateAvds: true
 
-          # Install .NET and workloads via build.ps1
+          # Install .NET and workloads
           - pwsh: ./build.ps1 --target=dotnet --configuration="Release" --verbosity=diagnostic
             displayName: 'Install .NET and workloads'
             retryCountOnTaskFailure: 2
@@ -76,545 +57,106 @@ stages:
           - pwsh: echo "##vso[task.prependpath]$(DotNet.Dir)"
             displayName: 'Add .NET to PATH'
 
-          # Build MSBuild tasks (required for MAUI builds)
+          # Build MSBuild tasks
           - pwsh: ./build.ps1 --target=dotnet-buildtasks --configuration="Release" --verbosity=diagnostic
             displayName: 'Build MSBuild Tasks'
-            retryCountOnTaskFailure: 1
-            env:
-              DOTNET_TOKEN: $(dotnetbuilds-internal-container-read-token)
-              PRIVATE_BUILD: $(PrivateBuild)
-            
-          # Verify environment is ready
-          - script: |
-              echo "=== Verifying Build Environment ==="
-              ERRORS=""
-              
-              # Check .NET SDK
-              echo "Checking .NET SDK..."
-              if ! dotnet --version; then
-                ERRORS="${ERRORS}\n- .NET SDK not available"
-              else
-                echo "✓ .NET SDK: $(dotnet --version)"
-              fi
-              
-              # Check Android SDK
-              echo "Checking Android SDK..."
-              if [ -z "$ANDROID_HOME" ] && [ -z "$ANDROID_SDK_ROOT" ]; then
-                ERRORS="${ERRORS}\n- ANDROID_HOME/ANDROID_SDK_ROOT not set"
-              else
-                SDK_PATH="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-                if [ ! -d "$SDK_PATH" ]; then
-                  ERRORS="${ERRORS}\n- Android SDK directory not found: $SDK_PATH"
-                else
-                  echo "✓ Android SDK: $SDK_PATH"
-                fi
-              fi
-              
-              # Check Xcode (macOS only)
-              if [ "$(uname)" = "Darwin" ]; then
-                echo "Checking Xcode..."
-                if ! xcodebuild -version; then
-                  ERRORS="${ERRORS}\n- Xcode not available"
-                else
-                  echo "✓ Xcode available"
-                fi
-                
-                # Check iOS simulators
-                echo "Checking iOS simulators..."
-                if ! xcrun simctl list devices available | grep -q "iPhone"; then
-                  ERRORS="${ERRORS}\n- No iOS simulators available"
-                else
-                  echo "✓ iOS simulators available"
-                fi
-              fi
-              
-              # Check Java/JDK
-              echo "Checking JDK..."
-              if ! java -version 2>&1; then
-                ERRORS="${ERRORS}\n- JDK not available"
-              else
-                echo "✓ JDK available"
-              fi
-              
-              # Report errors
-              if [ -n "$ERRORS" ]; then
-                echo ""
-                echo "##vso[task.logissue type=error]=== Environment Verification FAILED ==="
-                echo -e "Missing dependencies:$ERRORS"
-                echo "##vso[task.logissue type=error]Build environment is not properly configured. See above for details."
-                exit 1
-              fi
-              
-              echo ""
-              echo "=== Environment Verification PASSED ==="
-            displayName: 'Verify Build Environment'
+            retryCountOnTaskFailure: 2
 
-
-          # Restore .NET tools (includes xharness)
+          # Boot iOS Simulator
           - script: |
-              echo "Restoring .NET tools..."
-              dotnet tool restore
-              echo "Tools restored successfully"
-            displayName: 'Restore .NET Tools'
-
-          # Boot iOS simulator for UI tests
-          - script: |
-              echo "=== Booting iOS Simulator ==="
+              echo "Available iOS simulators:"
+              xcrun simctl list devices available | head -30
               
-              # Find iPhone simulator - prefer iOS 26.x first (for Xcode 26.x compatibility), then iOS 18.5
-              UDID=$(xcrun simctl list devices available --json | python3 -c "
-              import json, sys
-              data = json.load(sys.stdin)
-              
-              # Priority 1: iPhone Xs with iOS 26.x (for Xcode 26.x SDK compatibility)
-              for runtime, devices in data.get('devices', {}).items():
-                  if 'iOS-26' in runtime or 'iOS 26' in runtime:
-                      for d in devices:
-                          if d.get('name') == 'iPhone Xs' and d.get('isAvailable'):
-                              print(d['udid'])
-                              sys.exit(0)
-              
-              # Priority 2: Any iPhone with iOS 26.x
-              for runtime, devices in data.get('devices', {}).items():
-                  if 'iOS-26' in runtime or 'iOS 26' in runtime:
-                      for d in devices:
-                          if 'iPhone' in d.get('name', '') and d.get('isAvailable'):
-                              print(d['udid'])
-                              sys.exit(0)
-              
-              # Priority 3: iPhone Xs with iOS 18.5 (legacy)
-              for runtime, devices in data.get('devices', {}).items():
-                  if 'iOS-18-5' in runtime or 'iOS 18.5' in runtime:
-                      for d in devices:
-                          if d.get('name') == 'iPhone Xs' and d.get('isAvailable'):
-                              print(d['udid'])
-                              sys.exit(0)
-              
-              # Fallback: any available iPhone
-              for runtime, devices in data.get('devices', {}).items():
-                  if 'iOS' in runtime:
-                      for d in devices:
-                          if 'iPhone' in d.get('name', '') and d.get('isAvailable'):
-                              print(d['udid'])
-                              sys.exit(0)
-              sys.exit(1)
-              ")
+              # Find and boot a suitable simulator (prefer iOS 26.x, fallback to 18.x)
+              UDID=$(xcrun simctl list devices available --json | jq -r '
+                .devices | to_entries | 
+                map(select(.key | test("iOS.*26|iOS.*18"))) | 
+                sort_by(.key) | reverse | 
+                .[0].value | 
+                map(select(.name | test("iPhone (Xs|14|15)"))) | 
+                .[0].udid // empty
+              ')
               
               if [ -z "$UDID" ]; then
-                echo "##vso[task.logissue type=error]No iOS simulator found"
-                exit 1
+                echo "No preferred simulator found, using first available iPhone"
+                UDID=$(xcrun simctl list devices available --json | jq -r '
+                  .devices | to_entries | 
+                  map(.value) | flatten | 
+                  map(select(.name | test("iPhone"))) | 
+                  .[0].udid
+                ')
               fi
               
-              echo "Selected simulator UDID: $UDID"
-              
-              # Boot the simulator
+              echo "Booting simulator: $UDID"
               xcrun simctl boot "$UDID" 2>/dev/null || true
+              sleep 10
               
-              # Wait for boot
-              echo "Waiting for simulator to boot..."
-              xcrun simctl bootstatus "$UDID" -b
-              
-              echo "=== iOS Simulator booted successfully! ==="
+              echo "Booted simulators:"
               xcrun simctl list devices booted
               
-              # Export UDID for subsequent steps
               echo "##vso[task.setvariable variable=IOS_SIMULATOR_UDID]$UDID"
             displayName: 'Boot iOS Simulator'
-            continueOnError: true
-            timeoutInMinutes: 10
+            timeoutInMinutes: 5
 
-          # Verify UI tests fail without fix (on iOS simulator)
-          - pwsh: |
-              Write-Host "=== Verifying UI Tests Fail Without Fix ==="
-              Write-Host "Working directory: $(Get-Location)"
-              Write-Host "Script path: .github/skills/verify-tests-fail-without-fix/scripts/verify-tests-fail.ps1"
-              
-              # Check script exists
-              if (-not (Test-Path ".github/skills/verify-tests-fail-without-fix/scripts/verify-tests-fail.ps1")) {
-                Write-Host "##vso[task.logissue type=error]Script not found!"
-                exit 1
-              }
-              
-              # Run the verify-tests-fail script on iOS
-              $ErrorActionPreference = "Continue"
-              try {
-                & "./.github/skills/verify-tests-fail-without-fix/scripts/verify-tests-fail.ps1" -Platform ios -PRNumber "${{ parameters.PRNumber }}" 2>&1 | ForEach-Object { Write-Host $_ }
-                $exitCode = $LASTEXITCODE
-              } catch {
-                Write-Host "##vso[task.logissue type=error]Exception: $_"
-                Write-Host $_.ScriptStackTrace
-                $exitCode = 1
-              }
-              
-              Write-Host "Verification script completed with exit code: $exitCode"
-              
-              if ($exitCode -ne 0) {
-                Write-Host "##vso[task.logissue type=warning]verify-tests-fail script exited with code $exitCode"
-              }
-              exit $exitCode
-            displayName: 'Verify UI Tests Fail Without Fix'
-            continueOnError: true
-            timeoutInMinutes: 30
+          # Install Node.js (required for Appium)
+          - script: |
+              echo "Installing Node.js..."
+              brew install node@22 || brew link --overwrite node@22
+              node --version
+              npm --version
+            displayName: 'Install Node.js'
 
-          # Start iOS Simulator (verbose logging)
-          - pwsh: |
-              Write-Host "=== Starting iOS Simulator ==="
-              Write-Host "Working directory: $(Get-Location)"
-              
-              $scriptPath = ".github/scripts/shared/Start-Emulator.ps1"
-              if (-not (Test-Path $scriptPath)) {
-                Write-Host "##vso[task.logissue type=error]Script not found: $scriptPath"
-                exit 1
-              }
-              
-              $ErrorActionPreference = "Continue"
-              try {
-                & "./$scriptPath" -Platform ios -Verbose 2>&1 | ForEach-Object { Write-Host $_ }
-                $exitCode = $LASTEXITCODE
-              } catch {
-                Write-Host "##vso[task.logissue type=error]Exception: $_"
-                Write-Host $_.ScriptStackTrace
-                $exitCode = 1
-              }
-              
-              Write-Host "Start-Emulator completed with exit code: $exitCode"
-              if ($exitCode -ne 0) {
-                Write-Host "##vso[task.logissue type=warning]Start-Emulator failed with code $exitCode"
-              }
-              exit $exitCode
-            displayName: 'Start iOS Simulator (Verbose)'
-            continueOnError: true
-            timeoutInMinutes: 10
+          # Install Appium
+          - script: |
+              echo "Installing Appium..."
+              NPM_BIN=$(npm config get prefix)/bin
+              export PATH="$NPM_BIN:$PATH"
+              npm install -g appium
+              appium driver install xcuitest
+              echo "##vso[task.prependpath]$NPM_BIN"
+              echo "Appium version: $(appium --version)"
+              appium driver list --installed
+            displayName: 'Install Appium'
 
-          # Build and Deploy HostApp (verbose logging)
+          # Build and Deploy HostApp
           - pwsh: |
               Write-Host "=== Building and Deploying HostApp ==="
-              Write-Host "Working directory: $(Get-Location)"
-              
-              $scriptPath = ".github/scripts/shared/Build-AndDeploy.ps1"
-              if (-not (Test-Path $scriptPath)) {
-                Write-Host "##vso[task.logissue type=error]Script not found: $scriptPath"
-                exit 1
-              }
-              
-              # Get booted iOS simulator UDID
               $udid = (xcrun simctl list devices booted --json | ConvertFrom-Json).devices.PSObject.Properties.Value | 
                 Where-Object { $_.state -eq "Booted" } | 
                 Select-Object -First 1 -ExpandProperty udid
               
               if (-not $udid) {
-                Write-Host "##vso[task.logissue type=error]No booted iOS simulator found"
-                xcrun simctl list devices booted
+                Write-Host "##vso[task.logissue type=error]No booted simulator found"
                 exit 1
               }
               Write-Host "Using simulator: $udid"
               
-              $ErrorActionPreference = "Continue"
-              try {
-                # Skip code signing for simulator builds in CI
-                & "./$scriptPath" -Platform ios `
-                  -ProjectPath "src/Controls/tests/TestCases.HostApp/Controls.TestCases.HostApp.csproj" `
-                  -TargetFramework "net10.0-ios" `
-                  -DeviceUdid $udid `
-                  -BundleId "com.microsoft.maui.uitests" `
-                  -AdditionalBuildArgs @("/p:_RequireCodeSigning=false", "/p:CodesignRequireProvisioningProfile=false") `
-                  -Verbose 2>&1 | ForEach-Object { Write-Host $_ }
-                $exitCode = $LASTEXITCODE
-              } catch {
-                Write-Host "##vso[task.logissue type=error]Exception: $_"
-                Write-Host $_.ScriptStackTrace
-                $exitCode = 1
-              }
+              & "./.github/scripts/shared/Build-AndDeploy.ps1" -Platform ios `
+                -ProjectPath "src/Controls/tests/TestCases.HostApp/Controls.TestCases.HostApp.csproj" `
+                -TargetFramework "net10.0-ios" `
+                -DeviceUdid $udid `
+                -BundleId "com.microsoft.maui.uitests" `
+                -AdditionalBuildArgs @("/p:_RequireCodeSigning=false", "/p:CodesignRequireProvisioningProfile=false") `
+                -Verbose
               
-              Write-Host "Build-AndDeploy completed with exit code: $exitCode"
-              if ($exitCode -ne 0) {
-                Write-Host "##vso[task.logissue type=warning]Build-AndDeploy failed with code $exitCode"
-              }
-              exit $exitCode
-            displayName: 'Build and Deploy HostApp (Verbose)'
-            continueOnError: true
-            timeoutInMinutes: 45
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            displayName: 'Build and Deploy HostApp'
+            timeoutInMinutes: 30
 
-          # Install Node.js before running tests (required for Appium)
-          - script: |
-              echo "Installing Node.js 22..."
-              brew install node@22
-              brew link --overwrite node@22
-              if ! node --version; then
-                echo "##vso[task.logissue type=error]Failed to install Node.js"
-                exit 1
-              fi
-              npm --version
-              echo "Node.js installed successfully"
-            displayName: 'Install Node.js'
-
-          # Install Appium before running tests
-          - script: |
-              echo "Installing Appium and drivers..."
-              
-              # Get npm global bin directory and add to PATH
-              NPM_BIN=$(npm config get prefix)/bin
-              echo "NPM global bin directory: $NPM_BIN"
-              export PATH="$NPM_BIN:$PATH"
-              
-              # Install Appium globally
-              npm install -g appium
-              
-              # Install XCUITest driver for iOS
-              appium driver install xcuitest
-              
-              # Install UiAutomator2 driver for Android
-              appium driver install uiautomator2
-              
-              # Verify installation
-              if ! which appium; then
-                echo "##vso[task.logissue type=error]Failed to install Appium"
-                exit 1
-              fi
-              
-              APPIUM_PATH=$(which appium)
-              echo "Appium path: $APPIUM_PATH"
-              echo "Appium version: $(appium --version)"
-              echo "Appium drivers installed:"
-              appium driver list --installed
-              
-              # Export PATH for subsequent steps (Azure DevOps specific)
-              echo "##vso[task.prependpath]$NPM_BIN"
-              
-              echo "Appium installed successfully"
-            displayName: 'Install Appium'
-
-          # Build and Run HostApp with Tests (verbose logging)
+          # Run UI Tests
           - pwsh: |
-              Write-Host "=== Building and Running HostApp ==="
-              Write-Host "Working directory: $(Get-Location)"
-              
-              $scriptPath = ".github/scripts/BuildAndRunHostApp.ps1"
-              if (-not (Test-Path $scriptPath)) {
-                Write-Host "##vso[task.logissue type=error]Script not found: $scriptPath"
-                exit 1
-              }
-              
-              $ErrorActionPreference = "Continue"
-              try {
-                # Run with a specific test filter - for Copilot agent, run Button category tests
-                # which is relevant to the Button CharacterSpacing fix being tested
-                & "./$scriptPath" -Platform ios -Category "Button" -Verbose 2>&1 | ForEach-Object { Write-Host $_ }
-                $exitCode = $LASTEXITCODE
-              } catch {
-                Write-Host "##vso[task.logissue type=error]Exception: $_"
-                Write-Host $_.ScriptStackTrace
-                $exitCode = 1
-              }
-              
-              Write-Host "BuildAndRunHostApp completed with exit code: $exitCode"
-              if ($exitCode -ne 0) {
-                Write-Host "##vso[task.logissue type=warning]BuildAndRunHostApp failed with code $exitCode"
-              }
+              Write-Host "=== Running UI Tests ==="
+              & "./.github/scripts/BuildAndRunHostApp.ps1" -Platform ios -Category "Button" -Verbose
+              $exitCode = $LASTEXITCODE
+              Write-Host "UI Tests completed with exit code: $exitCode"
               exit $exitCode
-            displayName: 'Build and Run HostApp (Verbose)'
-            continueOnError: true
-            timeoutInMinutes: 45
+            displayName: 'Run UI Tests on Simulator'
+            timeoutInMinutes: 30
 
-          - script: |
-              echo "Installing GitHub CLI..."
-              brew install gh
-              if ! gh --version; then
-                echo "##vso[task.logissue type=error]Failed to install GitHub CLI"
-                exit 1
-              fi
-              echo "GitHub CLI installed successfully"
-            displayName: 'Install GitHub CLI'
-
-          - script: |
-              echo "Authenticating with GitHub CLI..."
-              if [ -z "$(GH_CLI_TOKEN)" ]; then
-                echo "##vso[task.logissue type=error]GH_CLI_TOKEN is not set. Please configure the pipeline variable."
-                exit 1
-              fi
-              echo "$(GH_CLI_TOKEN)" | gh auth login --with-token
-              if ! gh auth status; then
-                echo "##vso[task.logissue type=error]GitHub CLI authentication failed"
-                exit 1
-              fi
-            displayName: 'Authenticate GitHub CLI'
-            env:
-              GH_CLI_TOKEN: $(GH_CLI_TOKEN)
-
-          - script: |
-              echo "Installing GitHub Copilot CLI..."
-              npm install -g @github/copilot
-              if ! which copilot; then
-                echo "##vso[task.logissue type=error]Failed to install GitHub Copilot CLI"
-                exit 1
-              fi
-              echo "Copilot CLI installed successfully"
-            displayName: 'Install GitHub Copilot CLI'
-
-          - script: |
-              echo "Running Copilot PR Reviewer Agent via Review-PR.ps1..."
-              echo "Reviewing PR #${{ parameters.PRNumber }}..."
-              
-              # Create artifacts directory for Copilot outputs
-              mkdir -p $(Build.ArtifactStagingDirectory)/copilot-logs
-              
-              # Invoke the PR reviewer using our PowerShell script
-              # The script will merge the PR into the current branch
-              # -NoInteractive for CI mode (exits after completion)
-              set +e
-              pwsh .github/scripts/Review-PR.ps1 -PRNumber ${{ parameters.PRNumber }} -NoInteractive 2>&1 | tee $(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md
-              COPILOT_EXIT_CODE=$?
-              set -e
-              
-              echo "Review-PR.ps1 exit code: $COPILOT_EXIT_CODE"
-              
-              # Copy any Copilot session files
-              if [ -d "$HOME/.copilot" ]; then
-                echo "Copying Copilot session state..."
-                cp -r "$HOME/.copilot" $(Build.ArtifactStagingDirectory)/copilot-logs/copilot-session-state || true
-              fi
-              
-              # Copy CustomAgentLogsTmp if it exists
-              if [ -d "CustomAgentLogsTmp" ]; then
-                echo "Copying CustomAgentLogsTmp..."
-                cp -r CustomAgentLogsTmp $(Build.ArtifactStagingDirectory)/copilot-logs/ || true
-              fi
-              
-              # Copy any Review_Feedback files
-              find . -name "Review_Feedback_*.md" -type f -exec cp {} $(Build.ArtifactStagingDirectory)/copilot-logs/ \; 2>/dev/null || true
-              
-              # Copy any .github/agent-pr-session files
-              if [ -d ".github/agent-pr-session" ]; then
-                echo "Copying agent-pr-session..."
-                cp -r .github/agent-pr-session $(Build.ArtifactStagingDirectory)/copilot-logs/ || true
-              fi
-              
-              # Check for failure indicators in output
-              if [ $COPILOT_EXIT_CODE -ne 0 ]; then
-                echo "##vso[task.logissue type=error]Review-PR.ps1 exited with code $COPILOT_EXIT_CODE"
-                # Don't exit yet - let artifacts be published first
-                echo "##vso[task.setvariable variable=CopilotFailed]true"
-              fi
-              
-              # Check output for common failure patterns
-              if grep -qi "error\|failed\|exception" $(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md 2>/dev/null; then
-                if grep -qi "simulator.*not\|emulator.*not\|workload.*not\|sdk.*not found" $(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md 2>/dev/null; then
-                  echo "##vso[task.logissue type=warning]Copilot encountered environment issues. Check artifacts for details."
-                fi
-              fi
-              
-              echo "Review output saved to $(Build.ArtifactStagingDirectory)/copilot-logs/"
-            displayName: 'Run PR Reviewer Agent'
-            env:
-              GITHUB_TOKEN: $(COPILOT_TOKEN)
-
-          - script: |
-              echo "Posting review comment using skill..."
-              
-              # Create artifacts directory if not exists
-              mkdir -p $(Build.ArtifactStagingDirectory)/copilot-logs
-              
-              # Use Copilot CLI to invoke the post-comment skill
-              set +e
-              copilot -p "Use a skill to post the review feedback as a comment on PR #${{ parameters.PRNumber }}. The review output should be in the CustomAgentLogsTmp or .github/agent-pr-session directories. Clean up ANSI codes and stats before posting." --yolo 2>&1 | tee $(Build.ArtifactStagingDirectory)/copilot-logs/copilot_post_comment_output.md
-              POST_COMMENT_EXIT_CODE=$?
-              set -e
-              
-              echo "Post comment exit code: $POST_COMMENT_EXIT_CODE"
-              
-              if [ $POST_COMMENT_EXIT_CODE -ne 0 ]; then
-                echo "##vso[task.logissue type=warning]Copilot post-comment skill exited with code $POST_COMMENT_EXIT_CODE"
-                echo "##vso[task.setvariable variable=PostCommentFailed]true"
-              fi
-            displayName: 'Post Review Comment Using Skill'
-            env:
-              GITHUB_TOKEN: $(COPILOT_TOKEN)
-            condition: succeededOrFailed()
-
-          - script: |
-              echo "Posting review comment to PR (fallback)..."
-              
-              # Check for the captured output file first
-              REVIEW_FILE="$(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md"
-              CLEANED_FILE="$(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_cleaned.md"
-              
-              # Also check if Copilot created a Review_Feedback file
-              FEEDBACK_FILE=$(find $(Build.ArtifactStagingDirectory)/copilot-logs -name "Review_Feedback_*.md" -type f | head -1)
-              
-              if [ -n "$FEEDBACK_FILE" ]; then
-                echo "Found review feedback file: $FEEDBACK_FILE"
-                REVIEW_FILE="$FEEDBACK_FILE"
-              fi
-              
-              if [ -f "$REVIEW_FILE" ] && [ -s "$REVIEW_FILE" ]; then
-                echo "Cleaning up review output..."
-                
-                # Clean up the content:
-                # 1. Strip all ANSI escape codes (color codes like [37m, [39m, etc.)
-                # 2. Start from the first markdown header (## or #)
-                # 3. Remove stats at the end (Total usage est, API time, Total session, etc.)
-                sed 's/\x1b\[[0-9;]*m//g' "$REVIEW_FILE" | \
-                  sed -n '/^#/,$p' | \
-                  sed '/^Total usage est/,$d' | \
-                  sed '/^API time spent/d' | \
-                  sed '/^Total session time/d' | \
-                  sed '/^Total duration/d' | \
-                  sed '/^Total code changes/d' | \
-                  sed '/^Breakdown by AI model/,$d' | \
-                  sed '/^Usage by model/,$d' | \
-                  sed '/^ *claude-/d' | \
-                  sed '/^ *gpt-/d' > "$CLEANED_FILE"
-                
-                # If cleaning removed everything, fall back to original without ANSI codes
-                if [ ! -s "$CLEANED_FILE" ]; then
-                  echo "Cleaned file is empty, using original without ANSI codes"
-                  sed 's/\x1b\[[0-9;]*m//g' "$REVIEW_FILE" > "$CLEANED_FILE"
-                fi
-                
-                echo "Posting review from: $CLEANED_FILE"
-                echo "--- Review Content Preview ---"
-                head -50 "$CLEANED_FILE"
-                echo "--- End Preview ---"
-                
-                # Post the review as a comment on the PR
-                # Note: GH_COMMENT_TOKEN needs 'repo' scope or 'pull_requests:write' permission
-                if gh pr comment ${{ parameters.PRNumber }} --repo dotnet/maui --body-file "$CLEANED_FILE"; then
-                  echo "Review comment posted successfully"
-                else
-                  echo "##vso[task.logissue type=warning]Failed to post comment. Check that GH_COMMENT_TOKEN has 'repo' or 'pull_requests:write' scope."
-                  echo "Review content is available in the published artifacts."
-                fi
-              else
-                echo "##vso[task.logissue type=warning]No review output found or file is empty"
-              fi
-            displayName: 'Post Review Comment (Fallback)'
-            env:
-              GITHUB_TOKEN: $(GH_COMMENT_TOKEN)
-            condition: and(succeededOrFailed(), eq(variables['PostCommentFailed'], 'true'))
-
-          # Publish Copilot logs and session artifacts
+          # Publish test logs
           - task: PublishPipelineArtifact@1
-            displayName: 'Publish Copilot Logs'
+            displayName: 'Publish Test Logs'
             inputs:
-              targetPath: '$(Build.ArtifactStagingDirectory)/copilot-logs'
-              artifact: 'CopilotLogs'
-              publishLocation: 'pipeline'
-            condition: succeededOrFailed()
-
-          # Publish build logs if they exist
-          - task: PublishPipelineArtifact@1
-            displayName: 'Publish Build Logs'
-            inputs:
-              targetPath: '$(LogDirectory)'
-              artifact: 'BuildLogs'
-              publishLocation: 'pipeline'
-            condition: and(succeededOrFailed(), ne(variables['LogDirectory'], ''))
-
-          # Fail the pipeline if Copilot failed
-          - script: |
-              if [ "$(CopilotFailed)" = "true" ]; then
-                echo "##vso[task.logissue type=error]Copilot PR review failed. Check CopilotLogs artifact for details."
-                exit 1
-              fi
-            displayName: 'Check Copilot Result'
+              targetPath: 'CustomAgentLogsTmp'
+              artifact: 'TestLogs'
             condition: succeededOrFailed()
