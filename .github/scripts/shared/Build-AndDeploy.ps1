@@ -167,8 +167,15 @@ if ($Platform -eq "android") {
     Write-Success "Simulator is booted"
     
     # Find the built app bundle - search from project directory upwards for artifacts
-    $searchPath = Split-Path -Parent $ProjectPath
+    # Resolve to full path first to handle relative paths correctly
+    $fullProjectPath = Resolve-Path $ProjectPath -ErrorAction SilentlyContinue
+    if (-not $fullProjectPath) {
+        $fullProjectPath = Join-Path (Get-Location) $ProjectPath
+    }
+    $searchPath = Split-Path -Parent $fullProjectPath
     $artifactsDir = $null
+    
+    Write-Info "Searching for artifacts starting from: $searchPath"
     
     # Walk up directory tree to find artifacts folder
     while ($searchPath -and -not $artifactsDir) {
@@ -190,26 +197,10 @@ if ($Platform -eq "android") {
     Write-Info "Searching for app bundle in: $artifactsDir"
     
     # Detect simulator architecture to pick the correct app bundle
-    $simArch = "arm64"  # Default to arm64 for Apple Silicon
-    try {
-        # Get the simulator's device type to determine architecture
-        $deviceInfo = xcrun simctl list devices --json | ConvertFrom-Json
-        $simDevice = $deviceInfo.devices.PSObject.Properties.Value | 
-            ForEach-Object { $_ } | 
-            Where-Object { $_.udid -eq $DeviceUdid } | 
-            Select-Object -First 1
-        
-        if ($simDevice) {
-            # Check if the host machine is x64 or arm64
-            $hostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLower()
-            if ($hostArch -eq "x64") {
-                $simArch = "x64"
-            }
-            Write-Info "Host architecture: $hostArch, using simulator arch: $simArch"
-        }
-    } catch {
-        Write-Info "Could not detect architecture, defaulting to arm64"
-    }
+    # Use 'uname -m' which reports actual hardware, not process architecture (avoids Rosetta 2 issues)
+    $machineArch = (uname -m).Trim()
+    $simArch = if ($machineArch -eq "arm64") { "arm64" } else { "x64" }
+    Write-Info "Machine architecture: $machineArch, using simulator arch: $simArch"
     
     $appPath = Get-ChildItem -Path $artifactsDir -Filter "*.app" -Recurse -ErrorAction SilentlyContinue | 
         Where-Object { 
