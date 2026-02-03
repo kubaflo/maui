@@ -96,7 +96,8 @@ if ($Platform -eq "android") {
             }
             
             # Get list of available AVDs
-            $avdList = emulator -list-avds
+            # Force array even with single result to avoid string indexing issues
+            $avdList = @(emulator -list-avds)
             
             if (-not $avdList -or $avdList.Count -eq 0) {
                 Write-Error "No Android emulators found. Please create an Android Virtual Device (AVD) using Android Studio."
