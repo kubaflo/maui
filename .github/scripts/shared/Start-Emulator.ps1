@@ -324,32 +324,46 @@ if ($Platform -eq "android") {
     # Get device UDID if not provided
     if (-not $DeviceUdid) {
         Write-Info "Auto-detecting iOS simulator..."
-        $simList = xcrun simctl list devices available --json | ConvertFrom-Json
         
-        # Preferred devices in order of priority
-        $preferredDevices = @("iPhone 16 Pro", "iPhone 15 Pro", "iPhone 14 Pro", "iPhone Xs")
-        # Preferred iOS versions in order (newest first)
-        $preferredVersions = @("iOS-18", "iOS-17", "iOS-26")
+        # FIRST: Check for already booted simulators
+        $bootedList = xcrun simctl list devices booted --json | ConvertFrom-Json
+        $bootedDevices = $bootedList.devices.PSObject.Properties.Value | 
+            Where-Object { $_.state -eq "Booted" }
         
-        $selectedDevice = $null
-        $selectedVersion = $null
-        
-        # Try each preferred version
-        foreach ($version in $preferredVersions) {
-            if ($selectedDevice) { break }
+        if ($bootedDevices -and $bootedDevices.Count -gt 0) {
+            # Use the first booted simulator
+            $bootedDevice = $bootedDevices | Select-Object -First 1
+            $DeviceUdid = $bootedDevice.udid
+            Write-Success "Found already booted simulator: $($bootedDevice.name) ($DeviceUdid)"
+        }
+        else {
+            # No booted simulators, find and boot one
+            $simList = xcrun simctl list devices available --json | ConvertFrom-Json
             
-            # Get all runtimes matching this version prefix
-            $matchingRuntimes = $simList.devices.PSObject.Properties | 
-                Where-Object { $_.Name -match $version }
+            # Preferred devices in order of priority
+            $preferredDevices = @("iPhone Xs", "iPhone 16 Pro", "iPhone 15 Pro", "iPhone 14 Pro")
+            # Preferred iOS versions in order (newest first)
+            $preferredVersions = @("iOS-18-5", "iOS-18", "iOS-17", "iOS-26")
             
-            if ($matchingRuntimes) {
-                # Try each preferred device
-                foreach ($deviceName in $preferredDevices) {
-                    $device = $matchingRuntimes | ForEach-Object { 
-                        $_.Value | Where-Object { $_.name -eq $deviceName -and $_.isAvailable -eq $true }
-                    } | Select-Object -First 1
-                    
-                    if ($device) {
+            $selectedDevice = $null
+            $selectedVersion = $null
+            
+            # Try each preferred version
+            foreach ($version in $preferredVersions) {
+                if ($selectedDevice) { break }
+                
+                # Get all runtimes matching this version prefix
+                $matchingRuntimes = $simList.devices.PSObject.Properties | 
+                    Where-Object { $_.Name -match $version }
+                
+                if ($matchingRuntimes) {
+                    # Try each preferred device
+                    foreach ($deviceName in $preferredDevices) {
+                        $device = $matchingRuntimes | ForEach-Object { 
+                            $_.Value | Where-Object { $_.name -eq $deviceName -and $_.isAvailable -eq $true }
+                        } | Select-Object -First 1
+                        
+                        if ($device) {
                         $selectedDevice = $device
                         $selectedVersion = ($matchingRuntimes | Select-Object -First 1).Name
                         Write-Info "Found preferred device: $deviceName on $selectedVersion"
@@ -400,6 +414,7 @@ if ($Platform -eq "android") {
         }
         
         $DeviceUdid = $selectedDevice.udid
+        }  # End of else block (no booted simulators)
     }
     
     # Get device name for display
