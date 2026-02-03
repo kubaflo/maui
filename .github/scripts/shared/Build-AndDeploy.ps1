@@ -110,14 +110,20 @@ if ($Platform -eq "android") {
     Write-Step "Building $projectName for iOS..."
     
     # Detect host architecture for simulator builds
-    # Use 'uname -m' which reports actual hardware, not process architecture (avoids Rosetta 2 issues)
-    $machineArch = (uname -m).Trim()
-    Write-Info "Machine architecture (uname -m): $machineArch"
+    # Use 'sysctl hw.optional.arm64' to detect Apple Silicon hardware reliably
+    # This works even when PowerShell is running under Rosetta 2
+    $isAppleSilicon = $false
+    try {
+        $sysctl = (sysctl -n hw.optional.arm64 2>$null).Trim()
+        $isAppleSilicon = $sysctl -eq "1"
+    } catch {
+        # Fallback: if sysctl fails, try arch command
+        $archOutput = (arch 2>$null).Trim()
+        $isAppleSilicon = $archOutput -eq "arm64"
+    }
     
-    # Map machine architecture to RuntimeIdentifier
-    # arm64 = Apple Silicon, x86_64 = Intel Mac
-    $runtimeId = if ($machineArch -eq "arm64") { "iossimulator-arm64" } else { "iossimulator-x64" }
-    Write-Info "RuntimeIdentifier: $runtimeId"
+    $runtimeId = if ($isAppleSilicon) { "iossimulator-arm64" } else { "iossimulator-x64" }
+    Write-Info "Detected Apple Silicon: $isAppleSilicon, RuntimeIdentifier: $runtimeId"
     
     $buildArgs = @($ProjectPath, "-f", $TargetFramework, "-c", $Configuration, "-r", $runtimeId)
     if ($Rebuild) {
@@ -197,10 +203,17 @@ if ($Platform -eq "android") {
     Write-Info "Searching for app bundle in: $artifactsDir"
     
     # Detect simulator architecture to pick the correct app bundle
-    # Use 'uname -m' which reports actual hardware, not process architecture (avoids Rosetta 2 issues)
-    $machineArch = (uname -m).Trim()
-    $simArch = if ($machineArch -eq "arm64") { "arm64" } else { "x64" }
-    Write-Info "Machine architecture: $machineArch, using simulator arch: $simArch"
+    # Use 'sysctl hw.optional.arm64' to detect Apple Silicon hardware reliably
+    $isAppleSilicon = $false
+    try {
+        $sysctl = (sysctl -n hw.optional.arm64 2>$null).Trim()
+        $isAppleSilicon = $sysctl -eq "1"
+    } catch {
+        $archOutput = (arch 2>$null).Trim()
+        $isAppleSilicon = $archOutput -eq "arm64"
+    }
+    $simArch = if ($isAppleSilicon) { "arm64" } else { "x64" }
+    Write-Info "Detected Apple Silicon: $isAppleSilicon, using simulator arch: $simArch"
     
     $appPath = Get-ChildItem -Path $artifactsDir -Filter "*.app" -Recurse -ErrorAction SilentlyContinue | 
         Where-Object { 
