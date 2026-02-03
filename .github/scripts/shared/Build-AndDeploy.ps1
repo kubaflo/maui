@@ -110,9 +110,14 @@ if ($Platform -eq "android") {
     Write-Step "Building $projectName for iOS..."
     
     # Detect host architecture for simulator builds
-    $hostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLower()
-    $runtimeId = if ($hostArch -eq "x64") { "iossimulator-x64" } else { "iossimulator-arm64" }
-    Write-Info "Host architecture: $hostArch, RuntimeIdentifier: $runtimeId"
+    # Use 'uname -m' which reports actual hardware, not process architecture (avoids Rosetta 2 issues)
+    $machineArch = (uname -m).Trim()
+    Write-Info "Machine architecture (uname -m): $machineArch"
+    
+    # Map machine architecture to RuntimeIdentifier
+    # arm64 = Apple Silicon, x86_64 = Intel Mac
+    $runtimeId = if ($machineArch -eq "arm64") { "iossimulator-arm64" } else { "iossimulator-x64" }
+    Write-Info "RuntimeIdentifier: $runtimeId"
     
     $buildArgs = @($ProjectPath, "-f", $TargetFramework, "-c", $Configuration, "-r", $runtimeId)
     if ($Rebuild) {
