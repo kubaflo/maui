@@ -161,16 +161,35 @@ stages:
           - script: |
               echo "=== Booting iOS Simulator ==="
               
-              # Find iPhone Xs with iOS 18.5 (default for UI tests)
+              # Find iPhone simulator - prefer iOS 26.x first (for Xcode 26.x compatibility), then iOS 18.5
               UDID=$(xcrun simctl list devices available --json | python3 -c "
               import json, sys
               data = json.load(sys.stdin)
+              
+              # Priority 1: iPhone Xs with iOS 26.x (for Xcode 26.x SDK compatibility)
+              for runtime, devices in data.get('devices', {}).items():
+                  if 'iOS-26' in runtime or 'iOS 26' in runtime:
+                      for d in devices:
+                          if d.get('name') == 'iPhone Xs' and d.get('isAvailable'):
+                              print(d['udid'])
+                              sys.exit(0)
+              
+              # Priority 2: Any iPhone with iOS 26.x
+              for runtime, devices in data.get('devices', {}).items():
+                  if 'iOS-26' in runtime or 'iOS 26' in runtime:
+                      for d in devices:
+                          if 'iPhone' in d.get('name', '') and d.get('isAvailable'):
+                              print(d['udid'])
+                              sys.exit(0)
+              
+              # Priority 3: iPhone Xs with iOS 18.5 (legacy)
               for runtime, devices in data.get('devices', {}).items():
                   if 'iOS-18-5' in runtime or 'iOS 18.5' in runtime:
                       for d in devices:
                           if d.get('name') == 'iPhone Xs' and d.get('isAvailable'):
                               print(d['udid'])
                               sys.exit(0)
+              
               # Fallback: any available iPhone
               for runtime, devices in data.get('devices', {}).items():
                   if 'iOS' in runtime:

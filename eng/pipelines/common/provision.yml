@@ -184,14 +184,32 @@ steps:
           sudo xcodebuild -downloadPlatform iOS
         fi
         
-        # Create iPhone Xs simulator with iOS 18.5 (required for UI tests)
+        # Create iPhone Xs simulator with appropriate iOS version (required for UI tests)
         echo ""
-        echo "=== Creating iPhone Xs simulator with iOS 18.5 ==="
+        echo "=== Creating iPhone Xs simulator ==="
         
-        # Find iOS 18.5 runtime (or fallback to iOS 18.x)
-        IOS_RUNTIME=$(xcrun simctl list runtimes -j | jq -r '.runtimes[] | select(.name | contains("iOS 18.5")) | .identifier' | head -1)
-        if [[ -z "$IOS_RUNTIME" ]]; then
-          IOS_RUNTIME=$(xcrun simctl list runtimes -j | jq -r '.runtimes[] | select(.name | contains("iOS 18")) | .identifier' | head -1)
+        # For Xcode 26.x, we need iOS 26.x simulator; for others use iOS 18.5
+        # Use REQUIRED_XCODE for devdiv team project or if CollectionUri contains xamarin, XCODE for others
+        if [[ "$(System.TeamProject)" == "devdiv" || "$(System.CollectionUri)" == *"xamarin"* ]]; then
+          XCODE_VERSION=$(REQUIRED_XCODE)
+        else
+          XCODE_VERSION=$(XCODE)
+        fi
+        
+        if [[ "${XCODE_VERSION}" =~ ^26[.].*$ ]]; then
+          echo "Using Xcode 26.x - looking for iOS 26.x runtime"
+          # For Xcode 26.x, prefer iOS 26.0 (most compatible), then iOS 26.x
+          IOS_RUNTIME=$(xcrun simctl list runtimes -j | jq -r '.runtimes[] | select(.name == "iOS 26.0") | .identifier' | head -1)
+          if [[ -z "$IOS_RUNTIME" ]]; then
+            IOS_RUNTIME=$(xcrun simctl list runtimes -j | jq -r '.runtimes[] | select(.name | contains("iOS 26")) | .identifier' | head -1)
+          fi
+        else
+          echo "Using Xcode ${XCODE_VERSION} - looking for iOS 18.5 runtime"
+          # Find iOS 18.5 runtime (or fallback to iOS 18.x)
+          IOS_RUNTIME=$(xcrun simctl list runtimes -j | jq -r '.runtimes[] | select(.name | contains("iOS 18.5")) | .identifier' | head -1)
+          if [[ -z "$IOS_RUNTIME" ]]; then
+            IOS_RUNTIME=$(xcrun simctl list runtimes -j | jq -r '.runtimes[] | select(.name | contains("iOS 18")) | .identifier' | head -1)
+          fi
         fi
         
         if [[ -n "$IOS_RUNTIME" ]]; then
