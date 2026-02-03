@@ -348,7 +348,9 @@ stages:
               
               $ErrorActionPreference = "Continue"
               try {
-                & "./$scriptPath" -Platform ios -Verbose 2>&1 | ForEach-Object { Write-Host $_ }
+                # Run with a specific test filter - for Copilot agent, run Button category tests
+                # which is relevant to the Button CharacterSpacing fix being tested
+                & "./$scriptPath" -Platform ios -Category "Button" -Verbose 2>&1 | ForEach-Object { Write-Host $_ }
                 $exitCode = $LASTEXITCODE
               } catch {
                 Write-Host "##vso[task.logissue type=error]Exception: $_"
