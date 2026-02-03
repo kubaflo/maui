@@ -187,7 +187,7 @@ if ($Platform -eq "android") {
             
             # Wait for emulator to appear in adb devices
             Write-Info "Waiting for emulator to start..."
-            $timeout = 120
+            $timeout = 600
             $elapsed = 0
             $emulatorStarted = $false
             
