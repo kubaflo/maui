@@ -13,7 +13,7 @@ parameters:
   - name: PRNumber
     displayName: 'Pull Request Number'
     type: string
-    default: ''
+    default: '20537'
 
   - name: pool
     type: object
