@@ -292,11 +292,13 @@ stages:
               
               $ErrorActionPreference = "Continue"
               try {
+                # Skip code signing for simulator builds in CI
                 & "./$scriptPath" -Platform ios `
                   -ProjectPath "src/Controls/tests/TestCases.HostApp/Controls.TestCases.HostApp.csproj" `
                   -TargetFramework "net10.0-ios" `
                   -DeviceUdid $udid `
                   -BundleId "com.microsoft.maui.uitests" `
+                  -AdditionalBuildArgs @("/p:_RequireCodeSigning=false", "/p:CodesignRequireProvisioningProfile=false") `
                   -Verbose 2>&1 | ForEach-Object { Write-Host $_ }
                 $exitCode = $LASTEXITCODE
               } catch {
@@ -312,7 +314,7 @@ stages:
               exit $exitCode
             displayName: 'Build and Deploy HostApp (Verbose)'
             continueOnError: true
-            timeoutInMinutes: 30
+            timeoutInMinutes: 45
 
           # Build and Run HostApp with Tests (verbose logging)
           - pwsh: |

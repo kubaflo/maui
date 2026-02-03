@@ -57,7 +57,10 @@ param(
     [string]$BundleId,
 
     [Parameter(Mandatory=$false)]
-    [switch]$Rebuild
+    [switch]$Rebuild,
+
+    [Parameter(Mandatory=$false)]
+    [string[]]$AdditionalBuildArgs = @()
 )
 
 # Import shared utilities
@@ -114,6 +117,12 @@ if ($Platform -eq "android") {
     $buildArgs = @($ProjectPath, "-f", $TargetFramework, "-c", $Configuration, "-r", $runtimeId)
     if ($Rebuild) {
         $buildArgs += "--no-incremental"
+    }
+    
+    # Add additional build args (e.g., for skipping code signing in CI)
+    if ($AdditionalBuildArgs -and $AdditionalBuildArgs.Count -gt 0) {
+        $buildArgs += $AdditionalBuildArgs
+        Write-Info "Additional build args: $($AdditionalBuildArgs -join ' ')"
     }
     
     Write-Info "Build command: dotnet build $($buildArgs -join ' ')"
