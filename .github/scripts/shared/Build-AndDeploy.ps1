@@ -114,12 +114,25 @@ if ($Platform -eq "android") {
     # This works even when PowerShell is running under Rosetta 2
     $isAppleSilicon = $false
     try {
-        $sysctl = (sysctl -n hw.optional.arm64 2>$null).Trim()
+        # Use bash to run sysctl for more reliable execution
+        $sysctl = & bash -c 'sysctl -n hw.optional.arm64 2>/dev/null || echo 0'
+        $sysctl = $sysctl.Trim()
+        Write-Host "DEBUG: sysctl hw.optional.arm64 = '$sysctl'"
         $isAppleSilicon = $sysctl -eq "1"
     } catch {
+        Write-Host "DEBUG: sysctl failed, trying arch command"
         # Fallback: if sysctl fails, try arch command
-        $archOutput = (arch 2>$null).Trim()
+        $archOutput = & bash -c 'arch'
+        $archOutput = $archOutput.Trim()
+        Write-Host "DEBUG: arch output = '$archOutput'"
         $isAppleSilicon = $archOutput -eq "arm64"
+    }
+    
+    # If still detecting as x64 but on macOS-15 (Apple Silicon only), force arm64
+    # macOS-15 Azure Pipelines agents are all Apple Silicon
+    if (-not $isAppleSilicon) {
+        $machineArch = & bash -c 'uname -m'
+        Write-Host "DEBUG: uname -m = '$machineArch'"
     }
     
     $runtimeId = if ($isAppleSilicon) { "iossimulator-arm64" } else { "iossimulator-x64" }
@@ -206,10 +219,13 @@ if ($Platform -eq "android") {
     # Use 'sysctl hw.optional.arm64' to detect Apple Silicon hardware reliably
     $isAppleSilicon = $false
     try {
-        $sysctl = (sysctl -n hw.optional.arm64 2>$null).Trim()
+        # Use bash to run sysctl for more reliable execution
+        $sysctl = & bash -c 'sysctl -n hw.optional.arm64 2>/dev/null || echo 0'
+        $sysctl = $sysctl.Trim()
         $isAppleSilicon = $sysctl -eq "1"
     } catch {
-        $archOutput = (arch 2>$null).Trim()
+        $archOutput = & bash -c 'arch'
+        $archOutput = $archOutput.Trim()
         $isAppleSilicon = $archOutput -eq "arm64"
     }
     $simArch = if ($isAppleSilicon) { "arm64" } else { "x64" }
