@@ -122,13 +122,20 @@ stages:
               Write-Host "=== Running verify-tests-fail.ps1 ==="
               Write-Host "PR Number: ${{ parameters.PRNumber }}"
               Write-Host "Platform: ios"
+              Write-Host "TestFilter: Issue18832 (PR #20537 Button CharacterSpacing)"
               
               $ErrorActionPreference = "Continue"
               
-              # Run the verification script
+              # Create output directory
+              New-Item -ItemType Directory -Force -Path "CustomAgentLogsTmp/PRState/${{ parameters.PRNumber }}/verify-tests-fail" | Out-Null
+              
+              # Run the verification script with explicit TestFilter for PR #20537
+              # This tests the Button CharacterSpacing fix
               & "./.github/skills/verify-tests-fail-without-fix/scripts/verify-tests-fail.ps1" `
                 -Platform ios `
                 -PRNumber "${{ parameters.PRNumber }}" `
+                -TestFilter "Issue18832" `
+                -FixFiles @("src/Controls/src/Core/Platform/iOS/Extensions/ButtonExtensions.cs", "src/Core/src/Platform/iOS/MauiLabel.cs") `
                 -Verbose 2>&1 | Tee-Object -FilePath "CustomAgentLogsTmp/verify-tests-output.log"
               
               $exitCode = $LASTEXITCODE
@@ -142,7 +149,7 @@ stages:
               
               exit $exitCode
             displayName: 'Run verify-tests-fail.ps1'
-            timeoutInMinutes: 30
+            timeoutInMinutes: 45
 
           # Publish logs
           - task: PublishPipelineArtifact@1
