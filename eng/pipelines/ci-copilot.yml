@@ -1,4 +1,6 @@
-# Simplified pipeline for testing verify-tests-fail script
+# Pipeline for running GitHub Copilot PR Reviewer Agent
+# This pipeline installs the Copilot CLI and invokes the PR reviewer agent
+# to conduct automated code reviews on pull requests.
 trigger: none
 pr: none
 
@@ -19,16 +21,17 @@ variables:
     value: false
 
 stages:
-  - stage: VerifyTests
-    displayName: 'Verify Tests Fail Without Fix'
+  - stage: ReviewPR
+    displayName: 'Run PR Reviewer Agent'
     jobs:
-      - job: RunVerifyScript
-        displayName: 'Run verify-tests-fail.ps1'
+      - job: CopilotReview
+        displayName: 'Run Copilot PR Reviewer Agent'
         pool: ${{ parameters.pool }}
         timeoutInMinutes: 180
         steps:
           - checkout: self
             fetchDepth: 0
+            persistCredentials: true
 
           - script: echo "Testing PR Number ${{ parameters.PRNumber }}"
             displayName: 'Show Parameters'
@@ -117,45 +120,62 @@ stages:
               appium driver list --installed
             displayName: 'Install Appium'
 
-          # Run verify-tests-fail script
+          # Install GitHub Copilot CLI
+          - script: |
+              echo "Installing GitHub Copilot CLI..."
+              NPM_BIN=$(npm config get prefix)/bin
+              export PATH="$NPM_BIN:$PATH"
+              npm install -g @github/copilot
+              if ! which copilot; then
+                echo "##vso[task.logissue type=error]Failed to install GitHub Copilot CLI"
+                exit 1
+              fi
+              echo "Copilot CLI installed: $(copilot --version)"
+            displayName: 'Install GitHub Copilot CLI'
+
+          # Run PR Reviewer Agent via Review-PR.ps1
           - pwsh: |
-              Write-Host "=== Running verify-tests-fail.ps1 ==="
+              Write-Host "=== Running PR Reviewer Agent ==="
               Write-Host "PR Number: ${{ parameters.PRNumber }}"
               Write-Host "Platform: ios"
-              Write-Host "TestFilter: Issue18832 (PR #20537 Button CharacterSpacing)"
-              
-              $ErrorActionPreference = "Continue"
               
               # Create output directory
-              New-Item -ItemType Directory -Force -Path "CustomAgentLogsTmp/PRState/${{ parameters.PRNumber }}/verify-tests-fail" | Out-Null
+              New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)/copilot-logs" | Out-Null
               
-              # Run the verification script with explicit TestFilter for PR #20537
-              # This tests the Button CharacterSpacing fix
-              # FixFiles are the actual fix files from PR #20537
-              & "./.github/skills/verify-tests-fail-without-fix/scripts/verify-tests-fail.ps1" `
-                -Platform ios `
+              # Run Review-PR.ps1 in non-interactive mode
+              # -SkipMerge because we're already on the branch with PR changes
+              & "./.github/scripts/Review-PR.ps1" `
                 -PRNumber "${{ parameters.PRNumber }}" `
-                -TestFilter "FullyQualifiedName~Issue18832" `
-                -FixFiles @("src/Controls/src/Core/Button/Button.iOS.cs", "src/Core/src/Handlers/Button/ButtonHandler.iOS.cs", "src/Core/src/Platform/iOS/ButtonExtensions.cs") `
-                -Verbose 2>&1 | Tee-Object -FilePath "CustomAgentLogsTmp/verify-tests-output.log"
+                -Platform ios `
+                -SkipMerge `
+                -NoInteractive 2>&1 | Tee-Object -FilePath "$(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md"
               
               $exitCode = $LASTEXITCODE
-              Write-Host "verify-tests-fail.ps1 exit code: $exitCode"
+              Write-Host "Review-PR.ps1 exit code: $exitCode"
               
-              # Always show what happened
-              if (Test-Path "CustomAgentLogsTmp/verify-tests-output.log") {
-                Write-Host "=== Full Log Output ==="
-                Get-Content "CustomAgentLogsTmp/verify-tests-output.log" | Select-Object -Last 200
+              # Copy any Copilot session files
+              if (Test-Path "$HOME/.copilot") {
+                Write-Host "Copying Copilot session state..."
+                Copy-Item -Path "$HOME/.copilot" -Destination "$(Build.ArtifactStagingDirectory)/copilot-logs/copilot-session-state" -Recurse -Force -ErrorAction SilentlyContinue
+              }
+              
+              # Copy CustomAgentLogsTmp if it exists
+              if (Test-Path "CustomAgentLogsTmp") {
+                Write-Host "Copying CustomAgentLogsTmp..."
+                Copy-Item -Path "CustomAgentLogsTmp" -Destination "$(Build.ArtifactStagingDirectory)/copilot-logs/" -Recurse -Force -ErrorAction SilentlyContinue
               }
               
               exit $exitCode
-            displayName: 'Run verify-tests-fail.ps1'
+            displayName: 'Run PR Reviewer Agent'
             timeoutInMinutes: 150
+            env:
+              GITHUB_TOKEN: $(COPILOT_TOKEN)
+              DEVICE_UDID: $(IOS_SIMULATOR_UDID)
 
-          # Publish logs
+          # Publish Copilot logs
           - task: PublishPipelineArtifact@1
-            displayName: 'Publish Test Logs'
+            displayName: 'Publish Copilot Logs'
             inputs:
-              targetPath: 'CustomAgentLogsTmp'
-              artifact: 'VerifyTestsLogs'
+              targetPath: '$(Build.ArtifactStagingDirectory)/copilot-logs'
+              artifact: 'CopilotLogs'
             condition: succeededOrFailed()
