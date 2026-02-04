@@ -131,11 +131,12 @@ stages:
               
               # Run the verification script with explicit TestFilter for PR #20537
               # This tests the Button CharacterSpacing fix
+              # FixFiles are the actual fix files from PR #20537
               & "./.github/skills/verify-tests-fail-without-fix/scripts/verify-tests-fail.ps1" `
                 -Platform ios `
                 -PRNumber "${{ parameters.PRNumber }}" `
-                -TestFilter "Issue18832" `
-                -FixFiles @("src/Controls/src/Core/Platform/iOS/Extensions/ButtonExtensions.cs", "src/Core/src/Platform/iOS/MauiLabel.cs") `
+                -TestFilter "FullyQualifiedName~Issue18832" `
+                -FixFiles @("src/Controls/src/Core/Button/Button.iOS.cs", "src/Core/src/Handlers/Button/ButtonHandler.iOS.cs", "src/Core/src/Platform/iOS/ButtonExtensions.cs") `
                 -Verbose 2>&1 | Tee-Object -FilePath "CustomAgentLogsTmp/verify-tests-output.log"
               
               $exitCode = $LASTEXITCODE
@@ -149,7 +150,7 @@ stages:
               
               exit $exitCode
             displayName: 'Run verify-tests-fail.ps1'
-            timeoutInMinutes: 45
+            timeoutInMinutes: 90
 
           # Publish logs
           - task: PublishPipelineArtifact@1
