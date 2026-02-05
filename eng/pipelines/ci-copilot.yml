@@ -142,13 +142,12 @@ stages:
               # Create output directory
               New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)/copilot-logs" | Out-Null
               
-              # Run Review-PR.ps1 in non-interactive mode
+              # Run Review-PR.ps1 in non-interactive mode (default behavior, no flag needed)
               # -SkipMerge because we're already on the branch with PR changes
               & "./.github/scripts/Review-PR.ps1" `
                 -PRNumber "${{ parameters.PRNumber }}" `
                 -Platform ios `
-                -SkipMerge `
-                -NoInteractive 2>&1 | Tee-Object -FilePath "$(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md"
+                -SkipMerge 2>&1 | Tee-Object -FilePath "$(Build.ArtifactStagingDirectory)/copilot-logs/copilot_review_output.md"
               
               $exitCode = $LASTEXITCODE
               Write-Host "Review-PR.ps1 exit code: $exitCode"
