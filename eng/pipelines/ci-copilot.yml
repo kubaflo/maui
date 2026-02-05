@@ -131,6 +131,11 @@ stages:
                 exit 1
               fi
               echo "Copilot CLI installed: $(copilot --version)"
+              
+              # Capture DEVELOPER_DIR for subsequent steps
+              XCODE_DEV_DIR=$(xcrun xcode-select -p)
+              echo "Setting XCODE_DEV_DIR for pipeline: $XCODE_DEV_DIR"
+              echo "##vso[task.setvariable variable=XCODE_DEV_DIR]$XCODE_DEV_DIR"
             displayName: 'Install GitHub Copilot CLI'
 
           # Run PR Reviewer Agent via Review-PR.ps1
@@ -138,6 +143,7 @@ stages:
               Write-Host "=== Running PR Reviewer Agent ==="
               Write-Host "PR Number: ${{ parameters.PRNumber }}"
               Write-Host "Platform: ios"
+              Write-Host "DEVELOPER_DIR: $env:DEVELOPER_DIR"
               
               # Create output directory
               New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)/copilot-logs" | Out-Null
@@ -170,6 +176,8 @@ stages:
             env:
               GITHUB_TOKEN: $(COPILOT_TOKEN)
               DEVICE_UDID: $(IOS_SIMULATOR_UDID)
+              # Ensure Copilot CLI and its sub-agents use the correct Xcode version
+              DEVELOPER_DIR: $(XCODE_DEV_DIR)
 
           # Publish Copilot logs
           - task: PublishPipelineArtifact@1
