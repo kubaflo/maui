@@ -386,7 +386,24 @@ if ($DryRun) {
             Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
             Write-Host ""
             
-            $commentPrompt = "Use the ai-summary-comment skill to post a comment on PR #$PRNumber based on the results from the PR agent review and pr-finalize phases in CustomAgentLogsTmp/PRState/pr-$PRNumber.md."
+            # First verify the skill file exists
+            $skillPath = ".github/skills/ai-summary-comment/SKILL.md"
+            if (Test-Path $skillPath) {
+                Write-Host "✅ Found skill file: $skillPath" -ForegroundColor Green
+            } else {
+                Write-Host "⚠️ Skill file not found at: $skillPath" -ForegroundColor Yellow
+                Write-Host "   Current directory: $(Get-Location)" -ForegroundColor Gray
+                Write-Host "   Available skills:" -ForegroundColor Gray
+                Get-ChildItem ".github/skills/" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "     - $($_.Name)" -ForegroundColor Gray }
+            }
+            
+            $commentPrompt = @"
+Read the ai-summary-comment skill from .github/skills/ai-summary-comment/SKILL.md and follow its instructions to post a summary comment on PR #$PRNumber.
+
+The PR state file is at: CustomAgentLogsTmp/PRState/pr-$PRNumber-state.md
+
+If you cannot find the skill file, use the GitHub CLI (gh pr comment) to post a summary of the PR review results from the state file.
+"@
             
             $commentArgs = @(
                 "-p", $commentPrompt,
