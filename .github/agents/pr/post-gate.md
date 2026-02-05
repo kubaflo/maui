@@ -80,6 +80,19 @@ Generate ONE independent fix idea. Review the PR's fix first to ensure your appr
 
 **Wait for each to complete before starting the next.**
 
+**🧹 MANDATORY: Clean up between attempts.** After each try-fix completes (pass or fail), run these commands before starting the next attempt:
+
+```bash
+# 1. Restore any baseline state from the previous attempt (safe no-op if none exists)
+pwsh .github/scripts/EstablishBrokenBaseline.ps1 -Restore
+
+# 2. Restore all tracked files to HEAD (the merged PR state)
+# This catches any files the previous attempt modified but didn't restore
+git checkout -- .
+```
+
+**Why this is required:** Each try-fix attempt modifies source files. If an attempt fails mid-way (build error, timeout, model error), it may not run its own cleanup step. Without explicit cleanup, the next attempt starts with a dirty working tree, which can cause missing files, corrupt state, or misleading test results.
+
 #### Round 2+: Cross-Pollination Loop (MANDATORY)
 
 After Round 1, invoke EACH of the 5 models to ask for new ideas. **No shortcuts allowed.**
@@ -308,3 +321,43 @@ Update all phase statuses to complete.
 - ❌ **Forgetting to revert between attempts** - Each try-fix must start from broken baseline, end with PR restored
 - ❌ **Declaring exhaustion prematurely** - All 5 models must confirm "no new ideas" via actual invocation
 - ❌ **Rushing the report** - Take time to write clear justification
+- ❌ **Skipping cleanup between attempts** - ALWAYS run `-Restore` + `git checkout -- .` between try-fix attempts (see Step 1)
+
+---
+
+## Common Errors and Recovery
+
+### skill(try-fix) fails with "ENOENT: no such file or directory"
+
+**Symptom:** `skill(try-fix) Failed to read skill file: Error: ENOENT: no such file or directory, open '.../.github/skills/try-fix/SKILL.md'`
+
+**Root cause:** A previous try-fix attempt failed mid-way and left the working tree in a dirty state. Files may have been modified or deleted by `EstablishBrokenBaseline.ps1` without being restored.
+
+**Fix:** Run cleanup before retrying:
+```bash
+pwsh .github/scripts/EstablishBrokenBaseline.ps1 -Restore
+git checkout -- .
+```
+
+Then retry the try-fix attempt. The skill file should now be accessible.
+
+**Prevention:** Always run the cleanup commands between try-fix attempts (see Step 1).
+
+### try-fix attempt starts with dirty working tree
+
+**Symptom:** `git status` shows modified files before the attempt starts, or the build fails with unexpected errors from files the attempt didn't touch.
+
+**Root cause:** Previous attempt didn't restore its changes (crashed, timed out, or model didn't follow Step 8 restore instructions).
+
+**Fix:** Same as above — run `-Restore` + `git checkout -- .` to reset to the merged PR state.
+
+### Build errors unrelated to the fix being attempted
+
+**Symptom:** Build fails with errors in files the try-fix attempt didn't modify (e.g., XAML parse errors, unrelated compilation failures).
+
+**Root cause:** Often caused by dirty working tree from a previous attempt. Can also be transient environment issues.
+
+**Fix:**
+1. Run cleanup: `pwsh .github/scripts/EstablishBrokenBaseline.ps1 -Restore && git checkout -- .`
+2. Retry the attempt
+3. If it fails again with the same unrelated error, skip this attempt and continue with the next model
