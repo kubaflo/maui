@@ -318,7 +318,7 @@ git diff | Set-Content "$OUTPUT_DIR/fix.diff"
 
 ```bash
 pwsh .github/scripts/EstablishBrokenBaseline.ps1 -Restore
-git checkout -- .
+git checkout HEAD -- .
 ```
 
 ### Step 9: Report Results
@@ -363,7 +363,7 @@ If `state_file` input was provided and file exists:
 
 **If no state file provided:** Skip this step (results returned to invoker only).
 
-**⚠️ Do NOT `git add` or `git commit` the state file.** It lives in `CustomAgentLogsTmp/` which is `.gitignore`d. Committing it with `git add -f` would cause `git checkout -- .` (used between phases) to revert it, losing data.
+**⚠️ Do NOT `git add` or `git commit` the state file.** It lives in `CustomAgentLogsTmp/` which is `.gitignore`d. Committing it with `git add -f` would cause `git checkout HEAD -- .` (used between phases) to revert it, losing data.
 
 **⚠️ IMPORTANT: Do NOT set any "Exhausted" field.** Cross-pollination exhaustion is determined by the pr agent after invoking ALL 5 models and confirming none have new ideas. try-fix only reports its own attempt result.
 
@@ -380,7 +380,7 @@ If `state_file` input was provided and file exists:
 | Test command fails to run | Report build/setup error with details |
 | Test times out | Report timeout, include partial output |
 | Can't determine fix approach | Report "no viable approach identified" with reasoning |
-| Git state unrecoverable | Run `git checkout -- .` and `git clean -fd` if needed |
+| Git state unrecoverable | Run `git checkout HEAD -- .` and `git clean -fd` if needed |
 
 ---
 
