@@ -352,6 +352,14 @@ if ($DryRun) {
     # Post-completion skills (only run if main agent completed successfully)
     if ($exitCode -eq 0) {
         
+        # Restore tracked files to clean state before running post-completion skills.
+        # Phase 1 (PR Agent) may have left the working tree dirty from try-fix attempts,
+        # which can cause skill files to be missing or modified in subsequent phases.
+        Write-Host ""
+        Write-Host "🧹 Restoring working tree to clean state between phases..." -ForegroundColor Yellow
+        git checkout -- . 2>&1 | Out-Null
+        Write-Host "  ✅ Working tree restored" -ForegroundColor Green
+        
         # Phase 2: Run pr-finalize skill if requested
         if ($RunFinalize) {
             Write-Host ""
@@ -360,7 +368,7 @@ if ($DryRun) {
             Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
             Write-Host ""
             
-            $finalizePrompt = "Run the pr-finalize skill for PR #$PRNumber. Verify the PR title and description match the actual implementation. Do NOT post a comment - just update the state file at CustomAgentLogsTmp/PRState/pr-$PRNumber.md with your findings."
+            $finalizePrompt = "Run the pr-finalize skill for PR #$PRNumber. Verify the PR title and description match the actual implementation. Do NOT post a comment. Write your findings to CustomAgentLogsTmp/PRState/pr-$PRNumber-final.md (NOT the main state file pr-$PRNumber.md which contains phase data that must not be overwritten)."
             
             $finalizeArgs = @(
                 "-p", $finalizePrompt,
@@ -379,7 +387,10 @@ if ($DryRun) {
             }
         }
         
-        # Phase 3: Run ai-summary-comment skill if requested (posts combined results)
+        # Phase 3: Post AI summary comment if requested
+        # Runs the script directly instead of via Copilot CLI to avoid:
+        # - LLM creating its own broken version if skill files are missing
+        # - Dirty tree from Phase 2 corrupting script files
         if ($PostSummaryComment) {
             Write-Host ""
             Write-Host "╔═══════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
@@ -387,49 +398,28 @@ if ($DryRun) {
             Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
             Write-Host ""
             
-            # First verify the skill file exists
-            $skillPath = ".github/skills/ai-summary-comment/SKILL.md"
-            if (Test-Path $skillPath) {
-                Write-Host "✅ Found skill file: $skillPath" -ForegroundColor Green
+            # Restore tracked files to clean state before running the script.
+            # Phase 2 (pr-finalize) may have modified files via its Copilot CLI session,
+            # causing skill scripts to be missing or corrupted.
+            Write-Host "🧹 Restoring working tree to clean state..." -ForegroundColor Yellow
+            git checkout -- . 2>&1 | Out-Null
+            Write-Host "  ✅ Working tree restored" -ForegroundColor Green
+            
+            $scriptPath = ".github/skills/ai-summary-comment/scripts/post-ai-summary-comment.ps1"
+            if (Test-Path $scriptPath) {
+                Write-Host "💬 Running post-ai-summary-comment.ps1 directly..." -ForegroundColor Yellow
+                & pwsh $scriptPath -PRNumber $PRNumber
+                
+                $commentExit = $LASTEXITCODE
+                if ($commentExit -eq 0) {
+                    Write-Host "✅ Summary comment posted" -ForegroundColor Green
+                } else {
+                    Write-Host "⚠️ post-ai-summary-comment.ps1 exited with code: $commentExit" -ForegroundColor Yellow
+                }
             } else {
-                Write-Host "⚠️ Skill file not found at: $skillPath" -ForegroundColor Yellow
+                Write-Host "⚠️ Script not found at: $scriptPath" -ForegroundColor Yellow
                 Write-Host "   Current directory: $(Get-Location)" -ForegroundColor Gray
-                Write-Host "   Available skills:" -ForegroundColor Gray
-                Get-ChildItem ".github/skills/" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "     - $($_.Name)" -ForegroundColor Gray }
-            }
-            
-            $commentPrompt = @"
-Post the AI summary comment for PR #$PRNumber using the ai-summary-comment skill.
-
-**Step 1: Run the post-ai-summary-comment.ps1 script**
-``````bash
-pwsh .github/skills/ai-summary-comment/scripts/post-ai-summary-comment.ps1 -PRNumber $PRNumber
-``````
-
-The script will automatically:
-- Load the state file from CustomAgentLogsTmp/PRState/pr-$PRNumber.md
-- Parse all phases and their statuses
-- Post/update the unified AI Summary comment on the PR
-
-**If the script fails**, check that the state file exists and contains valid phase data.
-
-**Do NOT** manually compose or post comments - always use the script.
-"@
-            
-            $commentArgs = @(
-                "-p", $commentPrompt,
-                "--allow-all",
-                "--stream", "on"
-            )
-            
-            Write-Host "💬 Posting summary comment..." -ForegroundColor Yellow
-            & copilot @commentArgs
-            
-            $commentExit = $LASTEXITCODE
-            if ($commentExit -eq 0) {
-                Write-Host "✅ Summary comment posted" -ForegroundColor Green
-            } else {
-                Write-Host "⚠️ ai-summary-comment exited with code: $commentExit" -ForegroundColor Yellow
+                Write-Host "   Skipping summary comment." -ForegroundColor Gray
             }
         }
     }
