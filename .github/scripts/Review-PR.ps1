@@ -83,10 +83,22 @@ param(
     [switch]$PostSummaryComment,
 
     [Parameter(Mandatory = $false)]
-    [switch]$RunFinalize
+    [switch]$RunFinalize,
+
+    [Parameter(Mandatory = $false)]
+    [string]$LogFile  # If provided, captures all output via Start-Transcript
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Start transcript logging if LogFile specified (replaces external tee pipe)
+if ($LogFile) {
+    $logDir = Split-Path $LogFile -Parent
+    if ($logDir -and -not (Test-Path $logDir)) {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    }
+    Start-Transcript -Path $LogFile -Force | Out-Null
+}
 
 # Get repository root
 $RepoRoot = git rev-parse --show-toplevel 2>$null
@@ -440,3 +452,7 @@ if (-not $DryRun) {
     }
 }
 Write-Host ""
+
+if ($LogFile) {
+    Stop-Transcript | Out-Null
+}
