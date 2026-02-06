@@ -64,7 +64,7 @@ Follow the 5-phase PR Agent workflow, but leverage the existing agent review sta
 - NO parallel execution - wait for full result before proceeding
 - Learn from each attempt to inform the next
 
-For EACH unique fix idea, run try-fix skill with `claude-opus-4.5`:
+For EACH unique fix idea, run try-fix skill with `claude-opus-4.6`:
 - [ ] **Attempt 1:** [First alternative approach] → WAIT FOR COMPLETION
 - [ ] **Attempt 2:** [Second alternative approach] → WAIT FOR COMPLETION
 - [ ] **Attempt 3:** [Third alternative approach] → WAIT FOR COMPLETION
@@ -138,7 +138,7 @@ The existing agent review file shows:
 | Model | Purpose |
 |-------|---------|
 | `claude-sonnet-4` | Baseline fix ideas |
-| `claude-opus-4.5` | Deep analysis + try-fix iterations |
+| `claude-opus-4.6` | Deep analysis + try-fix iterations |
 | `gpt-5.2` | Alternative perspective |
 | `gpt-5.1-codex` | Code-focused suggestions |
 | `gemini-3-pro-preview` | Third-party perspective |
