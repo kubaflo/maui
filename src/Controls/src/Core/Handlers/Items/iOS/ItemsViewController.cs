@@ -456,10 +456,34 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			if (_emptyViewDisplayed)
 			{
-				AlignEmptyView();
+				UpdateEmptyViewFlowDirection();
 			}
 
 			Layout.InvalidateLayout();
+		}
+
+		void UpdateEmptyViewFlowDirection()
+		{
+			if (_emptyUIView == null || _emptyViewFormsElement == null)
+			{
+				return;
+			}
+
+			// Update FlowDirection for the EmptyView's root element
+			if (_emptyViewFormsElement is VisualElement ve && ve.Handler?.PlatformView is UIView view)
+			{
+				view.UpdateFlowDirection(ve);
+			}
+
+			// Update FlowDirection for all logical children of the EmptyView
+			// This ensures that nested elements within the EmptyView also respect FlowDirection
+			foreach (var child in _emptyViewFormsElement.LogicalChildrenInternal)
+			{
+				if (child is VisualElement childVe && childVe.Handler?.PlatformView is UIView childView)
+				{
+					childView.UpdateFlowDirection(childVe);
+				}
+			}
 		}
 
 		public override nint NumberOfSections(UICollectionView collectionView)
@@ -810,7 +834,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			_emptyUIView.InvalidateMeasure();
 
-			AlignEmptyView();
+			UpdateEmptyViewFlowDirection();
 			_emptyViewDisplayed = true;
 		}
 
