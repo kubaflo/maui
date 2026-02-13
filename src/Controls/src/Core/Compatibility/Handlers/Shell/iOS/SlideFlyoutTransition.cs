@@ -47,21 +47,40 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			nfloat openLimit = flyoutWidth;
 			nfloat openPixels = openLimit * openPercent;
 
+			bool isRtl = shell.SemanticContentAttribute == UISemanticContentAttribute.ForceRightToLeft;
+
 			if (behavior == FlyoutBehavior.Locked)
-				shell.Frame = new CGRect(bounds.X + flyoutWidth, bounds.Y, bounds.Width - flyoutWidth, flyoutHeight);
-			else
-				shell.Frame = bounds;
-
-			var shellWidth = shell.Frame.Width;
-
-			if (shell.SemanticContentAttribute == UISemanticContentAttribute.ForceRightToLeft)
 			{
-				var positionX = shellWidth - openPixels;
-				flyout.Frame = new CGRect(positionX, 0, flyoutWidth, flyoutHeight);
+				if (isRtl)
+				{
+					// In RTL with Locked: flyout on the RIGHT, content on the LEFT
+					shell.Frame = new CGRect(bounds.X, bounds.Y, bounds.Width - flyoutWidth, flyoutHeight);
+					flyout.Frame = new CGRect(bounds.Width - flyoutWidth, 0, flyoutWidth, flyoutHeight);
+				}
+				else
+				{
+					// In LTR with Locked: flyout on the LEFT, content on the RIGHT
+					shell.Frame = new CGRect(bounds.X + flyoutWidth, bounds.Y, bounds.Width - flyoutWidth, flyoutHeight);
+					flyout.Frame = new CGRect(0, 0, flyoutWidth, flyoutHeight);
+				}
 			}
 			else
 			{
-				flyout.Frame = new CGRect(-openLimit + openPixels, 0, flyoutWidth, flyoutHeight);
+				shell.Frame = bounds;
+
+				var shellWidth = shell.Frame.Width;
+
+				if (isRtl)
+				{
+					// In RTL with Flyout: slide from right
+					var positionX = shellWidth - openPixels;
+					flyout.Frame = new CGRect(positionX, 0, flyoutWidth, flyoutHeight);
+				}
+				else
+				{
+					// In LTR with Flyout: slide from left
+					flyout.Frame = new CGRect(-openLimit + openPixels, 0, flyoutWidth, flyoutHeight);
+				}
 			}
 		}
 	}
