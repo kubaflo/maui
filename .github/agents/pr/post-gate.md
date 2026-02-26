@@ -53,7 +53,7 @@ If try-fix cannot run due to:
 
 **The PR's fix has already been validated by Gate (tests FAIL without it, PASS with it).**
 
-The purpose of Phase 4 is NOT to re-test the PR's fix, but to:
+The purpose of Phase 3 is NOT to re-test the PR's fix, but to:
 1. **Generate independent fix ideas** - What would YOU do to fix this bug?
 2. **Test those ideas empirically** - Actually implement and run tests
 3. **Compare with PR's fix** - Is there a simpler/better alternative?
@@ -63,7 +63,7 @@ The purpose of Phase 4 is NOT to re-test the PR's fix, but to:
 
 ### Step 1: Multi-Model try-fix Exploration
 
-Phase 4 uses a **multi-model approach** to maximize fix diversity. Each AI model brings different perspectives and may find solutions others miss.
+Phase 3 uses a **multi-model approach** to maximize fix diversity. Each AI model brings different perspectives and may find solutions others miss.
 
 **⚠️ SEQUENTIAL ONLY**: try-fix runs MUST execute one at a time. They modify the same files and use the same test device. Never run try-fix attempts in parallel.
 

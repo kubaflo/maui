@@ -53,10 +53,10 @@ See `SHARED-RULES.md` for complete details. Key points:
 *(Only if Gate ✅ PASSED)*
 
 **Round 1: Run try-fix with each model (SEQUENTIAL)**
-- [ ] claude-sonnet-4.5
+- [ ] claude-sonnet-4.6
 - [ ] claude-opus-4.6
 - [ ] gpt-5.2
-- [ ] gpt-5.2-codex
+- [ ] gpt-5.3-codex
 - [ ] gemini-3-pro-preview
 - [ ] ⛔ If blocker: retry once, skip remaining models, proceed to Report
 - [ ] Record: approach, result, files, failure analysis
