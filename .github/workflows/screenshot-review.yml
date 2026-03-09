@@ -1,0 +1,227 @@
+name: Screenshot Review
+
+# Triggered when someone comments /screenshots <filter> [platform] on a PR
+# Example: /screenshots Button android
+# Example: /screenshots Label,Entry ios
+# Example: /screenshots CollectionView (defaults to android)
+
+on:
+  issue_comment:
+    types: [created]
+
+  # Manual trigger for testing from any branch without merging to main
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to post results to'
+        required: true
+        type: number
+      test_filter:
+        description: 'Test category filter (e.g., Button, Label,Entry)'
+        required: true
+        type: string
+      platform:
+        description: 'Platform to test on'
+        required: true
+        type: choice
+        options:
+          - android
+          - ios
+          - windows
+          - catalyst
+        default: 'android'
+
+# Ensure only one screenshot review runs at a time per PR
+concurrency:
+  group: screenshot-review-${{ github.event.issue.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  screenshot-review:
+    # Run on:
+    # 1. PR comment with /screenshots command (issue_comment trigger)
+    # 2. Manual dispatch (workflow_dispatch trigger) — for testing from any branch
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.repository_owner == 'dotnet' &&
+        github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/screenshots')
+      )
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Parse command and acknowledge
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        id: parse
+        with:
+          script: |
+            // Handle manual workflow_dispatch trigger
+            if (context.eventName === 'workflow_dispatch') {
+              const testFilter = context.payload.inputs.test_filter;
+              const platform = context.payload.inputs.platform;
+              const prNumber = context.payload.inputs.pr_number;
+
+              core.setOutput('testFilter', testFilter);
+              core.setOutput('platform', platform);
+              core.setOutput('prNumber', prNumber);
+
+              core.info(`Manual trigger: filter=${testFilter}, platform=${platform}, PR=#${prNumber}`);
+              return;
+            }
+
+            // Handle issue_comment trigger
+            const body = context.payload.comment.body.trim();
+            // Match: /screenshots <filter> [platform]
+            // filter can be comma-separated categories or an Issue number
+            const match = body.match(/^\/screenshots\s+(\S+)(?:\s+(android|ios|windows|catalyst))?$/i);
+
+            if (!match) {
+              const errorMsg = [
+                '❌ **Invalid `/screenshots` syntax.**',
+                '',
+                '**Usage:** `/screenshots <filter> [platform]`',
+                '',
+                '**Examples:**',
+                '- `/screenshots Button android`',
+                '- `/screenshots Label,Entry ios`',
+                '- `/screenshots CollectionView` _(defaults to android)_',
+                '',
+                '**Available categories:** Accessibility, ActionSheet, ActivityIndicator, Animation, AppLinks, Border, BoxView, Brush, Button, CarouselView, Cells, CheckBox, CollectionView, ContextActions, DatePicker, Dispatcher, DragAndDrop, Editor, Entry, Frame, Image, ImageButton, Label, Layout, ListView, Lifecycle, FlyoutPage, Picker, ProgressBar, ScrollView, SearchBar, Slider, SoftInput, Stepper, Switch, SwipeView, TableView, TimePicker, ToolbarItem, WebView, Window, Maps, InputTransparent, IsEnabled, IsVisible, Gestures, Navigation, Effects, Focus, Shell, TabbedPage, Page, RefreshView, TitleView, IndicatorView, RadioButton, Shadow, Shape, GraphicsView, Fonts, SafeAreaEdges',
+                '',
+                '**Platforms:** `android` (default), `ios`, `windows`, `catalyst`'
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                body: errorMsg
+              });
+              core.setFailed('Invalid /screenshots syntax');
+              return;
+            }
+
+            const testFilter = match[1].trim();
+            const platform = (match[2] || 'android').toLowerCase();
+
+            core.setOutput('testFilter', testFilter);
+            core.setOutput('platform', platform);
+            core.setOutput('prNumber', context.payload.issue.number);
+
+            // Add 👀 reaction to the triggering comment
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+
+            // Post a pending status comment with a marker for later update
+            const marker = '<!-- screenshot-review -->';
+            const pendingBody = [
+              marker,
+              '📸 **Screenshot Review**',
+              '',
+              '| | |',
+              '|---|---|',
+              '| **Status** | ⏳ Running... |',
+              `| **Filter** | \`${testFilter}\` |`,
+              `| **Platform** | ${platform} |`,
+              `| **Requested by** | @${context.payload.comment.user.login} |`,
+              '',
+              '_This comment will be updated with results when the pipeline completes._'
+            ].join('\n');
+
+            // Check for existing screenshot review comment and update it
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+            });
+
+            const existing = comments.data.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: pendingBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                body: pendingBody
+              });
+            }
+
+      # ────────────────────────────────────────────────────────────────────
+      # Trigger the Azure Pipeline with parameters.
+      # This requires the AZURE_DEVOPS_TOKEN secret to be configured in the
+      # repository settings.
+      #
+      # To set up:
+      # 1. Create an Azure DevOps PAT with "Build: Read & Execute" scope
+      # 2. Add it as a GitHub Actions secret named AZURE_DEVOPS_TOKEN
+      # 3. Register the screenshot-review.yml pipeline in Azure DevOps
+      # 4. Update AZURE_DEVOPS_ORG, AZURE_DEVOPS_PROJECT, and PIPELINE_ID below
+      # ────────────────────────────────────────────────────────────────────
+      - name: Trigger Azure Pipeline
+        if: ${{ success() }}
+        env:
+          AZURE_DEVOPS_TOKEN: ${{ secrets.AZURE_DEVOPS_TOKEN }}
+          AZURE_DEVOPS_ORG: 'dnceng'
+          AZURE_DEVOPS_PROJECT: 'public'
+          PIPELINE_ID: 'screenshot-review'  # Update with actual pipeline ID after registration
+        run: |
+          # Get PR details to determine source branch
+          PR_JSON=$(curl -s -H "Authorization: token ${{ github.token }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ steps.parse.outputs.prNumber }}")
+          SOURCE_BRANCH=$(echo "$PR_JSON" | jq -r '.head.ref')
+
+          echo "Triggering screenshot-review pipeline:"
+          echo "  Branch: $SOURCE_BRANCH"
+          echo "  Filter: ${{ steps.parse.outputs.testFilter }}"
+          echo "  Platform: ${{ steps.parse.outputs.platform }}"
+          echo "  PR: #${{ steps.parse.outputs.prNumber }}"
+
+          # Trigger the Azure Pipeline via REST API
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Basic $(echo -n ":${AZURE_DEVOPS_TOKEN}" | base64)" \
+            "https://dev.azure.com/${AZURE_DEVOPS_ORG}/${AZURE_DEVOPS_PROJECT}/_apis/pipelines/${PIPELINE_ID}/runs?api-version=7.1" \
+            -d '{
+              "resources": {
+                "repositories": {
+                  "self": {
+                    "refName": "refs/pull/${{ steps.parse.outputs.prNumber }}/merge"
+                  }
+                }
+              },
+              "templateParameters": {
+                "testFilter": "${{ steps.parse.outputs.testFilter }}",
+                "platform": "${{ steps.parse.outputs.platform }}",
+                "prNumber": "${{ steps.parse.outputs.prNumber }}"
+              }
+            }')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            BUILD_URL=$(echo "$BODY" | jq -r '._links.web.href // "N/A"')
+            echo "✅ Pipeline triggered successfully: $BUILD_URL"
+          else
+            echo "⚠️ Failed to trigger pipeline (HTTP $HTTP_CODE)"
+            echo "$BODY"
+            echo ""
+            echo "You can trigger manually with: /azp run screenshot-review"
+            echo "Make sure AZURE_DEVOPS_TOKEN secret is configured."
+          fi

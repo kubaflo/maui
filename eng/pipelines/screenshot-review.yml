@@ -1,0 +1,252 @@
+# Screenshot Review Pipeline
+#
+# Lightweight pipeline that runs specific UI tests and posts screenshots
+# back to the PR as a comment.
+#
+# Trigger options:
+# 1. Via GitHub Actions workflow (screenshot-review.yml) which passes templateParameters
+# 2. Via /azp run screenshot-review (reads filter from PR comments)
+# 3. Manually from Azure DevOps UI with parameters
+#
+# Setup: Register this pipeline in Azure DevOps as "screenshot-review"
+
+trigger: none
+
+pr: none
+
+parameters:
+  - name: testFilter
+    displayName: 'Test category filter (comma-separated, e.g., Button,Label)'
+    type: string
+    default: ''
+
+  - name: platform
+    displayName: 'Platform to run tests on'
+    type: string
+    default: 'android'
+    values:
+      - android
+      - ios
+      - windows
+      - catalyst
+
+  - name: prNumber
+    displayName: 'PR number (auto-detected if triggered from PR)'
+    type: string
+    default: ''
+
+variables:
+  - template: /eng/pipelines/common/variables.yml@self
+  - name: _prNumber
+    value: ${{ coalesce(parameters.prNumber, '$(System.PullRequest.PullRequestNumber)') }}
+
+stages:
+  # ────────────────────────────────────────────────────────────
+  # Stage 1: Parse the /screenshots command from PR comments
+  # (only needed when triggered via /azp run without parameters)
+  # ────────────────────────────────────────────────────────────
+  - stage: resolve_parameters
+    displayName: Resolve Parameters
+    jobs:
+      - job: resolve
+        displayName: Read PR comment for filter
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: none
+
+          - task: PowerShell@2
+            displayName: 'Resolve test filter and platform'
+            name: params
+            inputs:
+              targetType: 'inline'
+              script: |
+                $templateFilter = "${{ parameters.testFilter }}"
+                $templatePlatform = "${{ parameters.platform }}"
+                $prNumber = "$(_prNumber)"
+
+                # If filter was provided via template parameters, use it directly
+                if ($templateFilter) {
+                  Write-Host "Using template parameter filter: $templateFilter"
+                  Write-Host "Using template parameter platform: $templatePlatform"
+                  Write-Host "##vso[task.setvariable variable=testFilter;isOutput=true]$templateFilter"
+                  Write-Host "##vso[task.setvariable variable=platform;isOutput=true]$templatePlatform"
+                  Write-Host "##vso[task.setvariable variable=prNumber;isOutput=true]$prNumber"
+                  return
+                }
+
+                # Otherwise, read PR comments to find the latest /screenshots command
+                if (-not $prNumber) {
+                  Write-Host "##vso[task.logissue type=error]No PR number found. Run this pipeline from a PR context or provide parameters."
+                  exit 1
+                }
+
+                Write-Host "Reading PR #$prNumber comments for /screenshots command..."
+                $headers = @{
+                  "Accept" = "application/vnd.github.v3+json"
+                  "Authorization" = "token $(GITHUB_TOKEN)"
+                }
+                $commentsUrl = "https://api.github.com/repos/dotnet/maui/issues/$prNumber/comments?per_page=100&sort=created&direction=desc"
+                $comments = Invoke-RestMethod -Uri $commentsUrl -Headers $headers -Method Get
+
+                $filter = ""
+                $platform = "android"
+
+                foreach ($comment in $comments) {
+                  if ($comment.body -match '^/screenshots\s+(\S+)(?:\s+(android|ios|windows|catalyst))?') {
+                    $filter = $Matches[1]
+                    if ($Matches[2]) { $platform = $Matches[2].ToLower() }
+                    Write-Host "Found /screenshots command: filter=$filter, platform=$platform"
+                    break
+                  }
+                }
+
+                if (-not $filter) {
+                  Write-Host "##vso[task.logissue type=error]No /screenshots command found in PR comments. Comment '/screenshots <Category> [platform]' on the PR first."
+                  exit 1
+                }
+
+                Write-Host "##vso[task.setvariable variable=testFilter;isOutput=true]$filter"
+                Write-Host "##vso[task.setvariable variable=platform;isOutput=true]$platform"
+                Write-Host "##vso[task.setvariable variable=prNumber;isOutput=true]$prNumber"
+            env:
+              GITHUB_TOKEN: $(GitHubToken)
+
+  # ────────────────────────────────────────────────────────────
+  # Stage 2: Build the test host app (single platform only)
+  # ────────────────────────────────────────────────────────────
+  - stage: build
+    displayName: Build Test App
+    dependsOn: resolve_parameters
+    variables:
+      resolvedFilter: $[ stageDependencies.resolve_parameters.resolve.outputs['params.testFilter'] ]
+      resolvedPlatform: $[ stageDependencies.resolve_parameters.resolve.outputs['params.platform'] ]
+      resolvedPrNumber: $[ stageDependencies.resolve_parameters.resolve.outputs['params.prNumber'] ]
+    jobs:
+      - job: build_sample
+        displayName: Build $(resolvedPlatform) Test App
+        timeoutInMinutes: 120
+        pool:
+          # Use appropriate pool based on platform
+          ${{ if or(eq(parameters.platform, 'android'), eq(parameters.platform, 'ios'), eq(parameters.platform, 'catalyst')) }}:
+            name: $(androidTestsVmPool)
+            vmImage: $(androidTestsVmImage)
+            demands:
+              - macOS.Name -equals Sequoia
+              - macOS.Architecture -equals x64
+          ${{ if eq(parameters.platform, 'windows') }}:
+            name: $(windowsTestsVmPool)
+            vmImage: $(windowsTestsVmImage)
+        variables:
+          REQUIRED_XCODE: $(DEVICETESTS_REQUIRED_XCODE)
+          APPIUM_HOME: $(System.DefaultWorkingDirectory)/.appium/
+        steps:
+          - template: common/ui-tests-build-sample.yml
+            parameters:
+              platform: $(resolvedPlatform)
+              skipProvisioning: true
+
+  # ────────────────────────────────────────────────────────────
+  # Stage 3: Run the filtered tests
+  # ────────────────────────────────────────────────────────────
+  - stage: test
+    displayName: Run Screenshot Tests
+    dependsOn:
+      - resolve_parameters
+      - build
+    variables:
+      resolvedFilter: $[ stageDependencies.resolve_parameters.resolve.outputs['params.testFilter'] ]
+      resolvedPlatform: $[ stageDependencies.resolve_parameters.resolve.outputs['params.platform'] ]
+      resolvedPrNumber: $[ stageDependencies.resolve_parameters.resolve.outputs['params.prNumber'] ]
+    jobs:
+      - job: run_tests
+        displayName: Run $(resolvedFilter) on $(resolvedPlatform)
+        timeoutInMinutes: 60
+        pool:
+          ${{ if eq(parameters.platform, 'android') }}:
+            name: $(1ESPTPool)
+            vmImage: $(androidTestsVmImage)
+          ${{ if or(eq(parameters.platform, 'ios'), eq(parameters.platform, 'catalyst')) }}:
+            name: $(iosTestsVmPool)
+            vmImage: $(iosTestsVmImage)
+            demands:
+              - macOS.Name -equals Sequoia
+              - macOS.Architecture -equals x64
+          ${{ if eq(parameters.platform, 'windows') }}:
+            name: $(windowsTestsVmPool)
+            vmImage: $(windowsTestsVmImage)
+        variables:
+          REQUIRED_XCODE: $(DEVICETESTS_REQUIRED_XCODE)
+          APPIUM_HOME: $(System.DefaultWorkingDirectory)/.appium/
+        steps:
+          - template: common/ui-tests-steps.yml
+            parameters:
+              platform: $(resolvedPlatform)
+              path: $(System.DefaultWorkingDirectory)/src/Controls/tests/TestCases.$(resolvedPlatform).Tests/Controls.TestCases.$(resolvedPlatform).Tests.csproj
+              app: $(System.DefaultWorkingDirectory)/src/Controls/tests/TestCases.HostApp/Controls.TestCases.HostApp.csproj
+              ${{ if eq(parameters.platform, 'android') }}:
+                device: android-emulator-64_30
+                version: '30'
+              ${{ if eq(parameters.platform, 'ios') }}:
+                device: ios-simulator-64
+                version: 'latest'
+              ${{ if eq(parameters.platform, 'catalyst') }}:
+                device: maccatalyst
+                version: 'latest'
+              ${{ if eq(parameters.platform, 'windows') }}:
+                device: windows
+                version: 'latest'
+              testFilter: $(resolvedFilter)
+              skipProvisioning: true
+              headless: true
+
+          # Collect snapshot diffs
+          - template: common/ui-tests-collect-snapshot-diffs.yml
+            parameters:
+              platform: $(resolvedPlatform)
+              artifactName: 'screenshot-review-$(resolvedPlatform)'
+
+  # ────────────────────────────────────────────────────────────
+  # Stage 4: Post screenshots back to the PR
+  # ────────────────────────────────────────────────────────────
+  - stage: post_results
+    displayName: Post Results to PR
+    dependsOn:
+      - resolve_parameters
+      - test
+    condition: always()
+    variables:
+      resolvedFilter: $[ stageDependencies.resolve_parameters.resolve.outputs['params.testFilter'] ]
+      resolvedPlatform: $[ stageDependencies.resolve_parameters.resolve.outputs['params.platform'] ]
+      resolvedPrNumber: $[ stageDependencies.resolve_parameters.resolve.outputs['params.prNumber'] ]
+      testStageResult: $[ stageDependencies.test.result ]
+    jobs:
+      - job: post_screenshots
+        displayName: Post Screenshots to PR
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+            fetchDepth: 1
+
+          # Download the screenshot artifacts if they exist
+          - task: DownloadPipelineArtifact@2
+            displayName: Download screenshot artifacts
+            continueOnError: true
+            inputs:
+              artifact: 'screenshot-review-$(resolvedPlatform)'
+              path: $(Build.ArtifactStagingDirectory)/screenshots
+
+          - task: PowerShell@2
+            displayName: Post screenshots to PR comment
+            inputs:
+              filePath: $(System.DefaultWorkingDirectory)/eng/scripts/Post-ScreenshotsToPR.ps1
+              arguments: >
+                -PRNumber "$(resolvedPrNumber)"
+                -TestFilter "$(resolvedFilter)"
+                -Platform "$(resolvedPlatform)"
+                -ScreenshotsPath "$(Build.ArtifactStagingDirectory)/screenshots"
+                -BuildUrl "$(System.CollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)"
+                -TestResult "$(testStageResult)"
+            env:
+              GITHUB_TOKEN: $(GitHubToken)
