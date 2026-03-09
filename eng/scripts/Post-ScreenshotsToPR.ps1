@@ -1,0 +1,203 @@
+<#
+.SYNOPSIS
+    Posts screenshot test results back to a GitHub PR comment.
+
+.DESCRIPTION
+    This script reads screenshot files from the snapshots-diff directory,
+    constructs a markdown summary, and posts it as a PR comment.
+    It uses an HTML marker to update existing comments instead of creating duplicates.
+
+.PARAMETER PRNumber
+    The PR number to post the comment to.
+
+.PARAMETER TestFilter
+    The test category filter that was used (e.g., "Button", "Label,Entry").
+
+.PARAMETER Platform
+    The platform the tests ran on (android, ios, windows, catalyst).
+
+.PARAMETER ScreenshotsPath
+    Path to the directory containing screenshot artifacts (snapshots-diff/).
+
+.PARAMETER BuildUrl
+    URL to the Azure Pipeline build for linking.
+
+.PARAMETER TestResult
+    Result of the test stage (Succeeded, Failed, Canceled, etc.).
+
+.EXAMPLE
+    ./Post-ScreenshotsToPR.ps1 -PRNumber 12345 -TestFilter "Button" -Platform "android" `
+        -ScreenshotsPath "./screenshots" -BuildUrl "https://..." -TestResult "Succeeded"
+#>
+
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$PRNumber,
+
+    [Parameter(Mandatory = $true)]
+    [string]$TestFilter,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Platform,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ScreenshotsPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$BuildUrl,
+
+    [Parameter(Mandatory = $false)]
+    [string]$TestResult = "Unknown"
+)
+
+$ErrorActionPreference = "Stop"
+
+$githubToken = $env:GITHUB_TOKEN
+if (-not $githubToken) {
+    Write-Error "GITHUB_TOKEN environment variable is required"
+    exit 1
+}
+
+$owner = "dotnet"
+$repo = "maui"
+$marker = "<!-- screenshot-review -->"
+
+# Determine status emoji and text
+$statusEmoji = switch ($TestResult) {
+    "Succeeded" { "✅" }
+    "SucceededWithIssues" { "⚠️" }
+    "Failed" { "❌" }
+    "Canceled" { "🚫" }
+    default { "❓" }
+}
+
+$statusText = switch ($TestResult) {
+    "Succeeded" { "All tests passed" }
+    "SucceededWithIssues" { "Tests completed with warnings" }
+    "Failed" { "Some tests failed" }
+    "Canceled" { "Pipeline was canceled" }
+    default { "Unknown result" }
+}
+
+# Collect screenshot files
+$screenshotFiles = @()
+$snapshotDiffPath = Join-Path $ScreenshotsPath "snapshots-diff"
+
+if (Test-Path $snapshotDiffPath) {
+    $screenshotFiles = Get-ChildItem -Path $snapshotDiffPath -Filter "*.png" -Recurse |
+        Where-Object { -not $_.Name.EndsWith("-diff.png") }
+    $diffFiles = Get-ChildItem -Path $snapshotDiffPath -Filter "*-diff.png" -Recurse
+    Write-Host "Found $($screenshotFiles.Count) screenshot(s) and $($diffFiles.Count) diff image(s)"
+}
+elseif (Test-Path $ScreenshotsPath) {
+    $screenshotFiles = Get-ChildItem -Path $ScreenshotsPath -Filter "*.png" -Recurse |
+        Where-Object { -not $_.Name.EndsWith("-diff.png") }
+    $diffFiles = Get-ChildItem -Path $ScreenshotsPath -Filter "*-diff.png" -Recurse
+    Write-Host "Found $($screenshotFiles.Count) screenshot(s) and $($diffFiles.Count) diff image(s) in root"
+}
+else {
+    Write-Host "No screenshots directory found at: $ScreenshotsPath"
+}
+
+# Build the comment body
+$body = @"
+$marker
+## 📸 Screenshot Review Results
+
+| | |
+|---|---|
+| **Status** | $statusEmoji $statusText |
+| **Filter** | ``$TestFilter`` |
+| **Platform** | $Platform |
+| **Pipeline** | [View Build]($BuildUrl) |
+
+"@
+
+if ($screenshotFiles.Count -gt 0) {
+    $body += @"
+
+### Screenshots ($($screenshotFiles.Count) captured)
+
+> 💡 **To view full-resolution screenshots**, click the [Pipeline Artifacts]($BuildUrl&view=artifacts) link above and download the ``screenshot-review-$Platform`` artifact.
+
+| Test | Status |
+|------|--------|
+
+"@
+
+    foreach ($file in $screenshotFiles) {
+        $testName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+        $diffFile = $diffFiles | Where-Object { $_.Name -eq "$testName-diff.png" }
+        $relativePath = $file.FullName.Replace($ScreenshotsPath, "").TrimStart("/", "\")
+
+        if ($diffFile) {
+            $body += "| ``$testName`` | ⚠️ Diff detected |`n"
+        }
+        else {
+            $body += "| ``$testName`` | 📷 New snapshot |`n"
+        }
+    }
+
+    if ($diffFiles.Count -gt 0) {
+        $body += @"
+
+### ⚠️ Visual Differences Detected
+
+$($diffFiles.Count) screenshot(s) differ from baseline. Download the pipeline artifacts to review the diff images.
+
+**To update baselines:**
+1. Download the ``screenshot-review-$Platform`` artifact from the [pipeline build]($BuildUrl&view=artifacts)
+2. Copy the new screenshots to ``src/Controls/tests/TestCases.Shared.Tests/snapshots/$Platform/``
+3. Commit and push the updated baselines
+
+"@
+    }
+}
+elseif ($TestResult -eq "Succeeded") {
+    $body += @"
+
+### ✅ All Screenshots Match
+
+No visual differences detected. All snapshot comparisons passed.
+
+"@
+}
+else {
+    $body += @"
+
+### ℹ️ No Screenshots Available
+
+The test run did not produce screenshot artifacts. Check the [pipeline build]($BuildUrl) for details.
+
+"@
+}
+
+$body += "`n---`n_Generated by screenshot-review pipeline_"
+
+# Post or update the PR comment
+$headers = @{
+    "Accept"        = "application/vnd.github.v3+json"
+    "Authorization" = "token $githubToken"
+    "Content-Type"  = "application/json"
+}
+
+Write-Host "Fetching existing comments on PR #$PRNumber..."
+$commentsUrl = "https://api.github.com/repos/$owner/$repo/issues/$PRNumber/comments?per_page=100"
+$comments = Invoke-RestMethod -Uri $commentsUrl -Headers $headers -Method Get
+
+$existingComment = $comments | Where-Object { $_.body -like "*$marker*" } | Select-Object -First 1
+
+$payload = @{ body = $body } | ConvertTo-Json -Depth 10
+
+if ($existingComment) {
+    Write-Host "Updating existing screenshot review comment (ID: $($existingComment.id))..."
+    $updateUrl = "https://api.github.com/repos/$owner/$repo/issues/comments/$($existingComment.id)"
+    Invoke-RestMethod -Uri $updateUrl -Headers $headers -Method Patch -Body $payload | Out-Null
+    Write-Host "✅ Comment updated successfully"
+}
+else {
+    Write-Host "Creating new screenshot review comment on PR #$PRNumber..."
+    $createUrl = "https://api.github.com/repos/$owner/$repo/issues/$PRNumber/comments"
+    Invoke-RestMethod -Uri $createUrl -Headers $headers -Method Post -Body $payload | Out-Null
+    Write-Host "✅ Comment created successfully"
+}
