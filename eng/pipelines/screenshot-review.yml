@@ -1,7 +1,7 @@
 # Screenshot Review Pipeline
 #
-# Lightweight pipeline that runs specific UI tests and posts screenshots
-# back to the PR as a comment.
+# Lightweight pipeline that runs specific UI tests for a single platform
+# and posts screenshots back to the PR as a comment.
 #
 # Trigger options:
 # 1. Via GitHub Actions workflow (screenshot-review.yml) which passes templateParameters
@@ -12,18 +12,26 @@
 
 trigger: none
 
-pr: none
+pr:
+  branches:
+    include:
+    - main
+    - release/*
+    - net*.0
+
+variables:
+  - template: /eng/pipelines/common/variables.yml@self
 
 parameters:
   - name: testFilter
-    displayName: 'Test category filter (comma-separated, e.g., Button,Label)'
+    displayName: 'Test category filter (comma-separated, e.g. Button,Label)'
     type: string
     default: ''
 
   - name: platform
     displayName: 'Platform to run tests on'
     type: string
-    default: 'android'
+    default: android
     values:
       - android
       - ios
@@ -31,30 +39,66 @@ parameters:
       - catalyst
 
   - name: prNumber
-    displayName: 'PR number (auto-detected if triggered from PR)'
+    displayName: 'PR number (auto-detected when triggered from PR)'
     type: string
     default: ''
 
-variables:
-  - template: /eng/pipelines/common/variables.yml@self
-  - name: _prNumber
-    value: ${{ coalesce(parameters.prNumber, '$(System.PullRequest.PullRequestNumber)') }}
+  # Pool definitions — matching ci-uitests.yml structure
+  # Public pools (dnceng-public)
+  - name: androidPool
+    type: object
+    default:
+      name: AcesShared
+      demands:
+        - ImageOverride -equals ACES_VM_SharedPool_Tahoe
+
+  - name: androidLinuxPool
+    type: object
+    default:
+      name: MAUI-DNCENG
+      demands:
+        - ImageOverride -equals 1ESPT-Ubuntu22.04
+
+  - name: iosPool
+    type: object
+    default:
+      name: AcesShared
+      demands:
+        - ImageOverride -equals ACES_VM_SharedPool_Tahoe
+
+  - name: windowsBuildPool
+    type: object
+    default:
+      name: NetCore-Public
+      demands:
+        - ImageOverride -equals 1es-windows-2022-open
+
+  - name: windowsPool
+    type: object
+    default:
+      name: NetCore-Public
+      demands:
+        - ImageOverride -equals 1es-windows-2022-open
+
+  - name: macosPool
+    type: object
+    default:
+      name: Azure Pipelines
+      vmImage: macOS-14
 
 stages:
   # ────────────────────────────────────────────────────────────
-  # Stage 1: Parse the /screenshots command from PR comments
-  # (only needed when triggered via /azp run without parameters)
+  # Stage 1: Resolve the test filter (from parameters or PR comments)
   # ────────────────────────────────────────────────────────────
   - stage: resolve_parameters
     displayName: Resolve Parameters
     jobs:
       - job: resolve
-        displayName: Read PR comment for filter
+        displayName: Read filter from PR comments
         pool:
           vmImage: ubuntu-latest
         steps:
           - checkout: none
-
           - task: PowerShell@2
             displayName: 'Resolve test filter and platform'
             name: params
@@ -63,21 +107,18 @@ stages:
               script: |
                 $templateFilter = "${{ parameters.testFilter }}"
                 $templatePlatform = "${{ parameters.platform }}"
-                $prNumber = "$(_prNumber)"
+                $prNumber = "${{ coalesce(parameters.prNumber, '$(System.PullRequest.PullRequestNumber)') }}"
 
-                # If filter was provided via template parameters, use it directly
                 if ($templateFilter) {
-                  Write-Host "Using template parameter filter: $templateFilter"
-                  Write-Host "Using template parameter platform: $templatePlatform"
+                  Write-Host "Using template parameters: filter=$templateFilter, platform=$templatePlatform, PR=#$prNumber"
                   Write-Host "##vso[task.setvariable variable=testFilter;isOutput=true]$templateFilter"
                   Write-Host "##vso[task.setvariable variable=platform;isOutput=true]$templatePlatform"
                   Write-Host "##vso[task.setvariable variable=prNumber;isOutput=true]$prNumber"
                   return
                 }
 
-                # Otherwise, read PR comments to find the latest /screenshots command
                 if (-not $prNumber) {
-                  Write-Host "##vso[task.logissue type=error]No PR number found. Run this pipeline from a PR context or provide parameters."
+                  Write-Host "##vso[task.logissue type=error]No PR number found and no filter provided. Provide parameters or run from a PR context."
                   exit 1
                 }
 
@@ -113,113 +154,105 @@ stages:
               GITHUB_TOKEN: $(GitHubToken)
 
   # ────────────────────────────────────────────────────────────
-  # Stage 2: Build the test host app (single platform only)
+  # Stage 2: Build the test host app (single platform)
+  # Mirrors build_ui_tests from common/ui-tests.yml
   # ────────────────────────────────────────────────────────────
-  - stage: build
-    displayName: Build Test App
-    dependsOn: resolve_parameters
-    variables:
-      resolvedFilter: $[ stageDependencies.resolve_parameters.resolve.outputs['params.testFilter'] ]
-      resolvedPlatform: $[ stageDependencies.resolve_parameters.resolve.outputs['params.platform'] ]
-      resolvedPrNumber: $[ stageDependencies.resolve_parameters.resolve.outputs['params.prNumber'] ]
+  - stage: build_screenshot_tests
+    displayName: Build Test App (${{ parameters.platform }})
+    dependsOn: []
     jobs:
       - job: build_sample
-        displayName: Build $(resolvedPlatform) Test App
+        displayName: Build Sample App (${{ parameters.platform }})
         timeoutInMinutes: 120
-        pool:
-          # Use appropriate pool based on platform
-          ${{ if or(eq(parameters.platform, 'android'), eq(parameters.platform, 'ios'), eq(parameters.platform, 'catalyst')) }}:
-            name: $(androidTestsVmPool)
-            vmImage: $(androidTestsVmImage)
-            demands:
-              - macOS.Name -equals Sequoia
-              - macOS.Architecture -equals x64
-          ${{ if eq(parameters.platform, 'windows') }}:
-            name: $(windowsTestsVmPool)
-            vmImage: $(windowsTestsVmImage)
+        ${{ if eq(parameters.platform, 'windows') }}:
+          pool: ${{ parameters.windowsBuildPool }}
+        ${{ elseif eq(parameters.platform, 'catalyst') }}:
+          pool: ${{ parameters.macosPool }}
+        ${{ else }}:
+          pool: ${{ parameters.androidPool }}
         variables:
           REQUIRED_XCODE: $(DEVICETESTS_REQUIRED_XCODE)
           APPIUM_HOME: $(System.DefaultWorkingDirectory)/.appium/
         steps:
           - template: common/ui-tests-build-sample.yml
             parameters:
-              platform: $(resolvedPlatform)
+              platform: ${{ parameters.platform }}
               skipProvisioning: true
 
   # ────────────────────────────────────────────────────────────
-  # Stage 3: Run the filtered tests
+  # Stage 3: Run the filtered UI tests
+  # Mirrors android_ui_tests / ios_ui_tests from common/ui-tests.yml
+  # but runs only the requested category
   # ────────────────────────────────────────────────────────────
-  - stage: test
-    displayName: Run Screenshot Tests
-    dependsOn:
-      - resolve_parameters
-      - build
-    variables:
-      resolvedFilter: $[ stageDependencies.resolve_parameters.resolve.outputs['params.testFilter'] ]
-      resolvedPlatform: $[ stageDependencies.resolve_parameters.resolve.outputs['params.platform'] ]
-      resolvedPrNumber: $[ stageDependencies.resolve_parameters.resolve.outputs['params.prNumber'] ]
+  - stage: run_screenshot_tests
+    displayName: Run Tests (${{ parameters.platform }} - ${{ parameters.testFilter }})
+    dependsOn: build_screenshot_tests
     jobs:
-      - job: run_tests
-        displayName: Run $(resolvedFilter) on $(resolvedPlatform)
-        timeoutInMinutes: 60
-        pool:
-          ${{ if eq(parameters.platform, 'android') }}:
-            name: $(1ESPTPool)
-            vmImage: $(androidTestsVmImage)
-          ${{ if or(eq(parameters.platform, 'ios'), eq(parameters.platform, 'catalyst')) }}:
-            name: $(iosTestsVmPool)
-            vmImage: $(iosTestsVmImage)
-            demands:
-              - macOS.Name -equals Sequoia
-              - macOS.Architecture -equals x64
-          ${{ if eq(parameters.platform, 'windows') }}:
-            name: $(windowsTestsVmPool)
-            vmImage: $(windowsTestsVmImage)
+      - job: screenshot_tests
+        displayName: ${{ parameters.testFilter }} (${{ parameters.platform }})
+        ${{ if eq(parameters.platform, 'android') }}:
+          timeoutInMinutes: 240
+          pool: ${{ parameters.androidLinuxPool }}
+        ${{ elseif eq(parameters.platform, 'ios') }}:
+          timeoutInMinutes: 180
+          pool: ${{ parameters.iosPool }}
+        ${{ elseif eq(parameters.platform, 'windows') }}:
+          timeoutInMinutes: 180
+          pool: ${{ parameters.windowsPool }}
+        ${{ elseif eq(parameters.platform, 'catalyst') }}:
+          timeoutInMinutes: 180
+          pool: ${{ parameters.macosPool }}
+        workspace:
+          clean: all
         variables:
           REQUIRED_XCODE: $(DEVICETESTS_REQUIRED_XCODE)
           APPIUM_HOME: $(System.DefaultWorkingDirectory)/.appium/
+          resolvedFilter: $[ stageDependencies.resolve_parameters.resolve.outputs['params.testFilter'] ]
+          resolvedPrNumber: $[ stageDependencies.resolve_parameters.resolve.outputs['params.prNumber'] ]
         steps:
           - template: common/ui-tests-steps.yml
             parameters:
-              platform: $(resolvedPlatform)
-              path: $(System.DefaultWorkingDirectory)/src/Controls/tests/TestCases.$(resolvedPlatform).Tests/Controls.TestCases.$(resolvedPlatform).Tests.csproj
-              app: $(System.DefaultWorkingDirectory)/src/Controls/tests/TestCases.HostApp/Controls.TestCases.HostApp.csproj
+              platform: ${{ parameters.platform }}
               ${{ if eq(parameters.platform, 'android') }}:
+                path: $(System.DefaultWorkingDirectory)/src/Controls/tests/TestCases.Android.Tests/Controls.TestCases.Android.Tests.csproj
                 device: android-emulator-64_30
                 version: '30'
               ${{ if eq(parameters.platform, 'ios') }}:
+                path: $(System.DefaultWorkingDirectory)/src/Controls/tests/TestCases.iOS.Tests/Controls.TestCases.iOS.Tests.csproj
                 device: ios-simulator-64
                 version: 'latest'
               ${{ if eq(parameters.platform, 'catalyst') }}:
+                path: $(System.DefaultWorkingDirectory)/src/Controls/tests/TestCases.Mac.Tests/Controls.TestCases.Mac.Tests.csproj
                 device: maccatalyst
                 version: 'latest'
               ${{ if eq(parameters.platform, 'windows') }}:
+                path: $(System.DefaultWorkingDirectory)/src/Controls/tests/TestCases.WinUI.Tests/Controls.TestCases.WinUI.Tests.csproj
                 device: windows
                 version: 'latest'
-              testFilter: $(resolvedFilter)
+              app: $(Pipeline.Workspace)/Controls.TestCases.HostApp/
+              testFilter: ${{ coalesce(parameters.testFilter, '$(resolvedFilter)') }}
               skipProvisioning: true
               headless: true
 
-          # Collect snapshot diffs
+          # Collect and publish snapshot diffs (same as main pipeline)
           - template: common/ui-tests-collect-snapshot-diffs.yml
             parameters:
-              platform: $(resolvedPlatform)
-              artifactName: 'screenshot-review-$(resolvedPlatform)'
+              platform: ${{ parameters.platform }}
+              artifactName: 'screenshot-review-${{ parameters.platform }}'
 
   # ────────────────────────────────────────────────────────────
-  # Stage 4: Post screenshots back to the PR
+  # Stage 4: Post screenshot results back to the PR comment
   # ────────────────────────────────────────────────────────────
   - stage: post_results
     displayName: Post Results to PR
     dependsOn:
       - resolve_parameters
-      - test
+      - run_screenshot_tests
     condition: always()
     variables:
       resolvedFilter: $[ stageDependencies.resolve_parameters.resolve.outputs['params.testFilter'] ]
       resolvedPlatform: $[ stageDependencies.resolve_parameters.resolve.outputs['params.platform'] ]
       resolvedPrNumber: $[ stageDependencies.resolve_parameters.resolve.outputs['params.prNumber'] ]
-      testStageResult: $[ stageDependencies.test.result ]
     jobs:
       - job: post_screenshots
         displayName: Post Screenshots to PR
@@ -229,16 +262,16 @@ stages:
           - checkout: self
             fetchDepth: 1
 
-          # Download the screenshot artifacts if they exist
           - task: DownloadPipelineArtifact@2
             displayName: Download screenshot artifacts
             continueOnError: true
             inputs:
-              artifact: 'screenshot-review-$(resolvedPlatform)'
+              artifact: 'screenshot-review-${{ parameters.platform }}'
               path: $(Build.ArtifactStagingDirectory)/screenshots
 
           - task: PowerShell@2
-            displayName: Post screenshots to PR comment
+            displayName: Post screenshots to PR
+            condition: and(succeeded(), ne(variables['resolvedPrNumber'], ''))
             inputs:
               filePath: $(System.DefaultWorkingDirectory)/eng/scripts/Post-ScreenshotsToPR.ps1
               arguments: >
@@ -247,6 +280,6 @@ stages:
                 -Platform "$(resolvedPlatform)"
                 -ScreenshotsPath "$(Build.ArtifactStagingDirectory)/screenshots"
                 -BuildUrl "$(System.CollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)"
-                -TestResult "$(testStageResult)"
+                -TestResult "$[ stageDependencies.run_screenshot_tests.screenshot_tests.result ]"
             env:
               GITHUB_TOKEN: $(GitHubToken)
