@@ -522,3 +522,59 @@ stages:
                     parameters:
                       platform: 'Mac'
                       artifactName: 'uitest-snapshot-results-mac-$(System.StageName)-$(System.JobName)-$(System.JobAttempt)'
+
+  # ────────────────────────────────────────────────────────────
+  # Post screenshot diffs to PR comment
+  # Runs after all test stages, only on PR builds.
+  # Downloads all uitest-snapshot-results-* artifacts and posts
+  # a summary comment on the PR with links to the pipeline artifacts.
+  # ────────────────────────────────────────────────────────────
+  - stage: post_screenshot_diffs_to_pr
+    displayName: Post Screenshot Diffs to PR
+    dependsOn:
+      - android_ui_tests
+      - android_ui_tests_coreclr
+      - android_ui_tests_material3
+      - ios_ui_tests_mono
+      - ios_ui_tests_mono_cv1
+      - ios_ui_tests_mono_carv1
+      - winui_ui_tests
+      - mac_ui_tests
+    condition: and(
+      eq(variables['Build.Reason'], 'PullRequest'),
+      in('True', stageDependencies.android_ui_tests.*.outputs['CheckAndroidSnapshots.snapshotsExist'],
+                 stageDependencies.android_ui_tests_coreclr.*.outputs['CheckAndroidSnapshots.snapshotsExist'],
+                 stageDependencies.android_ui_tests_material3.*.outputs['CheckAndroidSnapshots.snapshotsExist'],
+                 stageDependencies.ios_ui_tests_mono.*.outputs['CheckiOSSnapshots.snapshotsExist'],
+                 stageDependencies.ios_ui_tests_mono_cv1.*.outputs['CheckiOSSnapshots.snapshotsExist'],
+                 stageDependencies.ios_ui_tests_mono_carv1.*.outputs['CheckiOSSnapshots.snapshotsExist'],
+                 stageDependencies.winui_ui_tests.*.outputs['CheckWindowsSnapshots.snapshotsExist'],
+                 stageDependencies.mac_ui_tests.*.outputs['CheckMacSnapshots.snapshotsExist']))
+    jobs:
+      - job: post_to_pr
+        displayName: Post Screenshots to PR Comment
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+            fetchDepth: 1
+
+          # Download all snapshot result artifacts
+          - task: DownloadPipelineArtifact@2
+            displayName: Download all snapshot diffs
+            continueOnError: true
+            inputs:
+              buildType: current
+              itemPattern: 'uitest-snapshot-results-*/**'
+              targetPath: $(Build.ArtifactStagingDirectory)/snapshots
+
+          - task: PowerShell@2
+            displayName: Post screenshot diffs to PR
+            inputs:
+              filePath: $(System.DefaultWorkingDirectory)/eng/scripts/Post-ScreenshotsToPR.ps1
+              arguments: >
+                -PRNumber "$(System.PullRequest.PullRequestNumber)"
+                -ScreenshotsPath "$(Build.ArtifactStagingDirectory)/snapshots"
+                -BuildUrl "$(System.CollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)"
+            env:
+              GITHUB_TOKEN: $(GitHubToken)
