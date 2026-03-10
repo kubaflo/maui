@@ -26,10 +26,9 @@ jobs:
     name: Queue Review Pipeline
     runs-on: ubuntu-latest
     if: |
-      github.repository_owner == 'dotnet' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event.issue.pull_request != '' &&
-        startsWith(github.event.comment.body, '/azp review')))
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.pull_request != '' &&
+       startsWith(github.event.comment.body, '/review'))
     steps:
       - name: Parse inputs
         id: parse
@@ -41,8 +40,8 @@ jobs:
           else
             COMMENT="${{ github.event.comment.body }}"
             PR_NUMBER="${{ github.event.issue.number }}"
-            # Extract platform from comment: /azp review <platform>
-            PLATFORM=$(echo "$COMMENT" | sed 's|^/azp review[[:space:]]*||' | tr '[:upper:]' '[:lower:]' | xargs)
+            # Extract platform from comment: /review <platform>
+            PLATFORM=$(echo "$COMMENT" | sed 's|^/review[[:space:]]*||' | tr '[:upper:]' '[:lower:]' | xargs)
             if [ -z "$PLATFORM" ]; then
               PLATFORM="android"
             fi
