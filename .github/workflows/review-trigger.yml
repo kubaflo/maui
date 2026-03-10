@@ -62,38 +62,45 @@ jobs:
         shell: bash
         env:
           AZDO_PAT: ${{ secrets.AZDO_PAT }}
+          PR_NUMBER: ${{ steps.parse.outputs.pr_number }}
+          PLATFORM: ${{ steps.parse.outputs.platform }}
         run: |
-          PR_NUMBER="${{ steps.parse.outputs.pr_number }}"
-          PLATFORM="${{ steps.parse.outputs.platform }}"
-
           if [ "$PLATFORM" = "ios" ]; then
-            POOL_STR='{\\\"name\\\": \\\"AcesShared\\\"}'
+            POOL_STR='{"name": "AcesShared"}'
           else
-            POOL_STR='{\\\"name\\\": \\\"Azure Pipelines\\\", \\\"vmImage\\\": \\\"ubuntu-22.04\\\"}'
+            POOL_STR='{"name": "Azure Pipelines", "vmImage": "ubuntu-22.04"}'
           fi
+
+          AUTH=$(printf ':%s' "$AZDO_PAT" | base64)
 
           echo "Queuing review pipeline for PR #${PR_NUMBER} (platform: ${PLATFORM})"
 
+          jq -n \
+            --arg pr "$PR_NUMBER" \
+            --arg plat "$PLATFORM" \
+            --arg pool "$POOL_STR" \
+            '{
+              definition: {id: 27723},
+              sourceBranch: "refs/heads/main",
+              templateParameters: {
+                PRNumber: $pr,
+                Platform: $plat,
+                pool: $pool
+              }
+            }' > /tmp/request.json
+
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             "https://devdiv.visualstudio.com/DevDiv/_apis/build/builds?api-version=7.0" \
-            -H "Authorization: Basic $(echo -n ":${AZDO_PAT}" | base64)" \
+            -H "Authorization: Basic ${AUTH}" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"definition\": {\"id\": 27723},
-              \"sourceBranch\": \"refs/heads/main\",
-              \"templateParameters\": {
-                \"PRNumber\": \"${PR_NUMBER}\",
-                \"Platform\": \"${PLATFORM}\",
-                \"pool\": \"${POOL_STR}\"
-              }
-            }")
+            -d @/tmp/request.json)
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
+          RESP_BODY=$(echo "$RESPONSE" | sed '$d')
 
           if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            BUILD_ID=$(echo "$BODY" | jq -r '.id')
-            BUILD_URL=$(echo "$BODY" | jq -r '._links.web.href')
+            BUILD_ID=$(echo "$RESP_BODY" | jq -r '.id')
+            BUILD_URL=$(echo "$RESP_BODY" | jq -r '._links.web.href')
             echo "✅ Pipeline queued successfully!"
             echo "Build ID: $BUILD_ID"
             echo "Build URL: $BUILD_URL"
@@ -101,7 +108,7 @@ jobs:
             echo "build_url=$BUILD_URL" >> "$GITHUB_OUTPUT"
           else
             echo "::error::Failed to queue pipeline (HTTP $HTTP_CODE)"
-            echo "$BODY"
+            echo "$RESP_BODY"
             exit 1
           fi
         id: queue
