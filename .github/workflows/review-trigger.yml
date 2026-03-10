@@ -48,26 +48,34 @@ jobs:
       - name: Parse inputs
         id: parse
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_PLATFORM: ${{ inputs.platform }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "pr_number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
-            echo "platform=${{ inputs.platform }}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "pr_number=$INPUT_PR_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "platform=$INPUT_PLATFORM" >> "$GITHUB_OUTPUT"
           else
-            COMMENT="${{ github.event.comment.body }}"
-            PR_NUMBER="${{ github.event.issue.number }}"
+            PR_NUMBER="$ISSUE_NUMBER"
             # Extract platform from comment: /review <platform>
-            PLATFORM=$(echo "$COMMENT" | sed 's|^/review[[:space:]]*||' | tr '[:upper:]' '[:lower:]' | xargs)
+            PLATFORM=$(echo "$COMMENT_BODY" | sed 's|^/review[[:space:]]*||' | tr '[:upper:]' '[:lower:]' | xargs)
             if [ -z "$PLATFORM" ]; then
               PLATFORM="android"
             fi
+            # Sanitize: only allow alphanumeric characters
+            PLATFORM=$(echo "$PLATFORM" | tr -cd 'a-z')
             echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
             echo "platform=$PLATFORM" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Validate platform
         shell: bash
+        env:
+          PLATFORM: ${{ steps.parse.outputs.platform }}
         run: |
-          PLATFORM="${{ steps.parse.outputs.platform }}"
           if [[ "$PLATFORM" != "android" && "$PLATFORM" != "ios" ]]; then
             echo "::error::Invalid platform '$PLATFORM'. Must be 'android' or 'ios'."
             exit 1
