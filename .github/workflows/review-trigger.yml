@@ -76,7 +76,7 @@ jobs:
       - name: Queue Azure DevOps pipeline
         shell: bash
         env:
-          AZDO_PAT: ${{ secrets.AZDO_PAT }}
+          REVIEW_PR_AZDO_PAT: ${{ secrets.REVIEW_PR_AZDO_PAT }}
           PR_NUMBER: ${{ steps.parse.outputs.pr_number }}
           PLATFORM: ${{ steps.parse.outputs.platform }}
         run: |
@@ -86,7 +86,7 @@ jobs:
             POOL_STR='{"name": "Azure Pipelines", "vmImage": "ubuntu-22.04"}'
           fi
 
-          AUTH=$(printf ':%s' "$AZDO_PAT" | base64 -w0)
+          AUTH=$(printf ':%s' "$REVIEW_PR_AZDO_PAT" | base64 -w0)
 
           echo "Queuing review pipeline for PR #${PR_NUMBER} (platform: ${PLATFORM})"
 
