@@ -107,32 +107,19 @@ if ($IssueNumbers -ne "") {
     Write-Host "Assessing $($issuesToAssess.Count) specified issues..." -ForegroundColor Cyan
 }
 else {
-    # Auto-query using query-backlog.ps1
+    # Auto-query using query-backlog.ps1 — capture returned objects directly
     Write-Host ""
     Write-Host "Querying backlog for issues to groom..." -ForegroundColor Cyan
 
     $queryScript = Join-Path $scriptDir "query-backlog.ps1"
-    $queryResult = & $queryScript -GroomType $GroomType -Platform $Platform -Limit $Limit -OutputFormat "json" 2>&1
+    $queryIssues = & $queryScript -GroomType $GroomType -Platform $Platform -Limit $Limit -OutputFormat "groom" 2>$null
 
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Failed to query backlog: $queryResult" -ForegroundColor Red
-        exit 1
+    if ($null -eq $queryIssues -or @($queryIssues).Count -eq 0) {
+        Write-Host "No issues found to assess." -ForegroundColor Yellow
+        exit 0
     }
 
-    # Parse JSON output (filter out non-JSON lines like progress messages)
-    $jsonLines = $queryResult | Where-Object { $_ -match '^\s*[\[\{]' -or $_ -match '^\s*"' -or $_ -match '^\s*\]' }
-    if ($jsonLines) {
-        try {
-            $queryIssues = $jsonLines -join "`n" | ConvertFrom-Json
-            $issuesToAssess = $queryIssues | ForEach-Object { $_.Number }
-        }
-        catch {
-            Write-Host "❌ Failed to parse query results" -ForegroundColor Red
-            Write-Host "Raw output:" -ForegroundColor DarkGray
-            Write-Host ($queryResult | Out-String) -ForegroundColor DarkGray
-            exit 1
-        }
-    }
+    $issuesToAssess = @($queryIssues) | ForEach-Object { $_.Number }
 }
 
 if ($issuesToAssess.Count -eq 0) {

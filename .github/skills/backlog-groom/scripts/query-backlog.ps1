@@ -286,15 +286,15 @@ if ($Skip -gt 0) {
     $issues = $issues | Select-Object -Skip $Skip
 }
 
-# Limit results
-$issues = $issues | Select-Object -First $Limit
+# NOTE: We do NOT limit here — we limit AFTER groom-type filtering below
+# so that $Limit reflects the number of matching issues, not pre-filter candidates.
 
 if (@($issues).Count -eq 0) {
     Write-Host "No issues found matching the criteria." -ForegroundColor Yellow
     exit 0
 }
 
-Write-Host "Found $(@($issues).Count) issues to assess" -ForegroundColor Green
+Write-Host "Found $(@($issues).Count) candidate issues to assess" -ForegroundColor Green
 
 # ── Assess each issue ──────────────────────────────────────────────────────────
 Write-Host "Assessing issue health..." -ForegroundColor Cyan
@@ -458,6 +458,9 @@ foreach ($issue in $issues) {
         Suggestions     = $suggestions
         URL             = $issue.url
     }
+
+    # Stop once we have enough matching issues
+    if ($processedIssues.Count -ge $Limit) { break }
 }
 Write-Host "" # New line after progress
 
@@ -596,8 +599,9 @@ switch ($OutputFormat) {
         $outputContent = $null
     }
     "json" {
-        $outputContent = Format-Json-Output -issues $processedIssues
-        Write-Host $outputContent
+        # Emit JSON on the success stream (Write-Output) so callers can capture it
+        $processedIssues | ConvertTo-Json -Depth 10 | Write-Output
+        $outputContent = $null
     }
 }
 
@@ -608,38 +612,40 @@ if ($OutputFile -ne "" -and $outputContent) {
     Write-Host "Results saved to: $OutputFile" -ForegroundColor Green
 }
 
-# ── Summary statistics ─────────────────────────────────────────────────────────
-Write-Host ""
-Write-Host "Summary:" -ForegroundColor Cyan
+# ── Summary statistics (suppress for json/groom — callers parse output) ────────
+if ($OutputFormat -notin @("json", "groom")) {
+    Write-Host ""
+    Write-Host "Summary:" -ForegroundColor Cyan
 
-$flagStats = @{}
-foreach ($issue in $processedIssues) {
-    foreach ($flag in $issue.Flags) {
-        if (-not $flagStats.ContainsKey($flag)) { $flagStats[$flag] = 0 }
-        $flagStats[$flag]++
+    $flagStats = @{}
+    foreach ($issue in $processedIssues) {
+        foreach ($flag in $issue.Flags) {
+            if (-not $flagStats.ContainsKey($flag)) { $flagStats[$flag] = 0 }
+            $flagStats[$flag]++
+        }
     }
-}
 
-foreach ($flag in $flagStats.Keys | Sort-Object) {
-    $emoji = switch ($flag) {
-        "possibly-fixed" { "✅" }
-        "very-stale"     { "💀" }
-        "stale"          { "😴" }
-        "needs-repro"    { "🔍" }
-        "weak-repro"     { "📝" }
-        "no-platform"    { "🏷️" }
-        "no-area"        { "🏷️" }
-        "no-milestone"   { "📌" }
-        default          { "❓" }
+    foreach ($flag in $flagStats.Keys | Sort-Object) {
+        $emoji = switch ($flag) {
+            "possibly-fixed" { "✅" }
+            "very-stale"     { "💀" }
+            "stale"          { "😴" }
+            "needs-repro"    { "🔍" }
+            "weak-repro"     { "📝" }
+            "no-platform"    { "🏷️" }
+            "no-area"        { "🏷️" }
+            "no-milestone"   { "📌" }
+            default          { "❓" }
+        }
+        Write-Host "  $emoji $flag`: $($flagStats[$flag]) issues"
     }
-    Write-Host "  $emoji $flag`: $($flagStats[$flag]) issues"
-}
 
-if ($processedIssues.Count -gt 0) {
-    $avgAge = [Math]::Round(($processedIssues | Measure-Object AgeDays -Average).Average)
-    $avgUpdate = [Math]::Round(($processedIssues | Measure-Object DaysSinceUpdate -Average).Average)
-    Write-Host "  Average age: $avgAge days"
-    Write-Host "  Average since last update: $avgUpdate days"
+    if ($processedIssues.Count -gt 0) {
+        $avgAge = [Math]::Round(($processedIssues | Measure-Object AgeDays -Average).Average)
+        $avgUpdate = [Math]::Round(($processedIssues | Measure-Object DaysSinceUpdate -Average).Average)
+        Write-Host "  Average age: $avgAge days"
+        Write-Host "  Average since last update: $avgUpdate days"
+    }
 }
 
 # Return for pipeline usage

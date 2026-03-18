@@ -33,15 +33,10 @@ on:
         required: false
         default: "25"
         type: string
-      dry_run:
-        description: "Dry run (no labels/comments applied)"
-        required: false
-        default: true
-        type: boolean
 
 permissions:
   contents: read
-  issues: write
+  issues: read
 
 jobs:
   groom-backlog:

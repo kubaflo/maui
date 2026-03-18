@@ -7,10 +7,9 @@
     Takes an issue number and performs a comprehensive health assessment:
     1. Checks for reproduction steps (code blocks, numbered steps, XAML, screenshots)
     2. Checks linked PRs (open, merged, closed) and their milestones
-    3. Evaluates staleness (last comment, last label change)
+    3. Evaluates staleness (last update and last comment age)
     4. Checks label completeness (platform, area, priority)
-    5. Checks if referenced .NET version is still supported
-    6. Produces a structured assessment with recommended actions
+    5. Produces a structured assessment with recommended actions
 
     This script is designed to be called:
     - Individually by the agent for interactive grooming
