@@ -131,6 +131,54 @@ $body = if ($issue.body) { $issue.body } else { "" }
 $reproScore = 0
 $reproDetails = @()
 
+# ── Template field completeness (bug-report.yml required fields) ───────────────
+# GitHub issue forms render as ### headings in the body. Check each required field.
+$templateFields = @{
+    Description        = $body -match '(?mi)^### Description\s*\n'
+    StepsToReproduce   = $body -match '(?mi)^### Steps to Reproduce\s*\n'
+    VersionWithBug     = $body -match '(?mi)^### Version with bug\s*\n'
+    IsRegression       = $body -match '(?mi)^### Is this a regression from previous behavior\?\s*\n'
+    LastVersionWorked  = $body -match '(?mi)^### Last version that worked well\s*\n'
+    AffectedPlatforms  = $body -match '(?mi)^### Affected platforms\s*\n'
+}
+
+# Check if fields have actual content (not just "_No response_" or empty)
+$emptyFieldPattern = '(?mi)^### {0}\s*\n+\s*(_No response_|None|\s*)\s*(\n###|\z)'
+
+$fieldsMissing = @()
+$fieldsEmpty = @()
+foreach ($field in $templateFields.GetEnumerator()) {
+    if (-not $field.Value) {
+        # Field heading not present at all (might be pre-template issue or different template)
+        $fieldsMissing += $field.Key
+    }
+    else {
+        # Check if field has "No response" or is effectively empty
+        $fieldName = switch ($field.Key) {
+            "Description"       { "Description" }
+            "StepsToReproduce"  { "Steps to Reproduce" }
+            "VersionWithBug"    { "Version with bug" }
+            "IsRegression"      { "Is this a regression from previous behavior\?" }
+            "LastVersionWorked" { "Last version that worked well" }
+            "AffectedPlatforms" { "Affected platforms" }
+        }
+        # Extract content between this heading and the next heading (or end of string)
+        if ($body -match "(?msi)### $fieldName\s*\n(.*?)(?=\n### |\z)") {
+            $content = $Matches[1].Trim()
+            if ($content -eq "" -or $content -eq "_No response_" -or $content -eq "None") {
+                $fieldsEmpty += $field.Key
+            }
+        }
+    }
+}
+
+$usesTemplate = $templateFields.Values -contains $true
+$templateCompleteness = if (-not $usesTemplate) { "no-template" }
+    elseif ($fieldsEmpty.Count -eq 0 -and $fieldsMissing.Count -eq 0) { "complete" }
+    elseif ($fieldsEmpty.Count -gt 0 -or $fieldsMissing.Count -gt 0) { "incomplete" }
+    else { "complete" }
+
+# ── Reproduction quality heuristics ────────────────────────────────────────────
 $hasCodeBlock = $body -match '```'
 $hasNumberedSteps = $body -match '(?m)^\s*\d+[\.\)]\s' -or $body -match '(?i)steps?\s*(to\s*)?reproduce'
 $hasXaml = $body -match '<\w+.*xmlns'
@@ -138,6 +186,7 @@ $hasScreenshot = $body -match '!\[.*\]\(.*\)'
 $hasStackTrace = $body -match '(?i)(exception|stacktrace|stack trace|at\s+\w+\.\w+)'
 $hasExpectedActual = $body -match '(?i)(expected|actual)\s*(behavior|result|output)?'
 $hasVersionInfo = $body -match '(?i)(\.NET|MAUI|version|sdk)\s*[\d\.]+'
+$hasReproLink = $body -match '(?i)(github\.com|gitlab\.com|bitbucket\.org)/\S+'
 $bodyLength = $body.Length
 
 if ($hasCodeBlock)       { $reproScore += 3; $reproDetails += "Has code blocks" }
@@ -147,8 +196,17 @@ if ($hasScreenshot)      { $reproScore += 1; $reproDetails += "Has screenshots" 
 if ($hasStackTrace)      { $reproScore += 1; $reproDetails += "Has stack trace" }
 if ($hasExpectedActual)  { $reproScore += 2; $reproDetails += "Has expected/actual" }
 if ($hasVersionInfo)     { $reproScore += 1; $reproDetails += "Has version info" }
+if ($hasReproLink)       { $reproScore += 3; $reproDetails += "Has reproduction link" }
 if ($bodyLength -gt 500) { $reproScore += 1; $reproDetails += "Detailed description ($bodyLength chars)" }
 elseif ($bodyLength -lt 100) { $reproScore -= 2; $reproDetails += "Very short description ($bodyLength chars)" }
+
+# Penalize missing template fields
+if ($usesTemplate) {
+    if ($fieldsEmpty -contains "StepsToReproduce") { $reproScore -= 2; $reproDetails += "Steps to Reproduce is empty" }
+    if ($fieldsEmpty -contains "AffectedPlatforms") { $reproDetails += "Affected platforms is empty" }
+    if ($fieldsEmpty -contains "VersionWithBug") { $reproDetails += "Version with bug is empty" }
+    if ($fieldsEmpty -contains "IsRegression") { $reproDetails += "Regression field is empty" }
+}
 
 $reproQuality = if ($reproScore -ge 6) { "good" }
                 elseif ($reproScore -ge 3) { "fair" }
@@ -268,6 +326,17 @@ elseif ($reproQuality -eq "weak") {
     $flags += "weak-repro"
 }
 
+# Template completeness (bug-report.yml required fields)
+if ($usesTemplate -and ($fieldsEmpty.Count -gt 0 -or $fieldsMissing.Count -gt 0)) {
+    $incompleteFields = @($fieldsEmpty) + @($fieldsMissing)
+    $flags += "incomplete-template"
+    $suggestions += "Template fields incomplete: $($incompleteFields -join ', ')"
+    if ($fieldsEmpty -contains "AffectedPlatforms" -or $fieldsEmpty -contains "IsRegression") {
+        $actions += @{ Type = "comment"; Body = "This issue is missing required template fields ($($incompleteFields -join ', ')). Could you update the issue with this information? It helps us prioritize and route the issue correctly." }
+        $actions += @{ Type = "label"; Add = "s/needs-info" }
+    }
+}
+
 # Missing labels
 if ($platformLabel -eq "") {
     $flags += "no-platform"
@@ -281,14 +350,15 @@ if ($milestoneTitle -eq "") {
 
 # Health score (0-100)
 $healthScore = 100
-if ($flags -contains "very-stale")     { $healthScore -= 30 }
-elseif ($flags -contains "stale")      { $healthScore -= 15 }
-if ($flags -contains "possibly-fixed") { $healthScore -= 25 }
-if ($flags -contains "needs-repro")    { $healthScore -= 20 }
-elseif ($flags -contains "weak-repro") { $healthScore -= 10 }
-if ($flags -contains "no-platform")    { $healthScore -= 5 }
-if ($flags -contains "no-area")        { $healthScore -= 5 }
-if ($flags -contains "no-milestone")   { $healthScore -= 5 }
+if ($flags -contains "very-stale")          { $healthScore -= 30 }
+elseif ($flags -contains "stale")           { $healthScore -= 15 }
+if ($flags -contains "possibly-fixed")      { $healthScore -= 25 }
+if ($flags -contains "needs-repro")         { $healthScore -= 20 }
+elseif ($flags -contains "weak-repro")      { $healthScore -= 10 }
+if ($flags -contains "incomplete-template") { $healthScore -= 10 }
+if ($flags -contains "no-platform")         { $healthScore -= 5 }
+if ($flags -contains "no-area")             { $healthScore -= 5 }
+if ($flags -contains "no-milestone")        { $healthScore -= 5 }
 $healthScore = [Math]::Max(0, $healthScore)
 
 $healthGrade = if ($healthScore -ge 80) { "A" }
@@ -299,33 +369,38 @@ $healthGrade = if ($healthScore -ge 80) { "A" }
 
 # ── Build result object ───────────────────────────────────────────────────────
 $assessment = [PSCustomObject]@{
-    Number           = $issue.number
-    Title            = $issue.title
-    URL              = $issue.url
-    Author           = $issue.author.login
-    Created          = $createdDate.ToString("yyyy-MM-dd")
-    Updated          = $updatedDate.ToString("yyyy-MM-dd")
-    AgeDays          = $ageInDays
-    DaysSinceUpdate  = $daysSinceUpdate
-    DaysSinceComment = $daysSinceLastComment
-    Milestone        = $milestoneTitle
-    Platform         = $platformLabel -replace "^platform/", "" -replace " [🤖🍎🪟🍏]$", ""
-    Areas            = $areaLabels
-    Priority         = $priorityLabel
-    Labels           = $labelNames
-    IsRegression     = $isRegression
-    CommentCount     = $commentCount
-    ReproQuality     = $reproQuality
-    ReproScore       = $reproScore
-    ReproDetails     = $reproDetails
-    LinkedPRs        = $linkedPRs
-    MergedPRCount    = $mergedPRs.Count
-    OpenPRCount      = $openPRs.Count
-    HealthScore      = $healthScore
-    HealthGrade      = $healthGrade
-    Flags            = $flags
-    Actions          = $actions
-    RecentComments   = $comments | Select-Object -Last 3
+    Number              = $issue.number
+    Title               = $issue.title
+    URL                 = $issue.url
+    Author              = $issue.author.login
+    Created             = $createdDate.ToString("yyyy-MM-dd")
+    Updated             = $updatedDate.ToString("yyyy-MM-dd")
+    AgeDays             = $ageInDays
+    DaysSinceUpdate     = $daysSinceUpdate
+    DaysSinceComment    = $daysSinceLastComment
+    Milestone           = $milestoneTitle
+    Platform            = $platformLabel -replace "^platform/", "" -replace " [🤖🍎🪟🍏]$", ""
+    Areas               = $areaLabels
+    Priority            = $priorityLabel
+    Labels              = $labelNames
+    IsRegression        = $isRegression
+    CommentCount        = $commentCount
+    ReproQuality        = $reproQuality
+    ReproScore          = $reproScore
+    ReproDetails        = $reproDetails
+    UsesTemplate        = $usesTemplate
+    TemplateCompleteness = $templateCompleteness
+    TemplateFieldsEmpty = $fieldsEmpty
+    TemplateFieldsMissing = $fieldsMissing
+    HasReproLink        = $hasReproLink
+    LinkedPRs           = $linkedPRs
+    MergedPRCount       = $mergedPRs.Count
+    OpenPRCount         = $openPRs.Count
+    HealthScore         = $healthScore
+    HealthGrade         = $healthGrade
+    Flags               = $flags
+    Actions             = $actions
+    RecentComments      = $comments | Select-Object -Last 3
 }
 
 # ── Output ────────────────────────────────────────────────────────────────────
@@ -356,21 +431,39 @@ switch ($OutputFormat) {
         Write-Host "  Repro:       $($assessment.ReproQuality) (score: $($assessment.ReproScore))" -ForegroundColor White
         Write-Host "  Comments:    $($assessment.CommentCount)" -ForegroundColor White
         Write-Host "  Linked PRs:  $($assessment.LinkedPRs.Count) (merged: $($assessment.MergedPRCount), open: $($assessment.OpenPRCount))" -ForegroundColor White
+
+        # Template completeness
+        $templateColor = switch ($assessment.TemplateCompleteness) {
+            "complete"    { "Green" }
+            "incomplete"  { "Yellow" }
+            "no-template" { "DarkGray" }
+        }
+        $templateStatus = switch ($assessment.TemplateCompleteness) {
+            "complete"    { "✅ complete" }
+            "incomplete"  { "⚠️  incomplete ($($assessment.TemplateFieldsEmpty.Count + $assessment.TemplateFieldsMissing.Count) fields)" }
+            "no-template" { "— not using bug-report template" }
+        }
+        Write-Host "  Template:    $templateStatus" -ForegroundColor $templateColor
+        if ($assessment.TemplateCompleteness -eq "incomplete") {
+            $allIncomplete = @($assessment.TemplateFieldsEmpty) + @($assessment.TemplateFieldsMissing)
+            Write-Host "               Missing/empty: $($allIncomplete -join ', ')" -ForegroundColor Yellow
+        }
         Write-Host ""
 
         if ($assessment.Flags.Count -gt 0) {
             Write-Host "  Flags:" -ForegroundColor Yellow
             foreach ($flag in $assessment.Flags) {
                 $emoji = switch ($flag) {
-                    "possibly-fixed" { "✅" }
-                    "very-stale"     { "💀" }
-                    "stale"          { "😴" }
-                    "needs-repro"    { "🔍" }
-                    "weak-repro"     { "📝" }
-                    "no-platform"    { "🏷️" }
-                    "no-area"        { "🏷️" }
-                    "no-milestone"   { "📌" }
-                    default          { "❓" }
+                    "possibly-fixed"      { "✅" }
+                    "very-stale"          { "💀" }
+                    "stale"               { "😴" }
+                    "needs-repro"         { "🔍" }
+                    "weak-repro"          { "📝" }
+                    "incomplete-template" { "📋" }
+                    "no-platform"         { "🏷️" }
+                    "no-area"             { "🏷️" }
+                    "no-milestone"        { "📌" }
+                    default               { "❓" }
                 }
                 Write-Host "    $emoji $flag"
             }
