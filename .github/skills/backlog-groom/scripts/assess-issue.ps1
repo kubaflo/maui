@@ -121,8 +121,8 @@ $statusLabels = ($issue.labels | Where-Object { $_.name -like "s/*" } | ForEach-
 $isRegression = $labelNames -match "i/regression|regressed-in"
 $milestoneTitle = if ($issue.milestone) { $issue.milestone.title } else { "" }
 
-$createdDate = [DateTime]::Parse($issue.createdAt)
-$updatedDate = [DateTime]::Parse($issue.updatedAt)
+$createdDate = [DateTime]$issue.createdAt
+$updatedDate = [DateTime]$issue.updatedAt
 $ageInDays = [Math]::Round(((Get-Date) - $createdDate).TotalDays)
 $daysSinceUpdate = [Math]::Round(((Get-Date) - $updatedDate).TotalDays)
 
@@ -167,7 +167,7 @@ if ($issue.comments) {
         if ($comment.author.login -match "^(MihuBot|github-actions|msftbot|dotnet-maestro)") { continue }
 
         $commentCount++
-        $commentDate = [DateTime]::Parse($comment.createdAt)
+        $commentDate = [DateTime]$comment.createdAt
         $isTeam = $comment.authorAssociation -in @("MEMBER", "COLLABORATOR", "OWNER")
 
         $bodyPreview = $comment.body -replace '\r?\n', ' ' -replace '\s+', ' '

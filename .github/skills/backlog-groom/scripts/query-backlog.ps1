@@ -278,7 +278,7 @@ $issues = $allIssues | Where-Object {
 # Apply date filters for non-stale queries
 if ($GroomType -ne "stale" -and $MinAge -gt 0) {
     $minDate = (Get-Date).AddDays(-$MinAge)
-    $issues = $issues | Where-Object { [DateTime]::Parse($_.createdAt) -lt $minDate }
+    $issues = $issues | Where-Object { [DateTime]$_.createdAt -lt $minDate }
 }
 
 # Apply skip for pagination
@@ -312,8 +312,8 @@ foreach ($issue in $issues) {
     $areaLabels = ($issue.labels | Where-Object { $_.name -like "area-*" } | ForEach-Object { $_.name -replace "^area-", "" }) -join ", "
     $priorityLabel = ($issue.labels | Where-Object { $_.name -like "p/*" } | Select-Object -First 1)?.name ?? ""
 
-    $createdDate = [DateTime]::Parse($issue.createdAt)
-    $updatedDate = [DateTime]::Parse($issue.updatedAt)
+    $createdDate = [DateTime]$issue.createdAt
+    $updatedDate = [DateTime]$issue.updatedAt
     $ageInDays = [Math]::Round(((Get-Date) - $createdDate).TotalDays)
     $daysSinceUpdate = [Math]::Round(((Get-Date) - $updatedDate).TotalDays)
     $commentCount = if ($issue.comments) { @($issue.comments).Count } else { 0 }
