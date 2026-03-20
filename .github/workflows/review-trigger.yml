@@ -43,9 +43,9 @@ jobs:
               repo: context.repo.repo,
               username: context.payload.comment.user.login
             });
-            const allowed = ['admin', 'write'];
+            const allowed = ['admin'];
             if (!allowed.includes(data.permission)) {
-              core.setFailed(`User @${context.payload.comment.user.login} does not have write access. Permission: ${data.permission}`);
+              core.setFailed(`User @${context.payload.comment.user.login} does not have admin access. Permission: ${data.permission}`);
             }
 
       - name: Parse inputs
