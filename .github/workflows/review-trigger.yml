@@ -28,7 +28,7 @@ jobs:
     name: Queue Review Pipeline
     runs-on: ubuntu-latest
     if: |
-      github.repository_owner == 'dotnet' &&
+      github.repository_owner == 'kubaflo' &&
       (github.event_name == 'workflow_dispatch' ||
        (github.event.issue.pull_request != '' &&
         startsWith(github.event.comment.body, '/review')))
