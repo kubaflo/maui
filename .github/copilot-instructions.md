@@ -287,7 +287,7 @@ Skills are modular capabilities that can be invoked directly or used by agents. 
    - **Output**: Test files for Controls.Xaml.UnitTests
 
 9. **verify-tests-fail-without-fix** (`.github/skills/verify-tests-fail-without-fix/SKILL.md`)
-   - **Purpose**: Verifies UI tests catch the bug before fix and pass with fix
+   - **Purpose**: Verifies tests catch the bug before fix and pass with fix. Auto-detects test type (UI tests, device tests, unit tests, XAML tests) and dispatches to the appropriate runner.
    - **Two modes**: Verify failure only (test creation) or full verification (test + fix)
    - **Used by**: After creating tests, before considering PR complete
 

@@ -26,21 +26,23 @@ Choose a platform that is BOTH affected by the bug AND available on the current 
 
 ## Steps
 
-1. **Check if tests exist:**
+1. **Check if tests exist** using the shared detection script:
    ```bash
-   gh pr view XXXXX --json files --jq '.files[].path' | grep -E "TestCases\.(HostApp|Shared\.Tests)"
+   pwsh .github/scripts/shared/Detect-TestsInDiff.ps1 -PRNumber XXXXX
    ```
-   If NO tests exist → inform user, suggest `write-tests-agent`. Gate is ⚠️ SKIPPED.
+   If NO tests detected → inform user, suggest `write-tests-agent`. Gate is ⚠️ SKIPPED.
+   
+   The script auto-detects all test types: UI tests, device tests, unit tests, XAML tests.
 
 2. **Select platform** — must be affected by bug AND available on host (see Platform Selection above).
+   Note: Unit tests and XAML tests don't require a platform.
 
 3. **Run verification via task agent** (MUST use task agent — never inline):
    ```
    Invoke the `task` agent with this prompt:
 
    "Invoke the verify-tests-fail-without-fix skill for this PR:
-   - Platform: {platform}
-   - TestFilter: 'IssueXXXXX'
+   - Platform: {platform}  (omit for unit/XAML tests)
    - RequireFullVerification: true
 
    Report back: Did tests FAIL without fix? Did tests PASS with fix? Final status?"
