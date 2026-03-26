@@ -1,9 +1,8 @@
 ---
 description: Evaluates test quality, coverage, and appropriateness on PRs that add or modify tests
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    forks: ["*"]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
     paths:
       - 'src/**/tests/**'
       - 'src/**/test/**'
@@ -17,7 +16,7 @@ on:
         type: number
 
 if: >-
-  (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
+  (github.event_name == 'pull_request_target' && github.event.pull_request.draft == false) ||
   github.event_name == 'workflow_dispatch' ||
   (github.event_name == 'issue_comment' &&
    github.event.issue.pull_request &&
@@ -31,9 +30,6 @@ permissions:
 engine:
   id: copilot
   model: claude-sonnet-4.6
-
-features:
-  copilot-requests: true
 
 safe-outputs:
   add-comment:
@@ -60,7 +56,7 @@ timeout-minutes: 15
 
 steps:
   - name: Gate — skip if no test source files in diff
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request_target'
     env:
       GH_TOKEN: ${{ github.token }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -76,7 +72,7 @@ steps:
       echo "✅ Found test files to evaluate:"
       echo "$TEST_FILES" | head -20
 
-  # Only needed for workflow_dispatch — for pull_request and issue_comment,
+  # Only needed for workflow_dispatch — for pull_request_target and issue_comment,
   # the gh-aw platform's checkout_pr_branch.cjs handles PR checkout automatically.
   # workflow_dispatch skips the platform checkout entirely, so we must do it here.
   - name: Checkout PR and restore agent infrastructure
