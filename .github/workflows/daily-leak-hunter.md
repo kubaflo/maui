@@ -53,7 +53,8 @@ network:
   allowed:
     - defaults
     - github
-    - dev.azure.com
+    - nuget.org
+    - "*.nuget.org"
     - "*.blob.core.windows.net"
 
 safe-outputs:
@@ -96,9 +97,11 @@ safe-output. Never push, never open a PR, never comment.
 
 ## Step 1 — Environment
 
-1. Confirm the SDK: `cat global.json` and `dotnet --version`.
-2. Build the build tasks (required before the unit-test project will build):
-   `dotnet build ./Microsoft.Maui.BuildTasks.slnf -c Debug`.
+1. Confirm the SDK is present: `dotnet --version` (the runner already has the .NET SDK).
+2. **Do NOT build MAUI from source.** The MAUI build SDK (`Microsoft.DotNet.Arcade.Sdk`) lives
+   on Azure DevOps feeds this runner cannot reach (NuGet returns 403). Instead you verify every
+   candidate with a **standalone** test that references the **shipped `Microsoft.Maui.Controls`
+   NuGet package** from nuget.org (Step 4) — no source build, no workload, no emulator.
 
 ## Step 2 — Check only this scanner's own OPEN issues (loose de-dup)
 
@@ -165,39 +168,60 @@ convincing candidate, stop and
 create nothing (a quiet run is a success — the surface is heavily hardened, so most runs find
 nothing; the value is catching NEW leaks as code lands).
 
-## Step 4 — Write a control/leaky/mitigation unit test
+## Step 4 — Write a standalone control/leaky/mitigation test (shipped package)
 
-Add a new file under `src/Controls/tests/Core.UnitTests/` (or
-`src/Core/tests/UnitTests/` if the root lives in `src/Core`), with a single `[Fact]` that:
+Create a self-contained xUnit project **outside the repo**, under
+`/tmp/gh-aw/agent/leakprobe/`, that references the **shipped** `Microsoft.Maui.Controls`
+package (so restore uses nuget.org, NOT the repo's Azure DevOps feeds):
 
-1. Allocates N (e.g. 30) subjects, each owning a measurable payload (`new byte[1024*1024]`)
-   and tracked by a `WeakReference`.
-2. Runs three scenarios:
-   - **Control** — never touches the leaky root.
-   - **Leaky** — subscribes/registers and performs the *buggy* teardown (the missing cleanup).
-   - **Mitigation** — subscribes/registers and performs the *correct* cleanup.
-3. Forces a full GC (`for (i in 0..6) { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); }`).
-4. Asserts: `Assert.Equal(N, leakyAlive)` and `Assert.Equal(0, controlAlive)` and
-   `Assert.Equal(0, mitigationAlive)`.
+`/tmp/gh-aw/agent/leakprobe/leakprobe.csproj`:
 
-Model it on the existing `AnimationDisabledTweenerLeakTests` pattern if present, or on
-`TickerSystemEnabledTests` for the animation/manager helpers.
-
-## Step 5 — Run it (no emulator needed)
-
-```
-dotnet test src/Controls/tests/Core.UnitTests/Controls.Core.UnitTests.csproj \
-  -p:IncludeIosTargetFrameworks=false -p:IncludeAndroidTargetFrameworks=false \
-  -p:IncludeMacCatalystTargetFrameworks=false -p:IncludeWindowsTargetFrameworks=false \
-  -p:IncludeTizenTargetFrameworks=false \
-  --filter "FullyQualifiedName~<YourTestClassName>"
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+</Project>
 ```
 
-(For a `src/Core` root, use `src/Core/tests/UnitTests/Core.UnitTests.csproj`.)
+(Use a `10.0.x` version that restores; `10.0.0` is known to work.)
+
+`/tmp/gh-aw/agent/leakprobe/LeakTest.cs`: a single `[Fact]` that
+1. allocates N (e.g. 30) subjects, each owning a `new byte[1024*1024]` payload tracked by a `WeakReference`;
+2. runs Control / Leaky / Mitigation;
+3. forces a full GC (`for (i in 0..6) { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); }`);
+4. asserts `Assert.Equal(N, leakyAlive)`, `Assert.Equal(0, controlAlive)`, `Assert.Equal(0, mitigationAlive)`.
+
+**CRITICAL — pick a PURELY-MANAGED candidate that is testable on plain `net10.0`.** The leak's
+subscribe/teardown path must use only managed types that work without a platform — e.g.
+`AnimationManager`/`Ticker` (`Microsoft.Maui.Animations`), static collections/events in
+`Microsoft.Maui.Controls`, bindings, `ResourceDictionary`, triggers, `AttachedCollection`.
+**AVOID** any candidate whose path calls platform Essentials/handlers — `Accelerometer`,
+`Connectivity`, `Battery`, `DeviceDisplay`, sensors, or anything under `Platform/**` — they
+throw `NotImplementedInReferenceAssembly` on plain `net` and need a device (out of scope here).
+If your focus area only yields platform-dependent candidates, switch to a managed-only area.
+
+## Step 5 — Run it (no emulator, no source build)
+
+```
+cd /tmp/gh-aw/agent/leakprobe && dotnet test --logger "console;verbosity=normal"
+```
+
+This restores `Microsoft.Maui.Controls` from nuget.org and runs on the runner — no workload,
+no MAUI source build, no emulator.
 
 - If it **passes**, the leak is confirmed (Leaky retains; Control + Mitigation release).
-- If it **fails or errors**, your hypothesis is wrong — iterate once, otherwise stop and
-  create nothing.
+- If it **fails to build** (the API isn't in the shipped package) or the assertions don't hold,
+  your hypothesis is wrong — iterate once on a different candidate, otherwise stop and create
+  nothing.
 
 ## Step 6 — File the issue (only on a confirmed leak)
 
@@ -207,8 +231,9 @@ API. Body (markdown):
 - A clear **AI-generated** banner naming this workflow.
 - **Description** of the leak and why it retains.
 - **Retention path** `root -> ... -> transient` with file:line citations.
-- **Repro**: paste the unit test you wrote (it builds/runs on the .NET library TFM — no
-  device needed) and the exact `dotnet test` command.
+- **Repro**: paste the standalone `leakprobe.csproj` + `LeakTest.cs` (it restores the shipped
+  `Microsoft.Maui.Controls` package and runs on plain `net10.0` — no device needed) and the
+  `dotnet test` command.
 - **Observed results** table (Control / Mitigation / Leaky alive counts + retained MB).
 - **Affected platforms** (managed code → all) and the **disabling/non-default condition**
   if any.
