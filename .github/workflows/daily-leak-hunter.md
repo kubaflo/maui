@@ -16,7 +16,6 @@ description: |
   workflow flags only what a unit test can prove on a standard runner.
 
 on:
-  schedule: every 12h
   workflow_dispatch:
 
 # Runs on dotnet/maui, or on a fork that has wired up a COPILOT_GITHUB_TOKEN secret.
