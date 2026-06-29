@@ -15,14 +15,13 @@ description: |
   those need device tests, which run on the AzDO/Helix pipeline, not gh-aw. This
   workflow flags only what a unit test can prove on a standard runner.
 
-environment: gh-aw-agents
-
 on:
-  schedule: daily
+  schedule: every 12h
   workflow_dispatch:
 
+# Runs on dotnet/maui, or on a fork that has wired up a COPILOT_GITHUB_TOKEN secret.
 if: |
-  github.repository == 'dotnet/maui'
+  github.repository == 'dotnet/maui' || github.repository == 'kubaflo/maui'
 
 permissions:
   contents: read
@@ -31,6 +30,10 @@ permissions:
 engine:
   id: copilot
   model: claude-opus-4.8
+  # On a fork: add a repository secret named COPILOT_GITHUB_TOKEN (a PAT with Copilot
+  # access). On dotnet/maui this is supplied by the org Copilot setup instead.
+  env:
+    COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
 concurrency:
   group: "daily-leak-hunter"
@@ -107,9 +110,34 @@ safe-output. Never push, never open a PR, never comment.
 
 ## Step 3 — Scan for the leak signature
 
-Look in the managed cross-platform code for a **long-lived / static / singleton / shared
-root that holds a STRONG reference to a transient object (page / view / view-model /
-handler) with no teardown**, e.g.:
+### Step 3.0 — Pick this run's focus (rotate, so runs find DIFFERENT leaks)
+
+To avoid fixating on the same area every run, compute a rotating focus index and scan that
+area first/hardest this run:
+
+```
+FOCUS=$(( ( $(date -u +%j) * 2 + ( $(date -u +%H) >= 12 ? 1 : 0 ) ) % 8 ))
+echo "focus index: $FOCUS"
+```
+
+| Index | Focus this run |
+|------:|----------------|
+| 0 | `static event` (plain delegate) in `src/Essentials/src` (sensors, Connectivity, Battery, DeviceDisplay, …) |
+| 1 | `static event` / static delegate fields in `src/Controls/src/Core` and `src/Core/src` |
+| 2 | `static` mutable collections (`Dictionary`/`List`/`HashSet`/`ConcurrentDictionary`) holding transients (exclude `ConditionalWeakTable` + type/registry caches) |
+| 3 | Instance subscriptions to `Application.Current` / singleton events whose teardown is conditional |
+| 4 | Shared bindable values (a collection or `Element` used as a resource) the element subscribes to via `CollectionChanged` / `PropertyChanged` without a weak proxy |
+| 5 | Animation / `IAnimationManager` / tweener / ticker plumbing |
+| 6 | Binding / `DynamicResource` / resources-changed-listener plumbing |
+| 7 | `AttachedCollection` / triggers / behaviors / VisualStateManager retention |
+
+Treat the table as a *starting point*, not a cage — if the focus area is exhausted/covered,
+move to the next index. Over many runs the rotation covers the whole managed surface.
+
+### Step 3.1 — Hunt
+
+Look for a **long-lived / static / singleton / shared root that holds a STRONG reference to a
+transient object (page / view / view-model / handler) with no teardown**, e.g.:
 
 - A `static` event (plain delegate, NOT `WeakEventManager`) whose subscribers are never
   removed (`grep -rn "static event" src/Core/src src/Controls/src/Core src/Essentials/src`).
@@ -124,7 +152,8 @@ handler) with no teardown**, e.g.:
 For each candidate, write down the precise retention path
 `root -> ... -> transient` with file:line citations, then cross-check Step 2. Pick the ONE
 strongest **untracked** candidate. If there is no convincing untracked candidate, stop and
-create nothing (a quiet day is a success).
+create nothing (a quiet run is a success — the surface is heavily hardened, so most runs find
+nothing; the value is catching NEW leaks as code lands).
 
 ## Step 4 — Write a control/leaky/mitigation unit test
 
