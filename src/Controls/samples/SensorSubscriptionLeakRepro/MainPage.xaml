@@ -1,0 +1,17 @@
+﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.MainPage">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="12">
+            <Label Text="Sensor Subscription Leak Repro"
+                   FontSize="20" FontAttributes="Bold" />
+            <Label Text="Subscribes pages to the static Accelerometer.ReadingChanged event and measures retention after navigating away."
+                   FontSize="12" />
+            <Button Text="Run all scenarios" Clicked="OnRunClicked" />
+            <Label x:Name="ResultsLabel"
+                   FontFamily="monospace"
+                   FontSize="13"
+                   Text="(auto-running…)" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
