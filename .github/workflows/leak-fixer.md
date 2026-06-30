@@ -70,10 +70,19 @@ checkout:
 
 network:
   allowed:
+    # `dotnet` ecosystem bundles the dnceng Azure DevOps feeds (pkgs.dev.azure.com),
+    # nuget.org, and the dotnet CDN — required to restore Microsoft.DotNet.Arcade.Sdk and
+    # build Controls.Core.UnitTests from source. Plain `dev.azure.com` is NOT enough: the
+    # NuGet feed lives on the `pkgs.` subdomain, which an exact-host entry does not match.
+    - dotnet
     - defaults
     - github
     - dev.azure.com
+    - pkgs.dev.azure.com
+    - "*.dev.azure.com"
     - "*.blob.core.windows.net"
+    - "*.azureedge.net"
+    - "*.nuget.org"
 
 safe-outputs:
   create-pull-request:
@@ -254,30 +263,41 @@ Place it in the most fitting existing test class (or a new `*MemoryTests.cs` fil
 neighbours. The assertion must be a genuine leak check — `WaitForCollect()` returns `true`
 if the object is still alive after forced GC (i.e. the test FAILS while the leak exists).
 
-## Step 6 — Build BuildTasks, then run the test — confirm it FAILS (red)
+## Step 6 — Build + run ONLY your test on the net TFM — confirm it FAILS (red)
 
-The MAUI source build needs `Microsoft.Maui.BuildTasks` first. Build it once, then run ONLY
-your new test on the library TFM (no workload, no emulator):
+Build and run **only your new test** on the .NET library TFM. Restrict to the `net` TFM with
+the five platform-exclusion flags (no Android/iOS/etc. workload needed) and disable
+`TreatWarningsAsErrors` (some test projects have pre-existing warning-as-error noise). The
+project-reference graph **bootstraps the MAUI build tasks and builds `Core` → `Controls.Core`
+→ the test project automatically** — you do NOT need to build `Microsoft.Maui.BuildTasks.slnf`
+first:
 
 ```bash
-dotnet build Microsoft.Maui.BuildTasks.slnf -c Debug -bl:/tmp/gh-aw/agent/buildtasks.binlog 2>&1 | tail -25
+FLAGS="-p:IncludeIosTargetFrameworks=false -p:IncludeAndroidTargetFrameworks=false -p:IncludeMacCatalystTargetFrameworks=false -p:IncludeWindowsTargetFrameworks=false -p:IncludeTizenTargetFrameworks=false -p:TreatWarningsAsErrors=false"
 
-FLAGS="-p:IncludeIosTargetFrameworks=false -p:IncludeAndroidTargetFrameworks=false -p:IncludeMacCatalystTargetFrameworks=false -p:IncludeWindowsTargetFrameworks=false -p:IncludeTizenTargetFrameworks=false"
+# First restore+build can take ~10-20 min (cold NuGet cache pulls Arcade SDK from the
+# dnceng feed at pkgs.dev.azure.com — now allowlisted). Run ONLY the new test.
 dotnet test src/Controls/tests/Core.UnitTests/Controls.Core.UnitTests.csproj -c Debug $FLAGS \
   --filter "FullyQualifiedName~<YourTestName>" \
-  --logger "console;verbosity=normal" 2>&1 | tee /tmp/gh-aw/agent/red.log | tail -40
+  --logger "console;verbosity=normal" 2>&1 | tee /tmp/gh-aw/agent/red.log | tail -50
 ```
 
 Interpret:
 
-- **Test FAILS** (the `WaitForCollect` assert trips) → good, the test catches the leak.
-  Proceed to Step 7.
+- **Test FAILS** (the `WaitForCollect` assert trips: object still alive) → good, the test
+  catches the leak. Proceed to Step 7.
 - **Test PASSES on unpatched source** → the leak is already fixed on `main`. Per Hard Rule 2,
   open NO PR: record `skipped: already fixed on main (test green without fix)` and stop.
-- **Build fails** → if it is the known `TreatWarningsAsErrors` noise, retry the test command
-  with `-p:TreatWarningsAsErrors=false`. If the API you referenced does not exist on `main`,
-  re-locate it (Step 2) or, if it is genuinely platform-only, `skipped: requires device test
-  (out of scope)`.
+- **Restore 403 / feed unreachable** → should not happen now (`pkgs.dev.azure.com`,
+  `*.blob.core.windows.net`, `*.nuget.org` are allowlisted). If it still does, record
+  `skipped: build env cannot restore (feed blocked)` and stop — do NOT emit a PR.
+- **Compile error from your test** (wrong API/usings) → fix the TEST and re-run. If the API
+  you referenced is genuinely platform-only (not on the net TFM), the leak needs a device
+  test: `skipped: requires device test (out of scope)`.
+
+(Optional fallback only if the bootstrap genuinely fails: build the net-only build tasks once
+with `dotnet build Microsoft.Maui.BuildTasks.slnf -c Debug $FLAGS` and re-run the test. Do not
+spend many attempts here — the direct `dotnet test` above is the verified path.)
 
 ## Step 7 — Implement the product fix
 
@@ -293,11 +313,11 @@ A weak-proxy refactor usually changes no public surface.
 ## Step 8 — Rebuild + run the test — confirm it PASSES (green), no regressions
 
 ```bash
-FLAGS="-p:IncludeIosTargetFrameworks=false -p:IncludeAndroidTargetFrameworks=false -p:IncludeMacCatalystTargetFrameworks=false -p:IncludeWindowsTargetFrameworks=false -p:IncludeTizenTargetFrameworks=false"
+FLAGS="-p:IncludeIosTargetFrameworks=false -p:IncludeAndroidTargetFrameworks=false -p:IncludeMacCatalystTargetFrameworks=false -p:IncludeWindowsTargetFrameworks=false -p:IncludeTizenTargetFrameworks=false -p:TreatWarningsAsErrors=false"
 # Your test must now pass.
 dotnet test src/Controls/tests/Core.UnitTests/Controls.Core.UnitTests.csproj -c Debug $FLAGS \
   --filter "FullyQualifiedName~<YourTestName>" \
-  --logger "console;verbosity=normal" 2>&1 | tee /tmp/gh-aw/agent/green.log | tail -40
+  --logger "console;verbosity=normal" 2>&1 | tee /tmp/gh-aw/agent/green.log | tail -50
 # Neighbours of the changed area must still pass (run the enclosing class).
 dotnet test src/Controls/tests/Core.UnitTests/Controls.Core.UnitTests.csproj -c Debug $FLAGS \
   --filter "FullyQualifiedName~<EnclosingTestClass>" \
