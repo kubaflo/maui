@@ -128,23 +128,27 @@ To avoid fixating on the same area every run, compute a rotating focus index and
 area first/hardest this run:
 
 ```
-FOCUS=$(( ( $(date -u +%j) * 2 + ( $(date -u +%H) >= 12 ? 1 : 0 ) ) % 8 ))
+# Rotate by run number so successive runs (and dispatches) explore different areas.
+FOCUS=$(( ${GITHUB_RUN_NUMBER:-1} % 8 ))
 echo "focus index: $FOCUS"
 ```
 
-| Index | Focus this run |
+| Index | Focus this run (all PURELY MANAGED — testable on plain `net10.0`) |
 |------:|----------------|
-| 0 | `static event` (plain delegate) in `src/Essentials/src` (sensors, Connectivity, Battery, DeviceDisplay, …) |
-| 1 | `static event` / static delegate fields in `src/Controls/src/Core` and `src/Core/src` |
-| 2 | `static` mutable collections (`Dictionary`/`List`/`HashSet`/`ConcurrentDictionary`) holding transients (exclude `ConditionalWeakTable` + type/registry caches) |
-| 3 | Instance subscriptions to `Application.Current` / singleton events whose teardown is conditional |
+| 0 | `static event` / static delegate fields in `src/Controls/src/Core` and `src/Core/src` |
+| 1 | `static` mutable collections (`Dictionary`/`List`/`HashSet`/`ConcurrentDictionary`) holding transients (exclude `ConditionalWeakTable` + type/registry caches) |
+| 2 | Shared `ResourceDictionary` / `MergedDictionaries` / resources-changed-listener plumbing |
+| 3 | Binding / `DynamicResource` / `AppThemeBinding` plumbing |
 | 4 | Shared bindable values (a collection or `Element` used as a resource) the element subscribes to via `CollectionChanged` / `PropertyChanged` without a weak proxy |
 | 5 | Animation / `IAnimationManager` / tweener / ticker plumbing |
-| 6 | Binding / `DynamicResource` / resources-changed-listener plumbing |
-| 7 | `AttachedCollection` / triggers / behaviors / VisualStateManager retention |
+| 6 | `AttachedCollection` / triggers / behaviors / VisualStateManager retention |
+| 7 | Shapes / Geometry / Brush change-notification (`StrokeDashArray`, `GradientStops`, Path geometry, …) |
 
-Treat the table as a *starting point*, not a cage — if the focus area is exhausted/covered,
-move to the next index. Over many runs the rotation covers the whole managed surface.
+Treat the table as a *starting point*, not a cage — if the focus area is exhausted (its leaks
+are already open `[leak-scan]` issues), move to the next index. Over many runs the rotation
+covers the whole managed surface. (Essentials sensors / `Connectivity` / `Battery` /
+`DeviceDisplay` are intentionally absent — they need a device and are out of scope for this
+no-emulator workflow.)
 
 ### Step 3.1 — Hunt
 
