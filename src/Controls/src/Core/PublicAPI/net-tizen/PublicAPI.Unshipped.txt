@@ -1,1 +1,2 @@
 #nullable enable
+Microsoft.Maui.Controls.IndicatorView.~IndicatorView() -> void
