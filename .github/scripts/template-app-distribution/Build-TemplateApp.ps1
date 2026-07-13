@@ -162,11 +162,9 @@ function New-MacCatalystDeveloperIdSideload {
         if ($UseNet11OrLater) { $devIdArgs += "-p:UseMonoRuntime=false" }
         if (-not [string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
             $devIdArgs += @("-r", $RuntimeIdentifier)
-        } elseif ($UseNet11OrLater) {
-            # %3B is an escaped ';'. MSBuild treats a literal ';' inside -p: as a property
-            # separator, so the value must be escaped to pass both RIDs as one property.
-            $devIdArgs += "-p:RuntimeIdentifiers=maccatalyst-x64%3Bmaccatalyst-arm64"
         }
+        # Empty RID => the SDK default universal (maccatalyst-x64;maccatalyst-arm64) Release build,
+        # so the notarized app launches natively on any Mac.
 
         Write-Host "Building Developer ID (notarizable) Mac Catalyst app for $($ProjectFile.FullName)"
         Invoke-DotNetPublish $devIdArgs "Mac Catalyst Developer ID publish"
@@ -436,12 +434,11 @@ switch ($Platform) {
 
         if (-not [string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
             $arguments += @("-r", $RuntimeIdentifier)
-        } elseif ($useNet11OrLater) {
-            # Universal build so the app runs natively on Apple Silicon instead of x86_64/Rosetta.
-            # %3B is an escaped ';' — MSBuild treats a literal ';' inside -p: as a property
-            # separator, so the value must be escaped to pass both RIDs as one property.
-            $arguments += "-p:RuntimeIdentifiers=maccatalyst-x64%3Bmaccatalyst-arm64"
         }
+        # When no RID is specified, the Mac Catalyst SDK defaults (in Release) to a universal
+        # RuntimeIdentifiers=maccatalyst-x64;maccatalyst-arm64 build (Xamarin.Shared.Sdk.props),
+        # so the app runs natively on Apple Silicon (no Rosetta) and on Intel. The previous
+        # "-r maccatalyst-x64" overrode that default and forced an x86_64/Rosetta-only build.
 
         if ($Publish) {
             $codesignKey = Assert-EnvironmentValue "APPLE_CODESIGN_KEY"
