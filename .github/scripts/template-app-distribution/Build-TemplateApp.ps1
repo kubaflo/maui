@@ -55,6 +55,24 @@ function Get-NewestBuildOutput([string]$Root, [string]$Filter, [switch]$Director
         Select-Object -First 1
 }
 
+function Compress-AppBundle([string]$AppBundlePath, [string]$ZipPath) {
+    # macOS .app bundles rely on symlinks (e.g. a framework's Versions/Current),
+    # executable permission bits, and embedded (ad-hoc) code signatures. PowerShell's
+    # Compress-Archive drops symlinks + exec bits and mangles the framework layout,
+    # which invalidates the code signature so the unzipped app is SIGKILL'd on launch
+    # with "Code Signature Invalid" / "Invalid Page". ditto preserves the bundle
+    # exactly (symlinks, perms, xattrs, bytes), keeping the app launchable.
+    Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue
+    if (Get-Command ditto -ErrorAction SilentlyContinue) {
+        & ditto -c -k --sequesterRsrc --keepParent $AppBundlePath $ZipPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "ditto failed to archive '$AppBundlePath' (exit code $LASTEXITCODE)."
+        }
+    } else {
+        Compress-Archive -Path $AppBundlePath -DestinationPath $ZipPath -Force
+    }
+}
+
 function Invoke-DotNetPublish([string[]]$Arguments, [string]$Description) {
     & dotnet @Arguments
     if ($LASTEXITCODE -ne 0) {
@@ -412,7 +430,7 @@ switch ($Platform) {
             $appBundle = Get-NewestBuildOutput $ProjectPath "*.app" -Directory
             if ($appBundle) {
                 $zipPath = Join-Path $OutputPath "$($appBundle.Name).zip"
-                Compress-Archive -Path $appBundle.FullName -DestinationPath $zipPath -Force
+                Compress-AppBundle $appBundle.FullName $zipPath
                 $package = Get-Item $zipPath
             }
         }
@@ -497,7 +515,7 @@ switch ($Platform) {
 
             if ($appBundle) {
                 $zipPath = Join-Path $OutputPath "$($appBundle.Name).zip"
-                Compress-Archive -Path $appBundle.FullName -DestinationPath $zipPath -Force
+                Compress-AppBundle $appBundle.FullName $zipPath
                 $package = Get-Item $zipPath
             }
         }
