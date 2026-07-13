@@ -36,12 +36,15 @@ App Store / Play account. The build script therefore emits two things:
   entitlement"`). Fixed by an optional ad-hoc-signed IPA.
 - **macOS** — the `.pkg` was Mac App Store signed and defaulted to `maccatalyst-x64` (Rosetta),
   so launching it outside the store gave `SIGKILL (Code Signature Invalid)` /
-  `Taskgated Invalid Signature`. Fixed by building a directly-launchable **arm64-native** `.app`
-  (runs natively on Apple Silicon — the reporting Mac was an M2 — with no Rosetta) plus an
-  optional Developer-ID-signed, notarized `.app`. (net11 Mac Catalyst can't publish the SDK's
-  default universal `maccatalyst-x64;maccatalyst-arm64` unattended — the multi-RID publish trips
-  `PublishReadyToRun couldn't be inferred` — so a single native RID is pinned; Intel Macs would
-  need a separate `maccatalyst-x64` build.)
+  `Taskgated Invalid Signature`. Fixed by shipping a directly-launchable **arm64-native** `.app`
+  that is (1) zipped with `ditto` so the framework symlinks, exec bits and signature survive the
+  round-trip, and (2) **re-signed ad-hoc from the inside out** so macOS 15+/26 accepts it (the
+  stock .NET linker-signed bundle is SIGKILL'd with "Invalid Page" — reproduced on macOS 26.5.2 /
+  M2). It runs natively on Apple Silicon (the reporting Mac was an M2) with no Rosetta. For a
+  seamless, notarized experience there is an optional Developer-ID-signed `.app`. (net11 Mac
+  Catalyst can't publish the SDK's default universal `maccatalyst-x64;maccatalyst-arm64`
+  unattended — the multi-RID publish trips `PublishReadyToRun couldn't be inferred` — so a single
+  native RID is pinned; Intel Macs would need a separate `maccatalyst-x64` build.)
 
 ## Install instructions for testers
 
@@ -53,9 +56,13 @@ App Store / Play account. The build script therefore emits two things:
 - **iOS** — the `.app` zip runs in the iOS **Simulator** (`xcrun simctl install booted App.app`).
   Installing on a physical device requires the ad-hoc IPA (secret-gated, below) and the device
   UDID to be registered in the ad-hoc profile.
-- **macOS** — the dry-run `.app` is unsigned; remove the quarantine flag before launching:
-  `xattr -dr com.apple.quarantine "MyApp.app"` then open it. A launch-anywhere build for other
-  users requires the notarized artifact (secret-gated, below).
+- **macOS** — the dry-run `.app` is **ad-hoc signed** (not notarized), so Gatekeeper blocks it on
+  first launch. Clear quarantine and open it:
+  `xattr -dr com.apple.quarantine "MyApp.app"` then double-click — **or** double-click, dismiss the
+  warning, and approve it under *System Settings → Privacy & Security → Open Anyway*. (The bundle is
+  re-signed ad-hoc during the build; without that, macOS 15+/26 SIGKILLs it at launch with "Code
+  Signature Invalid".) A double-click-clean, launch-anywhere build for other users requires the
+  notarized artifact (secret-gated, below).
 
 ## Secrets & variables
 

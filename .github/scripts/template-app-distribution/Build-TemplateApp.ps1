@@ -73,6 +73,30 @@ function Compress-AppBundle([string]$AppBundlePath, [string]$ZipPath) {
     }
 }
 
+function Repair-MacAppAdhocSignature([string]$AppBundlePath) {
+    # The .NET Mac Catalyst build leaves the app *linker-signed* ad-hoc, and its bundled
+    # native libraries (Contents/MonoBundle/*.dylib, e.g. libcoreclr.dylib) carry a mix of
+    # signatures. macOS 15+/26 on Apple Silicon refuses to launch that inconsistent bundle:
+    # dyld kills it at load with SIGKILL "Code Signature Invalid" / CODESIGNING "Invalid Page"
+    # (empirically reproduced on macOS 26.5.2 / M2 — the exact setup a tester reported).
+    # Re-signing every Mach-O ad-hoc from the inside out (loose dylibs first, since
+    # `codesign --deep` does not reach MonoBundle, then a deep sign of the whole app for the
+    # main executable + embedded framework) gives all components a consistent, valid ad-hoc
+    # signature. The app then launches once the tester clears quarantine ("Open Anyway").
+    # This is unsigned/ad-hoc, so Gatekeeper still prompts; the notarized Developer ID path
+    # (secret-gated, below) is the seamless option.
+    if (-not (Get-Command codesign -ErrorAction SilentlyContinue)) {
+        Write-Warning "codesign not available; skipping ad-hoc re-sign of '$AppBundlePath'."
+        return
+    }
+    Get-ChildItem -Path $AppBundlePath -Recurse -Include *.dylib, *.so -File -ErrorAction SilentlyContinue |
+        ForEach-Object { & codesign --force --sign - $_.FullName 2>$null }
+    & codesign --force --deep --sign - $AppBundlePath
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Ad-hoc re-sign of '$AppBundlePath' failed (exit $LASTEXITCODE); the app may not launch until it is signed."
+    }
+}
+
 function Invoke-DotNetPublish([string[]]$Arguments, [string]$Description) {
     & dotnet @Arguments
     if ($LASTEXITCODE -ne 0) {
@@ -515,6 +539,7 @@ switch ($Platform) {
 
             if ($appBundle) {
                 $zipPath = Join-Path $OutputPath "$($appBundle.Name).zip"
+                Repair-MacAppAdhocSignature $appBundle.FullName
                 Compress-AppBundle $appBundle.FullName $zipPath
                 $package = Get-Item $zipPath
             }
