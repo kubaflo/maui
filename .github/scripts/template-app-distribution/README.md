@@ -23,7 +23,7 @@ App Store / Play account. The build script therefore emits two things:
 | **Android** | Debug-signed **APK** (installs via `adb install` / file manager) | `.aab` → Google Play | Release-signed **APK** |
 | **Windows** | **Self-contained** unpackaged zip (no runtime install needed) | same zip | same zip |
 | **iOS** | `.app` zip (Simulator) | App Store `.ipa` → TestFlight | ad-hoc `.ipa` *(only if the ad-hoc secret is set — see below)* |
-| **macOS (Mac Catalyst)** | Universal `.app` zip | Mac App Store `.pkg` → TestFlight | notarized `.app` zip *(only if the Developer ID secrets are set — see below)* |
+| **macOS (Mac Catalyst)** | Native **arm64** `.app` zip (Apple Silicon) | Mac App Store `.pkg` → TestFlight | notarized `.app` zip *(only if the Developer ID secrets are set — see below)* |
 
 ### Why the previous artifacts failed to install
 
@@ -36,8 +36,12 @@ App Store / Play account. The build script therefore emits two things:
   entitlement"`). Fixed by an optional ad-hoc-signed IPA.
 - **macOS** — the `.pkg` was Mac App Store signed and defaulted to `maccatalyst-x64` (Rosetta),
   so launching it outside the store gave `SIGKILL (Code Signature Invalid)` /
-  `Taskgated Invalid Signature`. Fixed by a universal build plus an optional
-  Developer-ID-signed, notarized `.app`.
+  `Taskgated Invalid Signature`. Fixed by building a directly-launchable **arm64-native** `.app`
+  (runs natively on Apple Silicon — the reporting Mac was an M2 — with no Rosetta) plus an
+  optional Developer-ID-signed, notarized `.app`. (net11 Mac Catalyst can't publish the SDK's
+  default universal `maccatalyst-x64;maccatalyst-arm64` unattended — the multi-RID publish trips
+  `PublishReadyToRun couldn't be inferred` — so a single native RID is pinned; Intel Macs would
+  need a separate `maccatalyst-x64` build.)
 
 ## Install instructions for testers
 

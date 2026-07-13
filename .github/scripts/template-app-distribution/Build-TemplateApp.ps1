@@ -162,9 +162,11 @@ function New-MacCatalystDeveloperIdSideload {
         if ($UseNet11OrLater) { $devIdArgs += "-p:UseMonoRuntime=false" }
         if (-not [string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
             $devIdArgs += @("-r", $RuntimeIdentifier)
+        } elseif ($UseNet11OrLater) {
+            # Match the dry-run: pin arm64-native for net11+ (the universal multi-RID publish
+            # trips PublishReadyToRun inference). arm64 runs natively on Apple Silicon Macs.
+            $devIdArgs += @("-r", "maccatalyst-arm64")
         }
-        # Empty RID => the SDK default universal (maccatalyst-x64;maccatalyst-arm64) Release build,
-        # so the notarized app launches natively on any Mac.
 
         Write-Host "Building Developer ID (notarizable) Mac Catalyst app for $($ProjectFile.FullName)"
         Invoke-DotNetPublish $devIdArgs "Mac Catalyst Developer ID publish"
@@ -434,11 +436,14 @@ switch ($Platform) {
 
         if (-not [string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
             $arguments += @("-r", $RuntimeIdentifier)
+        } elseif ($useNet11OrLater) {
+            # net11+ Mac Catalyst cannot publish the SDK's default universal
+            # RuntimeIdentifiers=maccatalyst-x64;maccatalyst-arm64 unattended: the multi-RID
+            # publish trips NETSDK "PublishReadyToRun couldn't be inferred". Pin a single RID.
+            # arm64 (the original forced x64) runs NATIVELY on Apple Silicon with no Rosetta,
+            # which is exactly what the crashing M2 (Mac14,7) tester needs.
+            $arguments += @("-r", "maccatalyst-arm64")
         }
-        # When no RID is specified, the Mac Catalyst SDK defaults (in Release) to a universal
-        # RuntimeIdentifiers=maccatalyst-x64;maccatalyst-arm64 build (Xamarin.Shared.Sdk.props),
-        # so the app runs natively on Apple Silicon (no Rosetta) and on Intel. The previous
-        # "-r maccatalyst-x64" overrode that default and forced an x86_64/Rosetta-only build.
 
         if ($Publish) {
             $codesignKey = Assert-EnvironmentValue "APPLE_CODESIGN_KEY"
