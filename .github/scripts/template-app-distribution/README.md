@@ -31,9 +31,14 @@ App Store / Play account. The build script therefore emits two things:
   so the ZIP had nothing to sideload. Fixed by also building an installable APK.
 - **Windows** — published framework-dependent, so it needed the exact .NET preview desktop
   runtime and still showed the "install .NET" screen. Fixed with `-p:SelfContained=true`.
-- **iOS** — the IPA was signed with the App Store / TestFlight profile, which Apple refuses to
-  install directly (`0xe800801f "Attempted to install a Beta profile without the proper
-  entitlement"`). Fixed by an optional ad-hoc-signed IPA.
+- **iOS** — two problems. (1) The publish IPA was signed with the App Store / TestFlight profile,
+  which Apple refuses to install directly (`0xe800801f "Attempted to install a Beta profile without
+  the proper entitlement"`) — fixed by an optional ad-hoc-signed IPA (secret-gated). (2) The dry-run
+  `.app` was an unsigned *device* (`ios-arm64`, iPhoneOS) build that installs nowhere: it can't go on
+  hardware (unsigned) and won't launch in the Simulator (device platform — launch is denied). Fixed by
+  building an **arm64 iOS Simulator** app (`dotnet build -r iossimulator-arm64`; `dotnet publish`
+  rejects simulator RIDs) and ad-hoc re-signing it so the Simulator (which enforces code signing on
+  macOS 15+/26) actually launches it.
 - **macOS** — the `.pkg` was Mac App Store signed and defaulted to `maccatalyst-x64` (Rosetta),
   so launching it outside the store gave `SIGKILL (Code Signature Invalid)` /
   `Taskgated Invalid Signature`. Fixed by shipping a directly-launchable **arm64-native** `.app`
@@ -53,9 +58,11 @@ App Store / Play account. The build script therefore emits two things:
   device/emulator.
 - **Windows** — unzip and run the `.exe`. Because the app is self-contained no .NET runtime
   install is required. (SmartScreen may warn for an unsigned app — *More info → Run anyway*.)
-- **iOS** — the `.app` zip runs in the iOS **Simulator** (`xcrun simctl install booted App.app`).
-  Installing on a physical device requires the ad-hoc IPA (secret-gated, below) and the device
-  UDID to be registered in the ad-hoc profile.
+- **iOS** — unzip and run the `.app` in the iOS **Simulator**:
+  `xcrun simctl install booted MyApp.app && xcrun simctl launch booted <bundle-id>`. The dry-run
+  build targets the **arm64 Simulator** (Apple Silicon) and is ad-hoc re-signed so it launches;
+  the Simulator accepts ad-hoc signatures directly. Installing on a **physical device** requires the
+  ad-hoc IPA (secret-gated, below) with the device UDID registered in the ad-hoc profile.
 - **macOS** — the dry-run `.app` is **ad-hoc signed** (not notarized), so Gatekeeper blocks it on
   first launch. Clear quarantine and open it:
   `xattr -dr com.apple.quarantine "MyApp.app"` then double-click — **or** double-click, dismiss the
