@@ -73,18 +73,19 @@ function Compress-AppBundle([string]$AppBundlePath, [string]$ZipPath) {
     }
 }
 
-function Repair-MacAppAdhocSignature([string]$AppBundlePath) {
-    # The .NET Mac Catalyst build leaves the app *linker-signed* ad-hoc, and its bundled
-    # native libraries (Contents/MonoBundle/*.dylib, e.g. libcoreclr.dylib) carry a mix of
-    # signatures. macOS 15+/26 on Apple Silicon refuses to launch that inconsistent bundle:
-    # dyld kills it at load with SIGKILL "Code Signature Invalid" / CODESIGNING "Invalid Page"
-    # (empirically reproduced on macOS 26.5.2 / M2 — the exact setup a tester reported).
+function Repair-AppleAdhocSignature([string]$AppBundlePath) {
+    # The .NET iOS-Simulator / Mac Catalyst build leaves the app *linker-signed* ad-hoc
+    # (flags 0x20002), while its bundled native libraries (*.dylib/*.so — e.g. libcoreclr,
+    # libxamarin-dotnet-coreclr) carry a mix of signatures. macOS 15+/26 and the modern iOS
+    # Simulator refuse to launch that inconsistent bundle: dyld kills it at load with
+    # CODESIGNING "Invalid Page" / SIGKILL "Code Signature Invalid" (empirically reproduced
+    # on macOS 26.5.2 / M2 for both a Mac Catalyst .app launch and a Simulator install+launch).
     # Re-signing every Mach-O ad-hoc from the inside out (loose dylibs first, since
-    # `codesign --deep` does not reach MonoBundle, then a deep sign of the whole app for the
-    # main executable + embedded framework) gives all components a consistent, valid ad-hoc
-    # signature. The app then launches once the tester clears quarantine ("Open Anyway").
-    # This is unsigned/ad-hoc, so Gatekeeper still prompts; the notarized Developer ID path
-    # (secret-gated, below) is the seamless option.
+    # `codesign --deep` does not reach every nested lib, then a deep sign of the whole app)
+    # gives all components a consistent, valid ad-hoc signature (flags 0x2) so the app
+    # launches. It is still ad-hoc (not notarized): the Simulator accepts ad-hoc directly, and
+    # a Mac tester clears quarantine / uses "Open Anyway". The notarized Developer ID path
+    # (secret-gated, below) is the seamless option for a direct-download macOS launch.
     if (-not (Get-Command codesign -ErrorAction SilentlyContinue)) {
         Write-Warning "codesign not available; skipping ad-hoc re-sign of '$AppBundlePath'."
         return
@@ -475,6 +476,7 @@ switch ($Platform) {
             $appBundle = Get-NewestBuildOutput $ProjectPath "*.app" -Directory
             if ($appBundle) {
                 $zipPath = Join-Path $OutputPath "$($appBundle.Name).zip"
+                Repair-AppleAdhocSignature $appBundle.FullName
                 Compress-AppBundle $appBundle.FullName $zipPath
                 $package = Get-Item $zipPath
             }
@@ -560,7 +562,7 @@ switch ($Platform) {
 
             if ($appBundle) {
                 $zipPath = Join-Path $OutputPath "$($appBundle.Name).zip"
-                Repair-MacAppAdhocSignature $appBundle.FullName
+                Repair-AppleAdhocSignature $appBundle.FullName
                 Compress-AppBundle $appBundle.FullName $zipPath
                 $package = Get-Item $zipPath
             }
