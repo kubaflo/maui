@@ -163,7 +163,9 @@ function New-MacCatalystDeveloperIdSideload {
         if (-not [string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
             $devIdArgs += @("-r", $RuntimeIdentifier)
         } elseif ($UseNet11OrLater) {
-            $devIdArgs += "-p:RuntimeIdentifiers=maccatalyst-x64;maccatalyst-arm64"
+            # %3B is an escaped ';'. MSBuild treats a literal ';' inside -p: as a property
+            # separator, so the value must be escaped to pass both RIDs as one property.
+            $devIdArgs += "-p:RuntimeIdentifiers=maccatalyst-x64%3Bmaccatalyst-arm64"
         }
 
         Write-Host "Building Developer ID (notarizable) Mac Catalyst app for $($ProjectFile.FullName)"
@@ -436,7 +438,9 @@ switch ($Platform) {
             $arguments += @("-r", $RuntimeIdentifier)
         } elseif ($useNet11OrLater) {
             # Universal build so the app runs natively on Apple Silicon instead of x86_64/Rosetta.
-            $arguments += "-p:RuntimeIdentifiers=maccatalyst-x64;maccatalyst-arm64"
+            # %3B is an escaped ';' — MSBuild treats a literal ';' inside -p: as a property
+            # separator, so the value must be escaped to pass both RIDs as one property.
+            $arguments += "-p:RuntimeIdentifiers=maccatalyst-x64%3Bmaccatalyst-arm64"
         }
 
         if ($Publish) {
