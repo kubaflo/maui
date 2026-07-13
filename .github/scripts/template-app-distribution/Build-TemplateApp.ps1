@@ -399,22 +399,22 @@ switch ($Platform) {
     }
 
     "ios" {
-        $arguments = @(
-            "publish", $projectFile.FullName,
-            "-f", $TargetFramework,
-            "-c", $Configuration,
-            "-r", $RuntimeIdentifier,
-            "-p:ApplicationDisplayVersion=$AppDisplayVersion",
-            "-p:ApplicationVersion=$AppBuildNumber",
-            "-p:ValidateXcodeVersion=false"
-        ) + $binlogArguments
-
-        if (Test-IsNet11OrLater $TargetFramework) {
-            $arguments += "-p:UseMonoRuntime=false"
-            $arguments = Add-NativeAotArguments $arguments
-        }
-
         if ($Publish) {
+            $arguments = @(
+                "publish", $projectFile.FullName,
+                "-f", $TargetFramework,
+                "-c", $Configuration,
+                "-r", $RuntimeIdentifier,
+                "-p:ApplicationDisplayVersion=$AppDisplayVersion",
+                "-p:ApplicationVersion=$AppBuildNumber",
+                "-p:ValidateXcodeVersion=false"
+            ) + $binlogArguments
+
+            if (Test-IsNet11OrLater $TargetFramework) {
+                $arguments += "-p:UseMonoRuntime=false"
+                $arguments = Add-NativeAotArguments $arguments
+            }
+
             $codesignKey = Assert-EnvironmentValue "IOS_CODESIGN_KEY"
             $codesignProvision = Assert-EnvironmentValue "IOS_CODESIGN_PROVISION"
             $arguments += @(
@@ -424,19 +424,10 @@ switch ($Platform) {
                 "-p:CodesignProvision=$codesignProvision",
                 "-o", $OutputPath
             )
-        } else {
-            $arguments += @(
-                "-p:_RequireCodeSigning=false",
-                "-p:EnableCodeSigning=false",
-                "-p:CodesignKey=-",
-                "-p:BuildIpa=false"
-            )
-        }
 
-        Write-Host "Building iOS package for $($projectFile.FullName)"
-        Invoke-DotNetPublish $arguments "iOS publish"
+            Write-Host "Building iOS package for $($projectFile.FullName)"
+            Invoke-DotNetPublish $arguments "iOS publish"
 
-        if ($Publish) {
             $package = Get-NewestBuildOutput $ProjectPath "*.ipa"
             if (-not $package) {
                 $package = Get-NewestBuildOutput $OutputPath "*.ipa"
@@ -451,6 +442,30 @@ switch ($Platform) {
                 -AppDisplayVersion $AppDisplayVersion `
                 -AppBuildNumber $AppBuildNumber
         } else {
+            # A dry-run has no signing secrets, so an unsigned *device* (ios-arm64,
+            # iPhoneOS) .app can neither install on hardware nor launch in the Simulator.
+            # Build a Simulator app instead so testers can actually run it. `dotnet publish`
+            # rejects simulator RIDs, so use `dotnet build` + iossimulator-arm64 (macos-15
+            # runners and Apple Silicon testers are arm64). Physical-device installs require
+            # the secret-gated ad-hoc IPA path above.
+            $simulatorRuntimeIdentifier = "iossimulator-arm64"
+            $arguments = @(
+                "build", $projectFile.FullName,
+                "-f", $TargetFramework,
+                "-c", $Configuration,
+                "-r", $simulatorRuntimeIdentifier,
+                "-p:ApplicationDisplayVersion=$AppDisplayVersion",
+                "-p:ApplicationVersion=$AppBuildNumber",
+                "-p:ValidateXcodeVersion=false",
+                "-p:_RequireCodeSigning=false",
+                "-p:EnableCodeSigning=false",
+                "-p:CodesignKey=-",
+                "-p:BuildIpa=false"
+            ) + $binlogArguments
+
+            Write-Host "Building iOS Simulator app for $($projectFile.FullName)"
+            Invoke-DotNetPublish $arguments "iOS simulator build"
+
             $appBundle = Get-NewestBuildOutput $ProjectPath "*.app" -Directory
             if ($appBundle) {
                 $zipPath = Join-Path $OutputPath "$($appBundle.Name).zip"
