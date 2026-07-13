@@ -463,6 +463,12 @@ switch ($Platform) {
                 "-p:BuildIpa=false"
             ) + $binlogArguments
 
+            if (Test-IsNet11OrLater $TargetFramework) {
+                # net11+ iOS can't build with Mono (NETSDK1242). Use CoreCLR (JIT in the
+                # Simulator); NativeAOT is device-only and isn't needed for a dry-run.
+                $arguments += "-p:UseMonoRuntime=false"
+            }
+
             Write-Host "Building iOS Simulator app for $($projectFile.FullName)"
             Invoke-DotNetPublish $arguments "iOS simulator build"
 
