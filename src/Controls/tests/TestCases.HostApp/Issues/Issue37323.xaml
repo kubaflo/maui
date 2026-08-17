@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue37323">
+    <ContentView AutomationId="Issue37323Window">
+        <Grid RowDefinitions="90,*"
+              ColumnDefinitions="70,*,70">
+            <Label Grid.ColumnSpan="3"
+                   AutomationId="TopTestArea"
+                   Text="TOP TEST AREA"
+                   BackgroundColor="Red"
+                   TextColor="Black"
+                   FontSize="22"
+                   HorizontalTextAlignment="Center"
+                   VerticalTextAlignment="Center" />
+
+            <Label Grid.Row="1"
+                   AutomationId="LeftColumn"
+                   Text="L"
+                   BackgroundColor="Green"
+                   TextColor="White"
+                   HorizontalTextAlignment="Center"
+                   VerticalTextAlignment="Center" />
+
+            <ScrollView x:Name="ScrollHost"
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        AutomationId="ScrollHost"
+                        Padding="{Binding DynamicPadding}">
+                <VerticalStackLayout Spacing="12">
+                    <Label AutomationId="ContentStart"
+                           Text="CONTENT START"
+                           BackgroundColor="LightGray"
+                           FontSize="18"
+                           HeightRequest="44"
+                           VerticalTextAlignment="Center" />
+                    <Label x:Name="TransitionStatus"
+                           AutomationId="TransitionStatus"
+                           Text="NOT STARTED"
+                           FontAttributes="Bold"
+                           FontSize="18" />
+                    <Button AutomationId="ApplyPaddingButton"
+                            Text="Padding"
+                            Clicked="OnApplyPaddingClicked" />
+                    <Button AutomationId="CheckPaddingButton"
+                            Text="Check padding"
+                            Clicked="OnCheckPaddingClicked" />
+                    <Label Text="Test Item 1"
+                           BackgroundColor="LightGray"
+                           HeightRequest="90"
+                           FontSize="22"
+                           VerticalTextAlignment="Center" />
+                    <Label Text="Test Item 2"
+                           BackgroundColor="LightGray"
+                           HeightRequest="90"
+                           FontSize="22"
+                           VerticalTextAlignment="Center" />
+                    <Label Text="Test Item 3"
+                           BackgroundColor="LightGray"
+                           HeightRequest="90"
+                           FontSize="22"
+                           VerticalTextAlignment="Center" />
+                    <Label Text="Test Item 4"
+                           BackgroundColor="LightGray"
+                           HeightRequest="90"
+                           FontSize="22"
+                           VerticalTextAlignment="Center" />
+                    <Label Text="Test Item 5"
+                           BackgroundColor="LightGray"
+                           HeightRequest="90"
+                           FontSize="22"
+                           VerticalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <Label Grid.Row="1"
+                   Grid.Column="2"
+                   Text="R"
+                   BackgroundColor="Orange"
+                   TextColor="White"
+                   HorizontalTextAlignment="Center"
+                   VerticalTextAlignment="Center" />
+        </Grid>
+    </ContentView>
+</ContentPage>
