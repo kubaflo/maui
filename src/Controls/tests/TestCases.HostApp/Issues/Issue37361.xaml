@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue37361">
+    <Grid RowDefinitions="Auto,Auto,*,Auto"
+          Padding="16"
+          RowSpacing="12">
+        <Label Text="Pull down on the empty list"
+               FontAttributes="Bold"
+               FontSize="18" />
+
+        <Label x:Name="RefreshCountLabel"
+               Grid.Row="1"
+               AutomationId="RefreshCountLabel"
+               Text="Refreshes: 0" />
+
+        <RefreshView x:Name="RefreshControl"
+                     Grid.Row="2">
+            <CollectionView x:Name="EmptyCollection"
+                            AutomationId="EmptyCollection">
+                <CollectionView.EmptyView>
+                    <ContentView>
+                        <Label AutomationId="EmptyStateLabel"
+                               Text="No items"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </ContentView>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Label Text="{Binding .}" />
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+
+        <VerticalStackLayout Grid.Row="3"
+                             Spacing="8">
+            <Button AutomationId="CheckEmptyRefreshButton"
+                    Text="Check empty refresh"
+                    Clicked="OnCheckEmptyRefreshClicked" />
+            <Label x:Name="StatusLabel"
+                   AutomationId="StatusLabel"
+                   Text="Check pending" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>
