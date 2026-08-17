@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue26158">
+    <Grid Padding="24"
+          RowDefinitions="Auto,Auto,Auto"
+          RowSpacing="16"
+          VerticalOptions="Center">
+        <Label Text="Tap the Entry. The first three characters should remain selected."
+               HorizontalTextAlignment="Center" />
+        <Entry x:Name="ReproEntry"
+               Grid.Row="1"
+               AutomationId="SelectionEntry"
+               Text="Microsoft Maui Entry"
+               Focused="OnEntryFocused"
+               PropertyChanged="OnEntryPropertyChanged" />
+        <Label x:Name="ResultLabel"
+               Grid.Row="2"
+               AutomationId="SelectionResult"
+               Text="FocusCallbackRan=False;IsFocused=False;Text=Microsoft Maui Entry;ManagedSelectionLength=-1"
+               HorizontalTextAlignment="Center" />
+    </Grid>
+</ContentPage>
