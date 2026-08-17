@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell
+	x:Class="Maui.Controls.Sample.Issues.Issue35767"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+	FlyoutBehavior="Disabled">
+	<ShellContent Title="ShowsResults">
+		<local:Issue35767Page Title="ShowsResults">
+			<Shell.SearchHandler>
+				<local:Issue35767SearchHandler
+					x:Name="IssueSearchHandler"
+					AutomationId="IssueSearchHandler"
+					Placeholder="Enter alpha or beta"
+					ShowsResults="True">
+					<local:Issue35767SearchHandler.ItemTemplate>
+						<DataTemplate>
+							<Label
+								AutomationId="SearchResult"
+								Padding="16"
+								Text="{Binding}" />
+						</DataTemplate>
+					</local:Issue35767SearchHandler.ItemTemplate>
+				</local:Issue35767SearchHandler>
+			</Shell.SearchHandler>
+
+			<VerticalStackLayout
+				Padding="24"
+				Spacing="16">
+				<Label
+					FontAttributes="Bold"
+					FontSize="22"
+					Text="SearchHandler ShowsResults" />
+				<Label Text="First select Alpha Result while results are enabled. Then disable results and search for beta." />
+				<Button
+					x:Name="DisableResultsButton"
+					AutomationId="DisableResultsButton"
+					Clicked="OnDisableResultsClicked"
+					Text="ShowsResults = False" />
+				<Label
+					x:Name="TransitionStatusLabel"
+					AutomationId="TransitionStatus"
+					FontAttributes="Bold"
+					Text="ShowsResults transition pending" />
+				<Label
+					x:Name="QueryStatusLabel"
+					AutomationId="QueryStatus"
+					Text="Query not processed" />
+			</VerticalStackLayout>
+		</local:Issue35767Page>
+	</ShellContent>
+</Shell>
