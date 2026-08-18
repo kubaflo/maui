@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue35301">
+    <Grid Padding="20"
+          RowDefinitions="Auto,Auto,*"
+          RowSpacing="12">
+        <Label Grid.Row="0"
+               x:Name="NativeStateLabel"
+               AutomationId="Issue35301NativeState"
+               Text="Waiting for native items" />
+        <Label Grid.Row="1"
+               x:Name="SelectionStateLabel"
+               AutomationId="Issue35301SelectionState"
+               Text="Selected: none" />
+        <CollectionView Grid.Row="2"
+                        x:Name="FruitCollection"
+                        AutomationId="Issue35301CollectionView"
+                        Loaded="OnCollectionLoaded"
+                        SelectionChanged="OnSelectionChanged"
+                        SelectionMode="Single">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Label FontSize="24"
+                           Text="{Binding .}" />
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
