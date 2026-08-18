@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       x:Class="Maui.Controls.Sample.Issues.Issue35760">
+    <Tab>
+        <ShellContent x:Name="FirstShellContent"
+                      Title="Page 1">
+            <ContentPage>
+                <StackLayout x:Name="FirstPageLayout">
+                    <ListView>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <ViewCell>
+                                    <ViewCell.ContextActions>
+                                        <MenuItem Text="View" />
+                                    </ViewCell.ContextActions>
+                                    <Label AutomationId="{Binding .}"
+                                           Text="{Binding .}" />
+                                </ViewCell>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                        <ListView.ItemsSource>
+                            <x:Array Type="{x:Type x:String}">
+                                <x:String>Item1</x:String>
+                                <x:String>Item2</x:String>
+                            </x:Array>
+                        </ListView.ItemsSource>
+                    </ListView>
+                    <Button AutomationId="NavigateButton"
+                            Clicked="OnNavigateClicked"
+                            Text="Go to page2" />
+                    <Label x:Name="NavigationStateLabel"
+                           AutomationId="NavigationState"
+                           Text="-1" />
+                </StackLayout>
+            </ContentPage>
+        </ShellContent>
+
+        <ShellContent Title="Page 2"
+                      Route="Page2">
+            <ContentPage>
+                <StackLayout x:Name="SecondPageLayout">
+                    <Label AutomationId="PageTwoContent"
+                           Text="Page 2 content" />
+                </StackLayout>
+            </ContentPage>
+        </ShellContent>
+    </Tab>
+</Shell>
