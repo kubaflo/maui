@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="Maui.Controls.Sample.Issues.Issue36298">
+	<Grid Padding="24"
+		  RowDefinitions="Auto,Auto,Auto,*"
+		  RowSpacing="12">
+		<Label x:Name="ReattachmentStatus"
+			   Grid.Row="0"
+			   AutomationId="ReattachmentStatus"
+			   Text="Waiting for View 1" />
+		<HorizontalStackLayout Grid.Row="1"
+							   Spacing="12">
+			<Button AutomationId="SwitchToViewTwoButton"
+					Clicked="OnSwitchToViewTwoClicked"
+					Text="Switch to View 2" />
+			<Button AutomationId="SwitchBackToViewOneButton"
+					Clicked="OnSwitchBackToViewOneClicked"
+					Text="Switch back to View 1" />
+		</HorizontalStackLayout>
+		<Label Grid.Row="2"
+			   Text="View 1 is initially attached. Switch to View 2, then back to View 1." />
+		<ContentPresenter x:Name="ContentHost"
+						  Grid.Row="3"
+						  AutomationId="ContentHost" />
+	</Grid>
+</ContentPage>
