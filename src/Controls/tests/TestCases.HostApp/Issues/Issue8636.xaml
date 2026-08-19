@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue8636"
+             AutomationId="Issue8636Page">
+    <Grid Padding="24"
+          RowDefinitions="Auto,Auto,Auto,Auto,*"
+          RowSpacing="12">
+        <Label Grid.Row="0"
+               Text="Nested CollectionView growth"
+               FontAttributes="Bold"
+               FontSize="20" />
+
+        <HorizontalStackLayout Grid.Row="1"
+                               Spacing="12">
+            <Button x:Name="GrowButton"
+                    AutomationId="GrowButton"
+                    Text="Grow inner collection"
+                    IsEnabled="False"
+                    Clicked="OnGrowClicked" />
+            <Button x:Name="CheckButton"
+                    AutomationId="CheckButton"
+                    Text="Check outer item"
+                    IsEnabled="False"
+                    Clicked="OnCheckClicked" />
+        </HorizontalStackLayout>
+
+        <Label x:Name="StateLabel"
+               Grid.Row="2"
+               AutomationId="StateLabel"
+               Text="s=1;m=-1;loaded=False" />
+
+        <Label x:Name="ResultLabel"
+               Grid.Row="3"
+               AutomationId="ResultLabel"
+               Text="checked=false;s=-1;m=-1"
+               FontAttributes="Bold" />
+
+        <CollectionView x:Name="OuterCollectionView"
+                        Grid.Row="4"
+                        AutomationId="OuterCollectionView"
+                        ItemsSource="{Binding OuterItems}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <CollectionView AutomationId="InnerCollectionView"
+                                    ItemsSource="{Binding InnerItems}"
+                                    Loaded="OnInnerCollectionLoaded"
+                                    SizeChanged="OnInnerCollectionSizeChanged">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Label Text="{Binding .}" />
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
