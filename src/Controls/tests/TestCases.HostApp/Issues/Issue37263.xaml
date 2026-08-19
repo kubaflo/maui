@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="Maui.Controls.Sample.Issues.Issue37263"
+			 AutomationId="Issue37263Page">
+	<ScrollView x:Name="TestScrollView"
+				AutomationId="Issue37263ScrollView"
+				SafeAreaEdges="Default">
+		<Grid x:Name="TestGrid"
+			  AutomationId="Issue37263Grid"
+			  BackgroundColor="White"
+			  ColumnDefinitions="60,*,60"
+			  RowDefinitions="70,*"
+			  ColumnSpacing="0"
+			  RowSpacing="0"
+			  MinimumHeightRequest="420">
+			<BoxView Grid.Row="0"
+					 Grid.ColumnSpan="3"
+					 Color="Red" />
+			<Label Grid.Row="0"
+				   Grid.ColumnSpan="3"
+				   Text="TOP TEST AREA: This should move in/out of notch/status bar area when safe area is toggled"
+				   FontAttributes="Bold"
+				   FontSize="18"
+				   HorizontalTextAlignment="Center"
+				   VerticalTextAlignment="Center" />
+
+			<BoxView Grid.Row="1"
+					 Grid.Column="0"
+					 AutomationId="Issue37263LeftMarker"
+					 Color="Green" />
+			<BoxView Grid.Row="1"
+					 Grid.Column="2"
+					 AutomationId="Issue37263RightMarker"
+					 Color="Orange" />
+
+			<VerticalStackLayout Grid.Row="1"
+								 Grid.Column="1"
+								 Padding="20"
+								 Spacing="10">
+				<Label x:Name="ModeLabel"
+					   AutomationId="Issue37263Mode"
+					   Text="SafeAreaEdges: Default"
+					   FontSize="20" />
+				<Label Text="Insets: framework managed" />
+				<Label x:Name="LayoutStatusLabel"
+					   AutomationId="Issue37263LayoutStatus"
+					   Text="Generation=-1;Mode=Pending;InsetLeft=-1;InsetRight=-1"
+					   FontAttributes="Bold"
+					   FontSize="12" />
+				<Button Text="Options" />
+				<HorizontalStackLayout Spacing="8">
+					<Button Text="None" />
+					<Button Text="All" />
+					<Button AutomationId="Issue37263ContainerButton"
+							Text="Container"
+							Clicked="OnContainerClicked" />
+				</HorizontalStackLayout>
+				<HorizontalStackLayout Spacing="8">
+					<Button Text="SoftInput" />
+					<Button Text="Default" />
+				</HorizontalStackLayout>
+				<Button Text="Scroll to Bottom"
+						HorizontalOptions="Fill" />
+			</VerticalStackLayout>
+		</Grid>
+	</ScrollView>
+</ContentPage>
