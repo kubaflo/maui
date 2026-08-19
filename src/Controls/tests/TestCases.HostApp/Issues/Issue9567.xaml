@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue9567">
+    <Grid>
+        <CollectionView x:Name="ItemsCollectionView"
+                        AutomationId="Issue9567CollectionView"
+                        ItemsSource="{Binding Data}"
+                        SelectionChanged="OnSelectionChanged"
+                        SelectionMode="Single">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="5"
+                          RowSpacing="0"
+                          BackgroundColor="Yellow">
+                        <Frame CornerRadius="40"
+                               BorderColor="Gray"
+                               BackgroundColor="Green">
+                            <HorizontalStackLayout Margin="3">
+                                <Label AutomationId="{Binding ItemAutomationId}"
+                                       Text="{Binding Name}"
+                                       BackgroundColor="Gray" />
+                                <Label Text="{Binding Car.Make}"
+                                       Margin="5,0,5,0" />
+                                <Button AutomationId="{Binding DeleteAutomationId}"
+                                        Text="delete"
+                                        Margin="10,0,0,0"
+                                        BackgroundColor="Red"
+                                        Command="{Binding Path=BindingContext.RemoveEquipmentCommand, Source={x:Reference ItemsCollectionView}}"
+                                        CommandParameter="{Binding .}" />
+                            </HorizontalStackLayout>
+                        </Frame>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Label x:Name="ItemCountLabel"
+               AutomationId="Issue9567ItemCount"
+               Text="Issue9567 item count: 4"
+               BackgroundColor="White"
+               HorizontalOptions="Start"
+               VerticalOptions="End"
+               InputTransparent="True" />
+        <Label x:Name="SelectionCallbackCountLabel"
+               AutomationId="Issue9567SelectionCallbackCount"
+               Text="-1"
+               BackgroundColor="White"
+               HorizontalOptions="Center"
+               VerticalOptions="End"
+               InputTransparent="True" />
+        <Label x:Name="SelectedIdentityLabel"
+               AutomationId="Issue9567SelectedIdentity"
+               Text="none"
+               BackgroundColor="White"
+               HorizontalOptions="End"
+               VerticalOptions="End"
+               InputTransparent="True" />
+    </Grid>
+</ContentPage>
