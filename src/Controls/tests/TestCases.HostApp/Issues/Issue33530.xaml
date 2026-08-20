@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="Maui.Controls.Sample.Issues.Issue33530"
+			 BackgroundColor="#F1F5F9">
+	<ContentPage.Resources>
+		<DataTemplate x:Key="InitialBorderTemplate">
+			<ContentPage x:Name="InitialModalPage"
+						 BackgroundColor="Transparent">
+				<Border x:Name="InitialBorder"
+						AutomationId="InitialBorder"
+						WidthRequest="170"
+						HeightRequest="300"
+						Padding="12"
+						HorizontalOptions="Start"
+						VerticalOptions="Center"
+						Rotation="-90"
+						BackgroundColor="#FFF2A8"
+						Stroke="#8A4B08"
+						StrokeThickness="4"
+						SizeChanged="OnInitialBorderSizeChanged">
+					<Border.Shadow>
+						<Shadow Brush="Black"
+								Offset="18,18"
+								Radius="10"
+								Opacity="0.8" />
+					</Border.Shadow>
+					<VerticalStackLayout x:Name="InitialContent"
+										 Spacing="8">
+						<BoxView x:Name="InitialColorBand"
+								 AutomationId="InitialColorBand"
+								 HeightRequest="70"
+								 Color="#F97316" />
+						<Label x:Name="InitialEdgeLabel"
+							   AutomationId="InitialEdgeLabel"
+							   Text="Left edge should touch screen"
+							   HorizontalTextAlignment="Center"
+							   TextColor="#3F2305" />
+						<Label x:Name="InitialStatus"
+							   AutomationId="InitialStatus"
+							   Text="INITIAL;generation=-1;edge=UNCHECKED"
+							   FontAttributes="Bold"
+							   FontSize="12"
+							   HorizontalTextAlignment="Center"
+							   TextColor="#3F2305" />
+						<Button x:Name="InitialActionButton"
+								AutomationId="InitialActionButton"
+								Text="Check initial layout"
+								Clicked="OnCheckInitialLayoutClicked" />
+					</VerticalStackLayout>
+				</Border>
+			</ContentPage>
+		</DataTemplate>
+	</ContentPage.Resources>
+
+	<Grid x:Name="LaunchGrid"
+		  AutomationId="LaunchGrid"
+		  Padding="24"
+		  RowDefinitions="Auto,Auto,*"
+		  RowSpacing="16">
+		<Label Grid.Row="0"
+			   Text="Issue 33530: rotated Start Border"
+			   FontSize="22"
+			   FontAttributes="Bold"
+			   TextColor="#0F172A" />
+		<Label Grid.Row="1"
+			   Text="Open a transparent modal whose Border starts with Rotation=-90 and HorizontalOptions=Start."
+			   TextColor="#334155" />
+		<Button x:Name="OpenInitialButton"
+				Grid.Row="2"
+				AutomationId="OpenInitialButton"
+				Text="Open initial XAML case"
+				VerticalOptions="Start"
+				Clicked="OnOpenInitialClicked" />
+	</Grid>
+</ContentPage>
+
