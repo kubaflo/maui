@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="Maui.Controls.Sample.Issues.Issue33180">
+	<VerticalStackLayout Padding="12"
+						 Spacing="8">
+		<Label Text="Scroll the WebView content, then tap Show ScrollOffset." />
+		<Label x:Name="ResultLabel"
+			   AutomationId="ResultLabel"
+			   Text="NO BUG:" />
+		<Label x:Name="InitialOffsetLabel"
+			   AutomationId="InitialOffsetLabel"
+			   Text="Initial ContentOffset.Y: waiting" />
+		<Label x:Name="ScrollInputLabel"
+			   AutomationId="ScrollInputLabel"
+			   Text="Scroll input: waiting" />
+		<Button AutomationId="ShowScrollOffsetButton"
+				Text="Show ScrollOffset"
+				Clicked="OnShowScrollOffsetClicked" />
+		<Label x:Name="ReportedOffsetLabel"
+			   AutomationId="ReportedOffsetLabel"
+			   Text="Reported ContentOffset.Y: not checked" />
+		<WebView x:Name="WebContent"
+				 AutomationId="WebContent"
+				 HeightRequest="400"
+				 Navigated="OnWebViewNavigated" />
+	</VerticalStackLayout>
+</ContentPage>
