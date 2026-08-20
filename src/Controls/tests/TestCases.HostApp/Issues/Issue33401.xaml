@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue33401">
+	<Grid RowDefinitions="*,Auto,Auto,Auto">
+		<Grid>
+			<Grid.GestureRecognizers>
+				<TapGestureRecognizer Tapped="OnContainerTapped" />
+			</Grid.GestureRecognizers>
+			<Border>
+				<CollectionView
+					x:Name="IssueCollectionView"
+					SelectionChanged="OnSelectionChanged"
+					SelectionMode="Single">
+					<CollectionView.ItemTemplate>
+						<DataTemplate>
+							<Label
+								AutomationId="Issue33401Item"
+								Text="{Binding .}" />
+						</DataTemplate>
+					</CollectionView.ItemTemplate>
+				</CollectionView>
+			</Border>
+		</Grid>
+		<Label
+			x:Name="TapStatus"
+			Grid.Row="1"
+			AutomationId="Issue33401TapStatus"
+			Text="Grid tap not received." />
+		<Label
+			x:Name="SelectionStatus"
+			Grid.Row="2"
+			AutomationId="Issue33401SelectionStatus"
+			Text="SelectionChanged not received." />
+	</Grid>
+</ContentPage>
