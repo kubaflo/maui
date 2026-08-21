@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue33530"
+             BackgroundColor="Transparent">
+    <Grid x:Name="LayoutSurface"
+          AutomationId="Issue33530Surface"
+          RowDefinitions="*,Auto"
+          Padding="0,24">
+        <Border x:Name="RotatedBorder"
+                AutomationId="Issue33530Border"
+                Grid.Row="0"
+                WidthRequest="160"
+                HeightRequest="300"
+                HorizontalOptions="Start"
+                VerticalOptions="Center"
+                Rotation="-90"
+                BackgroundColor="CornflowerBlue"
+                Stroke="DarkBlue"
+                StrokeThickness="4">
+            <Border.Shadow>
+                <Shadow Brush="Black"
+                        Offset="14,14"
+                        Radius="12"
+                        Opacity="0.8" />
+            </Border.Shadow>
+            <VerticalStackLayout Padding="16"
+                                 Spacing="18">
+                <BoxView HeightRequest="110"
+                         Color="Gold" />
+                <Label Text="BORDER CONTENT"
+                       FontAttributes="Bold"
+                       FontSize="20"
+                       HorizontalTextAlignment="Center"
+                       TextColor="Black" />
+                <Label Text="Rotated border geometry"
+                       HorizontalTextAlignment="Center"
+                       TextColor="Black" />
+            </VerticalStackLayout>
+        </Border>
+
+        <VerticalStackLayout Grid.Row="1"
+                             Padding="16,8"
+                             Spacing="8">
+            <Label x:Name="ModeLabel"
+                   AutomationId="Issue33530Mode"
+                   Text="Reference state ready"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center" />
+            <Label x:Name="LifecycleLabel"
+                   AutomationId="Issue33530Lifecycle"
+                   Text="-1"
+                   HorizontalTextAlignment="Center" />
+            <Button x:Name="OpenButton"
+                    AutomationId="Issue33530OpenButton"
+                    Text="Open rotated border"
+                    Clicked="OnOpenClicked" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>
+
