@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+       x:Class="Maui.Controls.Sample.Issues.Issue35767"
+       FlyoutBehavior="Disabled">
+    <ShellContent Title="Issue 35767">
+        <ContentPage>
+            <Shell.SearchHandler>
+                <local:Issue35767SearchHandler x:Name="IssueSearchHandler"
+                                              Placeholder="Enter a search query"
+                                              ShowsResults="True">
+                    <local:Issue35767SearchHandler.ItemTemplate>
+                        <DataTemplate>
+                           <Label Padding="12"
+                                  FontSize="18"
+                                  Text="{Binding .}" />
+                        </DataTemplate>
+                    </local:Issue35767SearchHandler.ItemTemplate>
+                </local:Issue35767SearchHandler>
+            </Shell.SearchHandler>
+
+            <VerticalStackLayout Padding="24"
+                                Spacing="16">
+                <Label FontSize="24"
+                       Text="SearchHandler ShowsResults" />
+                <Label Text="First search for alpha, then disable results and search for beta." />
+                <Button AutomationId="Issue35767DisableResults"
+                        Clicked="OnDisableResultsClicked"
+                        Text="ShowsResults = False" />
+                <Label x:Name="PropertyStateLabel"
+                       AutomationId="Issue35767PropertyState"
+                       FontSize="18"
+                       Text="ShowsResults: True" />
+                <Label x:Name="QueryStateLabel"
+                       AutomationId="Issue35767QueryState"
+                       Text="Query: &lt;none&gt;" />
+                <Label x:Name="SourceStateLabel"
+                       AutomationId="Issue35767SourceState"
+                       Text="Source: &lt;none&gt;" />
+            </VerticalStackLayout>
+        </ContentPage>
+    </ShellContent>
+</Shell>
+
