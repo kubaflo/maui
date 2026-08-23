@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue31059">
+	<Grid
+		Padding="20"
+		RowDefinitions="Auto,Auto,Auto,*"
+		RowSpacing="12">
+		<Label
+			Grid.Row="0"
+			AutomationId="Issue31059ScenarioLabel"
+			Text="Items: Item 1, Item 2, Item 3; Size: 300x320; Snap: MandatorySingle Center" />
+		<Label
+			x:Name="TransitionStateLabel"
+			Grid.Row="1"
+			AutomationId="Issue31059TransitionStateLabel"
+			Text="Orientation:Unknown;Transition:-1;Stable:0;Size:unknown" />
+		<Label
+			x:Name="CurrentItemLabel"
+			Grid.Row="2"
+			AutomationId="Issue31059CurrentItemLabel"
+			FontSize="18"
+			Text="Current item: Item 1" />
+		<Grid
+			x:Name="CollectionHost"
+			Grid.Row="3" />
+	</Grid>
+</ContentPage>
+
