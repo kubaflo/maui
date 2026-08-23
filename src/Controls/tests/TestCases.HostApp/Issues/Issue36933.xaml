@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="Maui.Controls.Sample.Issues.Issue36933">
+	<VerticalStackLayout Padding="24"
+						 Spacing="18">
+		<Label Text="DatePicker and TimePicker background reset"
+			   AutomationId="IssueTitle"
+			   FontAttributes="Bold"
+			   FontSize="22" />
+
+		<Label Text="DatePicker" />
+		<DatePicker x:Name="AffectedDatePicker"
+					AutomationId="AffectedDatePicker" />
+
+		<Label Text="TimePicker" />
+		<TimePicker x:Name="AffectedTimePicker"
+					AutomationId="AffectedTimePicker" />
+
+		<Button x:Name="ToggleBackgroundButton"
+				AutomationId="ToggleBackgroundButton"
+				Text="Apply red background"
+				Clicked="OnToggleBackgroundClicked" />
+
+		<Label x:Name="StateLabel"
+			   AutomationId="StateLabel"
+			   Text="Transition 0: default backgrounds are visible"
+			   FontAttributes="Bold" />
+
+		<Label x:Name="ResultLabel"
+			   AutomationId="ResultLabel"
+			   Text="Ready"
+			   FontAttributes="Bold"
+			   FontSize="18" />
+	</VerticalStackLayout>
+</ContentPage>
+
