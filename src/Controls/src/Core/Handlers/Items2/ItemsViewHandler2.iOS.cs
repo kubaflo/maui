@@ -246,6 +246,23 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			if ((scrollDirection == UICollectionViewScrollDirection.Vertical && contentSize.Height == 0) ||
 				(scrollDirection == UICollectionViewScrollDirection.Horizontal && contentSize.Width == 0))
 			{
+				// A zero content size only means "not realized yet" when there is actually something to
+				// realize. When the items source is known to be empty and nothing else (empty view,
+				// header, footer) contributes content, zero is the correct measurement and the expansive
+				// fallback below would make the CollectionView consume its whole container.
+				if (IsContentKnownEmpty())
+				{
+					if (scrollDirection == UICollectionViewScrollDirection.Horizontal)
+					{
+						// Mirrors the horizontal fallback below: with no items realized, the reported
+						// content height is just the container's frame height, which would lock an
+						// Auto-height parent to a bogus size.
+						contentSize.Height = 0;
+					}
+
+					return contentSize;
+				}
+
 				var collectionView = Controller.CollectionView;
 
 				// When the CollectionView has not yet been added to a window (pre-mount measurement),
@@ -321,6 +338,39 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			}
 
 			return contentSize;
+		}
+
+		bool IsContentKnownEmpty()
+		{
+			// A null source means the items source has not been assigned to the controller yet, so a
+			// zero content size genuinely means "not measured yet" rather than "nothing to show".
+			var itemsSource = Controller?.ItemsSource;
+			if (itemsSource is null || itemsSource.ItemCount > 0)
+			{
+				return false;
+			}
+
+			var itemsView = ItemsView;
+			if (itemsView is null)
+			{
+				return false;
+			}
+
+			// An EmptyView is displayed in place of the items and provides its own content size.
+			if (itemsView.EmptyView is not null || itemsView.EmptyViewTemplate is not null)
+			{
+				return false;
+			}
+
+			// Headers and footers are supplementary views that still occupy space with zero items.
+			if (itemsView is StructuredItemsView structuredItemsView &&
+				(structuredItemsView.Header is not null || structuredItemsView.HeaderTemplate is not null ||
+					structuredItemsView.Footer is not null || structuredItemsView.FooterTemplate is not null))
+			{
+				return false;
+			}
+
+			return true;
 		}
 	}
 }
