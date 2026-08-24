@@ -1,5 +1,7 @@
 ﻿using System;
 using Foundation;
+using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Platform;
 using UIKit;
 
 namespace Microsoft.Maui.Handlers
@@ -41,7 +43,31 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapCharacterSpacing(ITimePickerHandler handler, ITimePicker timePicker)
 		{
-			//handler.PlatformView?.UpdateCharacterSpacing(timePicker);
+			// Mac Catalyst renders the TimePicker with a plain UIDatePicker, which owns its own text
+			// rendering and exposes no text API, so the tracking cannot be pushed into the control.
+			// The handler honors CharacterSpacing in its size contract instead, so re-measure here.
+			if (handler.PlatformView is not null)
+			{
+				timePicker.InvalidateMeasure();
+			}
+		}
+
+		Size IViewHandler.GetDesiredSize(double widthConstraint, double heightConstraint)
+		{
+			var size = base.GetDesiredSize(widthConstraint, heightConstraint);
+
+			if (((IViewHandler)this).PlatformView is UIDatePicker picker &&
+				VirtualView is ITimePicker timePicker)
+			{
+				var extraWidth = picker.GetCharacterSpacingWidth(timePicker);
+
+				if (extraWidth > 0)
+				{
+					size = new Size(size.Width + extraWidth, size.Height);
+				}
+			}
+
+			return size;
 		}
 
 		public static void MapFont(ITimePickerHandler handler, ITimePicker timePicker)

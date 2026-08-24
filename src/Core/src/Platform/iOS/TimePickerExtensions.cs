@@ -89,6 +89,56 @@ public static class TimePickerExtensions
 		mauiTimePicker.UpdateCharacterSpacing(timePicker);
 	}
 
+	/// <summary>
+	/// Calculates the additional width the rendered time text needs so that the requested
+	/// <see cref="ITextStyle.CharacterSpacing"/> can be honored by a native <see cref="UIDatePicker"/>.
+	/// </summary>
+	/// <remarks>
+	/// Mac Catalyst renders the TimePicker with a plain <see cref="UIDatePicker"/>, which owns its
+	/// text rendering and exposes no text or attributed-text API. The tracking therefore cannot be
+	/// pushed into the control; instead the handler reserves the width the tracking asks for so the
+	/// control's layout reflects the requested text style.
+	/// </remarks>
+	internal static double GetCharacterSpacingWidth(this UIDatePicker? picker, ITimePicker? timePicker)
+	{
+		if (picker is null || timePicker is null)
+			return 0;
+
+		var characterSpacing = timePicker.CharacterSpacing;
+
+		if (double.IsNaN(characterSpacing) || characterSpacing <= 0)
+			return 0;
+
+		var glyphCount = GetRenderedTimeText(timePicker).Length;
+
+		// Tracking sits between glyphs, so a run of n glyphs grows by (n - 1) tracking steps.
+		if (glyphCount < 2)
+			return 0;
+
+		return characterSpacing * (glyphCount - 1);
+	}
+
+	static string GetRenderedTimeText(ITimePicker timePicker)
+	{
+		var displayTime = new DateTime(1, 1, 1).Add(timePicker.Time ?? TimeSpan.Zero);
+		var cultureInfo = Culture.CurrentCulture;
+		var format = timePicker.Format;
+
+		if (!string.IsNullOrEmpty(format))
+		{
+			try
+			{
+				return displayTime.ToString(format, cultureInfo);
+			}
+			catch (FormatException)
+			{
+				// A custom format the platform cannot render falls back to the culture's short time.
+			}
+		}
+
+		return displayTime.ToString("t", cultureInfo);
+	}
+
 	public static void UpdateTextAlignment(this MauiTimePicker textField, ITimePicker timePicker)
 	{
 		UISemanticContentAttribute updateValue = textField.SemanticContentAttribute;
