@@ -356,6 +356,7 @@ namespace Microsoft.Maui.Controls
 
 		readonly Queue<Action> _pendingIsOpenActions = new Queue<Action>();
 		INotifyCollectionChanged _subscribedItemsSourceCollection;
+		bool _watchingLoadedLifecycle;
 
 		void OnIsOpenPropertyChanged(bool oldValue, bool newValue)
 		{
@@ -408,6 +409,37 @@ namespace Microsoft.Maui.Controls
 				picker.Closed?.Invoke(picker, PickerClosedEventArgs.Empty);
 		}
 
+		void OnPickerLoaded(object sender, EventArgs e)
+		{
+			SubscribeToItemsSourceCollection(ItemsSource as INotifyCollectionChanged);
+
+			// Pick up any mutations that happened while this Picker was detached.
+			if (ItemsSource is not null)
+			{
+				ResetItems();
+			}
+		}
+
+		void OnPickerUnloaded(object sender, EventArgs e)
+		{
+			UnsubscribeFromItemsSourceCollection();
+		}
+
+		// The ItemsSource subscription is a strong event handler rooted in the (potentially long-lived)
+		// user collection, and handlers are not disconnected when a view leaves the visual tree. Watch the
+		// window-attachment lifecycle so that reference is released whenever this Picker is unloaded.
+		void EnsureLoadedLifecycleWatched()
+		{
+			if (_watchingLoadedLifecycle)
+			{
+				return;
+			}
+
+			_watchingLoadedLifecycle = true;
+			Loaded += OnPickerLoaded;
+			Unloaded += OnPickerUnloaded;
+		}
+
 		void SubscribeToItemsSourceCollection(INotifyCollectionChanged collection)
 		{
 			if (collection is null || ReferenceEquals(collection, _subscribedItemsSourceCollection))
@@ -418,6 +450,7 @@ namespace Microsoft.Maui.Controls
 			UnsubscribeFromItemsSourceCollection();
 			_subscribedItemsSourceCollection = collection;
 			_subscribedItemsSourceCollection.CollectionChanged += CollectionChanged;
+			EnsureLoadedLifecycleWatched();
 		}
 
 		void UnsubscribeFromItemsSourceCollection()
