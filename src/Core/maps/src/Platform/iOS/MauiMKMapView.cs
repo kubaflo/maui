@@ -168,12 +168,12 @@ namespace Microsoft.Maui.Maps.Platform
 
 		internal void AddElements(IList elements)
 		{
-			_trackedMapElements = new List<IMapElement>();
+			// UpdateMapElement passes only the changed element, while the map still owns the full collection.
+			_trackedMapElements = Handler?.VirtualView?.Elements.ToList()
+				?? elements.Cast<IMapElement>().ToList();
 
 			foreach (IMapElement element in elements)
 			{
-				_trackedMapElements.Add(element);
-
 				IMKOverlay? overlay = null;
 				switch (element)
 				{
