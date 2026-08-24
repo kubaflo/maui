@@ -43,8 +43,11 @@ namespace Microsoft.Maui.Layouts
 
 				var measure = child.Measure(measureWidth, measureHeight);
 
-				var width = ResolveDimension(isWidthProportional, bounds.Width, availableWidth, measure.Width);
-				var height = ResolveDimension(isHeightProportional, bounds.Height, availableHeight, measure.Height);
+				var widthBasis = ResolveProportionalBasis(isWidthProportional, bounds.Width, availableWidth, measure.Width);
+				var heightBasis = ResolveProportionalBasis(isHeightProportional, bounds.Height, availableHeight, measure.Height);
+
+				var width = ResolveDimension(isWidthProportional, bounds.Width, widthBasis, measure.Width);
+				var height = ResolveDimension(isHeightProportional, bounds.Height, heightBasis, measure.Height);
 
 				measuredHeight = Math.Max(measuredHeight, bounds.Top + height);
 				measuredWidth = Math.Max(measuredWidth, bounds.Left + width);
@@ -126,6 +129,18 @@ namespace Microsoft.Maui.Layouts
 			}
 
 			return value;
+		}
+
+		static double ResolveProportionalBasis(bool isProportional, double fromBounds, double available, double measured)
+		{
+			// A proportion of an unbounded extent is undefined; substitute the parent extent that the
+			// child's own natural measurement implies so the proportional multiplication stays valid.
+			if (isProportional && fromBounds > 0 && double.IsInfinity(available))
+			{
+				return measured / fromBounds;
+			}
+
+			return available;
 		}
 
 		static double ResolveChildMeasureConstraint(double boundsValue, bool proportional, double constraint)
