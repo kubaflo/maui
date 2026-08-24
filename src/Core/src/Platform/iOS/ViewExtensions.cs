@@ -94,10 +94,11 @@ namespace Microsoft.Maui.Platform
 
 			if (paint.IsNullOrEmpty())
 			{
-				if (platformView is LayoutView or ContentView)
-					platformView.BackgroundColor = null;
-				else
-					return;
+				// An empty Paint means the view has no background, so the color MAUI previously
+				// applied has to be removed. Exempting everything that is not a LayoutView/ContentView
+				// left the last applied UIColor on the view, which is why clearing BackgroundColor
+				// never took effect on views such as UIImageView (Image) or UIButton (ImageButton).
+				platformView.BackgroundColor = null;
 			}
 
 			if (paint is SolidPaint solidPaint)
