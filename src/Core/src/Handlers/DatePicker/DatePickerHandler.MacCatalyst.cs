@@ -200,7 +200,27 @@ namespace Microsoft.Maui.Handlers
 
 		public static partial void MapFlowDirection(IDatePickerHandler handler, IDatePicker datePicker)
 		{
+			if (handler.PlatformView is not UIDatePicker platformView)
+				return;
 
+			// DatePickerHandler.Mapper shadows the generic IView.FlowDirection entry, so nothing
+			// else propagates a runtime FlowDirection change to the native picker.
+			var semanticContentAttribute = datePicker.FlowDirection switch
+			{
+				FlowDirection.LeftToRight => UISemanticContentAttribute.ForceLeftToRight,
+				FlowDirection.RightToLeft => UISemanticContentAttribute.ForceRightToLeft,
+				// UIKit resolves Unspecified from the superview chain, which is what MatchParent means.
+				_ => UISemanticContentAttribute.Unspecified,
+			};
+
+			if (platformView.SemanticContentAttribute == semanticContentAttribute)
+				return;
+
+			platformView.SemanticContentAttribute = semanticContentAttribute;
+
+			// The compact MacCatalyst picker builds its date segments as internal subviews up front;
+			// they only re-order once a layout pass runs with the new direction in place.
+			platformView.SetNeedsLayout();
 		}
 
 		internal static partial void MapIsOpen(IDatePickerHandler handler, IDatePicker datePicker)
