@@ -95,9 +95,23 @@ namespace Microsoft.Maui.Platform
 			if (paint.IsNullOrEmpty())
 			{
 				if (platformView is LayoutView or ContentView)
+				{
 					platformView.BackgroundColor = null;
+				}
 				else
+				{
+					// The view no longer has a background, so undo whatever background we
+					// previously applied and hand the view back its native default. Without
+					// this, a color applied earlier stays visible forever.
+					RestoreNativeBackgroundColor(platformView);
 					return;
+				}
+			}
+			else
+			{
+				// Capture the native default the very first time we take ownership of this
+				// view's background, so we can put it back if the background is cleared later.
+				TrackNativeBackgroundColor(platformView);
 			}
 
 			if (paint is SolidPaint solidPaint)
@@ -124,6 +138,32 @@ namespace Microsoft.Maui.Platform
 
 					platformView.InsertBackgroundLayer(backgroundLayer, 0);
 				}
+			}
+		}
+
+		// Remembers the background color a platform view had before MAUI applied one of its
+		// own, keyed weakly so the entry disappears with the view.
+		static readonly System.Runtime.CompilerServices.ConditionalWeakTable<UIView, NativeBackgroundColor> s_nativeBackgroundColors = new();
+
+		sealed class NativeBackgroundColor
+		{
+			public NativeBackgroundColor(UIColor? color) => Color = color;
+
+			public UIColor? Color { get; }
+		}
+
+		static void TrackNativeBackgroundColor(UIView platformView)
+		{
+			if (!s_nativeBackgroundColors.TryGetValue(platformView, out _))
+				s_nativeBackgroundColors.Add(platformView, new NativeBackgroundColor(platformView.BackgroundColor));
+		}
+
+		static void RestoreNativeBackgroundColor(UIView platformView)
+		{
+			if (s_nativeBackgroundColors.TryGetValue(platformView, out var nativeBackgroundColor))
+			{
+				s_nativeBackgroundColors.Remove(platformView);
+				platformView.BackgroundColor = nativeBackgroundColor.Color;
 			}
 		}
 
