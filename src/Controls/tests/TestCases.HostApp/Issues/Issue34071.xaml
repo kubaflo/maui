@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       x:Class="Maui.Controls.Sample.Issues.Issue34071"
+       Shell.ForegroundColor="Magenta"
+       Shell.TitleColor="Black">
+    <ShellContent Title="Home"
+                  Route="MainPage">
+        <ShellContent.ContentTemplate>
+            <DataTemplate>
+                <ContentPage Title="Home"
+                             BackgroundColor="White"
+                             Loaded="OnContentPageLoaded">
+                    <ContentPage.ToolbarItems>
+                        <ToolbarItem AutomationId="AffectedToolbarItem"
+                                     IconImageSource="shopping_cart.png"
+                                     Order="Primary" />
+                    </ContentPage.ToolbarItems>
+
+                    <VerticalStackLayout Padding="32"
+                                         Spacing="20"
+                                         VerticalOptions="Center">
+                        <Label Text="Shell.ForegroundColor is MAGENTA"
+                               TextColor="Magenta"
+                               FontSize="24"
+                               HorizontalTextAlignment="Center"
+                               AutomationId="ExpectedColorLabel" />
+                        <Label Text="The toolbar cart icon above should be magenta, not its default black."
+                               TextColor="Black"
+                               FontSize="18"
+                               HorizontalTextAlignment="Center" />
+                        <Label x:Name="LoadStatus"
+                               Text="NotLoaded"
+                               TextColor="Black"
+                               FontSize="20"
+                               FontAttributes="Bold"
+                               HorizontalTextAlignment="Center"
+                               AutomationId="LoadStatus" />
+                    </VerticalStackLayout>
+                </ContentPage>
+            </DataTemplate>
+        </ShellContent.ContentTemplate>
+    </ShellContent>
+</Shell>
+
