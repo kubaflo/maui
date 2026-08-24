@@ -100,6 +100,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				UpdateFont(_uiSearchBar.FindDescendantView<UITextField>());
 			}
+			else if (e.Is(SearchHandler.CharacterSpacingProperty))
+			{
+				UpdateCharacterSpacing(_uiSearchBar.FindDescendantView<UITextField>());
+			}
 			else if (e.Is(SearchHandler.CancelButtonColorProperty))
 			{
 				UpdateCancelButtonColor(_uiSearchBar.FindDescendantView<UIButton>());
@@ -146,6 +150,45 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 
 			textField.Font = _searchHandler.ToFont().ToUIFont(_fontManager);
+
+			// Changing the font rebuilds the field's text attributes, so the kerning has to be re-applied.
+			UpdateCharacterSpacing(textField);
+		}
+
+		void UpdateCharacterSpacing(UITextField textField)
+		{
+			if (textField == null || _searchHandler == null)
+				return;
+
+			var characterSpacing = _searchHandler.CharacterSpacing;
+
+			if (NeedsCharacterSpacing(textField.AttributedText, characterSpacing))
+			{
+				var textAttr = textField.AttributedText.WithCharacterSpacing(characterSpacing);
+				if (textAttr != null)
+					textField.AttributedText = textAttr;
+			}
+
+			if (NeedsCharacterSpacing(textField.AttributedPlaceholder, characterSpacing))
+			{
+				var placeholderAttr = textField.AttributedPlaceholder.WithCharacterSpacing(characterSpacing);
+				if (placeholderAttr != null)
+					textField.AttributedPlaceholder = placeholderAttr;
+			}
+		}
+
+		// Only rewrite the attributed string when the kerning actually differs. This keeps the
+		// per-keystroke path a no-op once the spacing is applied, so the caret is not disturbed
+		// while the user types, and it makes UpdateCharacterSpacing safe against re-entrancy.
+		static bool NeedsCharacterSpacing(NSAttributedString attributedString, double characterSpacing)
+		{
+			if (attributedString == null || attributedString.Length == 0)
+				return false;
+
+			if (attributedString.GetAttribute(UIStringAttributeKey.KerningAdjustment, 0, out _) is not NSNumber kerning)
+				return characterSpacing != 0;
+
+			return kerning.DoubleValue != characterSpacing;
 		}
 
 		void UpdateSearchBarBackgroundColor(UITextField textField)
@@ -207,6 +250,8 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			var targetColor = _searchHandler.PlaceholderColor;
 			var placeHolderColor = targetColor ?? Microsoft.Maui.Platform.ColorExtensions.PlaceholderColor.ToColor();
 			textField.AttributedPlaceholder = formatted.ToNSAttributedString(_fontManager, defaultHorizontalAlignment: _searchHandler.HorizontalTextAlignment, defaultColor: placeHolderColor);
+
+			UpdateCharacterSpacing(textField);
 
 			//Center placeholder
 			//var width = (_uiSearchBar.Frame.Width / 2) - textField.AttributedPlaceholder.Size.Width;
@@ -330,6 +375,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		void OnEditingStarted(object sender, EventArgs e)
 		{
 			UpdateCancelButtonColor(_uiSearchBar.FindDescendantView<UIButton>());
+			// The search text field is created lazily by UISearchController, so this may be the
+			// first point at which the kerning can actually be applied.
+			UpdateCharacterSpacing(_uiSearchBar.FindDescendantView<UITextField>());
 			_searchHandler.SetIsFocused(true);
 			//ElementController?.SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, true);
 		}
@@ -337,6 +385,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		void OnTextChanged(object sender, UISearchBarTextChangedEventArgs e)
 		{
 			UpdateCancelButtonColor(_uiSearchBar.FindDescendantView<UIButton>());
+			UpdateCharacterSpacing(_uiSearchBar.FindDescendantView<UITextField>());
 		}
 
 
