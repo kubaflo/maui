@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       x:Class="Maui.Controls.Sample.Issues.Issue35624"
+       FlyoutBehavior="Disabled">
+    <ShellContent Title="Character spacing">
+        <ContentPage AutomationId="Issue35624Page">
+            <Shell.SearchHandler>
+                <SearchHandler x:Name="SearchInput"
+                               AutomationId="Issue35624SearchHandler"
+                               Placeholder="SearchHandler"
+                               CharacterSpacing="10"
+                               SearchBoxVisibility="Collapsible" />
+            </Shell.SearchHandler>
+
+            <Grid Padding="24"
+                  RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                  RowSpacing="8">
+                <Label Grid.Row="0"
+                       Text="Tap the search icon and enter SPACING." />
+                <Label Grid.Row="1"
+                       Text="Expected spacing reference:" />
+                <Label x:Name="ReferenceLabel"
+                       Grid.Row="2"
+                       AutomationId="Issue35624ReferenceLabel"
+                       Text="SPACING"
+                       CharacterSpacing="10"
+                       FontSize="24" />
+                <Label x:Name="ConfigurationStatus"
+                       Grid.Row="3"
+                       AutomationId="Issue35624Configuration"
+                       Text="Configuration pending" />
+                <Label x:Name="CallbackStatus"
+                       Grid.Row="4"
+                       AutomationId="Issue35624CallbackStatus"
+                       Text="Callbacks=0; Query=&lt;empty&gt;" />
+                <Label x:Name="NativeViewStatus"
+                       Grid.Row="5"
+                       AutomationId="Issue35624NativeViews"
+                       Text="Search=False; Label=False; AttributedSearch=False; AttributedLabel=False" />
+                <Label x:Name="RangeStatus"
+                       Grid.Row="6"
+                       AutomationId="Issue35624Ranges"
+                       Text="SearchRange=-1; LabelRange=-1" />
+                <Label x:Name="KerningStatus"
+                       Grid.Row="7"
+                       AutomationId="Issue35624Kerning"
+                       Text="Search=-1; Label=-1" />
+            </Grid>
+        </ContentPage>
+    </ShellContent>
+</Shell>
+
