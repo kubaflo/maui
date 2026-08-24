@@ -200,7 +200,7 @@ namespace Microsoft.Maui.Handlers
 
 		public static partial void MapFlowDirection(IDatePickerHandler handler, IDatePicker datePicker)
 		{
-
+			ViewHandler.ViewMapper.UpdateProperty(handler, datePicker, nameof(IView.FlowDirection));
 		}
 
 		internal static partial void MapIsOpen(IDatePickerHandler handler, IDatePicker datePicker)
