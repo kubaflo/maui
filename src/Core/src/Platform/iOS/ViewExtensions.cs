@@ -92,12 +92,13 @@ namespace Microsoft.Maui.Platform
 			// Remove previous background gradient layer if any
 			platformView.RemoveBackgroundLayer();
 
+			// No background was requested. Clearing BackgroundColor hands the view back to
+			// UIKit so it renders with the default it was created with, rather than keeping
+			// the color a previous paint applied.
 			if (paint.IsNullOrEmpty())
 			{
-				if (platformView is LayoutView or ContentView)
-					platformView.BackgroundColor = null;
-				else
-					return;
+				platformView.BackgroundColor = null;
+				return;
 			}
 
 			if (paint is SolidPaint solidPaint)
