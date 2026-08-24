@@ -27,6 +27,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		UISearchBar _uiSearchBar;
 		UIToolbar _numericAccessoryView;
 		bool _disposed;
+		bool _isUpdatingCharacterSpacing;
 
 		public SearchHandlerAppearanceTracker(UISearchBar searchBar, SearchHandler searchHandler, IFontManager fontManager)
 		{
@@ -46,6 +47,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			UpdateSearchBarHorizontalTextAlignment(uiTextField);
 			UpdateSearchBarVerticalTextAlignment(uiTextField);
 			UpdateFont(uiTextField);
+			UpdateCharacterSpacing(uiTextField);
 			UpdateKeyboard();
 		}
 
@@ -100,6 +102,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				UpdateFont(_uiSearchBar.FindDescendantView<UITextField>());
 			}
+			else if (e.Is(SearchHandler.CharacterSpacingProperty))
+			{
+				UpdateCharacterSpacing(_uiSearchBar.FindDescendantView<UITextField>());
+			}
 			else if (e.Is(SearchHandler.CancelButtonColorProperty))
 			{
 				UpdateCancelButtonColor(_uiSearchBar.FindDescendantView<UIButton>());
@@ -146,6 +152,50 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 
 			textField.Font = _searchHandler.ToFont().ToUIFont(_fontManager);
+
+			// Assigning the font rebuilds the field's attributed text, dropping the kerning attribute.
+			UpdateCharacterSpacing(textField);
+		}
+
+		void UpdateCharacterSpacing(UITextField textField)
+		{
+			if (textField is null || _searchHandler is null || _isUpdatingCharacterSpacing)
+				return;
+
+			_isUpdatingCharacterSpacing = true;
+
+			try
+			{
+				var characterSpacing = _searchHandler.CharacterSpacing;
+
+				var attributedText = textField.AttributedText?.WithCharacterSpacing(characterSpacing);
+				if (attributedText is not null)
+				{
+					// Re-assigning AttributedText invalidates any previously obtained UITextPosition,
+					// so capture the caret as an integer offset and rebuild the range afterwards.
+					var selectionStart = textField.SelectedTextRange?.Start;
+					var caretOffset = selectionStart is null
+						? -1
+						: (int)textField.GetOffsetFromPosition(textField.BeginningOfDocument, selectionStart);
+
+					textField.AttributedText = attributedText;
+
+					if (caretOffset >= 0)
+					{
+						var caretPosition = textField.GetPosition(textField.BeginningOfDocument, caretOffset);
+						if (caretPosition is not null)
+							textField.SelectedTextRange = textField.GetTextRange(caretPosition, caretPosition);
+					}
+				}
+
+				var attributedPlaceholder = textField.AttributedPlaceholder?.WithCharacterSpacing(characterSpacing);
+				if (attributedPlaceholder is not null)
+					textField.AttributedPlaceholder = attributedPlaceholder;
+			}
+			finally
+			{
+				_isUpdatingCharacterSpacing = false;
+			}
 		}
 
 		void UpdateSearchBarBackgroundColor(UITextField textField)
@@ -208,6 +258,8 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			var placeHolderColor = targetColor ?? Microsoft.Maui.Platform.ColorExtensions.PlaceholderColor.ToColor();
 			textField.AttributedPlaceholder = formatted.ToNSAttributedString(_fontManager, defaultHorizontalAlignment: _searchHandler.HorizontalTextAlignment, defaultColor: placeHolderColor);
 
+			UpdateCharacterSpacing(textField);
+
 			//Center placeholder
 			//var width = (_uiSearchBar.Frame.Width / 2) - textField.AttributedPlaceholder.Size.Width;
 
@@ -227,6 +279,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				return;
 
 			textField.Text = _searchHandler.UpdateFormsText(textField.Text, _searchHandler.TextTransform);
+
+			// Assigning Text discards every attribute on the field, including the kerning attribute.
+			UpdateCharacterSpacing(textField);
 		}
 
 		void UpdateTextColor(UITextField textField)
@@ -337,6 +392,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		void OnTextChanged(object sender, UISearchBarTextChangedEventArgs e)
 		{
 			UpdateCancelButtonColor(_uiSearchBar.FindDescendantView<UIButton>());
+
+			// Characters are inserted using the field's typing attributes, so newly typed
+			// text carries no kerning until it is stamped over the whole range again.
+			UpdateCharacterSpacing(_uiSearchBar.FindDescendantView<UITextField>());
 		}
 
 
