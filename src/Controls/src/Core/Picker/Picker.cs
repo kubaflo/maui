@@ -356,6 +356,13 @@ namespace Microsoft.Maui.Controls
 
 		readonly Queue<Action> _pendingIsOpenActions = new Queue<Action>();
 		INotifyCollectionChanged _subscribedItemsSourceCollection;
+		WeakNotifyCollectionChangedProxy _itemsSourceProxy;
+		NotifyCollectionChangedEventHandler _itemsSourceCollectionChanged;
+
+		~Picker()
+		{
+			_itemsSourceProxy?.Unsubscribe();
+		}
 
 		void OnIsOpenPropertyChanged(bool oldValue, bool newValue)
 		{
@@ -417,7 +424,12 @@ namespace Microsoft.Maui.Controls
 
 			UnsubscribeFromItemsSourceCollection();
 			_subscribedItemsSourceCollection = collection;
-			_subscribedItemsSourceCollection.CollectionChanged += CollectionChanged;
+
+			// Subscribe weakly so a long-lived ItemsSource (for example one shared between
+			// several Pickers) does not keep this Picker alive after it is removed from the tree.
+			_itemsSourceProxy ??= new WeakNotifyCollectionChangedProxy();
+			_itemsSourceCollectionChanged ??= CollectionChanged;
+			_itemsSourceProxy.Subscribe(collection, _itemsSourceCollectionChanged);
 		}
 
 		void UnsubscribeFromItemsSourceCollection()
@@ -427,7 +439,7 @@ namespace Microsoft.Maui.Controls
 				return;
 			}
 
-			_subscribedItemsSourceCollection.CollectionChanged -= CollectionChanged;
+			_itemsSourceProxy?.Unsubscribe();
 			_subscribedItemsSourceCollection = null;
 		}
 
