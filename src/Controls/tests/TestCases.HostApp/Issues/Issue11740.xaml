@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+	x:Class="Maui.Controls.Sample.Issues.Issue11740">
+	<ContentPage.Resources>
+		<local:Issue11740DoNothingConverter x:Key="DoNothingConverter" />
+	</ContentPage.Resources>
+
+	<VerticalStackLayout Padding="24" Spacing="16">
+		<Label Text="Binding.DoNothing reproduction" />
+		<Entry
+			x:Name="ReproductionEntry"
+			AutomationId="ReproductionEntry"
+			Text="{Binding Value, Converter={StaticResource DoNothingConverter}}" />
+		<Label
+			x:Name="ResultLabel"
+			AutomationId="BindingResult"
+			Text="Converter calls: 0" />
+		<Button
+			AutomationId="ApplyBindingButton"
+			Text="Apply binding"
+			Clicked="OnApplyBindingClicked" />
+	</VerticalStackLayout>
+</ContentPage>
+
