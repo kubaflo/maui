@@ -94,10 +94,11 @@ namespace Microsoft.Maui.Platform
 
 			if (paint.IsNullOrEmpty())
 			{
-				if (platformView is LayoutView or ContentView)
-					platformView.BackgroundColor = null;
-				else
-					return;
+				// An empty paint means the cross-platform view has no background, so any color this
+				// updater applied earlier has to be removed for every native view, not just for a
+				// known list of them. Controls that need a non-null native default when the paint is
+				// empty (Entry, Editor) restore it from their own Background mappers.
+				platformView.BackgroundColor = null;
 			}
 
 			if (paint is SolidPaint solidPaint)
