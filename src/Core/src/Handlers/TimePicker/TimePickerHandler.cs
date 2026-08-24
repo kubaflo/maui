@@ -21,6 +21,9 @@ namespace Microsoft.Maui.Handlers
 #if ANDROID || WINDOWS
 			[nameof(ITimePicker.Background)] = MapBackground,
 #endif
+#if IOS && !MACCATALYST
+			[nameof(ITimePicker.Background)] = MapBackground,
+#endif
 #if IOS || ANDROID
 			[nameof(ITimePicker.FlowDirection)] = MapFlowDirection,
 #endif

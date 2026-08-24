@@ -1,4 +1,6 @@
 ﻿using System;
+using Microsoft.Maui.Graphics;
+using UIKit;
 
 namespace Microsoft.Maui.Handlers
 {
@@ -14,8 +16,16 @@ namespace Microsoft.Maui.Handlers
 
 		internal bool UpdateImmediately { get; set; }
 
+		// Snapshot of the platform view's background before MAUI applies any Background paint.
+		// Restoring it is how a cleared Background returns the control to its UIKit default.
+		UIColor? _defaultBackgroundColor;
+		bool _hasDefaultBackgroundColor;
+
 		protected override void ConnectHandler(MauiTimePicker platformView)
 		{
+			_defaultBackgroundColor = platformView.BackgroundColor;
+			_hasDefaultBackgroundColor = true;
+
 			base.ConnectHandler(platformView);
 
 			_proxy.Connect(this, VirtualView, platformView);
@@ -26,7 +36,29 @@ namespace Microsoft.Maui.Handlers
 		{
 			base.DisconnectHandler(platformView);
 
+			_defaultBackgroundColor = null;
+			_hasDefaultBackgroundColor = false;
+
 			_proxy.Disconnect(platformView);
+		}
+
+		internal static void MapBackground(ITimePickerHandler handler, ITimePicker timePicker)
+		{
+			var platformView = handler.PlatformView;
+
+			if (platformView is null)
+				return;
+
+			platformView.UpdateBackground(timePicker);
+
+			// UpdateBackground leaves the last applied color in place for controls that are
+			// neither LayoutView nor ContentView, so clearing the Background has to explicitly
+			// put the platform default back.
+			if (timePicker.Background.IsNullOrEmpty() &&
+				handler is TimePickerHandler { _hasDefaultBackgroundColor: true } platformHandler)
+			{
+				platformView.BackgroundColor = platformHandler._defaultBackgroundColor;
+			}
 		}
 
 		public static void MapFormat(ITimePickerHandler handler, ITimePicker timePicker)
