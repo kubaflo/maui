@@ -20,6 +20,31 @@ namespace Microsoft.Maui.Platform
 			SetItems(new[] { spacer, doneButton }, false);
 		}
 
+		// The accessory is a translucent bar stretched across the full width of the screen and docked
+		// directly on top of application content. Its default hit testing claims every point in that
+		// band, including the large empty run between the leading edge and the Done item, so a tap on
+		// a control the user can plainly see behind the accessory never reaches that control. Claim a
+		// touch only when it actually lands on one of the bar's interactive items and let every other
+		// touch fall through to the content behind the accessory.
+		public override UIView? HitTest(CGPoint point, UIEvent? uievent)
+		{
+			var hit = base.HitTest(point, uievent);
+
+			if (hit is null)
+				return null;
+
+			for (var view = hit; view is not null; view = view.Superview)
+			{
+				if (view is UIControl)
+					return hit;
+
+				if (view.Handle == Handle)
+					break;
+			}
+
+			return null;
+		}
+
 		internal void SetDoneClicked(Action<object>? value) => _proxy.SetDoneClicked(value);
 
 
