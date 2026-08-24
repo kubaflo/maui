@@ -15,6 +15,33 @@ namespace Microsoft.Maui.Platform
 	{
 		internal const string BackgroundLayerName = "MauiBackgroundLayer";
 
+		// Tracks the native background color a UIView had before Maui applied a background to it.
+		// Entries are only created when a non-empty Paint is applied, so views Maui never painted
+		// are left completely untouched when their (already empty) Background is updated.
+		static readonly System.Runtime.CompilerServices.ConditionalWeakTable<UIView, OriginalBackgroundColor> s_originalBackgroundColors = new();
+
+		sealed class OriginalBackgroundColor
+		{
+			public OriginalBackgroundColor(UIColor? color) => Color = color;
+
+			public UIColor? Color { get; }
+		}
+
+		static void CaptureOriginalBackgroundColor(UIView platformView)
+		{
+			if (!s_originalBackgroundColors.TryGetValue(platformView, out _))
+				s_originalBackgroundColors.Add(platformView, new OriginalBackgroundColor(platformView.BackgroundColor));
+		}
+
+		static void RestoreOriginalBackgroundColor(UIView platformView)
+		{
+			if (s_originalBackgroundColors.TryGetValue(platformView, out var original))
+			{
+				s_originalBackgroundColors.Remove(platformView);
+				platformView.BackgroundColor = original.Color;
+			}
+		}
+
 		public static void UpdateIsEnabled(this UIView platformView, IView view)
 		{
 			if (platformView is UIControl uiControl)
@@ -97,8 +124,14 @@ namespace Microsoft.Maui.Platform
 				if (platformView is LayoutView or ContentView)
 					platformView.BackgroundColor = null;
 				else
-					return;
+					RestoreOriginalBackgroundColor(platformView);
+
+				return;
 			}
+
+			// Capture whatever background the native view had before Maui painted over it, so
+			// clearing the Background later can put the control back the way we found it.
+			CaptureOriginalBackgroundColor(platformView);
 
 			if (paint is SolidPaint solidPaint)
 			{
