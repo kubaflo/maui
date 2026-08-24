@@ -447,11 +447,19 @@ namespace Microsoft.Maui.Platform
 
 			Size contentSize;
 
+			// Tracks how much of the bounds the arrange pass below actually reserved for the safe area.
+			// Whatever we take away from the arranged content has to be added back to the extent we report
+			// to UIKit, or the content that lives inside the reserved band would be unreachable. Keeping the
+			// two halves driven by a single value keeps them symmetric, the same way CrossPlatformMeasure
+			// subtracts and re-adds `_safeArea` under a single `_appliesSafeAreaAdjustments` guard.
+			var reservedForSafeArea = _appliesSafeAreaAdjustments ? _safeArea : SafeAreaPadding.Empty;
 
 			double width;
 			double height;
 			if (SystemAdjustedContentInset == UIEdgeInsets.Zero || ContentInsetAdjustmentBehavior == UIScrollViewContentInsetAdjustmentBehavior.Never)
 			{
+				// The content is arranged at the inset origin, so the reserved band sits inside the
+				// scrollable extent and stays part of `reservedForSafeArea`.
 				contentSize = CrossPlatformLayout?.CrossPlatformArrange(bounds.ToRectangle()) ?? Size.Zero;
 
 				width = contentSize.Width;
@@ -459,7 +467,12 @@ namespace Microsoft.Maui.Platform
 			}
 			else
 			{
+				// Here the inset origin is deliberately discarded: UIKit positions the content itself and
+				// reserves the safe area through AdjustedContentInset. Nothing of ours remains inside the
+				// extent, so nothing is added back. Adding it back would count the same band twice and give
+				// the scroll view a reachable range equal to the safe area (#36800).
 				contentSize = CrossPlatformLayout?.CrossPlatformArrange(new Rect(new Point(), bounds.Size.ToSize())) ?? Size.Zero;
+				reservedForSafeArea = SafeAreaPadding.Empty;
 
 				width = contentSize.Width;
 				height = contentSize.Height;
@@ -499,8 +512,9 @@ namespace Microsoft.Maui.Platform
 			}
 			else if (ContentInsetAdjustmentBehavior != UIScrollViewContentInsetAdjustmentBehavior.Automatic)
 			{
-				width += _safeArea.HorizontalThickness;
-				height += _safeArea.VerticalThickness;
+				// Add back exactly what the arrange pass reserved above — no more, no less.
+				width += reservedForSafeArea.HorizontalThickness;
+				height += reservedForSafeArea.VerticalThickness;
 			}
 
 			contentSize = new Size(width, height);
