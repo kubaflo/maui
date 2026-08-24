@@ -94,9 +94,18 @@ namespace Microsoft.Maui.Platform
 
 			if (paint.IsNullOrEmpty())
 			{
-				if (platformView is LayoutView or ContentView)
-					platformView.BackgroundColor = null;
-				else
+				// Applying a paint is not restricted to a set of platform view types, so removing one cannot
+				// be either. Once the managed view stops specifying a background, the color this method
+				// assigned earlier has to come off every platform view, not only off the MAUI container
+				// views. Handlers that need a specific native background (Editor, Entry, Button) assign it
+				// from their own background mapper, so nothing depends on this method leaving a stale color
+				// behind.
+				platformView.BackgroundColor = null;
+
+				// An empty SolidPaint still asks for the platform default background, which the solid color
+				// branch below applies. Only the container views ever reached that fall-through, so it stays
+				// scoped to them.
+				if (platformView is not (LayoutView or ContentView))
 					return;
 			}
 
