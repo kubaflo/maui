@@ -299,17 +299,15 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 					}
 				}
 
-				// Fallback: return the expansive size the collection view wants by default
-				// to get it to start measuring its content
-				var desiredSize = base.GetDesiredSize(widthConstraint, heightConstraint);
-				if (scrollDirection == UICollectionViewScrollDirection.Vertical)
+				// The layout genuinely reports no content along the scroll direction. Do not substitute
+				// the expansive size UIKit hands back for an unconstrained UICollectionView; an
+				// Auto-sized container would lock that viewport-sized value in permanently. Report the
+				// measured size instead. If content materializes later, the controller's
+				// InvalidateMeasureIfContentSizeChanged (run from ViewWillLayoutSubviews on every UIKit
+				// layout pass) observes the content size change and re-measures the ItemsView, so the
+				// size still recovers without a speculative bootstrap value.
+				if (scrollDirection == UICollectionViewScrollDirection.Horizontal)
 				{
-					contentSize.Height = desiredSize.Height;
-				}
-				else
-				{
-					contentSize.Width = desiredSize.Width;
-
 					// For horizontal layouts, items use FractionalHeight(1f), meaning their height equals
 					// the CollectionView's current frame height. When no items are loaded (Width == 0),
 					// contentSize.Height reflects the container's frame height rather than actual content.
