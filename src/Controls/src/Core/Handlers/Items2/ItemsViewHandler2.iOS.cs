@@ -246,6 +246,16 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			if ((scrollDirection == UICollectionViewScrollDirection.Vertical && contentSize.Height == 0) ||
 				(scrollDirection == UICollectionViewScrollDirection.Horizontal && contentSize.Width == 0))
 			{
+				// A zero content size is only ambiguous when there is something to lay out. When the
+				// ItemsView itself reports that it has no items and nothing else that occupies space,
+				// zero is the correct answer and must be returned as-is; otherwise the expansive
+				// bootstrap below becomes permanent, because no item will ever realize to trigger a
+				// corrective measure.
+				if (!HasContentToMeasure())
+				{
+					return contentSize;
+				}
+
 				var collectionView = Controller.CollectionView;
 
 				// When the CollectionView has not yet been added to a window (pre-mount measurement),
@@ -321,6 +331,37 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			}
 
 			return contentSize;
+		}
+
+		// Reports whether the ItemsView has anything that legitimately occupies space. Answered from the
+		// cross-platform element rather than from UIKit so it is valid before the collection view is
+		// mounted and before its layout has been prepared.
+		bool HasContentToMeasure()
+		{
+			var itemsView = ItemsView;
+
+			if (itemsView is null)
+			{
+				return true;
+			}
+
+			if (itemsView.EmptyView is not null || itemsView.EmptyViewTemplate is not null)
+			{
+				return true;
+			}
+
+			if (itemsView is StructuredItemsView structuredItemsView &&
+				(structuredItemsView.Header is not null || structuredItemsView.HeaderTemplate is not null ||
+				 structuredItemsView.Footer is not null || structuredItemsView.FooterTemplate is not null))
+			{
+				return true;
+			}
+
+			var itemsSource = Controller?.ItemsSource;
+
+			// A null source means the controller has not built one yet; treat that as "unknown" and let the
+			// existing realization logic run.
+			return itemsSource is null || itemsSource.ItemCount > 0;
 		}
 	}
 }
