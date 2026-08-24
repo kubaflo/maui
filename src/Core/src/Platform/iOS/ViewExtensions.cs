@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -89,6 +90,11 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateBackground(this UIView platformView, Paint? paint, IButtonStroke? stroke = null)
 		{
+			// Read (and, the first time we see this native type, record) the background the platform
+			// gives the view before MAUI has ever written to it. This has to happen before any of the
+			// assignments below, otherwise the value we remember would be one MAUI itself produced.
+			var platformDefaultBackgroundColor = GetPlatformDefaultBackgroundColor(platformView);
+
 			// Remove previous background gradient layer if any
 			platformView.RemoveBackgroundLayer();
 
@@ -97,7 +103,12 @@ namespace Microsoft.Maui.Platform
 				if (platformView is LayoutView or ContentView)
 					platformView.BackgroundColor = null;
 				else
+				{
+					// A cleared Background has to put the platform default back. Returning here without
+					// touching BackgroundColor would leave whatever color a previous non-empty Paint wrote.
+					platformView.BackgroundColor = platformDefaultBackgroundColor;
 					return;
+				}
 			}
 
 			if (paint is SolidPaint solidPaint)
@@ -126,6 +137,14 @@ namespace Microsoft.Maui.Platform
 				}
 			}
 		}
+
+		// The background a native view type starts out with, sampled from the first instance of that
+		// type MAUI updates. Keyed by type rather than by instance because the platform default is a
+		// property of the control class, so one sample serves every instance and nothing is retained.
+		static readonly ConcurrentDictionary<Type, UIColor?> PlatformDefaultBackgroundColors = new();
+
+		static UIColor? GetPlatformDefaultBackgroundColor(UIView platformView) =>
+			PlatformDefaultBackgroundColors.GetOrAdd(platformView.GetType(), static (_, view) => view.BackgroundColor, platformView);
 
 		public static void UpdateFlowDirection(this UIView platformView, IView view)
 		{
