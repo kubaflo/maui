@@ -25,6 +25,10 @@ namespace Microsoft.Maui.Handlers
 
 		readonly ButtonEventProxy _proxy = new ButtonEventProxy();
 
+#if !MACCATALYST
+		Paint? _mappedBackground;
+#endif
+
 		protected override void SetupContainer()
 		{
 			base.SetupContainer();
@@ -36,6 +40,10 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void ConnectHandler(UIButton platformView)
 		{
+#if !MACCATALYST
+			_mappedBackground = null;
+#endif
+
 			_proxy.Connect(VirtualView, platformView);
 
 			base.ConnectHandler(platformView);
@@ -43,6 +51,10 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void DisconnectHandler(UIButton platformView)
 		{
+#if !MACCATALYST
+			_mappedBackground = null;
+#endif
+
 			_proxy.Disconnect(platformView);
 
 			base.DisconnectHandler(platformView);
@@ -80,7 +92,17 @@ namespace Microsoft.Maui.Handlers
 		// TODO: Make this public in .NET 11
 		internal static void MapBackground(IButtonHandler handler, IButton button)
 		{
-			handler.PlatformView?.UpdateBackground(button.Background);
+			var background = button.Background;
+
+			if (handler is ButtonHandler buttonHandler)
+			{
+				if (handler.IsConnectingHandler() || handler.IsReconnectingHandler())
+					buttonHandler._mappedBackground = background;
+				else if (background.IsNullOrEmpty())
+					background = buttonHandler._mappedBackground;
+			}
+
+			handler.PlatformView?.UpdateBackground(background);
 		}
 #endif
 
