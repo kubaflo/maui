@@ -46,6 +46,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			UpdateSearchBarHorizontalTextAlignment(uiTextField);
 			UpdateSearchBarVerticalTextAlignment(uiTextField);
 			UpdateFont(uiTextField);
+			UpdateCharacterSpacing(uiTextField);
 			UpdateKeyboard();
 		}
 
@@ -59,6 +60,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			UpdateCancelButtonColor(cancelButton);
 			UpdateSearchBarBackgroundColor(uiTextField);
 			UpdateTextTransform(uiTextField);
+			UpdateCharacterSpacing(uiTextField);
 		}
 
 		internal void UpdateFlowDirection(Shell shell)
@@ -90,15 +92,25 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			}
 			else if (e.Is(SearchHandler.TextTransformProperty))
 			{
-				UpdateTextTransform(_uiSearchBar.FindDescendantView<UITextField>());
+				var textField = _uiSearchBar.FindDescendantView<UITextField>();
+				UpdateTextTransform(textField);
+				UpdateCharacterSpacing(textField);
 			}
 			else if (e.IsOneOf(SearchHandler.PlaceholderColorProperty, SearchHandler.PlaceholderProperty))
 			{
-				UpdateSearchBarPlaceholder(_uiSearchBar.FindDescendantView<UITextField>());
+				var textField = _uiSearchBar.FindDescendantView<UITextField>();
+				UpdateSearchBarPlaceholder(textField);
+				UpdateCharacterSpacing(textField);
+			}
+			else if (e.Is(SearchHandler.CharacterSpacingProperty))
+			{
+				UpdateCharacterSpacing(_uiSearchBar.FindDescendantView<UITextField>());
 			}
 			else if (e.IsOneOf(SearchHandler.FontFamilyProperty, SearchHandler.FontAttributesProperty, SearchHandler.FontSizeProperty))
 			{
-				UpdateFont(_uiSearchBar.FindDescendantView<UITextField>());
+				var textField = _uiSearchBar.FindDescendantView<UITextField>();
+				UpdateFont(textField);
+				UpdateCharacterSpacing(textField);
 			}
 			else if (e.Is(SearchHandler.CancelButtonColorProperty))
 			{
@@ -229,6 +241,49 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			textField.Text = _searchHandler.UpdateFormsText(textField.Text, _searchHandler.TextTransform);
 		}
 
+		void UpdateCharacterSpacing(UITextField textField)
+		{
+			if (textField == null)
+				return;
+
+			var characterSpacing = _searchHandler.CharacterSpacing;
+
+			var textAttr = textField.AttributedText?.WithCharacterSpacing(characterSpacing);
+			if (textAttr is not null)
+			{
+				// Reassigning AttributedText resets the caret to the start of the field,
+				// so capture the current caret offset and restore it afterwards.
+				var caretOffset = GetCaretOffset(textField);
+				textField.AttributedText = textAttr;
+				SetCaretOffset(textField, caretOffset);
+			}
+
+			var placeholderAttr = textField.AttributedPlaceholder?.WithCharacterSpacing(characterSpacing);
+			if (placeholderAttr is not null)
+				textField.AttributedPlaceholder = placeholderAttr;
+		}
+
+		static int GetCaretOffset(UITextField textField)
+		{
+			var selectedRange = textField.SelectedTextRange;
+			if (selectedRange?.Start is null)
+				return -1;
+
+			return (int)textField.GetOffsetFromPosition(textField.BeginningOfDocument, selectedRange.Start);
+		}
+
+		static void SetCaretOffset(UITextField textField, int caretOffset)
+		{
+			if (caretOffset < 0)
+				return;
+
+			var position = textField.GetPosition(textField.BeginningOfDocument, caretOffset);
+			if (position is null)
+				return;
+
+			textField.SelectedTextRange = textField.GetTextRange(position, position);
+		}
+
 		void UpdateTextColor(UITextField textField)
 		{
 			if (textField == null)
@@ -337,6 +392,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		void OnTextChanged(object sender, UISearchBarTextChangedEventArgs e)
 		{
 			UpdateCancelButtonColor(_uiSearchBar.FindDescendantView<UIButton>());
+			UpdateCharacterSpacing(_uiSearchBar.FindDescendantView<UITextField>());
 		}
 
 
