@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue29575">
+    <Grid Padding="20"
+          RowDefinitions="Auto,Auto,320,Auto,Auto"
+          RowSpacing="12">
+        <Label Text="WebView cancellation after an awaited return"
+               FontAttributes="Bold"
+               FontSize="20" />
+        <Label Grid.Row="1"
+               Text="Tap Sign In in the WebView, then return to the app." />
+        <WebView x:Name="IssueWebView"
+                 Grid.Row="2"
+                 AutomationId="Issue29575WebView" />
+        <Button x:Name="ReturnButton"
+                Grid.Row="3"
+                AutomationId="Issue29575Return"
+                Text="Return to app"
+                IsVisible="False"
+                Clicked="OnReturnClicked" />
+        <VerticalStackLayout Grid.Row="4"
+                             Spacing="6">
+            <Button x:Name="CheckButton"
+                    AutomationId="Issue29575Check"
+                    Text="Check WebView"
+                    IsVisible="False"
+                    Clicked="OnCheckClicked" />
+            <Label x:Name="InitialHashLabel"
+                   AutomationId="Issue29575InitialHash"
+                   Text="Initial hash pending" />
+            <Label x:Name="TriggerStatusLabel"
+                   AutomationId="Issue29575TriggerStatus"
+                   Text="Waiting for Sign In" />
+            <Label x:Name="MeasurementStatusLabel"
+                   AutomationId="Issue29575MeasurementStatus"
+                   Text="Hash not measured" />
+            <Label x:Name="ResultLabel"
+                   AutomationId="Issue29575Result"
+                   Text="Hash pending"
+                   FontAttributes="Bold" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>
+
