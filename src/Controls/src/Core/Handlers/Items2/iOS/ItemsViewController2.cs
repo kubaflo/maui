@@ -666,7 +666,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 				return CGRect.Empty;
 			}
 
-			var frame = DetermineEmptyViewFrame();
+			var frame = ClipEmptyViewToKeyboardLayoutGuide(DetermineEmptyViewFrame());
 
 			if (_emptyViewFormsElement != null && ((IElementController)ItemsView).LogicalChildren.IndexOf(_emptyViewFormsElement) != -1)
 			{
@@ -684,6 +684,27 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			_emptyUIView.Frame = frame;
 
 			return frame;
+		}
+
+		CGRect ClipEmptyViewToKeyboardLayoutGuide(CGRect frame)
+		{
+			if (frame.Height <= 0 || _emptyUIView?.Superview is not UIView superview)
+			{
+				return frame;
+			}
+
+			var keyboardFrame = superview.KeyboardLayoutGuide.LayoutFrame;
+			if (keyboardFrame.IsEmpty ||
+				keyboardFrame.Height <= 0 ||
+				keyboardFrame.Right <= frame.Left ||
+				keyboardFrame.Left >= frame.Right ||
+				keyboardFrame.Top <= frame.Top ||
+				keyboardFrame.Top >= frame.Bottom)
+			{
+				return frame;
+			}
+
+			return new CGRect(frame.X, frame.Y, frame.Width, keyboardFrame.Top - frame.Top);
 		}
 
 		internal protected virtual void UpdateVisibility()
