@@ -132,8 +132,12 @@ namespace Microsoft.Maui.Handlers
 					return;
 				}
 
-				var availableScrollHeight = Math.Max(uiScrollView.ContentSize.Height - uiScrollView.Frame.Height, 0);
-				var availableScrollWidth = Math.Max(uiScrollView.ContentSize.Width - uiScrollView.Frame.Width, 0);
+				// UIKit's real content offset ceiling accounts for the adjusted content inset (safe area,
+				// keyboard, explicit insets); clamping to ContentSize - Bounds alone stops short of the
+				// end of the content by exactly the trailing inset.
+				var adjustedInset = uiScrollView.AdjustedContentInset;
+				var availableScrollHeight = Math.Max(uiScrollView.ContentSize.Height + adjustedInset.Bottom - uiScrollView.Bounds.Height, 0);
+				var availableScrollWidth = Math.Max(uiScrollView.ContentSize.Width + adjustedInset.Right - uiScrollView.Bounds.Width, 0);
 				var minScrollHorizontal = Math.Clamp(request.HorizontalOffset, 0, availableScrollWidth);
 				var minScrollVertical = Math.Clamp(request.VerticalOffset, 0, availableScrollHeight);
 				
