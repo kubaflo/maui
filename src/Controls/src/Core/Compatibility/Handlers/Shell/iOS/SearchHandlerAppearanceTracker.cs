@@ -223,10 +223,26 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		void UpdateTextTransform(UITextField textField)
 		{
-			if (textField == null)
+			if (textField == null || _uiSearchBar == null || _searchHandler == null)
 				return;
 
-			textField.Text = _searchHandler.UpdateFormsText(textField.Text, _searchHandler.TextTransform);
+			var currentText = textField.Text;
+			var transformedText = _searchHandler.UpdateFormsText(currentText, _searchHandler.TextTransform);
+
+			if (string.Equals(currentText, transformedText, StringComparison.Ordinal))
+				return;
+
+			// Assign through the search bar so its own text state stays in sync with the
+			// text field; the search controller reads UISearchBar.Text to update Query.
+			_uiSearchBar.Text = transformedText;
+
+			// Reassigning Text collapses the selection to the start of a focused field,
+			// which would make the next typed character land before the existing text.
+			if (textField.IsFirstResponder)
+			{
+				var endOfDocument = textField.EndOfDocument;
+				textField.SelectedTextRange = textField.GetTextRange(endOfDocument, endOfDocument);
+			}
 		}
 
 		void UpdateTextColor(UITextField textField)
@@ -337,6 +353,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		void OnTextChanged(object sender, UISearchBarTextChangedEventArgs e)
 		{
 			UpdateCancelButtonColor(_uiSearchBar.FindDescendantView<UIButton>());
+
+			// TextTransform is otherwise only applied when the property itself changes,
+			// which happens before the user has typed anything.
+			UpdateTextTransform(_uiSearchBar.FindDescendantView<UITextField>());
 		}
 
 
