@@ -56,6 +56,13 @@ namespace Microsoft.Maui.Controls
 
 		static int s_currentTweener = 1;
 
+		// A repeating animation only learns that it should stop when its current iteration ends, which
+		// makes a long iteration feel unresponsive. Iterations longer than this are polled while they run.
+		const uint MinLengthForRepeatPolling = 500;
+
+		// How much iteration progress (in milliseconds) must elapse between two polls of the repeat predicate.
+		const double RepeatPollIntervalMs = 100;
+
 		static AnimationExtensions()
 		{
 			s_animations = new Dictionary<AnimatableKey, Info>();
@@ -150,8 +157,26 @@ namespace Microsoft.Maui.Controls
 						animation.ResetChildren();
 					return val;
 				};
-				self.Animate(name, animation.GetCallback(), rate, length, easing, finished, r);
+
+				// `r` is not a pure predicate: it re-arms the child animations whenever it returns true, so it
+				// can only be invoked at an iteration boundary. `repeat` itself is safe to poll while the
+				// iteration is running, which is what lets a long iteration notice a stop request promptly.
+				AnimateWithRepeatPoll(self, name, animation.GetCallback(), rate, length, easing, finished, r, repeat);
 			}
+		}
+
+		static void AnimateWithRepeatPoll(IAnimatable self, string name, Action<double> callback, uint rate, uint length, Easing easing,
+			Action<double, bool> finished, Func<bool> repeat, Func<bool> repeatPoll)
+		{
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+			if (self == null)
+				throw new ArgumentNullException(nameof(self));
+
+			var animationManager = self.GetAnimationManager();
+
+			Action animate = () => AnimateInternal<double>(self, animationManager, name, x => x, callback, rate, length, easing, finished, repeat, repeatPoll);
+			DoAction(self, animate);
 		}
 
 		/// <summary>Animates <paramref name="self"/> from <paramref name="start"/> to <paramref name="end"/>.</summary>
@@ -267,7 +292,7 @@ namespace Microsoft.Maui.Controls
 		}
 
 		static void AnimateInternal<T>(IAnimatable self, IAnimationManager animationManager, string name, Func<double, T> transform, Action<T> callback,
-			uint rate, uint length, Easing easing, Action<T, bool> finished, Func<bool> repeat)
+			uint rate, uint length, Easing easing, Action<T, bool> finished, Func<bool> repeat, Func<bool> repeatPoll = null)
 		{
 			var key = new AnimatableKey(self, name);
 
@@ -289,6 +314,8 @@ namespace Microsoft.Maui.Controls
 			info.Callback = step;
 			info.Finished = final;
 			info.Repeat = repeat;
+			info.RepeatPoll = repeatPoll ?? repeat;
+			info.NextRepeatPollMs = RepeatPollIntervalMs;
 			info.Owner = new WeakReference<IAnimatable>(self);
 
 			s_animations[key] = info;
@@ -353,12 +380,16 @@ namespace Microsoft.Maui.Controls
 				// If the Ticker has been disabled (e.g., by power save mode), then don't repeat the animation
 				var animationsEnabled = info.AnimationManager.Ticker.SystemEnabled;
 
-				if (info.Repeat != null && animationsEnabled)
+				if (info.Repeat != null && animationsEnabled && !info.RepeatEnded)
 				{
 					repeat = info.Repeat();
 				}
 
-				if (!repeat)
+				if (repeat)
+				{
+					info.NextRepeatPollMs = RepeatPollIntervalMs;
+				}
+				else
 				{
 					s_animations.Remove(tweener.Handle);
 					tweener.ValueUpdated -= HandleTweenerUpdated;
@@ -384,7 +415,39 @@ namespace Microsoft.Maui.Controls
 				owner.BatchBegin();
 				info.Callback(info.Easing.Ease(tweener.Value));
 				owner.BatchCommit();
+
+				if (ShouldEndRepeatEarly(info, tweener.Value))
+				{
+					info.RepeatEnded = true;
+
+					// Fast-forward the iteration instead of tearing it down here. Tweener.Step reaches its
+					// end-of-iteration branch on this same tick, so the normal completion path finishes the
+					// animation at its terminal value.
+					tweener.Value = 1.0;
+				}
 			}
+		}
+
+		static bool ShouldEndRepeatEarly(Info info, double value)
+		{
+			if (info.RepeatEnded || info.RepeatPoll is null || info.Length <= MinLengthForRepeatPolling)
+				return false;
+
+			// At the end of the iteration the existing repeat handling takes over.
+			if (value >= 1.0)
+				return false;
+
+			var elapsed = value * info.Length;
+			if (elapsed < info.NextRepeatPollMs)
+				return false;
+
+			info.NextRepeatPollMs = elapsed + RepeatPollIntervalMs;
+
+			// If the Ticker has been disabled (e.g., by power save mode), the animation is finished elsewhere.
+			if (!info.AnimationManager.Ticker.SystemEnabled)
+				return false;
+
+			return !info.RepeatPoll();
 		}
 
 		static void DoAction(IAnimatable self, Action action)
@@ -402,6 +465,9 @@ namespace Microsoft.Maui.Controls
 			public Action<double> Callback;
 			public Action<double, bool> Finished;
 			public Func<bool> Repeat;
+			public Func<bool> RepeatPoll;
+			public bool RepeatEnded;
+			public double NextRepeatPollMs;
 			public Tweener Tweener;
 
 			public Easing Easing { get; set; }
