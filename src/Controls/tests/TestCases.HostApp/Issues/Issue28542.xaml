@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="Maui.Controls.Sample.Issues.Issue28542"
+			 Title="CollectionView scrollbar">
+	<Grid AutomationId="RootGrid"
+		  Padding="12"
+		  RowDefinitions="Auto,Auto,*,Auto"
+		  RowSpacing="8">
+		<Button Grid.Row="0"
+				AutomationId="CaptureMetrics"
+				Text="Capture reference"
+				Clicked="OnCaptureMetricsClicked" />
+
+		<Label x:Name="ResultLabel"
+			   Grid.Row="1"
+			   AutomationId="ScrollbarMetrics"
+			   FontAttributes="Bold"
+			   FontSize="18"
+			   LineBreakMode="NoWrap"
+			   MaxLines="1"
+			   Text="Waiting for metrics" />
+
+		<CollectionView x:Name="VariableHeightCollection"
+						Grid.Row="2"
+						AutomationId="VariableHeightCollection">
+			<CollectionView.ItemTemplate>
+				<DataTemplate>
+					<Grid HeightRequest="{Binding Height}"
+						  Padding="12,0">
+						<Label Text="{Binding Text}"
+							   FontSize="18"
+							   VerticalOptions="Center" />
+					</Grid>
+				</DataTemplate>
+			</CollectionView.ItemTemplate>
+		</CollectionView>
+
+		<Button Grid.Row="3"
+				AutomationId="CheckMetrics"
+				Text="Check scrollbar"
+				Clicked="OnCaptureMetricsClicked" />
+	</Grid>
+</ContentPage>
+
