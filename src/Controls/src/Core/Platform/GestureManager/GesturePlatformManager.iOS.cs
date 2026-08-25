@@ -916,6 +916,23 @@ namespace Microsoft.Maui.Controls.Platform
 
 			public ShouldReceiveTouchProxy(GesturePlatformManager manager) => _manager = new(manager);
 
+			static bool IsTouchOnDisabledControl(PlatformView platformView, UITouch touch)
+			{
+				var containerLayer = platformView.Layer;
+				var hitLayer = containerLayer.HitTest(touch.LocationInView(platformView));
+
+				while (hitLayer != null && hitLayer != containerLayer)
+				{
+					if (hitLayer.Delegate is UIControl { Enabled: false, Hidden: false, UserInteractionEnabled: true } control &&
+						control.Alpha > 0.01)
+						return true;
+
+					hitLayer = hitLayer.SuperLayer;
+				}
+
+				return false;
+			}
+
 			public bool ShouldReceiveTouch(UIGestureRecognizer recognizer, UITouch touch)
 			{
 				if (!_manager.TryGetTarget(out var manager))
@@ -935,6 +952,11 @@ namespace Microsoft.Maui.Controls.Platform
 				}
 
 				if (!virtualView.IsEnabled)
+				{
+					return false;
+				}
+
+				if (recognizer is UITapGestureRecognizer && IsTouchOnDisabledControl(platformView, touch))
 				{
 					return false;
 				}
