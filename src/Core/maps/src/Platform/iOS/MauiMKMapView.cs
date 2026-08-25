@@ -168,11 +168,15 @@ namespace Microsoft.Maui.Maps.Platform
 
 		internal void AddElements(IList elements)
 		{
-			_trackedMapElements = new List<IMapElement>();
+			// Append rather than replace: a single element update (UpdateMapElement) calls this with
+			// just that element, and replacing the list would drop the tracking for every other
+			// element still on the map.
+			_trackedMapElements ??= new List<IMapElement>();
 
 			foreach (IMapElement element in elements)
 			{
-				_trackedMapElements.Add(element);
+				if (!_trackedMapElements.Contains(element))
+					_trackedMapElements.Add(element);
 
 				IMKOverlay? overlay = null;
 				switch (element)
@@ -207,7 +211,12 @@ namespace Microsoft.Maui.Maps.Platform
 			foreach (IMapElement element in elements)
 			{
 				if (element.MapElementId is IMKOverlay overlay)
+				{
 					RemoveOverlay(overlay);
+					element.MapElementId = null;
+				}
+
+				_trackedMapElements?.Remove(element);
 			}
 		}
 
