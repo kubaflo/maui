@@ -58,9 +58,15 @@ namespace Microsoft.Maui.Media
 
 		static async Task<Bitmap?> RenderAsync(View view, Window? window)
 		{
-			if (OperatingSystem.IsAndroidVersionAtLeast(26))
+			// PixelCopy is inherently asynchronous: the copy runs off the UI thread and the result
+			// is delivered through a callback that has to be dispatched by a looper. A caller that is
+			// already on the UI thread cannot observe that callback without first returning control to
+			// the main looper, so any caller that blocks on the returned task deadlocks. On the UI
+			// thread we therefore render synchronously, which also lets the returned task complete
+			// before it is handed back to the caller.
+			if (OperatingSystem.IsAndroidVersionAtLeast(26) && !MainThread.IsMainThread)
 			{
-				var bitmap = await RenderUsingPixelCopyAsync(view, window);
+				var bitmap = await RenderUsingPixelCopyAsync(view, window).ConfigureAwait(false);
 				if (bitmap is not null)
 					return bitmap;
 			}
@@ -99,7 +105,7 @@ namespace Microsoft.Maui.Media
 
 				try
 				{
-					return await tcs.Task.ConfigureAwait(true);
+					return await tcs.Task.ConfigureAwait(false);
 				}
 				finally
 				{
