@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Maui.Controls.Sample.Issues.Issue36412"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Issue36412">
+    <ScrollView>
+        <VerticalStackLayout Spacing="14">
+            <Entry AutomationId="Field1" Keyboard="Numeric" Placeholder="Field 1" />
+            <Entry Keyboard="Numeric" Placeholder="Field 2" />
+            <Entry Keyboard="Numeric" Placeholder="Field 3" />
+            <Entry Keyboard="Numeric" Placeholder="Field 4" />
+            <Entry Keyboard="Numeric" Placeholder="Field 5" />
+            <Entry Keyboard="Numeric" Placeholder="Field 6" />
+            <Entry AutomationId="Field7" Keyboard="Numeric" Placeholder="Field 7" />
+            <Entry Keyboard="Numeric" Placeholder="Field 8" />
+            <Entry Keyboard="Numeric" Placeholder="Field 9" />
+            <Entry AutomationId="Field10" Keyboard="Numeric" Placeholder="Field 10" />
+            <Entry Keyboard="Numeric" Placeholder="Field 11" />
+            <Entry Keyboard="Numeric" Placeholder="Field 12" />
+            <Entry Keyboard="Numeric" Placeholder="Field 13" />
+            <Entry Keyboard="Numeric" Placeholder="Field 14" />
+            <Entry Keyboard="Numeric" Placeholder="Field 15" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
