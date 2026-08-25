@@ -27,6 +27,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		UISearchBar _uiSearchBar;
 		UIToolbar _numericAccessoryView;
 		bool _disposed;
+		bool _updatingCharacterSpacing;
 
 		public SearchHandlerAppearanceTracker(UISearchBar searchBar, SearchHandler searchHandler, IFontManager fontManager)
 		{
@@ -59,6 +60,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			UpdateCancelButtonColor(cancelButton);
 			UpdateSearchBarBackgroundColor(uiTextField);
 			UpdateTextTransform(uiTextField);
+			UpdateCharacterSpacing(uiTextField);
 		}
 
 		internal void UpdateFlowDirection(Shell shell)
@@ -116,6 +118,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				UpdateSearchBarVerticalTextAlignment(_uiSearchBar.FindDescendantView<UITextField>());
 			}
+			else if (e.Is(SearchHandler.CharacterSpacingProperty))
+			{
+				UpdateCharacterSpacing(_uiSearchBar.FindDescendantView<UITextField>());
+			}
 		}
 
 		void GetDefaultSearchBarColors(UISearchBar searchBar)
@@ -146,6 +152,47 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 
 			textField.Font = _searchHandler.ToFont().ToUIFont(_fontManager);
+		}
+
+		void UpdateCharacterSpacing(UITextField textField)
+		{
+			if (textField == null || _updatingCharacterSpacing)
+				return;
+
+			_updatingCharacterSpacing = true;
+
+			try
+			{
+				var characterSpacing = _searchHandler.CharacterSpacing;
+
+				var textAttr = textField.AttributedText?.WithCharacterSpacing(characterSpacing);
+				if (textAttr != null)
+				{
+					// Assigning AttributedText rebuilds the field's text storage, which moves the
+					// caret to the end; restore the original offset so typing mid-string still works.
+					var selectedRange = textField.SelectedTextRange;
+					var caretOffset = selectedRange == null
+						? -1
+						: (int)textField.GetOffsetFromPosition(textField.BeginningOfDocument, selectedRange.Start);
+
+					textField.AttributedText = textAttr;
+
+					if (caretOffset >= 0)
+					{
+						var caretPosition = textField.GetPosition(textField.BeginningOfDocument, caretOffset);
+						if (caretPosition != null)
+							textField.SelectedTextRange = textField.GetTextRange(caretPosition, caretPosition);
+					}
+				}
+
+				var placeholderAttr = textField.AttributedPlaceholder?.WithCharacterSpacing(characterSpacing);
+				if (placeholderAttr != null)
+					textField.AttributedPlaceholder = placeholderAttr;
+			}
+			finally
+			{
+				_updatingCharacterSpacing = false;
+			}
 		}
 
 		void UpdateSearchBarBackgroundColor(UITextField textField)
@@ -337,6 +384,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		void OnTextChanged(object sender, UISearchBarTextChangedEventArgs e)
 		{
 			UpdateCancelButtonColor(_uiSearchBar.FindDescendantView<UIButton>());
+
+			// UITextField regenerates its attributed text from the plain text on every edit,
+			// which drops the kerning attribute, so it has to be re-applied after each change.
+			UpdateCharacterSpacing(_uiSearchBar.FindDescendantView<UITextField>());
 		}
 
 
