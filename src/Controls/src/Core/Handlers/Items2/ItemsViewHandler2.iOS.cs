@@ -298,6 +298,31 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 						return contentSize;
 					}
 				}
+				else
+				{
+					// The CollectionView is already in a window, so UIKit has given it real bounds and
+					// there is no need to substitute a temporary frame. Let any pending layout finish and
+					// re-read the content size the layout actually computed.
+					collectionView.LayoutIfNeeded();
+					contentSize = Controller.GetSize();
+
+					if ((scrollDirection == UICollectionViewScrollDirection.Vertical && contentSize.Height > 0) ||
+						(scrollDirection == UICollectionViewScrollDirection.Horizontal && contentSize.Width > 0))
+					{
+						return contentSize;
+					}
+
+					// A zero content size only means "nothing has been realized yet" while the layout had
+					// no valid extent across the scroll direction to lay content out in. Once that extent
+					// is valid, the layout has had everything it needs and a zero result is the real
+					// measurement, so it must be reported instead of the expansive fallback below.
+					var bounds = collectionView.Bounds;
+					if ((scrollDirection == UICollectionViewScrollDirection.Vertical && bounds.Width > 0) ||
+						(scrollDirection == UICollectionViewScrollDirection.Horizontal && bounds.Height > 0))
+					{
+						return contentSize;
+					}
+				}
 
 				// Fallback: return the expansive size the collection view wants by default
 				// to get it to start measuring its content
