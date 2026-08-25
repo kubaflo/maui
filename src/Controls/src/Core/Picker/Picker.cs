@@ -85,6 +85,11 @@ namespace Microsoft.Maui.Controls
 			((INotifyCollectionChanged)Items).CollectionChanged += OnItemsCollectionChanged;
 			_platformConfigurationRegistry = new Lazy<PlatformConfigurationRegistry<Picker>>(() => new PlatformConfigurationRegistry<Picker>(this));
 		}
+
+		~Picker()
+		{
+			_itemsSourceCollectionProxy.Unsubscribe();
+		}
 		/// <summary>Gets a value that indicates whether the font for the searchbar text is bold, italic, or neither. This is a bindable property.</summary>
 		public FontAttributes FontAttributes
 		{
@@ -357,6 +362,12 @@ namespace Microsoft.Maui.Controls
 		readonly Queue<Action> _pendingIsOpenActions = new Queue<Action>();
 		INotifyCollectionChanged _subscribedItemsSourceCollection;
 
+		// The proxy only holds weak references to the collection and to the handler delegate, so a
+		// long-lived ItemsSource never keeps this Picker (and its visual tree) alive. The delegate
+		// itself must be rooted by the Picker for the subscription to stay effective.
+		readonly WeakNotifyCollectionChangedProxy _itemsSourceCollectionProxy = new WeakNotifyCollectionChangedProxy();
+		NotifyCollectionChangedEventHandler _itemsSourceCollectionChangedHandler;
+
 		void OnIsOpenPropertyChanged(bool oldValue, bool newValue)
 		{
 			if (Handler?.VirtualView is Picker)
@@ -417,7 +428,8 @@ namespace Microsoft.Maui.Controls
 
 			UnsubscribeFromItemsSourceCollection();
 			_subscribedItemsSourceCollection = collection;
-			_subscribedItemsSourceCollection.CollectionChanged += CollectionChanged;
+			_itemsSourceCollectionChangedHandler ??= CollectionChanged;
+			_itemsSourceCollectionProxy.Subscribe(collection, _itemsSourceCollectionChangedHandler);
 		}
 
 		void UnsubscribeFromItemsSourceCollection()
@@ -427,7 +439,7 @@ namespace Microsoft.Maui.Controls
 				return;
 			}
 
-			_subscribedItemsSourceCollection.CollectionChanged -= CollectionChanged;
+			_itemsSourceCollectionProxy.Unsubscribe();
 			_subscribedItemsSourceCollection = null;
 		}
 
