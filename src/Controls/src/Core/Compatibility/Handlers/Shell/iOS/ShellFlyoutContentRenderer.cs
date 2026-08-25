@@ -137,6 +137,12 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				var oldRenderer = (IPlatformViewHandler)_footer.Handler;
 				var oldFooterView = _footerView;
+
+				// The replaced footer keeps raising MeasureInvalidated after it leaves the flyout.
+				// Without this the stale subscription re-measures whatever _footerView currently is,
+				// which is the *new* footer, and it also roots this renderer to the old footer.
+				_footer.MeasureInvalidated -= OnFooterMeasureInvalidated;
+
 				_tableViewController.FooterView = null;
 				_footerView?.Disconnect();
 				_footerView = null;
@@ -208,6 +214,11 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		void OnFooterMeasureInvalidated(object sender, System.EventArgs e)
 		{
+			// Ignore invalidations raised by a footer that is no longer the flyout footer,
+			// so an event already in flight for a replaced footer cannot resize the current one.
+			if (sender is not null && !ReferenceEquals(sender, _footer))
+				return;
+
 			ReMeasureFooter();
 		}
 
