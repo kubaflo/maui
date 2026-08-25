@@ -188,16 +188,29 @@ namespace Microsoft.Maui.Controls
 
 		static void OnImageSourceChanged(BindableObject bindable, object oldvalue, object newValue)
 		{
+			var menuItem = (MenuItem)bindable;
+
 			if (oldvalue is ImageSource oldImageSource)
-				oldImageSource.SourceChanged -= ((MenuItem)bindable).OnImageSourceSourceChanged;
+				oldImageSource.SourceChanged -= menuItem.OnImageSourceSourceChanged;
 
 			if (newValue is ImageSource newImageSource)
-				newImageSource.SourceChanged += ((MenuItem)bindable).OnImageSourceSourceChanged;
+				newImageSource.SourceChanged += menuItem.OnImageSourceSourceChanged;
+
+			menuItem.UpdateHandlerSource();
 		}
 
 		void OnImageSourceSourceChanged(object sender, EventArgs e)
 		{
 			OnPropertyChanged(IconImageSourceProperty.PropertyName);
+			UpdateHandlerSource();
+		}
+
+		// IconImageSource maps to IMenuElement.Source, so the property change has to be
+		// forwarded under the name the handler mappers are keyed on. Handlers without a
+		// Source mapping simply ignore the update.
+		void UpdateHandlerSource()
+		{
+			Handler?.UpdateValue(nameof(IMenuElement.Source));
 		}
 
 		WeakCommandSubscription ICommandElement.CleanupTracker
