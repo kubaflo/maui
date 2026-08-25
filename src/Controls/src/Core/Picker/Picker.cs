@@ -357,6 +357,15 @@ namespace Microsoft.Maui.Controls
 		readonly Queue<Action> _pendingIsOpenActions = new Queue<Action>();
 		INotifyCollectionChanged _subscribedItemsSourceCollection;
 
+		// The ItemsSource may outlive this Picker (a shared/static collection is a common pattern),
+		// so the CollectionChanged subscription is routed through a weak proxy. A direct `+=` makes
+		// the collection hold a strong reference to the Picker, keeping the whole visual tree alive
+		// after the Picker is removed from its parent.
+		WeakNotifyCollectionChangedProxy _itemsSourceCollectionProxy;
+		NotifyCollectionChangedEventHandler _collectionChangedDelegate;
+
+		~Picker() => _itemsSourceCollectionProxy?.Unsubscribe();
+
 		void OnIsOpenPropertyChanged(bool oldValue, bool newValue)
 		{
 			if (Handler?.VirtualView is Picker)
@@ -416,8 +425,13 @@ namespace Microsoft.Maui.Controls
 			}
 
 			UnsubscribeFromItemsSourceCollection();
+
+			// The proxy only holds a weak reference to this delegate, so the Picker has to keep it alive.
+			_collectionChangedDelegate ??= CollectionChanged;
+			_itemsSourceCollectionProxy ??= new WeakNotifyCollectionChangedProxy();
+
 			_subscribedItemsSourceCollection = collection;
-			_subscribedItemsSourceCollection.CollectionChanged += CollectionChanged;
+			_itemsSourceCollectionProxy.Subscribe(collection, _collectionChangedDelegate);
 		}
 
 		void UnsubscribeFromItemsSourceCollection()
@@ -427,7 +441,7 @@ namespace Microsoft.Maui.Controls
 				return;
 			}
 
-			_subscribedItemsSourceCollection.CollectionChanged -= CollectionChanged;
+			_itemsSourceCollectionProxy?.Unsubscribe();
 			_subscribedItemsSourceCollection = null;
 		}
 
