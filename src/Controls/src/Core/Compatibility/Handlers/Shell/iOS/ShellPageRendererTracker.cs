@@ -938,6 +938,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				return;
 			}
 
+			if (_searchController.SearchBar.Text != _searchHandler.Query)
+				_searchController.SearchBar.Text = _searchHandler.Query;
+
 			if (e.PropertyName == SearchHandler.ClearPlaceholderEnabledProperty.PropertyName)
 				_searchController.SearchBar.ShowsBookmarkButton = _searchHandler.ClearPlaceholderEnabled;
 			else if (e.PropertyName == SearchHandler.SearchBoxVisibilityProperty.PropertyName)
