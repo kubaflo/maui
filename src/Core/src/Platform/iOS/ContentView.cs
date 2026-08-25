@@ -27,6 +27,40 @@ namespace Microsoft.Maui.Platform
 			base.LayoutSubviews();
 
 			UpdateClip();
+			UpdateInteractionForContentVisibility();
+		}
+
+		void UpdateInteractionForContentVisibility()
+		{
+			if (CrossPlatformLayout is not IContentView view)
+				return;
+
+			var interactionEnabled = view.IsEnabled && !view.InputTransparent;
+			if (interactionEnabled &&
+				view.PresentedContent is IView presentedContent &&
+				presentedContent.Handler?.PlatformView is UIView platformContent &&
+				platformContent.Hidden)
+			{
+				interactionEnabled = HasEnabledGestureRecognizer();
+			}
+
+			if (UserInteractionEnabled != interactionEnabled)
+				UserInteractionEnabled = interactionEnabled;
+		}
+
+		bool HasEnabledGestureRecognizer()
+		{
+			var gestureRecognizers = GestureRecognizers;
+			if (gestureRecognizers is null)
+				return false;
+
+			for (int i = 0; i < gestureRecognizers.Length; i++)
+			{
+				if (gestureRecognizers[i].Enabled)
+					return true;
+			}
+
+			return false;
 		}
 
 		internal IBorderStroke? Clip
