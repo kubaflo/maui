@@ -1,3 +1,4 @@
+using System;
 using Foundation;
 using Microsoft.Maui.Graphics;
 using ObjCRuntime;
@@ -7,11 +8,91 @@ namespace Microsoft.Maui.Platform
 {
 	public static class LabelExtensions
 	{
+		// WCAG AA contrast ratio for normal sized text.
+		const double MinimumContrastRatio = 4.5;
+
+		// A backdrop that is nearly transparent lets whatever is behind it show through,
+		// so it cannot be trusted as the surface the text is drawn on.
+		const float OpaqueBackdropAlpha = 0.9f;
+
+		const int MaxBackdropSearchDepth = 16;
+
 		public static void UpdateTextColor(this UILabel platformLabel, ITextStyle textStyle, UIColor? defaultColor = null)
 		{
 			// Default value of color documented to be black in iOS docs
 			var textColor = textStyle.TextColor;
+
+			if (textColor is null && defaultColor is null)
+			{
+				platformLabel.TextColor = GetDefaultTextColor(textStyle);
+				return;
+			}
+
 			platformLabel.TextColor = textColor.ToPlatform(defaultColor ?? ColorExtensions.LabelColor);
+		}
+
+		// The system label color follows the current appearance. That is only safe when the surface behind
+		// the text follows the appearance too. If an ancestor paints a literal (theme independent) color,
+		// the appearance can move the text out from under it - e.g. near white system text over a fixed
+		// white card in dark mode - so the text color is pinned to whatever is measurably readable there.
+		static UIColor GetDefaultTextColor(ITextStyle textStyle)
+		{
+			if (TryGetOpaqueBackdropColor(textStyle, out var backdrop))
+			{
+				var blackContrast = ContrastRatio(backdrop, Colors.Black);
+				var whiteContrast = ContrastRatio(backdrop, Colors.White);
+
+				if (blackContrast >= MinimumContrastRatio && whiteContrast < MinimumContrastRatio)
+					return UIColor.Black;
+
+				if (whiteContrast >= MinimumContrastRatio && blackContrast < MinimumContrastRatio)
+					return UIColor.White;
+			}
+
+			return ColorExtensions.LabelColor;
+		}
+
+		static bool TryGetOpaqueBackdropColor(ITextStyle textStyle, out Color backdrop)
+		{
+			backdrop = Colors.Transparent;
+
+			var element = textStyle as IElement;
+
+			for (int depth = 0; element is not null && depth < MaxBackdropSearchDepth; depth++)
+			{
+				if (element is IView view &&
+					view.Background is SolidPaint solidPaint &&
+					solidPaint.Color is Color color &&
+					color.Alpha >= OpaqueBackdropAlpha)
+				{
+					backdrop = color;
+					return true;
+				}
+
+				element = element.Parent;
+			}
+
+			return false;
+		}
+
+		static double ContrastRatio(Color first, Color second)
+		{
+			var firstLuminance = RelativeLuminance(first);
+			var secondLuminance = RelativeLuminance(second);
+
+			return (Math.Max(firstLuminance, secondLuminance) + 0.05) / (Math.Min(firstLuminance, secondLuminance) + 0.05);
+		}
+
+		static double RelativeLuminance(Color color) =>
+			(0.2126 * ToLinearChannel(color.Red)) +
+			(0.7152 * ToLinearChannel(color.Green)) +
+			(0.0722 * ToLinearChannel(color.Blue));
+
+		static double ToLinearChannel(float channel)
+		{
+			double value = Math.Clamp((double)channel, 0d, 1d);
+
+			return value <= 0.03928 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
 		}
 
 		public static void UpdateCharacterSpacing(this UILabel platformLabel, ITextStyle textStyle)
