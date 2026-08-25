@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.Maui.Graphics;
 using UIKit;
 
 namespace Microsoft.Maui.Handlers
@@ -15,6 +16,11 @@ namespace Microsoft.Maui.Handlers
 		internal UIDatePicker? DatePickerDialog { get { return PlatformView?.InputView as UIDatePicker; } }
 
 		internal bool UpdateImmediately { get; set; }
+
+		// The background color the native control had before MAUI applied any Paint to it.
+		// Restoring this is what makes clearing Background return the picker to its platform default.
+		UIColor? _defaultBackgroundColor;
+		bool _defaultBackgroundColorCaptured;
 
 		protected override void ConnectHandler(MauiDatePicker platformView)
 		{
@@ -35,8 +41,34 @@ namespace Microsoft.Maui.Handlers
 		protected override void DisconnectHandler(MauiDatePicker platformView)
 		{
 			platformView.MauiDatePickerDelegate = null;
+			_defaultBackgroundColorCaptured = false;
+			_defaultBackgroundColor = null;
 
 			base.DisconnectHandler(platformView);
+		}
+
+		internal static void MapBackground(IDatePickerHandler handler, IDatePicker datePicker)
+		{
+			if (handler.PlatformView is not MauiDatePicker platformView)
+				return;
+
+			if (handler is DatePickerHandler platformHandler)
+			{
+				if (!platformHandler._defaultBackgroundColorCaptured)
+				{
+					platformHandler._defaultBackgroundColor = platformView.BackgroundColor;
+					platformHandler._defaultBackgroundColorCaptured = true;
+				}
+
+				if (datePicker.Background.IsNullOrEmpty())
+				{
+					platformView.RemoveBackgroundLayer();
+					platformView.BackgroundColor = platformHandler._defaultBackgroundColor;
+					return;
+				}
+			}
+
+			platformView.UpdateBackground(datePicker);
 		}
 
 		public static partial void MapFormat(IDatePickerHandler handler, IDatePicker datePicker)
