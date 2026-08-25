@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using CoreAnimation;
 using CoreGraphics;
@@ -96,13 +97,15 @@ namespace Microsoft.Maui.Platform
 			{
 				if (platformView is LayoutView or ContentView)
 					platformView.BackgroundColor = null;
-				else
+				else if (!TryRestoreDefaultBackgroundColor(platformView))
 					return;
 			}
 
 			if (paint is SolidPaint solidPaint)
 			{
 				Color backgroundColor = solidPaint.Color;
+
+				CacheDefaultBackgroundColor(platformView);
 
 				if (backgroundColor == null)
 					platformView.BackgroundColor = ColorExtensions.BackgroundColor;
@@ -117,6 +120,8 @@ namespace Microsoft.Maui.Platform
 
 				if (backgroundLayer != null)
 				{
+					CacheDefaultBackgroundColor(platformView);
+
 					backgroundLayer.Name = BackgroundLayerName;
 					platformView.BackgroundColor = UIColor.Clear;
 
@@ -125,6 +130,38 @@ namespace Microsoft.Maui.Platform
 					platformView.InsertBackgroundLayer(backgroundLayer, 0);
 				}
 			}
+		}
+
+		// Tracks the platform view's own background color from before MAUI first overwrote it, so
+		// clearing the MAUI background can put the native default back instead of leaving the last
+		// applied color in place.
+		static readonly ConditionalWeakTable<UIView, DefaultBackgroundColor> DefaultBackgroundColors = new();
+
+		sealed class DefaultBackgroundColor
+		{
+			public DefaultBackgroundColor(UIColor? color) => Color = color;
+
+			public UIColor? Color { get; }
+		}
+
+		static void CacheDefaultBackgroundColor(UIView platformView)
+		{
+			// LayoutView/ContentView already reset to null when the paint is cleared.
+			if (platformView is LayoutView or ContentView)
+				return;
+
+			if (!DefaultBackgroundColors.TryGetValue(platformView, out _))
+				DefaultBackgroundColors.Add(platformView, new DefaultBackgroundColor(platformView.BackgroundColor));
+		}
+
+		static bool TryRestoreDefaultBackgroundColor(UIView platformView)
+		{
+			if (!DefaultBackgroundColors.TryGetValue(platformView, out var defaultBackgroundColor))
+				return false;
+
+			DefaultBackgroundColors.Remove(platformView);
+			platformView.BackgroundColor = defaultBackgroundColor.Color;
+			return true;
 		}
 
 		public static void UpdateFlowDirection(this UIView platformView, IView view)
