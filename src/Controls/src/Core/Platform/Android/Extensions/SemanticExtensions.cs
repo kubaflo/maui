@@ -12,7 +12,16 @@ namespace Microsoft.Maui.Controls.Platform
 				return;
 
 			if (virtualView.HasAccessibleTapGesture())
-				info.AddAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat.ActionClick);
+			{
+				var actionLabel = info.HintText;
+				var clickAction = actionLabel is null
+					? AccessibilityNodeInfoCompat.AccessibilityActionCompat.ActionClick
+					: new AccessibilityNodeInfoCompat.AccessibilityActionCompat(
+						AccessibilityNodeInfoCompat.AccessibilityActionCompat.ActionClick.Id,
+						actionLabel);
+
+				info.AddAction(clickAction);
+			}
 		}
 
 		internal static void AddOrRemoveControlsAccessibilityDelegate(this View virtualView)
