@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+             x:Class="Maui.Controls.Sample.Issues.Issue25885"
+             x:DataType="local:Issue25885">
+    <Grid RowDefinitions="Auto,*"
+          Padding="12"
+          RowSpacing="12">
+        <VerticalStackLayout Spacing="4">
+            <Label x:Name="ChildStateLabel"
+                   AutomationId="ChildStateLabel"
+                   Text="Child command: available" />
+            <Label x:Name="ChildCountLabel"
+                   AutomationId="ChildCountLabel"
+                   Text="Child executions: 0" />
+            <Label x:Name="ParentCountLabel"
+                   AutomationId="ParentCountLabel"
+                   Text="Parent executions: 0" />
+        </VerticalStackLayout>
+
+        <Grid Grid.Row="1"
+              BackgroundColor="Purple">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding ParentCommand}" />
+            </Grid.GestureRecognizers>
+            <Button AutomationId="ChildButton"
+                    BackgroundColor="Purple"
+                    Command="{Binding ChildCommand}"
+                    HorizontalOptions="Fill"
+                    Text="Click me (top)"
+                    VerticalOptions="Fill" />
+        </Grid>
+    </Grid>
+</ContentPage>
+
