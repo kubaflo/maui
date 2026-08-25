@@ -48,6 +48,30 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView?.UpdateIsEnabled(view);
 		}
 
+		internal static void MapSource(IMenuFlyoutItemHandler handler, IMenuFlyoutItem view)
+		{
+			// The platform element is created once; mutate its image in place so the
+			// UIMenuElement identity (and therefore the containing UIMenu) is preserved.
+			if (handler is not MenuFlyoutItemHandler { MauiContext: not null } typedHandler)
+				return;
+
+			var platformView = handler.PlatformView;
+			if (platformView is null)
+				return;
+
+			var image = view.Source.GetPlatformMenuImage(typedHandler.MauiContext);
+
+			switch (platformView)
+			{
+				case UIAction action:
+					action.Image = image;
+					break;
+				case UICommand command:
+					command.Image = image;
+					break;
+			}
+		}
+
 		internal static void Execute(UICommand uICommand)
 		{
 			if (uICommand.PropertyList is NSString nsString &&
