@@ -119,9 +119,11 @@ namespace Microsoft.Maui.Layouts
 				// Multiple it by the available space to figure out the final value
 				value *= available;
 			}
-			else if (value == AutoSize)
+			else if (value == AutoSize || (isProportional && value > 0))
 			{
-				// No absolute or proportional value specified, so we use the measured value
+				// Either no absolute or proportional value was specified, or a proportion of an
+				// unconstrained (infinite) space was requested; a percentage of infinity has no
+				// meaningful size, so in both cases we use the measured value.
 				value = measured;
 			}
 
