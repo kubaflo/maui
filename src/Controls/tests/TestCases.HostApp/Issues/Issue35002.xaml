@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue35002">
+    <ScrollView>
+        <VerticalStackLayout Padding="24"
+                             Spacing="16">
+            <Label Text="Windows keyboard navigation for a tap gesture" />
+            <Label Text="Focus the entry, then press Tab and Enter. The gesture target should receive focus and activate." />
+
+            <Entry AutomationId="KeyboardStartEntry"
+                   Placeholder="Keyboard navigation starts here"
+                   Focused="OnKeyboardStartEntryFocused" />
+
+            <Label AutomationId="GestureTarget"
+                   Text="Keyboard gesture target"
+                   Focused="OnGestureTargetFocused">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnGestureTargetTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+
+            <Button x:Name="FallbackButton"
+                    AutomationId="FallbackButton"
+                    Text="Keyboard fallback"
+                    Clicked="OnFallbackButtonClicked" />
+
+            <Button AutomationId="EvaluateButton"
+                    Text="Evaluate keyboard result" />
+
+            <Label x:Name="ActivationStatusLabel"
+                   AutomationId="ActivationStatusLabel"
+                   Text="ActivatedControl:None&#10;FocusedControl:None" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+
