@@ -117,7 +117,10 @@ namespace Microsoft.Maui.Platform
 					break;
 			}
 
-			borderPath.StrokeStartLineCap = borderPath.StrokeEndLineCap = wLineCap;
+			// A border outline is a closed figure, so StrokeStartLineCap/StrokeEndLineCap are never
+			// rendered. When the stroke is dashed, every dash segment end is capped with StrokeDashCap,
+			// which is what actually makes StrokeLineCap visible on Windows.
+			borderPath.StrokeStartLineCap = borderPath.StrokeEndLineCap = borderPath.StrokeDashCap = wLineCap;
 		}
 
 		public static void UpdateStrokeLineJoin(this Path borderPath, LineJoin strokeLineJoin)
