@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="Maui.Controls.Sample.Issues.Issue27126"
+			 Title="Issue 27126">
+	<AbsoluteLayout x:Name="IssueLayout"
+					SizeChanged="OnIssueLayoutSizeChanged">
+		<Label Text="Issue 27126"
+			   FontSize="24"
+			   FontAttributes="Bold"
+			   AbsoluteLayout.LayoutBounds="20,20,320,40" />
+
+		<Label x:Name="TapTarget"
+			   AutomationId="TapTarget"
+			   Text="Tap target"
+			   BackgroundColor="LightBlue"
+			   FontSize="24"
+			   HorizontalTextAlignment="Center"
+			   VerticalTextAlignment="Center"
+			   AbsoluteLayout.LayoutBounds="20,90,350,260">
+			<Label.GestureRecognizers>
+				<TapGestureRecognizer Tapped="OnTapTargetTapped" />
+			</Label.GestureRecognizers>
+		</Label>
+
+		<Label x:Name="TapCount"
+			   AutomationId="TapCount"
+			   Text="Target tap count: 0"
+			   FontSize="18"
+			   AbsoluteLayout.LayoutBounds="40,355,280,35" />
+
+		<Button x:Name="CheckButton"
+				AutomationId="CheckButton"
+				Text="Unrelated button"
+				AbsoluteLayout.LayoutBounds="40,500,280,55" />
+
+		<Label x:Name="ResultStatus"
+			   AutomationId="ResultStatus"
+			   Text="Additional content"
+			   FontSize="20"
+			   FontAttributes="Bold"
+			   AbsoluteLayout.LayoutBounds="40,575,300,45" />
+
+		<Line x:Name="IssueLine"
+			  AutomationId="IssueLine"
+			  Stroke="Red"
+			  StrokeThickness="4"
+			  X1="0"
+			  Y1="400"
+			  X2="0"
+			  Y2="400" />
+	</AbsoluteLayout>
+</ContentPage>
+
