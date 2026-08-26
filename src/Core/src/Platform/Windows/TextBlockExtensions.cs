@@ -4,14 +4,30 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Resolvers;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
+using WFlowDirection = Microsoft.UI.Xaml.FlowDirection;
 using WThickness = Microsoft.UI.Xaml.Thickness;
 
 namespace Microsoft.Maui.Platform
 {
 	public static class TextBlockExtensions
 	{
+		static readonly DependencyProperty LogicalPaddingProperty =
+			DependencyProperty.RegisterAttached(
+				"LogicalPadding",
+				typeof(WThickness),
+				typeof(TextBlockExtensions),
+				new PropertyMetadata(new WThickness()));
+
+		static readonly DependencyProperty IsPaddingFlowDirectionCallbackRegisteredProperty =
+			DependencyProperty.RegisterAttached(
+				"IsPaddingFlowDirectionCallbackRegistered",
+				typeof(bool),
+				typeof(TextBlockExtensions),
+				new PropertyMetadata(false));
+
 		public static void UpdateFont(this TextBlock platformControl, Font font, IFontManager fontManager)
 		{
 			platformControl.FontSize = fontManager.GetFontSize(font);
@@ -41,6 +57,27 @@ namespace Microsoft.Maui.Platform
 				Math.Max(0, label.Padding.Right),
 				Math.Max(0, label.Padding.Bottom)
 			);
+
+			platformControl.SetValue(LogicalPaddingProperty, padding);
+
+			if (!(bool)platformControl.GetValue(IsPaddingFlowDirectionCallbackRegisteredProperty))
+			{
+				platformControl.SetValue(IsPaddingFlowDirectionCallbackRegisteredProperty, true);
+				platformControl.RegisterPropertyChangedCallback(FrameworkElement.FlowDirectionProperty, OnPaddingFlowDirectionChanged);
+			}
+
+			ApplyPaddingForFlowDirection(platformControl);
+		}
+
+		static void OnPaddingFlowDirectionChanged(DependencyObject sender, DependencyProperty dependencyProperty) =>
+			ApplyPaddingForFlowDirection((TextBlock)sender);
+
+		static void ApplyPaddingForFlowDirection(TextBlock platformControl)
+		{
+			var padding = (WThickness)platformControl.GetValue(LogicalPaddingProperty);
+
+			if (platformControl.FlowDirection == WFlowDirection.RightToLeft)
+				padding = new WThickness(padding.Right, padding.Top, padding.Left, padding.Bottom);
 
 			platformControl.UpdateProperty(TextBlock.PaddingProperty, padding);
 		}
