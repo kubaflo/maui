@@ -159,7 +159,34 @@ namespace Microsoft.Maui.Controls
 		internal static readonly BindableProperty InternalItemsLayoutProperty =
 			BindableProperty.Create(nameof(ItemsLayout), typeof(IItemsLayout), typeof(ItemsView),
 				null, propertyChanged: OnInternalItemsLayoutPropertyChanged,
+				coerceValue: CoerceInternalItemsLayout,
 				defaultValueCreator: (b) => LinearItemsLayout.CreateVerticalDefault());
+
+		// The predefined LinearItemsLayout instances are process-wide singletons. Storing one directly
+		// would give every view that uses the preset the same mutable layout object, so a change such as
+		// ItemSpacing would leak into unrelated views, including views created later in the app's lifetime.
+		// Each view gets its own copy of the preset instead, which keeps per-view mutation working while
+		// leaving the shared instance untouched.
+		static object CoerceInternalItemsLayout(BindableObject bindable, object value)
+		{
+			if (value is LinearItemsLayout linearItemsLayout && IsSharedPredefinedLayout(linearItemsLayout))
+			{
+				return new LinearItemsLayout(linearItemsLayout.Orientation)
+				{
+					ItemSpacing = linearItemsLayout.ItemSpacing,
+					SnapPointsType = linearItemsLayout.SnapPointsType,
+					SnapPointsAlignment = linearItemsLayout.SnapPointsAlignment
+				};
+			}
+
+			return value;
+		}
+
+		static bool IsSharedPredefinedLayout(LinearItemsLayout layout)
+			=> ReferenceEquals(layout, LinearItemsLayout.Vertical)
+				|| ReferenceEquals(layout, LinearItemsLayout.Horizontal)
+				|| ReferenceEquals(layout, LinearItemsLayout.CarouselVertical)
+				|| ReferenceEquals(layout, LinearItemsLayout.CarouselDefault);
 
 		static void OnInternalItemsLayoutPropertyChanged(BindableObject bindable, object oldValue, object newValue)
 		{
