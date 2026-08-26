@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="Maui.Controls.Sample.Issues.Issue33530"
+    AutomationId="Issue33530Launcher"
+    BackgroundColor="White"
+    FlowDirection="LeftToRight">
+    <ContentPage.Resources>
+        <DataTemplate x:Key="AffectedPageTemplate">
+            <ContentPage
+                AutomationId="AffectedModalPage"
+                BackgroundColor="Transparent"
+                FlowDirection="LeftToRight">
+                <Border
+                    AutomationId="AffectedBorder"
+                    WidthRequest="300"
+                    HeightRequest="180"
+                    Padding="16"
+                    BackgroundColor="LightBlue"
+                    Stroke="DarkBlue"
+                    StrokeThickness="4"
+                    HorizontalOptions="Start"
+                    VerticalOptions="Center"
+                    Rotation="-90">
+                    <Border.Shadow>
+                        <Shadow
+                            Brush="Black"
+                            Offset="12,12"
+                            Radius="12"
+                            Opacity="0.8" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="8">
+                        <BoxView
+                            HeightRequest="36"
+                            Color="CornflowerBlue" />
+                        <Label
+                            AutomationId="AffectedTitle"
+                            Text="ROTATED BORDER"
+                            TextColor="Black"
+                            FontAttributes="Bold"
+                            HorizontalTextAlignment="Center" />
+                        <Button Text="Check layout" />
+                    </VerticalStackLayout>
+                </Border>
+            </ContentPage>
+        </DataTemplate>
+    </ContentPage.Resources>
+
+    <VerticalStackLayout
+        Padding="24"
+        Spacing="20"
+        VerticalOptions="Center">
+        <Label
+            Text="Issue 33530: initial rotated Border layout"
+            FontAttributes="Bold"
+            HorizontalTextAlignment="Center" />
+        <Button
+            AutomationId="OpenAffectedModal"
+            Text="Open affected modal"
+            Clicked="OnOpenAffectedModalClicked" />
+    </VerticalStackLayout>
+</ContentPage>
+
