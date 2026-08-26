@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="Maui.Controls.Sample.Issues.Issue29956"
+    Title="ImageButton border">
+    <VerticalStackLayout
+        AutomationId="Issue29956Root"
+        Padding="24"
+        Spacing="14">
+        <Label
+            FontAttributes="Bold"
+            FontSize="20"
+            Text="ImageButton file-source border test" />
+        <Label
+            Text="The red border should remain visible on all four sides after applying AspectFill." />
+        <Label
+            x:Name="CurrentAspectLabel"
+            AutomationId="CurrentAspectLabel"
+            Text="Current aspect: AspectFit" />
+        <ImageButton
+            x:Name="AffectedImageButton"
+            AutomationId="AffectedImageButton"
+            Aspect="AspectFit"
+            BackgroundColor="#E0E0E0"
+            BorderColor="Red"
+            BorderWidth="10"
+            HeightRequest="240"
+            Source="dotnet_bot.png"
+            WidthRequest="280" />
+        <Button
+            AutomationId="ApplyAspectFillButton"
+            Clicked="OnApplyAspectFillClicked"
+            Text="Apply AspectFill" />
+        <Label
+            x:Name="InitialMeasurementLabel"
+            AutomationId="InitialMeasurement"
+            FontSize="10"
+            LineBreakMode="NoWrap"
+            Text="Generation=-1;Phase=AspectFit" />
+        <Label
+            x:Name="PostMeasurementLabel"
+            AutomationId="PostMeasurement"
+            FontSize="10"
+            LineBreakMode="NoWrap"
+            Text="Generation=-1;Phase=AspectFill" />
+        <Label
+            x:Name="ResultLabel"
+            AutomationId="ResultStatus"
+            FontAttributes="Bold"
+            Text="Waiting for AspectFill"
+            TextColor="Green" />
+    </VerticalStackLayout>
+</ContentPage>
+
