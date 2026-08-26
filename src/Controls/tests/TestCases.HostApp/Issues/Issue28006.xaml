@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue28006">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+        <Label x:Name="ScrollTokenLabel"
+               AutomationId="ScrollToken"
+               Text="Token=-1" />
+        <Label x:Name="FirstVisibleIndexLabel"
+               Grid.Row="1"
+               AutomationId="FirstVisibleIndex"
+               Text="FirstVisible=-1;Count=20" />
+        <Button Grid.Row="2"
+                AutomationId="ScrollToMiddle"
+                Text="Scroll To Middle"
+                FontSize="10"
+                HeightRequest="40"
+                Clicked="OnScrollToMiddleClicked" />
+        <Button Grid.Row="3"
+                AutomationId="AddItemAbove"
+                Text="Add Item Above"
+                FontSize="10"
+                HeightRequest="40"
+                Clicked="OnAddItemAboveClicked" />
+        <CollectionView x:Name="ItemsCollection"
+                        Grid.Row="4"
+                        AutomationId="ItemsCollection"
+                        ItemsSource="{Binding Items}"
+                        Scrolled="OnCollectionViewScrolled">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid RowDefinitions="*,*"
+                          WidthRequest="200"
+                          HeightRequest="100"
+                          AutomationId="{Binding ItemAutomationId}">
+                        <Image Source="{Binding ImageSource}"
+                               WidthRequest="100"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center"
+                               Margin="2,5,2,2"
+                               AutomationId="{Binding ImageAutomationId}" />
+                        <Label Grid.Row="1"
+                               Text="{Binding Caption}"
+                               FontSize="12"
+                               HorizontalOptions="Fill"
+                               HorizontalTextAlignment="Center"
+                               Margin="2,0,2,2"
+                               BackgroundColor="Blue" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+
