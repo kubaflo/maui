@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue36216LauncherPage">
+    <ScrollView>
+        <VerticalStackLayout x:Name="RootLayout"
+                             Padding="24"
+                             Spacing="16">
+            <Label Text="Accelerometer subscriber retention"
+                   FontSize="24" />
+            <Label Text="Each page owns a 3 MB payload, subscribes in OnAppearing, and only calls Stop in OnDisappearing."
+                   LineBreakMode="WordWrap" />
+            <Label Text="Retained sensor subscriber pages appear below:"
+                   FontAttributes="Bold"
+                   FontSize="20" />
+            <Label x:Name="CycleStatusLabel"
+                   AutomationId="Issue36216CycleStatus"
+                   Text="Ready: 0 of 5 page cycles complete" />
+            <Button x:Name="RunCyclesButton"
+                    AutomationId="Issue36216RunCycles"
+                    Text="Run 5 page cycles"
+                    Clicked="OnRunCyclesClicked" />
+            <Button x:Name="CheckRetentionButton"
+                    AutomationId="Issue36216CheckRetention"
+                    Text="Check retained pages"
+                    IsEnabled="False"
+                    Clicked="OnCheckRetentionClicked" />
+            <Label x:Name="RetentionDetailsLabel"
+                   AutomationId="Issue36216RetentionDetails"
+                   Text="Retention check not started" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
