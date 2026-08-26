@@ -159,7 +159,12 @@ namespace Microsoft.Maui.Controls
 		internal static void OnChildRemoved(IControlTemplated controlTemplated, Element removedChild)
 		{
 			if (removedChild == controlTemplated.TemplateRoot)
+			{
 				controlTemplated.TemplateRoot = null;
+
+				if (removedChild is IView removedView && removedView.Handler is not null)
+					removedChild.OnUnloaded(removedView.DisconnectHandlers);
+			}
 		}
 	}
 }
