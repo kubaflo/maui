@@ -47,6 +47,7 @@ namespace Microsoft.Maui.Controls
 		static readonly IList<object> s_empty = new List<object>(0);
 
 		bool _suppressSelectionChangeNotification;
+		bool _hasBeenAttachedToWindow;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="SelectableItemsView"/> class.
@@ -192,11 +193,32 @@ namespace Microsoft.Maui.Controls
 			OnPropertyChanged(SelectedItemsProperty.PropertyName);
 		}
 
+		// SelectionChangedCommand is typically bound from a view model, so a single command instance can be
+		// shared by every SelectableItemsView bound to that view model - including controls whose page has
+		// already been popped but whose two-way SelectedItem binding is still live. Those controls receive the
+		// selection value again when the shared source fans it back out, which would run the shared command a
+		// second time for one user interaction. A control that is no longer reachable from a Window is not
+		// displaying anything, so it must not execute the command. Controls that have never been attached keep
+		// the previous behavior, so selections applied before a control enters the tree still run the command.
+		bool ShouldExecuteSelectionChangedCommand()
+		{
+			for (Element element = this; element is not null; element = element.Parent)
+			{
+				if (element is Window)
+				{
+					_hasBeenAttachedToWindow = true;
+					return true;
+				}
+			}
+
+			return !_hasBeenAttachedToWindow;
+		}
+
 		static void SelectionPropertyChanged(SelectableItemsView selectableItemsView, SelectionChangedEventArgs args)
 		{
 			var command = selectableItemsView.SelectionChangedCommand;
 
-			if (command != null)
+			if (command != null && selectableItemsView.ShouldExecuteSelectionChangedCommand())
 			{
 				var commandParameter = selectableItemsView.SelectionChangedCommandParameter;
 
