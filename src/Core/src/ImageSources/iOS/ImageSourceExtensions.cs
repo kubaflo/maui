@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CoreGraphics;
 using CoreImage;
+using CoreText;
 using Foundation;
 using ImageIO;
 using Microsoft.Maui.Graphics;
@@ -35,7 +36,34 @@ namespace Microsoft.Maui
 				return null;
 			}
 
-			var renderer = new UIGraphicsImageRenderer(imagesize, new UIGraphicsImageRendererFormat()
+			using var line = new CTLine(attString);
+			var ink = line.GetBounds(CTLineBoundsOptions.UseGlyphPathBounds);
+			var useOpticalRaster = OperatingSystem.IsIOSVersionAtLeast(26)
+				&& ink.Width > 0
+				&& ink.Height > 0
+				&& double.IsFinite((double)ink.X)
+				&& double.IsFinite((double)ink.Y)
+				&& double.IsFinite((double)ink.Width)
+				&& double.IsFinite((double)ink.Height);
+
+			const double horizontalScale = 0.75;
+			var renderSize = imagesize;
+			nfloat baselineFromBottom = 0;
+			nfloat textPositionX = 0;
+			if (useOpticalRaster)
+			{
+				var inkPixels = (int)Math.Ceiling((double)ink.Height * scale);
+				if (inkPixels % 2 != 0)
+					inkPixels++;
+
+				renderSize = new CGSize(imagesize.Width, (nfloat)((inkPixels + 2) / (double)scale));
+				baselineFromBottom = (nfloat)(Math.Round(
+					((double)(renderSize.Height / 2) - (double)(ink.Y + (ink.Height / 2))) * scale) / scale);
+				textPositionX = (nfloat)((imagesize.Width - ((double)ink.Width * horizontalScale)) / 2
+					- ((double)ink.X * horizontalScale));
+			}
+
+			var renderer = new UIGraphicsImageRenderer(renderSize, new UIGraphicsImageRendererFormat()
 			{
 				Opaque = false,
 				Scale = scale,
@@ -43,6 +71,18 @@ namespace Microsoft.Maui
 
 			return renderer.CreateImage((context) =>
 			{
+				if (useOpticalRaster)
+				{
+					var cgContext = context.CGContext;
+					cgContext.SetFillColor(color.CGColor);
+					cgContext.TextMatrix = CGAffineTransform.MakeScale((nfloat)horizontalScale, 1);
+					cgContext.TranslateCTM(0, renderSize.Height);
+					cgContext.ScaleCTM(1, -1);
+					cgContext.TextPosition = new CGPoint(textPositionX, baselineFromBottom);
+					line.Draw(cgContext);
+					return;
+				}
+
 				var ctx = new NSStringDrawingContext();
 
 				var boundingRect = attString.GetBoundingRect(imagesize, 0, ctx);
