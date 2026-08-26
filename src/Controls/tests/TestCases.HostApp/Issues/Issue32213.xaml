@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue32213">
+    <Grid RowDefinitions="Auto,Auto,*"
+          Padding="24"
+          RowSpacing="12">
+        <HorizontalStackLayout Spacing="12">
+            <Button x:Name="ShowCollectionButton"
+                    AutomationId="ShowCollectionButton"
+                    Text="Show CollectionView"
+                    Clicked="OnShowCollectionClicked" />
+            <Button x:Name="CheckTemplatesButton"
+                    AutomationId="CheckTemplatesButton"
+                    Text="Check templates"
+                    IsVisible="False"
+                    Clicked="OnCheckTemplatesClicked" />
+        </HorizontalStackLayout>
+
+        <Label x:Name="ArrangementLabel"
+               Grid.Row="1"
+               AutomationId="ArrangementLabel" />
+
+        <CollectionView x:Name="IssueCollectionView"
+                        Grid.Row="2"
+                        AutomationId="IssueCollectionView"
+                        SelectionMode="Single"
+                        Header="Header"
+                        Footer="Footer"
+                        IsVisible="False">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Label Text="{Binding .}" />
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.HeaderTemplate>
+                <DataTemplate>
+                    <Label AutomationId="HeaderTemplateLabel"
+                           Text="HeaderTemplate"
+                           Loaded="OnHeaderTemplateLoaded" />
+                </DataTemplate>
+            </CollectionView.HeaderTemplate>
+            <CollectionView.FooterTemplate>
+                <DataTemplate>
+                    <Label AutomationId="FooterTemplateLabel"
+                           Text="FooterTemplate"
+                           Loaded="OnFooterTemplateLoaded" />
+                </DataTemplate>
+            </CollectionView.FooterTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+
