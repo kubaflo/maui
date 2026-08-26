@@ -49,11 +49,10 @@ namespace Microsoft.Maui.Platform
 			// Set BarBackgroundColor
 			if (effectiveBarColor != null)
 			{
+				// Only style the background through UITabBarAppearance. Assigning the color to
+				// UITabBar.BackgroundColor fills the whole tab bar frame, which on iOS 26 draws an
+				// opaque slab behind the inset floating Liquid Glass tab bar instead of tinting it.
 				_tabBarAppearance.BackgroundColor = effectiveBarColor;
-				if (OperatingSystem.IsIOSVersionAtLeast(26))
-				{
-					tabBar.BackgroundColor = effectiveBarColor;
-				}
 			}
 
 			// Set BarTextColor
