@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue27665">
+    <StackLayout>
+        <Grid ColumnDefinitions="9*,1*">
+            <Entry x:Name="HeaderEntry"
+                   AutomationId="HeaderEntry"
+                   BackgroundColor="Green"
+                   Placeholder="This is my entry"
+                   HorizontalOptions="FillAndExpand"
+                   VerticalOptions="FillAndExpand" />
+            <Image x:Name="HeaderImage"
+                   AutomationId="HeaderImage"
+                   Source="dotnet_bot.png"
+                   HeightRequest="24"
+                   Grid.Column="1" />
+        </Grid>
+        <ScrollView x:Name="ScrollArea"
+                    AutomationId="ScrollArea"
+                    Scrolled="OnScrollViewScrolled"
+                    VerticalOptions="FillAndExpand"
+                    HorizontalOptions="FillAndExpand">
+            <VerticalStackLayout Padding="20"
+                                 Spacing="10"
+                                 HorizontalOptions="FillAndExpand"
+                                 VerticalOptions="FillAndExpand">
+                <Label Text="Element's list"
+                       FontSize="24"
+                       HorizontalOptions="Center"
+                       FontAttributes="Bold" />
+                <Label AutomationId="FirstListItem"
+                       Text="Elemento 1"
+                       FontSize="18" />
+                <Label Text="Elemento 2" FontSize="18" />
+                <Label Text="Elemento 3" FontSize="18" />
+                <Label Text="Elemento 4" FontSize="18" />
+                <Label Text="Elemento 5" FontSize="18" />
+                <Label Text="Elemento 6" FontSize="18" />
+                <Label Text="Elemento 7" FontSize="18" />
+                <Label Text="Elemento 8" FontSize="18" />
+                <Label Text="Elemento 9" FontSize="18" />
+                <Label Text="Elemento 10" FontSize="18" />
+                <Label Text="Elemento 11" FontSize="18" />
+                <Label Text="Elemento 12" FontSize="18" />
+                <Label Text="Elemento 13" FontSize="18" />
+                <Label Text="Elemento 14" FontSize="18" />
+                <Label Text="Elemento 15" FontSize="18" />
+                <Label Text="Elemento 16" FontSize="18" />
+                <Label Text="Elemento 17" FontSize="18" />
+                <Label Text="Elemento 18" FontSize="18" />
+                <Label Text="Elemento 19" FontSize="18" />
+                <Label Text="Elemento 20" FontSize="18" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </StackLayout>
+</ContentPage>
+
