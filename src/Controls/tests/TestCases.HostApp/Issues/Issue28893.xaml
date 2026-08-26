@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+	x:Class="Maui.Controls.Sample.Issues.Issue28893">
+	<Grid Padding="24"
+		  RowDefinitions="Auto,*,Auto,Auto"
+		  RowSpacing="16">
+		<Label Text="CarouselView gradient border refresh"
+			   AutomationId="IssueHeader"
+			   FontSize="20"
+			   FontAttributes="Bold" />
+
+		<CarouselView Grid.Row="1"
+					  AutomationId="AffectedCarousel"
+					  ItemsSource="{Binding Items}">
+			<CarouselView.ItemTemplate>
+				<DataTemplate x:DataType="local:Issue28893CarouselItem">
+					<Border HeightRequest="220"
+							Margin="12"
+							StrokeThickness="8">
+						<Border.Stroke>
+							<LinearGradientBrush StartPoint="0,0"
+												 EndPoint="1,1">
+								<GradientStop Color="{Binding StartColor}"
+											  Offset="0" />
+								<GradientStop Color="{Binding EndColor}"
+											  Offset="1" />
+							</LinearGradientBrush>
+						</Border.Stroke>
+						<Label Text="{Binding ItemTitle}"
+							   FontSize="28"
+							   HorizontalOptions="Center"
+							   VerticalOptions="Center" />
+					</Border>
+				</DataTemplate>
+			</CarouselView.ItemTemplate>
+		</CarouselView>
+
+		<Button Grid.Row="2"
+				Text="Refresh carousel items"
+				AutomationId="RefreshButton"
+				Clicked="OnRefreshClicked" />
+
+		<Label x:Name="ResultLabel"
+			   Grid.Row="3"
+			   Text="NO BUG:"
+			   AutomationId="ResultLabel"
+			   FontAttributes="Bold" />
+	</Grid>
+</ContentPage>
+
