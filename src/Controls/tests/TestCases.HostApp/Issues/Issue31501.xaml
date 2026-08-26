@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+	x:Class="Maui.Controls.Sample.Issues.Issue31501"
+	x:Name="SelfPage">
+	<Grid Padding="16" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+		<Button
+			AutomationId="ReplaceDataButton"
+			Clicked="OnReplaceDataClicked"
+			Text="Replace header data" />
+
+		<Label
+			x:Name="TriggerState"
+			Grid.Row="1"
+			AutomationId="TriggerState"
+			Text="NotTriggered" />
+
+		<CollectionView
+			Grid.Row="2"
+			Header="{Binding Data}"
+			VerticalOptions="FillAndExpand">
+			<CollectionView.HeaderTemplate>
+				<DataTemplate x:DataType="local:Data">
+					<ContentView Margin="0,0,0,2">
+						<StackLayout>
+							<ContentView
+								AutomationId="HeaderHasDataContent"
+								IsVisible="{Binding HasData}">
+								<Label
+									x:Name="HeaderValueLabel"
+									AutomationId="HeaderValueLabel"
+									BackgroundColor="Red"
+									HeightRequest="50"
+									Loaded="OnHeaderValueLabelLoaded"
+									Text="{Binding StringValue}" />
+							</ContentView>
+
+							<Label
+								AutomationId="PagePropertyLabel"
+								IsVisible="{Binding Source={x:Reference SelfPage}, Path=BindingContext.IsVisible}"
+								Text="Property in MVVM" />
+						</StackLayout>
+					</ContentView>
+				</DataTemplate>
+			</CollectionView.HeaderTemplate>
+		</CollectionView>
+	</Grid>
+</ContentPage>
+
