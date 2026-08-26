@@ -121,12 +121,12 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 					ListViewBase.Header = null;
 					break;
 
-				case string text:
+				case string text when ItemsView.HeaderTemplate == null:
 					ListViewBase.HeaderTemplate = null;
 					ListViewBase.Header = new TextBlock { Text = text };
 					break;
 
-				case View view:
+				case View view when ItemsView.HeaderTemplate == null:
 					ListViewBase.HeaderTemplate = ViewTemplate;
 					_currentHeader = view;
 					Element.AddLogicalChild(_currentHeader);
@@ -171,12 +171,12 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 					ListViewBase.Footer = null;
 					break;
 
-				case string text:
+				case string text when ItemsView.FooterTemplate == null:
 					ListViewBase.FooterTemplate = null;
 					ListViewBase.Footer = new TextBlock { Text = text };
 					break;
 
-				case View view:
+				case View view when ItemsView.FooterTemplate == null:
 					ListViewBase.FooterTemplate = ViewTemplate;
 					_currentFooter = view;
 					Element.AddLogicalChild(_currentFooter);
