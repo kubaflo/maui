@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<controls:TestContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                          xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                          xmlns:controls="clr-namespace:Maui.Controls.Sample.Issues"
+                          x:Class="Maui.Controls.Sample.Issues.Issue30388"
+                          Title="Issue 30388">
+    <Grid Padding="24"
+          RowDefinitions="Auto,Auto,Auto,Auto"
+          RowSpacing="16">
+        <Label Grid.Row="0"
+               AutomationId="HostState"
+               Text="Windows AppInstance activation check"
+               FontSize="22" />
+        <Button Grid.Row="1"
+                AutomationId="TriggerButton"
+                Text="Get activated event arguments"
+                Clicked="OnGetActivatedEventArgsClicked" />
+        <Label x:Name="InvocationStatusLabel"
+               Grid.Row="2"
+               AutomationId="InvocationStatus"
+               Text="Not invoked" />
+        <Label x:Name="ExceptionStatusLabel"
+               Grid.Row="3"
+               AutomationId="ExceptionStatus"
+               Text="Not observed"
+               FontAttributes="Bold" />
+    </Grid>
+</controls:TestContentPage>
