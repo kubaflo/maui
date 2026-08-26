@@ -203,7 +203,13 @@ namespace Microsoft.Maui.Controls
 		public ShellSection CurrentItem
 		{
 			get { return (ShellSection)GetValue(CurrentItemProperty); }
-			set { SetValue(CurrentItemProperty, value); }
+			set
+			{
+				if (value is not null && value != CurrentItem && IsVisibleItem)
+					ShellItemController.ProposeSection(value);
+				else
+					SetValue(CurrentItemProperty, value);
+			}
 		}
 
 		/// <summary>Gets the collection of <see cref="ShellSection"/> items. This is a bindable property.</summary>
