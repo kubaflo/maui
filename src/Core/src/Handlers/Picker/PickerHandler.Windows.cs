@@ -12,7 +12,10 @@ namespace Microsoft.Maui.Handlers
 	{
 		protected override ComboBox CreatePlatformView()
 		{
-			var platformPicker = new ComboBox();
+			var platformPicker = new ComboBox
+			{
+				DataContext = null
+			};
 			return platformPicker;
 		}
 
