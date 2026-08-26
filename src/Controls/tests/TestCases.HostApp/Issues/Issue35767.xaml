@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell
+    x:Class="Maui.Controls.Sample.Issues.Issue35767"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+    Title="Issue35767">
+    <ShellContent>
+        <ContentPage>
+            <Shell.SearchHandler>
+                <local:Issue35767SearchHandler
+                    x:Name="IssueSearchHandler"
+                    AutomationId="IssueSearchHandler"
+                    Placeholder="Search results"
+                    ShowsResults="True">
+                    <local:Issue35767SearchHandler.ItemTemplate>
+                        <DataTemplate>
+                            <Label
+                                AutomationId="SearchResultItem"
+                                Padding="12"
+                                Text="{Binding .}" />
+                        </DataTemplate>
+                    </local:Issue35767SearchHandler.ItemTemplate>
+                </local:Issue35767SearchHandler>
+            </Shell.SearchHandler>
+
+            <VerticalStackLayout Padding="24" Spacing="16">
+                <Label
+                    FontAttributes="Bold"
+                    FontSize="20"
+                    Text="SearchHandler.ShowsResults runtime update" />
+                <Label Text="Type a query while results are enabled, disable results, then type another query." />
+                <Label
+                    x:Name="ShowsResultsStateLabel"
+                    AutomationId="ShowsResultsState"
+                    Text="ShowsResults: True" />
+                <Label
+                    x:Name="QueryObservedLabel"
+                    AutomationId="QueryObserved"
+                    Text="&lt;none&gt;" />
+                <Button
+                    AutomationId="DisableResultsButton"
+                    Clicked="OnDisableResultsClicked"
+                    Text="ShowsResults = False" />
+            </VerticalStackLayout>
+        </ContentPage>
+    </ShellContent>
+</Shell>
+
