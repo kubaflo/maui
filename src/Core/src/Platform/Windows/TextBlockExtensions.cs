@@ -35,10 +35,13 @@ namespace Microsoft.Maui.Platform
 		public static void UpdatePadding(this TextBlock platformControl, ILabel label)
 		{
 			// Label padding values do not support negative values; if specified, negative values will be replaced with zero
+			var isRightToLeft = platformControl.FlowDirection == Microsoft.UI.Xaml.FlowDirection.RightToLeft;
+			var left = isRightToLeft ? label.Padding.Right : label.Padding.Left;
+			var right = isRightToLeft ? label.Padding.Left : label.Padding.Right;
 			var padding = new WThickness(
-				Math.Max(0, label.Padding.Left),
+				Math.Max(0, left),
 				Math.Max(0, label.Padding.Top),
-				Math.Max(0, label.Padding.Right),
+				Math.Max(0, right),
 				Math.Max(0, label.Padding.Bottom)
 			);
 
