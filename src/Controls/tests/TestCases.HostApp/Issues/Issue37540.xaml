@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue37540"
+	Title="Dynamic resource background">
+	<ContentPage.Resources>
+		<Color x:Key="backgroundColor">Red</Color>
+	</ContentPage.Resources>
+
+	<VerticalStackLayout
+		Padding="24"
+		Spacing="16">
+		<Label Text="The target below starts with a transparent background. The scenario applies the red dynamic resource from its Loaded event." />
+
+		<Label
+			x:Name="TargetLabel"
+			AutomationId="TargetLabel"
+			Background="Transparent"
+			FontSize="20"
+			Padding="24"
+			Text="Dynamic resource target"
+			Loaded="OnTargetLabelLoaded" />
+
+		<Label
+			x:Name="ResultStatus"
+			AutomationId="ResultStatus"
+			FontAttributes="Bold"
+			Text="Waiting for native background sample" />
+
+		<Button
+			x:Name="RunScenarioButton"
+			AutomationId="RunScenarioButton"
+			Text="Open fresh scenario page"
+			Clicked="OnRunScenarioClicked" />
+	</VerticalStackLayout>
+</ContentPage>
+
