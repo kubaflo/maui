@@ -14,6 +14,7 @@ namespace Microsoft.Maui.Controls
 		static IEnumerable<KeyValuePair<string, object>> GetMergedResources(this IElementDefinition element, HashSet<string> requestedKeys)
 		{
 			Dictionary<string, object> resources = null;
+			var isAttached = element?.Parent != null;
 			while (element != null)
 			{
 				var ve = element as IResourcesProvider;
@@ -71,6 +72,32 @@ namespace Microsoft.Maui.Controls
 
 				element = element.Parent;
 			}
+
+			if (isAttached && Application.Current is IResourcesProvider currentApplication && currentApplication.IsResourcesCreated)
+			{
+				if (requestedKeys != null)
+				{
+					foreach (var key in requestedKeys)
+					{
+						if ((resources == null || !resources.ContainsKey(key)) && currentApplication.Resources.TryGetValue(key, out var value))
+							(resources ??= new(StringComparer.Ordinal)).Add(key, value);
+					}
+				}
+				else
+				{
+					foreach (var resource in currentApplication.Resources.MergedResources)
+					{
+						if ((resources == null || !resources.ContainsKey(resource.Key)) &&
+							currentApplication.Resources.TryGetValue(resource.Key, out var value) &&
+							value is Style style &&
+							resource.Key == style.TargetType.FullName)
+						{
+							(resources ??= new(StringComparer.Ordinal)).Add(resource.Key, value);
+						}
+					}
+				}
+			}
+
 			return resources;
 		}
 
@@ -114,8 +141,8 @@ namespace Microsoft.Maui.Controls
 				element = element.Parent;
 			}
 
-			//Fallback for the XF previewer
-			if (Application.Current != null && ((IResourcesProvider)Application.Current).IsResourcesCreated && Application.Current.Resources.TryGetValue(key, out value))
+			// Fallback for the XF previewer
+			if (DesignMode.IsDesignModeEnabled && Application.Current != null && ((IResourcesProvider)Application.Current).IsResourcesCreated && Application.Current.Resources.TryGetValue(key, out value))
 				return true;
 
 			value = null;
