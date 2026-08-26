@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue27665">
+    <StackLayout>
+        <Grid ColumnDefinitions="9*,1*">
+            <Entry x:Name="entryTest"
+                   AutomationId="Issue27665Entry"
+                   BackgroundColor="Green"
+                   HorizontalOptions="FillAndExpand"
+                   Placeholder="This is my entry"
+                   VerticalOptions="FillAndExpand" />
+            <Image x:Name="imageTest"
+                   Grid.Column="1"
+                   AutomationId="Issue27665Image"
+                   HeightRequest="24"
+                   Source="dotnet_bot.png" />
+        </Grid>
+        <ScrollView x:Name="scrollView"
+                    AutomationId="Issue27665ScrollView"
+                    HorizontalOptions="FillAndExpand"
+                    Scrolled="ScrollView_OnScrolled"
+                    SemanticProperties.Description="initialCallback=-1|initialEntryTransitions=-1|initialImageTransitions=-1"
+                    VerticalOptions="FillAndExpand">
+            <VerticalStackLayout Padding="20"
+                                 HorizontalOptions="FillAndExpand"
+                                 Spacing="10"
+                                 VerticalOptions="FillAndExpand">
+                <Label x:Name="heading"
+                       AutomationId="Issue27665Heading"
+                       FontAttributes="Bold"
+                       FontSize="24"
+                       HorizontalOptions="Center"
+                       Text="Element's list" />
+                <Label x:Name="item1" AutomationId="Issue27665Item1" FontSize="18" Text="Elemento 1" />
+                <Label FontSize="18" Text="Elemento 2" />
+                <Label FontSize="18" Text="Elemento 3" />
+                <Label FontSize="18" Text="Elemento 4" />
+                <Label FontSize="18" Text="Elemento 5" />
+                <Label FontSize="18" Text="Elemento 6" />
+                <Label FontSize="18" Text="Elemento 7" />
+                <Label FontSize="18" Text="Elemento 8" />
+                <Label FontSize="18" Text="Elemento 9" />
+                <Label FontSize="18" Text="Elemento 10" />
+                <Label FontSize="18" Text="Elemento 11" />
+                <Label FontSize="18" Text="Elemento 12" />
+                <Label FontSize="18" Text="Elemento 13" />
+                <Label FontSize="18" Text="Elemento 14" />
+                <Label FontSize="18" Text="Elemento 15" />
+                <Label FontSize="18" Text="Elemento 16" />
+                <Label FontSize="18" Text="Elemento 17" />
+                <Label FontSize="18" Text="Elemento 18" />
+                <Label FontSize="18" Text="Elemento 19" />
+                <Label x:Name="item20" AutomationId="Issue27665Item20" FontSize="18" Text="Elemento 20" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </StackLayout>
+</ContentPage>
+
