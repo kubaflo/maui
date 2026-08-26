@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue26094">
+	<StackLayout>
+		<AbsoluteLayout
+			HorizontalOptions="Fill"
+			VerticalOptions="Fill">
+			<Image
+				x:Name="AffectedImage"
+				AutomationId="AffectedImage"
+				Source="shopping_cart.png"
+				Aspect="AspectFill"
+				HorizontalOptions="Center"
+				VerticalOptions="Center"
+				AbsoluteLayout.LayoutFlags="All"
+				AbsoluteLayout.LayoutBounds="0,0,1,1"
+				HandlerChanged="OnAffectedImageHandlerChanged"
+				Loaded="OnAffectedImageLoaded" />
+		</AbsoluteLayout>
+		<Button
+			AutomationId="SwapButton"
+			Text="SWAP"
+			Clicked="OnSwapClicked" />
+		<Label
+			x:Name="SourceState"
+			AutomationId="SourceState"
+			Text="shopping_cart.png" />
+		<Label
+			x:Name="ImageLoadGeneration"
+			AutomationId="ImageLoadGeneration"
+			Text="-1" />
+	</StackLayout>
+</ContentPage>
+
