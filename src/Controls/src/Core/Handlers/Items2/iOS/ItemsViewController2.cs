@@ -674,10 +674,22 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 				{
 					_emptyViewFormsElement.Measure(frame.Width, frame.Height);
 
+					// The measure pass above already recorded how much room the empty view actually
+					// asked for; that answer used to be thrown away and the element was arranged (and
+					// the native view resized) to the whole CollectionView region instead. Honor the
+					// recorded request so the empty view keeps the height it asked for, capped by the
+					// region it has to live in.
+					var requestedHeight = _emptyViewFormsElement.DesiredSize.Height;
+					var height = requestedHeight > 0 && requestedHeight < frame.Height
+						? requestedHeight
+						: (double)frame.Height;
+
 					// Arrange in the native container's local coordinate space (0,0).
 					// The native container (_emptyUIView) is already positioned correctly by iOS,
-					// so the MAUI element just needs to fill its container without additional offset.
-					_emptyViewFormsElement.Arrange(new Rect(0, 0, frame.Width, frame.Height));
+					// so the MAUI element just needs to be placed at the top of its container.
+					_emptyViewFormsElement.Arrange(new Rect(0, 0, frame.Width, height));
+
+					frame = new CGRect(frame.X, frame.Y, frame.Width, (nfloat)height);
 				}
 			}
 
