@@ -59,10 +59,17 @@ namespace Microsoft.Maui
 				var isLightTheme = configuration is null ||
 					(configuration.UiMode & UiMode.NightMask) != UiMode.NightYes;
 
-				// Resolve the actual status bar background color from the current theme and
-				// choose icon/text appearance based on its luminance. If the theme color cannot
-				// be resolved, preserve the previous theme-based behavior.
-				if (TryGetThemeColor(activity, global::Android.Resource.Attribute.ColorPrimary, out var statusBarColor))
+				// Resolve the color that is actually drawn behind the status bar and choose the
+				// icon/text appearance based on its luminance. Material 3 themes never tint the
+				// system bars with colorPrimary - there it is a saturated brand accent color, and
+				// the status bar sits directly on top of the window background instead. The legacy
+				// theme does tint the status bar area with colorPrimary, so it stays the reference
+				// there. If the theme color cannot be resolved, preserve the theme-based behavior.
+				var statusBarBackdropAttribute = RuntimeFeature.IsMaterial3Enabled
+					? global::Android.Resource.Attribute.ColorBackground
+					: global::Android.Resource.Attribute.ColorPrimary;
+
+				if (TryGetThemeColor(activity, statusBarBackdropAttribute, out var statusBarColor))
 					windowInsetsController.AppearanceLightStatusBars = IsLightColor(statusBarColor);
 				else
 					windowInsetsController.AppearanceLightStatusBars = isLightTheme;
