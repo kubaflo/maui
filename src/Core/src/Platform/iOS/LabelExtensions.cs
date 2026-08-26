@@ -48,6 +48,17 @@ namespace Microsoft.Maui.Platform
 			platformLabel.VerticalAlignment = label.VerticalTextAlignment.ToPlatformVertical();
 		}
 
+		// A UILabel keeps its background in the single UIKit BackgroundColor property, and the shared
+		// UIView paint updater only ever writes that property when the incoming paint describes a color.
+		// Treating the property as incremental state would let a previous update's color survive an update
+		// that paints nothing, so every label background update is a full recompute instead: reset to the
+		// UILabel default first, then apply whatever the current Background describes.
+		internal static void UpdateBackground(this MauiLabel platformLabel, ILabel label)
+		{
+			platformLabel.BackgroundColor = null;
+			platformLabel.UpdateBackground(label.Background, label as IButtonStroke);
+		}
+
 		public static void UpdatePadding(this MauiLabel platformLabel, ILabel label)
 		{
 			platformLabel.TextInsets = new UIEdgeInsets(
