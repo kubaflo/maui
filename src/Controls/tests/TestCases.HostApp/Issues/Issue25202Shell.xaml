@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+       x:Class="Maui.Controls.Sample.Issues.Issue25202Shell"
+       FlyoutBehavior="Disabled">
+    <Shell.TitleView>
+        <Border AutomationId="Issue25202RoundedToolbar"
+                BackgroundColor="#194F7A"
+                HeightRequest="72"
+                Margin="8,4"
+                Padding="20,0"
+                StrokeThickness="0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <Grid AutomationId="Issue25202ToolbarContent"
+                  ColumnDefinitions="*,Auto">
+                <Label x:Name="ToolbarTitleLabel"
+                       AutomationId="Issue25202ToolbarTitle"
+                       Text="Settings"
+                       FontSize="28"
+                       FontAttributes="Bold"
+                       TextColor="Black"
+                       VerticalTextAlignment="Center" />
+                <Label Grid.Column="1"
+                       AutomationId="Issue25202ToolbarStatus"
+                       Text="Ready"
+                       FontSize="10"
+                       TextColor="White"
+                       VerticalTextAlignment="Center" />
+            </Grid>
+        </Border>
+    </Shell.TitleView>
+    <ShellContent Title="Settings"
+                  Route="Settings"
+                  ContentTemplate="{DataTemplate local:Issue25202SettingsPage}" />
+</Shell>
+
