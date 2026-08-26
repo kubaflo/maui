@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue26173">
+    <ScrollView>
+        <VerticalStackLayout Padding="24"
+                             Spacing="16">
+            <Label Text="Create a new .NET MAUI project"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   AutomationId="ProjectDialogTitle" />
+
+            <HorizontalStackLayout Spacing="10">
+                <CheckBox IsChecked="True"
+                          IsEnabled="False"
+                          AutomationId="IncludeSampleContentCheckBox" />
+                <Label Text="Include Sample Content"
+                       VerticalOptions="Center"
+                       AutomationId="IncludeSampleContentLabel" />
+            </HorizontalStackLayout>
+
+            <Label Text="Include Sample Content: selected"
+                   AutomationId="SampleContentState" />
+
+            <Button Text="Create sample project"
+                    AutomationId="CreateSampleProjectButton"
+                    Clicked="OnCreateSampleProjectClicked" />
+
+            <Label x:Name="CallbackTokenLabel"
+                   Text="CallbackToken:"
+                   AutomationId="CallbackToken" />
+
+            <VerticalStackLayout x:Name="GeneratedProject"
+                                 IsVisible="False"
+                                 Spacing="8"
+                                 AutomationId="GeneratedProject">
+                <Label Text="Generated project"
+                       FontSize="20"
+                       FontAttributes="Bold" />
+                <Label Text="Resources"
+                       AutomationId="ResourcesFolder" />
+                <Label Text="Fonts"
+                       Margin="16,0,0,0"
+                       AutomationId="FontsFolder" />
+                <Label Text="FluentSystemIcons-Regular.ttf"
+                       Margin="32,0,0,0"
+                       AutomationId="FluentSystemIconsFont" />
+                <Label Text="SegoeUI-Semibold.ttf"
+                       Margin="32,0,0,0"
+                       AutomationId="SegoeUIFont" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+
