@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="Maui.Controls.Sample.Issues.Issue36816"
+    Title="Android click-through">
+    <VerticalStackLayout Padding="24" Spacing="20">
+        <Label
+            FontAttributes="Bold"
+            FontSize="20"
+            Text="Tap the green view" />
+        <Label Text="The green ContentView is above the button. Tapping it should not click the button." />
+
+        <Grid
+            HeightRequest="140"
+            HorizontalOptions="Center"
+            WidthRequest="280">
+            <Button
+                x:Name="CoveredButton"
+                Clicked="OnCoveredButtonClicked"
+                Text="Covered button" />
+            <ContentView
+                AutomationId="GreenOverlay"
+                BackgroundColor="Green"
+                Margin="32,24">
+                <Label
+                    HorizontalOptions="Center"
+                    Text="Green overlay"
+                    TextColor="White"
+                    VerticalOptions="Center" />
+            </ContentView>
+        </Grid>
+
+        <Label
+            x:Name="ButtonClickCountLabel"
+            AutomationId="ButtonClickCount"
+            FontAttributes="Bold"
+            Text="Underlying button clicks: -1" />
+    </VerticalStackLayout>
+</ContentPage>
+
