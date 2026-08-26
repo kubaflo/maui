@@ -14,6 +14,9 @@ namespace Microsoft.Maui.Platform
 		internal const string ElementP = "P";
 		internal const string ElementStrong = "STRONG";
 		internal const string ElementU = "U";
+		internal const string ElementS = "S";
+		internal const string ElementStrike = "STRIKE";
+		internal const string ElementDel = "DEL";
 		internal const string ElementUl = "UL";
 		internal const string ElementLi = "LI";
 		internal const string ElementDiv = "DIV";
@@ -43,6 +46,14 @@ namespace Microsoft.Maui.Platform
 					var underline = new Underline();
 					inlines.Add(underline);
 					currentInlines = underline.Inlines;
+					break;
+				case ElementS:
+				case ElementStrike:
+				case ElementDel:
+					// WinUI has no Strikethrough inline, so use a Span carrying the decoration.
+					var strikethrough = new Span { TextDecorations = global::Windows.UI.Text.TextDecorations.Strikethrough };
+					inlines.Add(strikethrough);
+					currentInlines = strikethrough.Inlines;
 					break;
 				case ElementBr:
 					inlines.Add(new LineBreak());
