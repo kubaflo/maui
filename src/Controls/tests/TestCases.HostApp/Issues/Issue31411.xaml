@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue31411"
+	Title="CollectionView bulk update">
+	<Grid RowDefinitions="Auto,Auto,*" Padding="12" RowSpacing="8">
+		<Label
+			x:Name="StatusLabel"
+			Grid.Row="0"
+			AutomationId="Issue31411Status"
+			Text="Ready:2000;Cycle:-1;FirstVisible:-1" />
+		<Button
+			x:Name="BulkUpdateButton"
+			Grid.Row="1"
+			AutomationId="Issue31411BulkUpdateButton"
+			Clicked="OnBulkUpdateClicked"
+			Text="Toggle half of the items" />
+		<CollectionView
+			x:Name="ItemsCollection"
+			Grid.Row="2"
+			AutomationId="Issue31411Collection"
+			ItemsSource="{Binding Items}"
+			Scrolled="OnCollectionViewScrolled">
+			<CollectionView.ItemTemplate>
+				<DataTemplate>
+					<Border
+						IsVisible="{Binding IsVisible}"
+						Margin="2"
+						Padding="8"
+						SemanticProperties.Description="{Binding ItemSemanticDescription}"
+						StrokeThickness="1">
+						<Grid
+							ColumnDefinitions="48,*,Auto"
+							RowDefinitions="Auto,Auto,Auto"
+							ColumnSpacing="8"
+							RowSpacing="4">
+							<Border
+								Grid.RowSpan="3"
+								HeightRequest="42"
+								WidthRequest="42"
+								StrokeThickness="1">
+								<Label
+									HorizontalTextAlignment="Center"
+									Text="{Binding Index}"
+									VerticalTextAlignment="Center" />
+							</Border>
+							<Label
+								Grid.Column="1"
+								FontAttributes="Bold"
+								Text="{Binding Title}" />
+							<Label
+								Grid.Row="1"
+								Grid.Column="1"
+								LineBreakMode="TailTruncation"
+								Text="{Binding Detail}" />
+							<ProgressBar
+								Grid.Row="2"
+								Grid.Column="1"
+								Progress="{Binding Progress}" />
+							<Border
+								Grid.RowSpan="2"
+								Grid.Column="2"
+								Padding="8,3"
+								StrokeThickness="1">
+								<Label Text="{Binding Category}" />
+							</Border>
+							<HorizontalStackLayout
+								Grid.Row="2"
+								Grid.Column="2"
+								Spacing="4">
+								<Label Text="Active" />
+								<CheckBox IsChecked="{Binding IsActive}" />
+							</HorizontalStackLayout>
+						</Grid>
+					</Border>
+				</DataTemplate>
+			</CollectionView.ItemTemplate>
+		</CollectionView>
+	</Grid>
+</ContentPage>
+
