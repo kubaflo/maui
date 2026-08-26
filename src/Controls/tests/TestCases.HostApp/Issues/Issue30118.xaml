@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue30118">
+    <ScrollView>
+        <VerticalStackLayout Padding="24"
+                             Spacing="18">
+            <Label Text="IndicatorView collection update"
+                   FontSize="24"
+                   FontAttributes="Bold" />
+            <Label Text="The default IndicatorView starts with one hidden page. Increase the same collection to eight pages, then tap the indicator."
+                   FontSize="16" />
+            <CarouselView x:Name="carouselView"
+                          HeightRequest="180"
+                          HorizontalScrollBarVisibility="Never" />
+            <Grid x:Name="indicatorTouchTarget"
+                  AutomationId="IndicatorTouchTarget"
+                  HeightRequest="44">
+                <IndicatorView x:Name="indicatorView"
+                               AutomationId="AffectedIndicator"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+            </Grid>
+            <Label x:Name="countStatus"
+                   AutomationId="CountStatus"
+                   Text="PAGES: 1"
+                   HorizontalOptions="Center" />
+            <Label x:Name="targetStatus"
+                   AutomationId="TargetStatus"
+                   Text="TARGET NOT RECEIVED:"
+                   HorizontalOptions="Center" />
+            <Label x:Name="resultStatus"
+                   AutomationId="ResultStatus"
+                   Text="POSITION: 0; CALLBACK: -1"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center" />
+            <Button x:Name="increaseButton"
+                    AutomationId="IncreaseButton"
+                    Text="Increase ItemsSource to 8"
+                    Clicked="OnIncreaseClicked" />
+            <Button x:Name="checkButton"
+                    AutomationId="CheckButton"
+                    Text="Check indicator response"
+                    Clicked="OnCheckClicked" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+
