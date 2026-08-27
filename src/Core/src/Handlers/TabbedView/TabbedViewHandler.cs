@@ -35,9 +35,50 @@ namespace Microsoft.Maui.Handlers
 		{
 		}
 
+#if IOS || MACCATALYST
+		protected override PlatformView CreatePlatformView()
+		{
+			_ = VirtualView ?? throw new InvalidOperationException($"{nameof(VirtualView)} must be set to create a {nameof(PlatformView)}");
+
+			// The tabbed view is page-like on iOS, so it needs a UIViewController that navigation
+			// containers (NavigationPage, Window, FlyoutPage) can push, present, or parent.
+			var viewController = ViewController ??= new UIKit.UITabBarController();
+
+			return viewController.View ?? throw new InvalidOperationException($"{nameof(ViewController)}.View cannot be null");
+		}
+
+		protected override void ConnectHandler(PlatformView platformView)
+		{
+			base.ConnectHandler(platformView);
+			UpdateChildViewControllers();
+		}
+
+		// The child pages own the content of each tab, so their handlers have to exist before the
+		// property mappers run; several mappers reach through to the current page's handler.
+		void UpdateChildViewControllers()
+		{
+			if (ViewController is not UIKit.UITabBarController tabBarController || MauiContext is null)
+				return;
+
+			var children = (VirtualView as IVisualTreeElement)?.GetVisualChildren();
+			if (children is null || children.Count == 0)
+				return;
+
+			var viewControllers = new List<UIKit.UIViewController>(children.Count);
+
+			for (int i = 0; i < children.Count; i++)
+			{
+				if (children[i] is IElement child)
+					viewControllers.Add(Platform.ElementExtensions.ToUIViewController(child, MauiContext));
+			}
+
+			tabBarController.ViewControllers = viewControllers.ToArray();
+		}
+#else
 		protected override PlatformView CreatePlatformView()
 		{
 			throw new NotImplementedException();
 		}
+#endif
 	}
 }
