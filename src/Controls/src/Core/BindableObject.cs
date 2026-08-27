@@ -492,6 +492,16 @@ namespace Microsoft.Maui.Controls
 			if (string.IsNullOrEmpty(key))
 				throw new ArgumentNullException(nameof(key));
 
+			var context = GetOrCreateContext(property);
+			var currentSpecificity = context.Values.GetSpecificity();
+			if (specificity == SetterSpecificity.DynamicResourceSetter &&
+				currentSpecificity == SetterSpecificity.ManualValueSetter)
+			{
+				var currentValue = context.Values.GetValue();
+				context.Values.Remove(currentSpecificity);
+				context.Values[specificity] = currentValue;
+			}
+
 			OnSetDynamicResource(property, key, specificity);
 		}
 
