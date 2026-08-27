@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Text;
 using Microsoft.Maui.Controls.Internals;
+using Microsoft.Maui.Platform;
 using WFrame = Microsoft.UI.Xaml.Controls.Frame;
 
 
@@ -123,17 +124,18 @@ namespace Microsoft.Maui.Controls.Handlers
 		// DisplayedPage changes during a tab switch.
 		void OnShellContentPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
 		{
-			if (VirtualView is null)
+			if (VirtualView is null || sender is not ShellContent shellContent)
 			{
+				return;
+			}
+
+			if (e.PropertyName == ShellContent.TitleProperty.PropertyName)
+			{
+				UpdateShellContentTitle(shellContent);
 				return;
 			}
 
 			if (e.PropertyName != ShellContent.ContentProperty.PropertyName)
-			{
-				return;
-			}
-
-			if (sender is not ShellContent shellContent)
 			{
 				return;
 			}
@@ -155,6 +157,39 @@ namespace Microsoft.Maui.Controls.Handlers
 			}
 
 			SyncNavigationStack(false, null);
+		}
+
+		void UpdateShellContentTitle(ShellContent shellContent)
+		{
+			if (VirtualView.Parent is not ShellItem shellItem ||
+				shellItem.Handler is not ShellItemHandler shellItemHandler ||
+				shellItemHandler.PlatformView is not MauiNavigationView navigationView ||
+				navigationView.MenuItemsSource is not IEnumerable<NavigationViewItemViewModel> menuItems)
+			{
+				return;
+			}
+
+			UpdateShellContentTitle(menuItems, shellContent);
+		}
+
+		static bool UpdateShellContentTitle(IEnumerable<NavigationViewItemViewModel> menuItems, ShellContent shellContent)
+		{
+			foreach (var menuItem in menuItems)
+			{
+				if (menuItem.Data == shellContent)
+				{
+					menuItem.Content = shellContent.Title;
+					return true;
+				}
+
+				if (menuItem.MenuItemsSource is not null &&
+					UpdateShellContentTitle(menuItem.MenuItemsSource, shellContent))
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		void OnNavigationRequested(object? sender, NavigationRequestedEventArgs e)
