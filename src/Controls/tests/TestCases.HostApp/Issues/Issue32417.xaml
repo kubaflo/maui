@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue32417"
+	FlyoutBehavior="Flyout">
+	<Shell.ItemTemplate>
+		<DataTemplate>
+			<Label
+				AutomationId="InitialItemTemplateVisual"
+				FontAttributes="None"
+				Padding="20,12"
+				Text="{Binding Title}"
+				TextColor="Black" />
+		</DataTemplate>
+	</Shell.ItemTemplate>
+	<Shell.MenuItemTemplate>
+		<DataTemplate>
+			<Label
+				AutomationId="InitialMenuItemTemplateVisual"
+				FontAttributes="None"
+				Padding="20,12"
+				Text="{Binding Text}"
+				TextColor="Black" />
+		</DataTemplate>
+	</Shell.MenuItemTemplate>
+	<FlyoutItem Title="Flyout Home">
+		<ShellContent
+			x:Name="HomeContent"
+			Title="Home" />
+	</FlyoutItem>
+	<MenuItem Text="Flyout Action" />
+</Shell>
+
