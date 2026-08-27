@@ -4,6 +4,7 @@
 	xmlns:maui="using:Microsoft.Maui.Platform">
 
     <Style TargetType="RadioButton" x:Key="RadioButtonControlStyle">
+		<Setter Property="MinWidth" Value="0" />
 		<Setter Property="Template">
 			<Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
