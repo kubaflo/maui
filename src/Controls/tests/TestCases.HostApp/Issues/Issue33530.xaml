@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue33530"
+             AutomationId="Issue33530HostPage">
+    <ContentPage.Resources>
+        <DataTemplate x:Key="CleanPageTemplate">
+            <ContentPage AutomationId="Issue33530CleanPage"
+                         BackgroundColor="Transparent"
+                         Loaded="OnCleanPageLoaded">
+                <Border AutomationId="Issue33530CleanBorder"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center"
+                        Rotation="0">
+                    <Border.Shadow>
+                        <Shadow />
+                    </Border.Shadow>
+                    <VerticalStackLayout Padding="12"
+                                         Spacing="10">
+                        <BoxView AutomationId="Issue33530CleanBox"
+                                 Color="CornflowerBlue"
+                                 HeightRequest="210"
+                                 WidthRequest="80" />
+                        <Label AutomationId="Issue33530CleanContent"
+                               Text="Rotated Border content"
+                               FontAttributes="Bold" />
+                        <Label x:Name="CleanLoadedStatus"
+                               AutomationId="Issue33530CleanStatus"
+                               Text="NOT_LOADED" />
+                        <Button AutomationId="Issue33530CloseClean"
+                                Text="Close clean modal"
+                                Clicked="OnCloseCleanClicked" />
+                    </VerticalStackLayout>
+                </Border>
+            </ContentPage>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AffectedPageTemplate">
+            <ContentPage AutomationId="Issue33530AffectedPage"
+                         BackgroundColor="Transparent"
+                         Loaded="OnAffectedPageLoaded">
+                <Border AutomationId="Issue33530AffectedBorder"
+                        HorizontalOptions="Start"
+                        VerticalOptions="Center"
+                        Rotation="-90">
+                    <Border.Shadow>
+                        <Shadow />
+                    </Border.Shadow>
+                    <VerticalStackLayout Padding="12"
+                                         Spacing="10">
+                        <BoxView AutomationId="Issue33530AffectedBox"
+                                 Color="CornflowerBlue"
+                                 HeightRequest="210"
+                                 WidthRequest="80" />
+                        <Label AutomationId="Issue33530AffectedContent"
+                               Text="Rotated Border content"
+                               FontAttributes="Bold" />
+                        <Label x:Name="AffectedLoadedStatus"
+                               AutomationId="Issue33530AffectedStatus"
+                               Text="NOT_LOADED" />
+                        <Label x:Name="AffectedLayoutResult"
+                               AutomationId="Issue33530LayoutResult"
+                               Text="NOT_MEASURED" />
+                        <Button AutomationId="Issue33530LayoutCheck"
+                               Text="Layout check"
+                               Clicked="OnAffectedLayoutCheckClicked" />
+                    </VerticalStackLayout>
+                </Border>
+            </ContentPage>
+        </DataTemplate>
+    </ContentPage.Resources>
+
+    <VerticalStackLayout Padding="24"
+                         Spacing="16"
+                         VerticalOptions="Center">
+        <Label AutomationId="Issue33530HostStatus"
+               Text="HOST_READY" />
+        <Button AutomationId="Issue33530OpenClean"
+                Text="Open clean modal"
+                Clicked="OnOpenCleanClicked" />
+        <Button AutomationId="Issue33530OpenAffected"
+                Text="Open affected modal"
+                Clicked="OnOpenAffectedClicked" />
+    </VerticalStackLayout>
+</ContentPage>
+
