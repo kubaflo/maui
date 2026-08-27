@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       x:Class="Maui.Controls.Sample.Issues.Issue30990"
+       Loaded="OnShellLoaded">
+    <Shell.Resources>
+        <ResourceDictionary>
+            <Style TargetType="Shell"
+                   ApplyToDerivedTypes="True">
+                <Setter Property="Shell.ForegroundColor"
+                        Value="Red" />
+                <Setter Property="Shell.TitleColor"
+                        Value="Red" />
+            </Style>
+        </ResourceDictionary>
+    </Shell.Resources>
+    <ShellContent>
+        <ContentPage>
+            <ContentPage.ToolbarItems>
+                <ToolbarItem x:Name="TextToolbarItem"
+                             AutomationId="Issue30990TextToolbarItem"
+                             Text="Text 1" />
+                <ToolbarItem x:Name="IconToolbarItem"
+                             AutomationId="Issue30990IconToolbarItem"
+                             IconImageSource="groceries.png" />
+            </ContentPage.ToolbarItems>
+
+            <Label x:Name="MetadataLabel"
+                   AutomationId="Issue30990Metadata"
+                   TextColor="White"
+                   Text="Hello" />
+        </ContentPage>
+    </ShellContent>
+</Shell>
+
