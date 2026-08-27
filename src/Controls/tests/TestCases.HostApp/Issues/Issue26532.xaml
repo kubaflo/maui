@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<issues:TestContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:issues="clr-namespace:Maui.Controls.Sample.Issues"
+	x:Class="Maui.Controls.Sample.Issues.Issue26532">
+	<VerticalStackLayout Padding="24" Spacing="16">
+		<Label Text="Select an answer, then move to the next question." />
+		<Picker
+			AutomationId="AnswerPicker"
+			ItemsSource="{Binding Answers}"
+			SelectedItem="{Binding SelectedAnswer, Mode=TwoWay}"
+			Title="Choose an answer" />
+		<Label
+			x:Name="SelectionStatus"
+			AutomationId="SelectionStatus"
+			Text="Selection received: none" />
+		<Label
+			x:Name="OriginalSelectionStatus"
+			AutomationId="OriginalSelectionStatus"
+			Text="Original selected: none" />
+		<Label
+			x:Name="TransitionStatus"
+			AutomationId="TransitionStatus"
+			Text="Question index: -1; answer count: -1" />
+		<Button
+			AutomationId="NextButton"
+			Clicked="OnNextClicked"
+			Text="Next" />
+	</VerticalStackLayout>
+</issues:TestContentPage>
+
