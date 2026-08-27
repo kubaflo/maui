@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       x:Class="Maui.Controls.Sample.Issues.Issue30990">
+    <Shell.Resources>
+        <ResourceDictionary>
+            <Style TargetType="Shell"
+                   ApplyToDerivedTypes="True">
+                <Setter Property="Shell.ForegroundColor"
+                        Value="Red" />
+                <Setter Property="Shell.TitleColor"
+                        Value="Red" />
+            </Style>
+        </ResourceDictionary>
+    </Shell.Resources>
+
+    <ShellContent>
+        <ContentPage BackgroundColor="Black"
+                     Loaded="OnPageLoaded">
+            <ContentPage.ToolbarItems>
+                <ToolbarItem Text="Text 1" />
+                <ToolbarItem IconImageSource="groceries.png"
+                             AutomationId="ToolbarIcon" />
+            </ContentPage.ToolbarItems>
+
+            <VerticalStackLayout Padding="16"
+                                 Spacing="16">
+                <Label Text="Hello"
+                       TextColor="White" />
+                <Label Text="The text action and groceries icon should both be red."
+                       TextColor="White" />
+                <Label x:Name="LoadedStatusLabel"
+                       AutomationId="LoadedStatus"
+                       Text="Pending"
+                       TextColor="White" />
+            </VerticalStackLayout>
+        </ContentPage>
+    </ShellContent>
+</Shell>
+
