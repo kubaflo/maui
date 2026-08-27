@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:local="clr-namespace:Maui.Controls.Sample.Issues"
+	x:Class="Maui.Controls.Sample.Issues.Issue32587"
+	Title="CollectionView ContentView bounds">
+	<Grid Padding="24" RowDefinitions="Auto,Auto,*" RowSpacing="16">
+		<VerticalStackLayout Spacing="6">
+			<Label
+				FontAttributes="Bold"
+				FontSize="20"
+				Text="ContentView gesture bounds" />
+			<Label
+				x:Name="ResultLabel"
+				AutomationId="ResultStatus"
+				Text="Waiting for tap" />
+			<Label
+				x:Name="ReadyLabel"
+				AutomationId="ReadyState"
+				Text="Waiting for direct ContentView" />
+			<Label
+				x:Name="LoadedBoundsLabel"
+				AutomationId="LoadedBounds"
+				Text="Loaded bounds: not measured" />
+			<Label
+				x:Name="TapBoundsLabel"
+				AutomationId="TapBounds"
+				Text="Inside tap: not measured" />
+			<Label
+				x:Name="TapCountLabel"
+				AutomationId="TapCount"
+				Text="Tap handler fired: 0" />
+		</VerticalStackLayout>
+
+		<Label
+			Grid.Row="1"
+			Text="The blue control below is the direct root of the CollectionView DataTemplate; it is not wrapped in a layout." />
+
+		<CollectionView
+			x:Name="IssueItems"
+			Grid.Row="2"
+			AutomationId="IssueCollectionView">
+			<CollectionView.ItemTemplate>
+				<DataTemplate>
+					<local:Issue32587GestureBoundsView AutomationId="GestureBoundsView">
+						<VerticalStackLayout
+							Padding="24"
+							BackgroundColor="LightBlue"
+							Spacing="8">
+							<Label
+								FontAttributes="Bold"
+								Text="Tap this custom ContentView" />
+							<Label Text="Its Width and Height are read inside the Tapped handler." />
+						</VerticalStackLayout>
+					</local:Issue32587GestureBoundsView>
+				</DataTemplate>
+			</CollectionView.ItemTemplate>
+		</CollectionView>
+	</Grid>
+</ContentPage>
+
