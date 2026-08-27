@@ -291,12 +291,16 @@ namespace Microsoft.Maui.Platform
 
 		async Task UpdateShadowAsync()
 		{
+			// Resize the shadow visual first so it tracks the child within the same layout
+			// pass. Refreshing the alpha mask below genuinely yields (RenderTargetBitmap),
+			// so doing the resize afterwards leaves the shadow at its previous size for at
+			// least one dispatcher turn every time the child is resized at runtime.
+			UpdateShadowSize();
+
 			if (_dropShadow != null)
 			{
 				await SetShadowPropertiesAsync(_dropShadow, Shadow);
 			}
-
-			UpdateShadowSize();
 		}
 
 		void UpdateShadowSize()
