@@ -85,6 +85,17 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		}
 
 
+		// Shell.ItemTemplate / Shell.MenuItemTemplate are OneTime attached properties with no
+		// propertyChanged callback, so replacing them at runtime never changes the flyout grouping.
+		// ReSyncCache/ClearCache both bail out on reference-equal groupings, so neither can help here.
+		// Dropping _groups re-arms the lazy branch in the Groups getter, which regenerates the
+		// grouping, disconnects every cached cell and installs an empty dictionary, forcing GetCell
+		// to materialize content from the templates that are current at that moment.
+		internal void InvalidateFlyoutTemplates()
+		{
+			_groups = null;
+		}
+
 		public void ClearCache()
 		{
 			var newGroups = ((IShellController)_context.Shell).GenerateFlyoutGrouping();

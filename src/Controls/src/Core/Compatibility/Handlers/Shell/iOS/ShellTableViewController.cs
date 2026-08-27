@@ -31,7 +31,29 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			_source = CreateShellTableViewSource();
 
 			ShellController.FlyoutItemsChanged += OnFlyoutItemsChanged;
+			_context.Shell.PropertyChanged += OnShellPropertyChanged;
 			_source.ScrolledEvent += OnScrolled;
+		}
+
+		void OnShellPropertyChanged(object sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName != Shell.ItemTemplateProperty.PropertyName &&
+				e.PropertyName != Shell.MenuItemTemplateProperty.PropertyName)
+			{
+				return;
+			}
+
+			_source.InvalidateFlyoutTemplates();
+
+			// Never touch TableView before the view is loaded: the property can change long before
+			// the flyout is first presented, and the getter would force an early view load.
+			if (IsViewLoaded)
+			{
+#pragma warning disable CS0618 // Type or member is obsolete
+				TableView.ReloadData();
+#pragma warning restore CS0618 // Type or member is obsolete
+				ShellFlyoutContentManager.UpdateVerticalScrollMode();
+			}
 		}
 
 		internal ShellFlyoutLayoutManager ShellFlyoutContentManager
@@ -130,6 +152,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				if (ShellController != null)
 					ShellController.FlyoutItemsChanged -= OnFlyoutItemsChanged;
+
+				if (_context?.Shell != null)
+					_context.Shell.PropertyChanged -= OnShellPropertyChanged;
 
 				if (_source != null)
 					_source.ScrolledEvent -= OnScrolled;
