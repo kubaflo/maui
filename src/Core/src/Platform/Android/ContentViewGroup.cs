@@ -254,5 +254,16 @@ namespace Microsoft.Maui.Platform
 		}
 
 		#endregion
+
+		public override bool OnTouchEvent(MotionEvent? e)
+		{
+			if (Background is not null &&
+				CrossPlatformLayout is IView { InputTransparent: false })
+			{
+				return true;
+			}
+
+			return base.OnTouchEvent(e);
+		}
 	}
 }
