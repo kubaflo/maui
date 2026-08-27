@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue34738"
+	Shell.TabBarDisabledColor="Green">
+	<TabBar>
+		<Tab
+			Title="Tab1"
+			Icon="groceries.png">
+			<ShellContent Title="Tab1">
+				<ContentPage>
+					<VerticalStackLayout
+						Padding="24"
+						Spacing="16">
+						<Button
+							AutomationId="Issue34738DisableTab2"
+							Text="Disable Tab2"
+							Clicked="OnDisableTab2Clicked" />
+						<Label
+							x:Name="OracleStatus"
+							AutomationId="Issue34738OracleStatus"
+							Text="Pending" />
+						<Label
+							x:Name="ExpectedForeground"
+							AutomationId="Issue34738ExpectedForeground"
+							Text="Pending" />
+						<Label
+							x:Name="TitleForeground"
+							AutomationId="Issue34738TitleForeground"
+							Text="Pending" />
+						<Label
+							x:Name="IconForeground"
+							AutomationId="Issue34738IconForeground"
+							Text="Pending" />
+					</VerticalStackLayout>
+				</ContentPage>
+			</ShellContent>
+		</Tab>
+		<Tab
+			x:Name="SecondTab"
+			Title="Tab2"
+			Icon="groceries.png">
+			<ShellContent Title="Tab2">
+				<ContentPage>
+					<Label Text="Tab2" />
+				</ContentPage>
+			</ShellContent>
+		</Tab>
+	</TabBar>
+</Shell>
+
