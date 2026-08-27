@@ -87,6 +87,23 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 			return icon;
 		}
 
+		// Images loaded from the app bundle (MauiImage) come back with UIImageRenderingMode.Automatic,
+		// which UIKit resolves as a template inside a navigation bar and repaints with the bar tint.
+		// Images added through an .xcassets catalog carry an explicit rendering mode, which is why they
+		// keep their colors. Resolve the ambiguous Automatic case in favor of the asset's own pixels.
+		static UIImage PreserveSourceColors(ImageSource imageSource, UIImage image)
+		{
+			// FontImageSource already picks its rendering mode deliberately: Automatic when no Color is
+			// set so the glyph adopts the bar tint, AlwaysOriginal when a Color is set. Leave it alone.
+			if (image is null || imageSource is FontImageSource)
+				return image;
+
+			if (image.RenderingMode != UIImageRenderingMode.Automatic)
+				return image;
+
+			return image.ImageWithRenderingMode(UIImageRenderingMode.AlwaysOriginal);
+		}
+
 		sealed class PrimaryToolbarItem : UIBarButtonItem
 		{
 			readonly bool _forceName;
@@ -174,9 +191,10 @@ namespace Microsoft.Maui.Controls.Compatibility.Platform.iOS
 					{
 						return;
 					}
-					item.IconImageSource.LoadImage(mauiContext, result =>
+					var imageSource = item.IconImageSource;
+					imageSource.LoadImage(mauiContext, result =>
 					{
-						Image = result?.Value;
+						Image = PreserveSourceColors(imageSource, result?.Value);
 						Style = UIBarButtonItemStyle.Plain;
 					});
 				}
