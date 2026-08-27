@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -23,8 +24,9 @@ namespace Microsoft.Maui.Controls
 
 		WeakNotifyPropertyChangedProxy? _strokeShapeProxy;
 		PropertyChangedEventHandler? _strokeShapeChanged;
-		WeakNotifyPropertyChangedProxy? _strokeProxy;
-		PropertyChangedEventHandler? _strokeChanged;
+		WeakBrushChangedProxy? _strokeProxy;
+		EventHandler? _strokeChanged;
+		EventHandler? _bindingContextChanged;
 		WeakNotifyCollectionChangedProxy? _strokeDashArrayProxy;
 		NotifyCollectionChangedEventHandler? _strokeDashArrayChanged;
 
@@ -150,8 +152,11 @@ namespace Microsoft.Maui.Controls
 			if (stroke is not null)
 			{
 				SetInheritedBindingContext(stroke, BindingContext);
-				_strokeProxy ??= new WeakNotifyPropertyChangedProxy();
-				_strokeChanged ??= OnStrokePropertyChanged;
+				_bindingContextChanged ??= OnBorderBindingContextChanged;
+				BindingContextChanged -= _bindingContextChanged;
+				BindingContextChanged += _bindingContextChanged;
+				_strokeProxy ??= new WeakBrushChangedProxy();
+				_strokeChanged ??= OnStrokeChanged;
 				_strokeProxy.Subscribe(stroke, _strokeChanged);
 
 				OnParentResourcesChanged(this.GetMergedResources());
@@ -170,14 +175,81 @@ namespace Microsoft.Maui.Controls
 			{
 				((IElementDefinition)this).RemoveResourcesChangedListener(stroke.OnParentResourcesChanged);
 
+				if (_bindingContextChanged is not null)
+					BindingContextChanged -= _bindingContextChanged;
+
 				SetInheritedBindingContext(stroke, null);
 				_strokeProxy?.Unsubscribe();
 			}
 		}
 
-		void OnStrokePropertyChanged(object? sender, PropertyChangedEventArgs e)
+		void OnStrokeChanged(object? sender, EventArgs e)
 		{
 			OnPropertyChanged(nameof(Stroke));
+		}
+
+		void OnBorderBindingContextChanged(object? sender, EventArgs e)
+		{
+			PropagateBindingContextToStroke();
+		}
+
+		void PropagateBindingContextToStroke()
+		{
+			var stroke = Stroke;
+
+			if (stroke is not null && stroke is not ImmutableBrush)
+				SetInheritedBindingContext(stroke, BindingContext);
+		}
+
+		sealed class WeakBrushChangedProxy : WeakEventProxy<Brush, EventHandler>
+		{
+			void OnBrushChanged(object? sender, EventArgs e)
+			{
+				if (TryGetHandler(out var handler))
+				{
+					handler(sender, e);
+				}
+				else
+				{
+					Unsubscribe();
+				}
+			}
+
+			void OnBrushPropertyChanged(object? sender, PropertyChangedEventArgs e)
+			{
+				OnBrushChanged(sender, e);
+			}
+
+			public override void Subscribe(Brush source, EventHandler handler)
+			{
+				if (TryGetSource(out var s))
+				{
+					s.PropertyChanged -= OnBrushPropertyChanged;
+
+					if (s is GradientBrush g)
+						g.InvalidateGradientBrushRequested -= OnBrushChanged;
+				}
+
+				source.PropertyChanged += OnBrushPropertyChanged;
+
+				if (source is GradientBrush gradientBrush)
+					gradientBrush.InvalidateGradientBrushRequested += OnBrushChanged;
+
+				base.Subscribe(source, handler);
+			}
+
+			public override void Unsubscribe()
+			{
+				if (TryGetSource(out var s))
+				{
+					s.PropertyChanged -= OnBrushPropertyChanged;
+
+					if (s is GradientBrush g)
+						g.InvalidateGradientBrushRequested -= OnBrushChanged;
+				}
+
+				base.Unsubscribe();
+			}
 		}
 
 		/// <summary>Bindable property for <see cref="StrokeThickness"/>.</summary>
