@@ -1,6 +1,8 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Numerics;
+using System.Reflection;
 using Microsoft.Maui.ApplicationModel;
 
 namespace Microsoft.Maui.Devices.Sensors
@@ -204,11 +206,25 @@ namespace Microsoft.Maui.Devices.Sensors
 
 		static bool useSyncContext;
 
-		/// <inheritdoc/>
-		public event EventHandler<AccelerometerChangedEventArgs>? ReadingChanged;
+		// Subscribers are held weakly so that a subscriber which forgets to unsubscribe is not
+		// retained for the lifetime of the process by this app-lifetime singleton.
+		readonly WeakSensorEventHandlers readingChangedHandlers = new();
+
+		readonly WeakSensorEventHandlers shakeDetectedHandlers = new();
 
 		/// <inheritdoc/>
-		public event EventHandler? ShakeDetected;
+		public event EventHandler<AccelerometerChangedEventArgs>? ReadingChanged
+		{
+			add => readingChangedHandlers.Add(value);
+			remove => readingChangedHandlers.Remove(value);
+		}
+
+		/// <inheritdoc/>
+		public event EventHandler? ShakeDetected
+		{
+			add => shakeDetectedHandlers.Add(value);
+			remove => shakeDetectedHandlers.Remove(value);
+		}
 
 		/// <inheritdoc/>
 		public bool IsMonitoring { get; private set; }
@@ -267,11 +283,11 @@ namespace Microsoft.Maui.Devices.Sensors
 		internal void OnChanged(AccelerometerChangedEventArgs e)
 		{
 			if (useSyncContext)
-				MainThread.BeginInvokeOnMainThread(() => ReadingChanged?.Invoke(null, e));
+				MainThread.BeginInvokeOnMainThread(() => readingChangedHandlers.Invoke(null, e));
 			else
-				ReadingChanged?.Invoke(null, e);
+				readingChangedHandlers.Invoke(null, e);
 
-			if (ShakeDetected != null)
+			if (shakeDetectedHandlers.HasSubscribers)
 				ProcessShakeEvent(e.Reading.Acceleration);
 		}
 
@@ -292,13 +308,146 @@ namespace Microsoft.Maui.Devices.Sensors
 				var args = new EventArgs();
 
 				if (useSyncContext)
-					MainThread.BeginInvokeOnMainThread(() => ShakeDetected?.Invoke(null, args));
+					MainThread.BeginInvokeOnMainThread(() => shakeDetectedHandlers.Invoke(null, args));
 				else
-					ShakeDetected?.Invoke(null, args);
+					shakeDetectedHandlers.Invoke(null, args);
 			}
 
 			static long Nanoseconds(DateTime time) =>
 				(time.Ticks / TimeSpan.TicksPerMillisecond) * 1_000_000;
+		}
+	}
+
+	/// <summary>
+	/// Holds event subscriptions without keeping the subscriber alive.
+	/// </summary>
+	/// <remarks>
+	/// Sensor implementations such as <see cref="AccelerometerImplementation"/> are exposed through
+	/// app-lifetime singletons (for example <see cref="Accelerometer.Default"/>). Storing subscribers in a
+	/// plain multicast delegate would root every subscriber that forgets to unsubscribe for the whole
+	/// process lifetime. Only a <see cref="WeakReference"/> to the delegate target is kept here, so a
+	/// subscriber stays collectable. Handlers declared on a static method have no target to leak and are
+	/// kept as before.
+	/// </remarks>
+	sealed class WeakSensorEventHandlers
+	{
+		readonly List<Subscription> subscriptions = new();
+
+		/// <summary>
+		/// Gets a value indicating whether at least one subscriber is still alive.
+		/// </summary>
+		public bool HasSubscribers
+		{
+			get
+			{
+				lock (subscriptions)
+				{
+					for (var i = subscriptions.Count - 1; i >= 0; i--)
+					{
+						var subscriber = subscriptions[i].Subscriber;
+
+						if (subscriber is null || subscriber.IsAlive)
+							return true;
+
+						subscriptions.RemoveAt(i);
+					}
+				}
+
+				return false;
+			}
+		}
+
+		public void Add(Delegate? handler)
+		{
+			if (handler is null)
+				return;
+
+			var target = handler.Target;
+
+			lock (subscriptions)
+			{
+				subscriptions.Add(new Subscription(
+					target is null ? null : new WeakReference(target),
+					handler.GetMethodInfo()));
+			}
+		}
+
+		public void Remove(Delegate? handler)
+		{
+			if (handler is null)
+				return;
+
+			var target = handler.Target;
+			var method = handler.GetMethodInfo();
+
+			lock (subscriptions)
+			{
+				for (var i = subscriptions.Count - 1; i >= 0; i--)
+				{
+					var current = subscriptions[i];
+
+					if (current.Subscriber is not null && !current.Subscriber.IsAlive)
+					{
+						subscriptions.RemoveAt(i);
+						continue;
+					}
+
+					if (current.Subscriber?.Target == target && current.Handler == method)
+					{
+						subscriptions.RemoveAt(i);
+						break;
+					}
+				}
+			}
+		}
+
+		public void Invoke(object? sender, EventArgs e)
+		{
+			List<(object? Subscriber, MethodInfo Handler)>? toRaise = null;
+
+			lock (subscriptions)
+			{
+				// Walk backwards so collected subscribers can be pruned in place; the raise loop below
+				// then runs in reverse to restore the original subscription order.
+				for (var i = subscriptions.Count - 1; i >= 0; i--)
+				{
+					var subscription = subscriptions[i];
+
+					if (subscription.Subscriber is null)
+					{
+						(toRaise ??= new()).Add((null, subscription.Handler));
+						continue;
+					}
+
+					var subscriber = subscription.Subscriber.Target;
+
+					if (subscriber is null)
+						subscriptions.RemoveAt(i);
+					else
+						(toRaise ??= new()).Add((subscriber, subscription.Handler));
+				}
+			}
+
+			if (toRaise is null)
+				return;
+
+			var arguments = new object?[] { sender, e };
+
+			for (var i = toRaise.Count - 1; i >= 0; i--)
+				toRaise[i].Handler.Invoke(toRaise[i].Subscriber, arguments);
+		}
+
+		readonly struct Subscription
+		{
+			public Subscription(WeakReference? subscriber, MethodInfo handler)
+			{
+				Subscriber = subscriber;
+				Handler = handler;
+			}
+
+			public readonly WeakReference? Subscriber;
+
+			public readonly MethodInfo Handler;
 		}
 	}
 }
