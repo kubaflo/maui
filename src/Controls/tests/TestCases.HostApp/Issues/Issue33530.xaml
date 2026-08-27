@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue33530">
+	<ContentPage.Resources>
+		<DataTemplate x:Key="AffectedBorderTemplate">
+			<Grid>
+				<Border
+					x:Name="AffectedBorder"
+					AutomationId="AffectedBorder"
+					BackgroundColor="#5B9BD5"
+					HorizontalOptions="Start"
+					Padding="16"
+					Rotation="-90"
+					Stroke="#17365D"
+					StrokeThickness="4"
+					VerticalOptions="Center"
+					WidthRequest="160">
+					<Border.Shadow>
+						<Shadow
+							Brush="#CC000000"
+							Offset="18,18"
+							Opacity="1"
+							Radius="10" />
+					</Border.Shadow>
+					<VerticalStackLayout Spacing="12">
+						<BoxView
+							Color="#FFD966"
+							HeightRequest="220"
+							WidthRequest="120" />
+						<Label
+							x:Name="AffectedContentLabel"
+							AutomationId="AffectedContentLabel"
+							FontAttributes="Bold"
+							FontSize="20"
+							HorizontalTextAlignment="Center"
+							Text="Rotated Border"
+							TextColor="White" />
+					</VerticalStackLayout>
+				</Border>
+			</Grid>
+		</DataTemplate>
+
+		<DataTemplate x:Key="ReferenceBorderTemplate">
+			<Grid>
+				<Border
+					x:Name="ReferenceBorder"
+					AutomationId="ReferenceBorder"
+					BackgroundColor="#5B9BD5"
+					HorizontalOptions="Center"
+					Padding="16"
+					Rotation="0"
+					Stroke="#17365D"
+					StrokeThickness="4"
+					VerticalOptions="Center"
+					WidthRequest="160">
+					<Border.Shadow>
+						<Shadow
+							Brush="#CC000000"
+							Offset="18,18"
+							Opacity="1"
+							Radius="10" />
+					</Border.Shadow>
+					<VerticalStackLayout Spacing="12">
+						<BoxView
+							Color="#FFD966"
+							HeightRequest="220"
+							WidthRequest="120" />
+						<Label
+							AutomationId="ReferenceContentLabel"
+							FontAttributes="Bold"
+							FontSize="20"
+							HorizontalTextAlignment="Center"
+							Text="Rotated Border"
+							TextColor="White" />
+					</VerticalStackLayout>
+				</Border>
+			</Grid>
+		</DataTemplate>
+	</ContentPage.Resources>
+
+	<VerticalStackLayout
+		x:Name="IssueRoot"
+		AutomationId="Issue33530Root"
+		Padding="24"
+		Spacing="20">
+		<Label
+			FontSize="22"
+			HorizontalTextAlignment="Center"
+			Text="Issue 33530: initial rotated Border layout" />
+		<Label
+			x:Name="ReferenceLifecycleToken"
+			AutomationId="ReferenceLifecycleToken"
+			Text="-1" />
+		<Label
+			x:Name="AffectedLifecycleToken"
+			AutomationId="AffectedLifecycleToken"
+			Text="-1" />
+		<Button
+			AutomationId="OpenReferenceButton"
+			Clicked="OnOpenReferenceClicked"
+			Text="Open clean reference" />
+		<Button
+			AutomationId="OpenAffectedButton"
+			Clicked="OnOpenAffectedClicked"
+			Text="Open rotated Border" />
+		<Button
+			x:Name="RotateReferenceButton"
+			AutomationId="RotateReferenceButton"
+			Clicked="OnRotateReferenceClicked"
+			IsVisible="False"
+			Margin="20"
+			Text="Rotate reference Border"
+			VerticalOptions="End" />
+		<Label
+			x:Name="ReferenceArrangementToken"
+			AutomationId="ReferenceArrangementToken"
+			Text="-1"
+			VerticalOptions="Start" />
+		<Label
+			x:Name="AffectedArrangementToken"
+			AutomationId="AffectedArrangementToken"
+			Text="-1"
+			VerticalOptions="Start" />
+	</VerticalStackLayout>
+</ContentPage>
+
