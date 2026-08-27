@@ -20,6 +20,11 @@ namespace Microsoft.Maui.Handlers
 			PlatformView.Height = double.NaN;
 
 			MapHeight(this, VirtualView);
+
+			// The opacity is split between the container and the child depending on whether a container exists,
+			// so it has to be recomputed whenever that changes. Leaving a stale opacity on the TextBlock would
+			// both dim it twice and bake a transparent alpha mask into the container's drop shadow.
+			MapOpacity(this, VirtualView);
 		}
 
 		protected override void RemoveContainer()
@@ -27,6 +32,8 @@ namespace Microsoft.Maui.Handlers
 			base.RemoveContainer();
 
 			MapHeight(this, VirtualView);
+
+			MapOpacity(this, VirtualView);
 		}
 
 		public static void MapHeight(ILabelHandler handler, ILabel view) =>
@@ -41,11 +48,8 @@ namespace Microsoft.Maui.Handlers
 			handler.ToPlatform().UpdateBackground(label);
 		}
 
-		public static void MapOpacity(ILabelHandler handler, ILabel label)
-		{
-			handler.PlatformView.UpdateOpacity(label);
-			handler.ToPlatform().UpdateOpacity(label);
-		}
+		public static void MapOpacity(ILabelHandler handler, ILabel label) =>
+			ViewHandler.MapOpacity(handler, label);
 
 		public static void MapText(ILabelHandler handler, ILabel label) =>
 			handler.PlatformView?.UpdateText(label);
