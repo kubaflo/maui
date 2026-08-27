@@ -158,6 +158,20 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				return;
 			}
 
+			// KeepItemsInView means "the items currently on screen stay on screen", not "scroll back
+			// to the first item of the source". WinUI's ItemsStackPanel already defaults to its own
+			// ItemsUpdatingScrollMode.KeepItemsInView, so it adjusts the scroll offset to compensate
+			// for the extent added or removed above the viewport. Forcing ScrollIntoView(view[0])
+			// here on an item-level change overrode that and jumped the list to the top whenever an
+			// item was inserted (https://github.com/dotnet/maui/issues/28006). The Reset path above
+			// is the exception that still needs an explicit scroll: after a reset there is no
+			// surviving realized item for the panel to anchor on, and a CarouselView at Position 0
+			// must land back on its first item.
+			if (mode == ItemsUpdatingScrollMode.KeepItemsInView && !isReset)
+			{
+				return;
+			}
+
 			// Defer when WinUI may still be mutating the projection (grouped sources, or any
 			// Reset notification) so the scroll runs against a settled state.
 			bool shouldDefer = isGrouped || isReset;
