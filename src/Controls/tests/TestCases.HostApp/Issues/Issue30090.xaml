@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue30090">
+	<ScrollView>
+		<VerticalStackLayout
+			Padding="24"
+			Spacing="16">
+			<Label
+				Text="DatePicker runtime culture change"
+				FontSize="24"
+				FontAttributes="Bold" />
+			<Label Text="The default-styled DatePicker starts under en-US. Change the runtime culture while the same control remains visible." />
+			<DatePicker
+				x:Name="IssueDatePicker"
+				AutomationId="IssueDatePicker"
+				Date="2026-12-24" />
+			<Label
+				x:Name="InitialCultureLabel"
+				AutomationId="InitialCultureLabel"
+				Text="Initial culture pending" />
+			<Button
+				AutomationId="ChangeCultureButton"
+				Text="Change culture to fr-FR"
+				Clicked="OnChangeCultureClicked" />
+			<Label
+				x:Name="CultureStatusLabel"
+				AutomationId="CultureStatusLabel"
+				Text="Culture change pending" />
+		</VerticalStackLayout>
+	</ScrollView>
+</ContentPage>
+
