@@ -152,7 +152,7 @@ namespace Microsoft.Maui.Controls.Platform
 			WeakReference weakRecognizer,
 			CGPoint originPoint,
 			int uiTapGestureRecognizerNumberOfTapsRequired,
-			UITapGestureRecognizer? uITapGestureRecognizer = null)
+			UIGestureRecognizer? uITapGestureRecognizer = null)
 		{
 			var recognizer = weakRecognizer.Target as IGestureRecognizer;
 			var eventTracker = weakEventTracker.Target as GesturePlatformManager;
@@ -536,7 +536,7 @@ namespace Microsoft.Maui.Controls.Platform
 			return result;
 		}
 
-		UITapGestureRecognizer? CreateTapRecognizer(
+		UIGestureRecognizer? CreateTapRecognizer(
 			WeakReference weakEventTracker,
 			WeakReference weakRecognizer)
 		{
@@ -546,14 +546,39 @@ namespace Microsoft.Maui.Controls.Platform
 			if (tapGesture == null)
 				return null;
 
-			Action<UITapGestureRecognizer> action = new Action<UITapGestureRecognizer>((sender) =>
+			Action<UIGestureRecognizer> action = new Action<UIGestureRecognizer>((sender) =>
 			{
 				var eventTracker = weakEventTracker.Target as GesturePlatformManager;
 				var originPoint = sender.LocationInView(eventTracker?.PlatformView);
-				ProcessRecognizerHandlerTap(weakEventTracker, weakRecognizer, originPoint, (int)sender.NumberOfTapsRequired, sender);
+				var tapsRequired = sender is UITapGestureRecognizer nativeTap ? (int)nativeTap.NumberOfTapsRequired : 1;
+				ProcessRecognizerHandlerTap(weakEventTracker, weakRecognizer, originPoint, tapsRequired, sender);
 			});
 
-			var result = new UITapGestureRecognizer(action)
+			// UIKit's UITapGestureRecognizer fails itself once the touch has been held down longer than an
+			// internal deadline, so a press-and-hold followed by a release never reports a tap. For the single
+			// tap / primary button configuration we can reproduce the whole tap state machine ourselves on top of
+			// the abstract base recognizer, which has no such deadline. Every other configuration (multi tap,
+			// secondary button, Mac Catalyst) keeps the platform recognizer and its button mask handling.
+			if (tapGesture.NumberOfTapsRequired == 1 &&
+				(tapGesture.Buttons & ButtonsMask.Secondary) != ButtonsMask.Secondary &&
+				(tapGesture.Buttons & ButtonsMask.Primary) == ButtonsMask.Primary &&
+				!OperatingSystem.IsMacCatalyst())
+			{
+				var holdableResult = new HoldableTapGestureRecognizer
+				{
+					ShouldRecognizeSimultaneously = ShouldRecognizeTapsTogether
+				};
+
+				holdableResult.AddTarget((NSObject sender) =>
+				{
+					if (sender is UIGestureRecognizer platformRecognizer)
+						action(platformRecognizer);
+				});
+
+				return holdableResult;
+			}
+
+			var result = new UITapGestureRecognizer((sender) => action(sender))
 			{
 				NumberOfTapsRequired = (uint)tapGesture.NumberOfTapsRequired,
 				ShouldRecognizeSimultaneously = ShouldRecognizeTapsTogether
@@ -579,35 +604,144 @@ namespace Microsoft.Maui.Controls.Platform
 			return result;
 		}
 
+		// A tap recognizer built directly on the abstract UIGestureRecognizer base. Because it inherits no tap
+		// state machine it also inherits no maximum hold duration: the only transition to Ended is the touch
+		// actually lifting, so press-and-hold-then-release still reports a tap (issue 30832).
+		internal sealed class HoldableTapGestureRecognizer : UIGestureRecognizer
+		{
+			// Matches the movement slop UIKit allows before it stops treating a touch as a tap.
+			const double AllowableMovement = 10.0;
+
+			CGPoint _origin;
+			bool _tracking;
+
+			public override void TouchesBegan(NSSet touches, UIEvent evt)
+			{
+				base.TouchesBegan(touches, evt);
+
+				if (_tracking || touches.Count != 1)
+				{
+					_tracking = false;
+					Fail();
+					return;
+				}
+
+				// Callers only use this recognizer for primary-button taps, so an indirect pointer pressing the
+				// secondary button must not report one. Direct touches report an empty mask.
+				if ((evt.ButtonMask & UIEventButtonMask.Secondary) == UIEventButtonMask.Secondary)
+				{
+					Fail();
+					return;
+				}
+
+				_origin = LocationInView(null);
+				_tracking = true;
+			}
+
+			public override void TouchesMoved(NSSet touches, UIEvent evt)
+			{
+				base.TouchesMoved(touches, evt);
+
+				if (!_tracking)
+					return;
+
+				var current = LocationInView(null);
+				var deltaX = current.X - _origin.X;
+				var deltaY = current.Y - _origin.Y;
+
+				if ((deltaX * deltaX) + (deltaY * deltaY) > AllowableMovement * AllowableMovement)
+				{
+					_tracking = false;
+					Fail();
+				}
+			}
+
+			public override void TouchesEnded(NSSet touches, UIEvent evt)
+			{
+				base.TouchesEnded(touches, evt);
+
+				if (!_tracking)
+				{
+					Fail();
+					return;
+				}
+
+				_tracking = false;
+				State = UIGestureRecognizerState.Ended;
+			}
+
+			public override void TouchesCancelled(NSSet touches, UIEvent evt)
+			{
+				base.TouchesCancelled(touches, evt);
+
+				_tracking = false;
+
+				if (State == UIGestureRecognizerState.Possible)
+					State = UIGestureRecognizerState.Cancelled;
+			}
+
+			public override void Reset()
+			{
+				base.Reset();
+
+				_tracking = false;
+			}
+
+			void Fail()
+			{
+				// Only Possible is a legal source state for a failure transition; once UIKit has already moved the
+				// recognizer out of Possible there is nothing left to fail.
+				if (State == UIGestureRecognizerState.Possible)
+					State = UIGestureRecognizerState.Failed;
+			}
+		}
+
+		static bool TryGetTapConfiguration(UIGestureRecognizer gesture, out nuint tapsRequired, out nuint touchesRequired)
+		{
+			switch (gesture)
+			{
+				case UITapGestureRecognizer tap:
+					tapsRequired = tap.NumberOfTapsRequired;
+					touchesRequired = tap.NumberOfTouchesRequired;
+					return true;
+				case HoldableTapGestureRecognizer:
+					tapsRequired = 1;
+					touchesRequired = 1;
+					return true;
+				default:
+					tapsRequired = 0;
+					touchesRequired = 0;
+					return false;
+			}
+		}
+
 		static bool ShouldRecognizeTapsTogether(UIGestureRecognizer gesture, UIGestureRecognizer other)
 		{
 			// If multiple tap gestures are potentially firing (because multiple tap gesture recognizers have been
 			// added to the MAUI Element), we want to allow them to fire simultaneously if they have the same number
 			// of taps and touches
 
-			var tap = gesture as UITapGestureRecognizer;
-			if (tap == null)
+			if (!TryGetTapConfiguration(gesture, out var tapsRequired, out var touchesRequired))
 			{
 				return false;
 			}
 
-			var otherTap = other as UITapGestureRecognizer;
-			if (otherTap == null)
+			if (!TryGetTapConfiguration(other, out var otherTapsRequired, out var otherTouchesRequired))
 			{
 				return false;
 			}
 
-			if (!Equals(tap.View, otherTap.View))
+			if (!Equals(gesture.View, other.View))
 			{
 				return false;
 			}
 
-			if (tap.NumberOfTapsRequired != otherTap.NumberOfTapsRequired)
+			if (tapsRequired != otherTapsRequired)
 			{
 				return false;
 			}
 
-			if (tap.NumberOfTouchesRequired != otherTap.NumberOfTouchesRequired)
+			if (touchesRequired != otherTouchesRequired)
 			{
 				return false;
 			}
