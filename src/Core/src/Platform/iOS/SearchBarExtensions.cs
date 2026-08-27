@@ -80,7 +80,23 @@ namespace Microsoft.Maui.Platform
 
 			var placeholder = searchBar.Placeholder ?? string.Empty;
 			var placeholderColor = searchBar.PlaceholderColor is Color color ? color.ToPlatform() : ColorExtensions.PlaceholderColor;
-			textField.AttributedPlaceholder = new NSAttributedString(str: placeholder, foregroundColor: placeholderColor);
+
+			// UITextField renders the placeholder from AttributedPlaceholder, which carries its own
+			// attributes and ignores UITextField.TextAlignment. Bake the requested alignment into a
+			// paragraph style so HorizontalTextAlignment applies to the placeholder as well as the text.
+			var attributedPlaceholder = new NSMutableAttributedString(new NSAttributedString(str: placeholder, foregroundColor: placeholderColor));
+
+			if (attributedPlaceholder.Length > 0)
+			{
+				var paragraphStyle = new NSMutableParagraphStyle
+				{
+					Alignment = searchBar.HorizontalTextAlignment.ToPlatformHorizontal(textField.EffectiveUserInterfaceLayoutDirection)
+				};
+
+				attributedPlaceholder.AddAttribute(UIStringAttributeKey.ParagraphStyle, paragraphStyle, new NSRange(0, attributedPlaceholder.Length));
+			}
+
+			textField.AttributedPlaceholder = attributedPlaceholder;
 			textField.AttributedPlaceholder.WithCharacterSpacing(searchBar.CharacterSpacing);
 		}
 
