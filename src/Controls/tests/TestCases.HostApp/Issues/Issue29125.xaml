@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue29125">
+    <Grid Padding="24"
+          RowDefinitions="Auto,*,Auto,Auto,Auto"
+          RowSpacing="16">
+        <Label Grid.Row="0"
+               FontSize="20"
+               Text="Slider thumb image sizing" />
+
+        <Grid x:Name="SliderHost"
+              Grid.Row="1">
+            <Slider x:Name="DefaultSlider"
+                    AutomationId="DefaultSlider"
+                    Value="0.5"
+                    Loaded="OnDefaultSliderLoaded" />
+        </Grid>
+
+        <Button x:Name="ShowSliderButton"
+                Grid.Row="2"
+                AutomationId="ShowSliderButton"
+                IsVisible="False"
+                Text="Show slider with thumb image"
+                Clicked="OnShowSliderClicked" />
+
+        <Label x:Name="ResultStatus"
+               Grid.Row="3"
+               AutomationId="ResultStatus"
+               FontAttributes="Bold"
+               Text="Waiting for the default thumb measurement." />
+
+        <Label x:Name="MeasurementDetails"
+               Grid.Row="4"
+               AutomationId="MeasurementDetails"
+               Text="No native thumb measurement."
+               VerticalOptions="Start" />
+    </Grid>
+</ContentPage>
+
