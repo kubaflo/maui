@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
@@ -14,15 +15,33 @@ public static class TimePickerExtensions
 	public static void UpdateTime(this TimePicker nativeTimePicker, ITimePicker timePicker)
 	{
 		nativeTimePicker.SelectedTime = timePicker.Time;
+		nativeTimePicker.UpdateClockIdentifier(timePicker);
+	}
 
-		if (timePicker.Format?.Contains('H', StringComparison.Ordinal) == true)
+	internal static void UpdateClockIdentifier(this TimePicker nativeTimePicker, ITimePicker timePicker)
+	{
+		var format = timePicker.Format;
+
+		if (format?.Length == 1)
 		{
-			nativeTimePicker.ClockIdentifier = "24HourClock";
+			try
+			{
+				var patterns = CultureInfo.CurrentCulture.DateTimeFormat.GetAllDateTimePatterns(format[0]);
+				if (patterns.Length > 0)
+					format = patterns[0];
+			}
+			catch (ArgumentException)
+			{
+				// Preserve support for single-character custom formats such as "H".
+			}
 		}
-		else
-		{
-			nativeTimePicker.ClockIdentifier = "12HourClock";
-		}
+
+		var clockIdentifier = format?.Contains('H', StringComparison.Ordinal) == true
+			? "24HourClock"
+			: "12HourClock";
+
+		if (!string.Equals(nativeTimePicker.ClockIdentifier, clockIdentifier, StringComparison.Ordinal))
+			nativeTimePicker.ClockIdentifier = clockIdentifier;
 	}
 
 	public static void UpdateCharacterSpacing(this TimePicker platformTimePicker, ITimePicker timePicker)
