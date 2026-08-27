@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="Maui.Controls.Sample.Issues.Issue36228RootPage"
+			 Title="Navigation.PushAsync">
+	<ScrollView>
+		<VerticalStackLayout Padding="30,0"
+							 Spacing="25">
+			<Label Text="L3 - Navigation.PushAsync"
+				   FontSize="24" />
+			<Label Text="Tap the navigation button continuously while the page is switching." />
+			<Label Text="The destination should only be opened once." />
+			<Label Text="Three taps are used for each bounded attempt." />
+			<Button Text="Go to New Page 1"
+					AutomationId="Issue36228Navigate"
+					Clicked="OnNavigateClicked" />
+			<Button Text="Reset attempt"
+					AutomationId="Issue36228Reset"
+					Clicked="OnResetClicked" />
+			<Label x:Name="ResultLabel"
+				   AutomationId="Issue36228NavigationResult"
+				   Text="-1" />
+		</VerticalStackLayout>
+	</ScrollView>
+</ContentPage>
