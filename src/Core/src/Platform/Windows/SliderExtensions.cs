@@ -96,10 +96,9 @@ namespace Microsoft.Maui.Platform
 
 				var thumb = nativeSlider.GetFirstDescendant<Thumb>();
 
-				if (defaultThumbSize.HasValue && thumb is not null)
+				if (thumb is not null)
 				{
-					thumb.Height = defaultThumbSize.Value.Height;
-					thumb.Width = defaultThumbSize.Value.Width;
+					ApplyDefaultThumbSize(thumb, defaultThumbSize);
 				}
 
 				return;
@@ -121,10 +120,12 @@ namespace Microsoft.Maui.Platform
 					{
 						bitmapImage.ImageOpened -= OnImageOpened;
 
+						// The thumb keeps the size it had before the image was applied; the image
+						// is scaled uniformly into it. Sizing the thumb to the bitmap's pixel
+						// dimensions would make the thumb as large as the source image.
 						if (nativeSlider.TryGetFirstDescendant<Thumb>(out var thumb))
 						{
-							thumb.Height = bitmapImage.PixelHeight;
-							thumb.Width = bitmapImage.PixelWidth;
+							ApplyDefaultThumbSize(thumb, defaultThumbSize);
 						}
 
 						if (nativeSlider.Parent is FrameworkElement frameworkElement)
@@ -135,6 +136,29 @@ namespace Microsoft.Maui.Platform
 				}
 
 				nativeSlider.ThumbImageSource = nativeThumbImageSource?.Value;
+			}
+		}
+
+		// Restores the thumb to the size captured from the default template, so a thumb image
+		// never changes the slider's thumb footprint.
+		static void ApplyDefaultThumbSize(Thumb thumb, Size? defaultThumbSize)
+		{
+			if (!defaultThumbSize.HasValue)
+			{
+				return;
+			}
+
+			var width = defaultThumbSize.Value.Width;
+			var height = defaultThumbSize.Value.Height;
+
+			if (width >= 0 && !double.IsNaN(width) && !double.IsInfinity(width))
+			{
+				thumb.Width = width;
+			}
+
+			if (height >= 0 && !double.IsNaN(height) && !double.IsInfinity(height))
+			{
+				thumb.Height = height;
 			}
 		}
 
