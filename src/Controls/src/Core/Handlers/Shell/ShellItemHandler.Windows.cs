@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Platform;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -76,11 +77,22 @@ namespace Microsoft.Maui.Controls.Handlers
 			base.ConnectHandler(platformView);
 
 			if (mauiNavView is not null)
+			{
 				mauiNavView.SelectionChanged += OnNavigationTabChanged;
+
+				// The tab strip background lives on the TopNavArea template part, which only
+				// exists once the template has been applied. Subscribe unconditionally so the
+				// background is painted even when the Shell never produces a ShellAppearance.
+				if (mauiNavView.TopNavArea is null)
+					mauiNavView.OnApplyTemplateFinished += OnApplyTemplateFinished;
+				else
+					UpdateTabBarBackground();
+			}
 
 			if (VirtualView.Parent is Shell shell)
 			{
 				shell.Navigated += OnShellNavigated;
+				shell.PropertyChanged += OnShellPropertyChanged;
 			}
 		}
 
@@ -91,6 +103,7 @@ namespace Microsoft.Maui.Controls.Handlers
 			if (platformView is MauiNavigationView mnv)
 			{
 				mnv.SelectionChanged -= OnNavigationTabChanged;
+				mnv.OnApplyTemplateFinished -= OnApplyTemplateFinished;
 				if (mnv.AutoSuggestBox is { } autoSuggestBox)
 				{
 					autoSuggestBox.TextChanged -= OnSearchBoxTextChanged;
@@ -126,6 +139,7 @@ namespace Microsoft.Maui.Controls.Handlers
 				if (VirtualView.Parent is Shell shell)
 				{
 					shell.Navigated -= OnShellNavigated;
+					shell.PropertyChanged -= OnShellPropertyChanged;
 				}
 
 				foreach (var item in shellItemController.GetItems())
@@ -725,12 +739,11 @@ namespace Microsoft.Maui.Controls.Handlers
 			if (PlatformView is not MauiNavigationView mauiNavView)
 				return;
 
-			var backgroundColor = _shellAppearanceElement.EffectiveTabBarBackgroundColor?.AsPaint();
 			var foregroundColor = _shellAppearanceElement.EffectiveTabBarForegroundColor?.AsPaint();
 			var unselectedColor = _shellAppearanceElement.EffectiveTabBarUnselectedColor?.AsPaint();
 			var titleColor = _shellAppearanceElement.EffectiveTabBarTitleColor?.AsPaint();
 
-			mauiNavView.UpdateTopNavAreaBackground(backgroundColor);
+			UpdateTabBarBackground();
 			mauiNavView.UpdateTopNavigationViewItemUnselectedColor(unselectedColor);
 			mauiNavView.UpdateTopNavigationViewItemTextSelectedColor(titleColor ?? foregroundColor);
 			mauiNavView.UpdateTopNavigationViewItemTextColor(unselectedColor);
@@ -744,6 +757,29 @@ namespace Microsoft.Maui.Controls.Handlers
 
 			if (_shellAppearanceElement is not null)
 				UpdateAppearance(_shellAppearanceElement);
+			else
+				UpdateTabBarBackground();
+		}
+
+		void OnShellPropertyChanged(object? sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName == VisualElement.BackgroundProperty.PropertyName)
+				UpdateTabBarBackground();
+		}
+
+		// The TabBar background comes from the Shell appearance when one is set; otherwise it
+		// falls back to Shell.Background so brushes (gradients included) reach the tab strip.
+		void UpdateTabBarBackground()
+		{
+			if (PlatformView is not MauiNavigationView mauiNavView)
+				return;
+
+			Paint? paint = _shellAppearanceElement?.EffectiveTabBarBackgroundColor?.AsPaint();
+
+			if (paint is null && VirtualView?.Parent is Shell shell && !Brush.IsNullOrEmpty(shell.Background))
+				paint = shell.Background;
+
+			mauiNavView.UpdateTopNavAreaBackground(paint);
 		}
 	}
 }
