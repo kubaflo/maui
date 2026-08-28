@@ -59,6 +59,14 @@ namespace Microsoft.Maui.Controls.Platform
 			var textBlockInlines = textBlock.Inlines;
 			textBlockInlines.Clear();
 
+			// The highlighters are index-based into the TextBlock's text, so any that were created
+			// for the previous inlines are stale once those inlines are cleared. Leaving them in
+			// place makes them apply to whatever text now occupies those indices.
+			if (textBlock.TextHighlighters.Count > 0)
+			{
+				textBlock.TextHighlighters.Clear();
+			}
+
 			// Have to implement a measure here, otherwise inline.ContentStart and ContentEnd will be null, when used in RecalculatePositions
 			textBlock.Measure(new global::Windows.Foundation.Size(double.MaxValue, double.MaxValue));
 
