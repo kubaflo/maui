@@ -19,6 +19,8 @@ namespace Microsoft.Maui.Handlers
 		protected override void ConnectHandler(MauiDatePicker platformView)
 		{
 			platformView.MauiDatePickerDelegate = new DatePickerDelegate(this);
+			platformView.CultureChanged += OnCultureChanged;
+			platformView.StartCultureObservation();
 
 			if (DatePickerDialog is UIDatePicker picker)
 			{
@@ -34,9 +36,17 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void DisconnectHandler(MauiDatePicker platformView)
 		{
+			platformView.StopCultureObservation();
+			platformView.CultureChanged -= OnCultureChanged;
 			platformView.MauiDatePickerDelegate = null;
 
 			base.DisconnectHandler(platformView);
+		}
+
+		void OnCultureChanged(object? sender, EventArgs e)
+		{
+			if (VirtualView is not null)
+				UpdateValue(nameof(IDatePicker.Format));
 		}
 
 		public static partial void MapFormat(IDatePickerHandler handler, IDatePicker datePicker)
