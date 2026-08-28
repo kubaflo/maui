@@ -292,7 +292,61 @@ namespace Microsoft.Maui.Platform
 					}
 				}
 			}
-			return false;
+
+			// A page root also needs the keyboard frame so it can hand the cross-platform layout
+			// an arrange rectangle that excludes the area the keyboard covers.
+			return IsKeyboardResizablePageRoot();
+		}
+
+		/// <summary>
+		/// Returns true when this view is the top-most MAUI layout view of a page, i.e. the view whose
+		/// arrange rectangle defines how much height the page's content has to work with. Only that view
+		/// can give back the space the software keyboard covers; nested views and anything inside a
+		/// scroll view are handled by their ancestor (or by scrolling).
+		/// </summary>
+		bool IsKeyboardResizablePageRoot()
+		{
+			// Cheap checks first; this runs from the layout pass of every MauiView.
+			if (Window is null || View is not IContentView || Superview is MauiView)
+			{
+				return false;
+			}
+
+			return this.FindParent(x => x is MauiView || x is UIScrollView) is null;
+		}
+
+		/// <summary>
+		/// Height, in this view's own coordinate space, of the bottom strip of <see cref="UIView.Bounds"/>
+		/// that the software keyboard covers. The safe area inset that <see cref="CrossPlatformArrange"/>
+		/// already removes is discounted, so the resulting content box ends exactly at the top of the
+		/// keyboard instead of double-counting the home indicator.
+		/// </summary>
+		double GetKeyboardObstruction()
+		{
+			if (!_isKeyboardShowing || _keyboardFrame.IsEmpty)
+			{
+				return 0;
+			}
+
+			var window = Window;
+			if (window is null || !IsKeyboardResizablePageRoot())
+			{
+				return 0;
+			}
+
+			var boundsInWindow = ConvertRectToView(Bounds, window);
+			var overlap = (double)(boundsInWindow.GetMaxY() - _keyboardFrame.GetMinY());
+			if (overlap <= 0)
+			{
+				return 0;
+			}
+
+			if (_appliesSafeAreaAdjustments)
+			{
+				overlap -= _safeArea.Bottom;
+			}
+
+			return Math.Clamp(overlap, 0, Bounds.Height);
 		}
 
 		void SubscribeToKeyboardNotifications()
@@ -717,6 +771,14 @@ namespace Microsoft.Maui.Platform
 			}
 
 			var bounds = Bounds.ToRectangle();
+
+			// Hand the cross-platform layout only the part of our rectangle the software keyboard
+			// isn't covering, so content that fills the page shrinks instead of hiding underneath it.
+			var keyboardObstruction = GetKeyboardObstruction();
+			if (keyboardObstruction > 0)
+			{
+				bounds.Height = Math.Max(0, bounds.Height - keyboardObstruction);
+			}
 
 			var widthConstraint = bounds.Width;
 			var heightConstraint = bounds.Height;
