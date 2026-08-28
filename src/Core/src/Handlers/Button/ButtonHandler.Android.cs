@@ -15,8 +15,8 @@ namespace Microsoft.Maui.Handlers
 		// there is a minimum size of the buttons: 88dp x 48dp
 		// So, this is calculated:
 		//   - Vertical: 6dp*2 (inset) + 8.5dp*2 (padding) + 2.5dp*2 (text magic) + 14dp (text size) = 48dp
-		//   - Horizontal: 16dp (from the styles)
-		public readonly static Thickness DefaultPadding = new Thickness(16, 8.5);
+		//   - Horizontal: 0dp so the default doesn't reduce the available text width
+		public readonly static Thickness DefaultPadding = new Thickness(0, 8.5);
 
 		static ColorStateList TransparentColorStateList = Colors.Transparent.ToDefaultColorStateList();
 
