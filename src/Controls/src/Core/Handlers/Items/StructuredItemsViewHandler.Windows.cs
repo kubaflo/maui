@@ -199,6 +199,45 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			}
 		}
 
+		protected override void CleanUpCollectionViewSource()
+		{
+			var header = ListViewBase.Header as ItemTemplateContext;
+			var footer = ListViewBase.Footer as ItemTemplateContext;
+			var headerTemplate = ListViewBase.HeaderTemplate;
+			var footerTemplate = ListViewBase.FooterTemplate;
+
+			if (header is not null)
+			{
+				ListViewBase.Header = null;
+				ListViewBase.HeaderTemplate = null;
+			}
+
+			if (footer is not null)
+			{
+				ListViewBase.Footer = null;
+				ListViewBase.FooterTemplate = null;
+			}
+
+			try
+			{
+				base.CleanUpCollectionViewSource();
+			}
+			finally
+			{
+				if (header is not null)
+				{
+					ListViewBase.HeaderTemplate = headerTemplate;
+					ListViewBase.Header = header;
+				}
+
+				if (footer is not null)
+				{
+					ListViewBase.FooterTemplate = footerTemplate;
+					ListViewBase.Footer = footer;
+				}
+			}
+		}
+
 		static ListViewBase CreateGridView(GridItemsLayout gridItemsLayout)
 		{
 			var gridView = new FormsGridView
