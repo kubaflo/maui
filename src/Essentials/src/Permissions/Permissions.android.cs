@@ -112,21 +112,41 @@ namespace Microsoft.Maui.ApplicationModel
 
 			protected virtual async Task<PermissionResult> DoRequest(string[] permissions)
 			{
+				// Validate every precondition before reserving an entry in the static request table.
+				// A request code that is handed out but never passed to Android can never be retired by
+				// OnRequestPermissionsResult, and the request code ring eventually wraps onto the orphaned
+				// entry, breaking later valid requests.
+				if (!MainThread.IsMainThread)
+					throw new PermissionException("Permission request must be invoked on main thread.");
+
 				TaskCompletionSource<PermissionResult> tcs;
+				int currentRequestCode;
 
 				lock (locker)
 				{
 					tcs = new TaskCompletionSource<PermissionResult>();
 
 					requestCode = PlatformUtils.NextRequestCode();
+					currentRequestCode = requestCode;
 
-					requests.Add(requestCode, tcs);
+					requests.Add(currentRequestCode, tcs);
 				}
 
-				if (!MainThread.IsMainThread)
-					throw new PermissionException("Permission request must be invoked on main thread.");
+				try
+				{
+					ActivityCompat.RequestPermissions(ActivityStateManager.Default.GetCurrentActivity(true), permissions.ToArray(), currentRequestCode);
+				}
+				catch
+				{
+					// Android was never asked for the permission, so nothing will ever complete this
+					// request. Release the entry instead of leaking it for the lifetime of the process.
+					lock (locker)
+					{
+						requests.Remove(currentRequestCode);
+					}
 
-				ActivityCompat.RequestPermissions(ActivityStateManager.Default.GetCurrentActivity(true), permissions.ToArray(), requestCode);
+					throw;
+				}
 
 				var result = await tcs.Task;
 				return result;
