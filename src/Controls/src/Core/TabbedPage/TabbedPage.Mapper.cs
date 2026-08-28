@@ -28,7 +28,7 @@ namespace Microsoft.Maui.Controls
 
 #endif
 
-#if WINDOWS || ANDROID || TIZEN
+#if WINDOWS || ANDROID || TIZEN || IOS
 			TabbedViewHandler.PlatformViewFactory = OnCreatePlatformView;
 #endif
 
