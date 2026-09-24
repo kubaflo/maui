@@ -30,14 +30,53 @@ internal static class AcessibilityExtensions
 				return;
 			}
 
-			if (selectionMode != SelectionMode.None)
+			var selectable = selectionMode != SelectionMode.None;
+
+			ApplyItemTrait(firstChild, selectable);
+
+			// UIKit only reports traits for the views it exposes to assistive technology, and that
+			// exposure is declared by IsAccessibilityElement. When the item template declares its
+			// semantics on an inner element, MAUI promotes that element instead, so a trait written
+			// only to the template root is never announced. Mirror it onto the exposed elements.
+			foreach (var subview in firstChild.Subviews)
 			{
-				firstChild.AccessibilityTraits |= UIAccessibilityTrait.Button;
+				ApplyItemTraitToExposedElements(subview, selectable);
 			}
-			else
-			{
-				firstChild.AccessibilityTraits &= ~UIAccessibilityTrait.Button;
-			}
+		}
+	}
+
+	static void ApplyItemTraitToExposedElements(UIView view, bool selectable)
+	{
+		// Native controls keep their own role so an embedded CheckBox or Entry is not announced
+		// as a button.
+		if (view is UIControl)
+		{
+			return;
+		}
+
+		if (view.IsAccessibilityElement)
+		{
+			ApplyItemTrait(view, selectable);
+
+			// UIKit does not surface the children of an accessibility element.
+			return;
+		}
+
+		foreach (var subview in view.Subviews)
+		{
+			ApplyItemTraitToExposedElements(subview, selectable);
+		}
+	}
+
+	static void ApplyItemTrait(UIView view, bool selectable)
+	{
+		if (selectable)
+		{
+			view.AccessibilityTraits |= UIAccessibilityTrait.Button;
+		}
+		else
+		{
+			view.AccessibilityTraits &= ~UIAccessibilityTrait.Button;
 		}
 	}
 }
