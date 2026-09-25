@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using CoreGraphics;
 using Foundation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Graphics;
@@ -19,8 +20,56 @@ namespace Microsoft.Maui.Handlers
 
 		WKUIDelegate? _delegate;
 
+		IDisposable? _contentSizeObserver;
+		CGSize _lastInvalidatedContentSize = CGSize.Empty;
+
 		protected override WKWebView CreatePlatformView() =>
 			new MauiWKWebView(this);
+
+		protected override void ConnectHandler(WKWebView platformView)
+		{
+			base.ConnectHandler(platformView);
+
+			// The rendered document size only becomes known once navigation has laid the content out,
+			// which is after the first measure pass. Observing it lets an auto-sized WebView re-measure
+			// itself when the content it is supposed to size to finally exists.
+			var scrollView = platformView.ScrollView;
+			if (scrollView is not null)
+			{
+				_lastInvalidatedContentSize = scrollView.ContentSize;
+				_contentSizeObserver = scrollView.AddObserver(
+					"contentSize",
+					NSKeyValueObservingOptions.New,
+					OnContentSizeChanged);
+			}
+		}
+
+		protected override void DisconnectHandler(WKWebView platformView)
+		{
+			_contentSizeObserver?.Dispose();
+			_contentSizeObserver = null;
+			_lastInvalidatedContentSize = CGSize.Empty;
+
+			base.DisconnectHandler(platformView);
+		}
+
+		void OnContentSizeChanged(NSObservedChange change)
+		{
+			var contentSize = PlatformView?.ScrollView?.ContentSize;
+			if (contentSize is null)
+				return;
+
+			// Measuring can change the frame, which can change the content size again; only react to a
+			// real change so the two do not chase each other indefinitely.
+			if (Math.Abs(contentSize.Value.Width - _lastInvalidatedContentSize.Width) < 0.5 &&
+				Math.Abs(contentSize.Value.Height - _lastInvalidatedContentSize.Height) < 0.5)
+			{
+				return;
+			}
+
+			_lastInvalidatedContentSize = contentSize.Value;
+			VirtualView?.InvalidateMeasure();
+		}
 
 		public static void MapWKUIDelegate(IWebViewHandler handler, IWebView webView)
 		{
@@ -120,18 +169,34 @@ namespace Microsoft.Maui.Handlers
 			var width = size.Width;
 			var height = size.Height;
 
-			if (width == 0)
+			// base.GetDesiredSize resolves to UIView.SizeThatFits, which for a WKWebView just echoes its
+			// current frame - it never reports how tall the loaded document actually is. In an
+			// unconstrained direction, use the rendered document size from the web view's scroll view so
+			// an auto-sized WebView reports its content to the parent layout instead of a 44pt floor.
+			var contentSize = PlatformView?.ScrollView?.ContentSize ?? CGSize.Empty;
+
+			if (widthConstraint <= 0 || double.IsInfinity(widthConstraint))
 			{
-				if (widthConstraint <= 0 || double.IsInfinity(widthConstraint))
+				if (contentSize.Width > 0)
+				{
+					width = Math.Max(contentSize.Width, MinimumSize);
+					set = true;
+				}
+				else if (width == 0)
 				{
 					width = MinimumSize;
 					set = true;
 				}
 			}
 
-			if (height == 0)
+			if (heightConstraint <= 0 || double.IsInfinity(heightConstraint))
 			{
-				if (heightConstraint <= 0 || double.IsInfinity(heightConstraint))
+				if (contentSize.Height > 0)
+				{
+					height = Math.Max(contentSize.Height, MinimumSize);
+					set = true;
+				}
+				else if (height == 0)
 				{
 					height = MinimumSize;
 					set = true;
