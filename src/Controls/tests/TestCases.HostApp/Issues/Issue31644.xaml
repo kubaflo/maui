@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	x:Class="Maui.Controls.Sample.Issues.Issue31644"
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	AutomationId="Issue31644Page">
+	<Grid
+		Padding="24"
+		RowDefinitions="Auto,*,Auto,Auto"
+		RowSpacing="16">
+		<Label
+			FontSize="18"
+			Text="Tap Top Button to expose Bottom Button." />
+
+		<Grid
+			x:Name="InteractionArea"
+			Grid.Row="1"
+			AutomationId="InteractionArea"
+			BackgroundColor="LightBlue"
+			MinimumHeightRequest="320">
+			<ContentView>
+				<Button
+					AutomationId="BottomButton"
+					Clicked="OnBottomButtonClicked"
+					HorizontalOptions="Center"
+					Text="Bottom Button"
+					VerticalOptions="Center" />
+			</ContentView>
+
+			<ContentView>
+				<Grid
+					x:Name="TopGrid"
+					BackgroundColor="LightGreen">
+					<Grid>
+						<ScrollView>
+							<Button
+								AutomationId="TopButton"
+								Clicked="OnTopButtonClicked"
+								HorizontalOptions="Center"
+								Text="Top Button"
+								VerticalOptions="Center" />
+						</ScrollView>
+					</Grid>
+				</Grid>
+			</ContentView>
+		</Grid>
+
+		<Label
+			x:Name="TopTransitionLabel"
+			Grid.Row="2"
+			AutomationId="TopTransitionLabel"
+			Text="-1" />
+
+		<Label
+			x:Name="BottomClickCountLabel"
+			Grid.Row="3"
+			AutomationId="BottomClickCountLabel"
+			Text="0" />
+	</Grid>
+</ContentPage>
+
