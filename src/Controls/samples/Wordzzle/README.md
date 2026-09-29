@@ -2,15 +2,21 @@
 
 A runnable, offline migration of the daily word-game loop from
 [kubaflo/Wordzzle](https://github.com/kubaflo/Wordzzle), plus a dedicated MAUI 11
-hackathon lab. **The screenshots below are captures of the actual RC2 Android
-app, not mockups or the earlier .NET 10 build.**
+hackathon lab. **The screenshots and videos below show real .NET 11 Android
+and iOS apps, not mockups or the earlier .NET 10 build.**
+
+Android uses the exact event RC2 stack. **iOS works with Xcode 26.6**, using
+the opt-in .NET 11 Preview 6 SDK/Apple workload profile and an iOS-26.5-compatible
+MAUI 11 RC2 package. The iOS profile is not the exact event SDK stack.
 
 The sample pins the event SDK and workload in [global.json](global.json).
 Its local `Directory.Build.props` and `Directory.Build.targets` deliberately
 isolate it from this framework checkout's .NET 10 source-build configuration.
-It consumes the MAUI 11 workload packages, not this checkout's MAUI assemblies.
+It consumes MAUI 11 packages, not this checkout's MAUI assemblies.
 
 ## See the app working
+
+### Android RC2
 
 Captured on Android 11 / API 30, running a `net11.0-android` CoreCLR Debug build.
 Most images come directly from the real DevFlow MCP screenshot tool; native
@@ -54,6 +60,42 @@ not screenshot slideshows and are not labeled as editor Hot Reload evidence.
 | Local statistics | Recovery after an intentional compiler error |
 | --- | --- |
 | <img src="Screenshots/05-statistics.png" width="240" alt="Native statistics dialog shows one game, one win, and two guesses" /> | <img src="Screenshots/13-error-recovery.png" width="240" alt="Counter 10 after fixing the intentional syntax error" /> |
+
+### iOS without Xcode 27
+
+Captured on **iPhone 17 / iOS 26.5**, running `net11.0-ios` / CoreCLR with
+Xcode **26.6**. No Xcode installation, global Xcode switch, .NET 10 fallback,
+or version-check bypass was used.
+
+| Solved game restored after relaunch | Empty-input validation | Greeting and live expression |
+| --- | --- | --- |
+| <img src="Screenshots/ios-02-solved.png" width="240" alt="iOS restores CRANE and CLOUD, solved in two guesses" /> | <img src="Screenshots/ios-06-empty-validation.png" width="240" alt="iOS displays Please enter your name" /> | <img src="Screenshots/ios-07-greeting.png" width="240" alt="iOS displays Hello Maui tester and Characters 11" /> |
+
+The following captures share **iOS PID 12297 and page session `68811798`**.
+XAML text, color, font size and button text changed without leaving the page.
+The existing counter stayed 3, then became 5 after the C# handler changed
+from `+= 1` to `+= 2` and the button was tapped.
+
+| Before editing | XAML source Hot Reload | C# handler Hot Reload |
+| --- | --- | --- |
+| <img src="Screenshots/ios-03-before-hotreload.png" width="240" alt="iOS counter 3 before Hot Reload, session 68811798" /> | <img src="Screenshots/ios-04-xaml-hotreload.png" width="240" alt="iOS label turns green and grows while counter and session remain unchanged" /> | <img src="Screenshots/ios-05-csharp-hotreload.png" width="240" alt="iOS counter becomes 5 without restarting" /> |
+
+| Recording | What to watch |
+| --- | --- |
+| **[Play iOS XAML Hot Reload (16 seconds)](Videos/03-ios-xaml-hotreload.mp4)** | The label and button change to `Updated live`; the label becomes green and larger. Counter remains 3. |
+| **[Play iOS C# Hot Reload (22 seconds)](Videos/04-ios-csharp-hotreload.mp4)** | `Count +1` changes to `Count +2`, then counter 3 becomes 5 near 17 seconds. The session ID stays unchanged. |
+
+These are native simulator screen recordings, converted to H.264 / 30 fps
+without speeding up the edits. The C# clip holds its final captured frame for
+five seconds so the result is readable. They show **CLI `dotnet watch`**, not
+the VS Code desktop, debugger, flame button or chat agent.
+
+An intentional `_state.ClickCount += ;` also produced CS1525 on iOS. The old
+valid handler still worked (5 -> 7), and correcting the source allowed another
+tap (7 -> 9), without a process or page restart
+([recovery capture](Screenshots/ios-08-error-recovery.png)).
+Restoring the already-applied valid source reported
+`No managed code changes to apply`; it did not silently rebuild/relaunch.
 
 ## Migration scope
 
@@ -118,10 +160,10 @@ Use the RID appropriate to your device. Embedding the assemblies makes the
 Debug APK self-contained for deployment; manually sideloading the initial
 fast-deployment APK without its assemblies failed to initialize CoreCLR.
 
-The project also declares iOS, Mac Catalyst, and Windows targets. **Only
-Android RC2 has been run successfully here.** The installed RC2 iOS workload
-requires Xcode 27.0, whereas the checklist and this host use Xcode 26.6.
-Windows was not tested.
+The project also declares iOS, Mac Catalyst, and Windows targets. The exact
+event RC2 iOS workload requires Xcode 27.0, whereas this host uses Xcode 26.6.
+The working alternate iOS profile is documented below. Mac Catalyst and
+Windows were not tested.
 
 ### Hot Reload
 
@@ -205,6 +247,65 @@ After a fresh launch, the source value `Ready for live edits` returned.
 The [memory-only capture](Screenshots/09-memory-property.png) is deliberately
 separate from the source Hot Reload evidence.
 
+## Run iOS with Xcode 26.6
+
+Use [ios-xcode26/global.json](ios-xcode26/global.json) from its own directory.
+It selects the already-installed .NET 11 Preview 6 SDK and Apple workload set;
+the parent directory's Android RC2 pins are unchanged.
+
+```bash
+cd src/Controls/samples/Wordzzle/ios-xcode26
+
+# Point to the installation containing the exact Preview 6 SDK.
+export DOTNET_ROOT=/usr/local/share/dotnet
+export PATH="$DOTNET_ROOT:$PATH"
+dotnet --version
+# 11.0.100-preview.6.26359.118
+
+# Only if this workload set is not already installed:
+dotnet workload install maui-ios --version 11.0.100-preview.6.26364.2 \
+  --configfile ../NuGet.config
+
+export IOS_DEVICE=5BA96735-B558-4355-B16A-B41143C6718A # replace with your booted simulator UUID
+dotnet watch --project ../Wordzzle.csproj --framework net11.0-ios \
+  --device "$IOS_DEVICE" --runtime iossimulator-arm64 \
+  --property:TargetFrameworks=net11.0-ios \
+  --property:RestoreConfigFile="$PWD/../NuGet.config"
+```
+
+The ordinary build command, without Hot Reload or DevFlow, is:
+
+```bash
+dotnet build ../Wordzzle.csproj -f net11.0-ios -r iossimulator-arm64 \
+  -p:TargetFrameworks=net11.0-ios \
+  -p:RestoreConfigFile="$PWD/../NuGet.config"
+xcrun simctl install "$IOS_DEVICE" \
+  ../bin/Debug/net11.0-ios/iossimulator-arm64/Wordzzle.app
+xcrun simctl launch "$IOS_DEVICE" com.kubaflo.wordzzle
+```
+
+For the direct MCP experiments, append the three DevFlow properties from the
+section above to `dotnet watch`. The iOS simulator's agent was reachable on
+host loopback port 9223 without ADB forwarding.
+
+Two narrowly scoped compatibility changes are included:
+
+- With this exact SDK and `net11.0-ios`, the project selects
+  `Microsoft.Maui.Controls` **11.0.0-rc.2.26474.65**, whose iOS assets target
+  26.5. The event's newer **11.0.0-rc.2.26475.3** assets target iOS 27.0.
+  Using Preview 6 MAUI alone launched successfully but did not visibly apply
+  XAML Hot Reload; the compatible RC2 package did.
+- `Directory.Build.targets` removes the erroneous executable quotes emitted
+  by Preview 6's `ComputeMlaunchRunArguments` and supplies the project working
+  directory. Otherwise the child-directory launch cannot start `mlaunch`
+  correctly. This target does not modify the installed SDK or Xcode validation,
+  and does not run for Android or the RC2 SDK.
+
+This is an **empirically validated mixed SDK/framework profile**, not a claim
+that the exact RC2 Apple workload supports Xcode 26.6. All framework TFMs,
+runtime and Apple SDK remain net11; the public sample NuGet configuration was
+sufficient on this host with its existing package cache.
+
 ## Hackathon coverage
 
 Results are observations, not promises. **Blocked** and **Not run** are not Pass.
@@ -212,16 +313,17 @@ Results are observations, not promises. **Blocked** and **Not run** are not Pass
 | Checklist area | Result | Evidence / remaining gap |
 | --- | --- | --- |
 | Create new project from template | Partial | Fresh isolated-hive RC2 `dotnet new maui` project created and Android build passed; that template app was not launched. |
-| Upgrade existing application | Partial | Wordzzle daily-game subset runs on exact MAUI 11 RC2; original service/feature parity remains out of scope. |
-| Experimental C# XAML expressions | Pass | `EnablePreviewFeatures=true`; counter/session interpolation and `Name.Length` update in the running app. |
+| Upgrade existing application | Partial | Daily-game subset runs on Android RC2 and the alternate net11 iOS profile; original service/feature parity remains out of scope. |
+| Experimental C# XAML expressions | Pass | `EnablePreviewFeatures=true`; counter/session interpolation and `Name.Length` update on Android and iOS. |
 | Android launch and counter | Pass, CLI only | Real selected-device launch and counter interaction; not F5/debugger evidence. |
+| iOS launch and counter | Pass, CLI only | iPhone 17 / iOS 26.5, Xcode 26.6, compatible MAUI RC2 package; not the exact event SDK or F5 evidence. |
 | F5, breakpoint, inspect, step, continue | Blocked | VS Code exposed no editor accessibility nodes and rejected background input with `no_viable_candidate`. |
 | Three debugger stop/launch cycles | Not run | Three CLI cold launches passed (PIDs 8578, 8632, 8687) and the solved game persisted, but that does not validate debugger reconnects. |
-| Second-device debug switch | Blocked | API36 emulator stayed offline; API30 replacement worked. iOS RC2 requires an unavailable Xcode. No successful debugger device-switch claim. |
-| XAML Hot Reload: text/color/font | Pass, watch only | Same PID/session and counter 3; actual properties became `Updated live`, `#538D4E`, and `30`. |
-| C# Hot Reload: handler +1 to +2 | Pass, watch only | Counter 3 -> 5, without relaunch. |
+| Second-device debug switch | Blocked | Android and iOS CLI launches succeeded, but editor/debugger switching was not observed. |
+| XAML Hot Reload: text/color/font | Pass, watch only | Android and iOS retain their PID/session and counter 3; actual properties become `Updated live`, `#538D4E`, and `30`. |
+| C# Hot Reload: handler +1 to +2 | Pass, watch only | Counter 3 -> 5 on Android and iOS, without relaunch. |
 | Several edits, revert/reapply | Pass, watch only | Counter 5 -> 6 -> 8; VS Code keyboard Undo/Redo remains untested. |
-| Syntax error and recovery | Pass, watch only | Exact CS1525 retained; counter 8 -> 10 after correction, same session. |
+| Syntax error and recovery | Pass, watch only | CS1525 retained; Android counter 8 -> 10 after correction. iOS old handler remains usable (5 -> 7), then 7 -> 9 after correction, same session. |
 | VS Code XAML/C# Hot Reload | Blocked | CLI evidence is not substituted for editor evidence. |
 | MAUI agent recommendation/discovery | Not run | Recommendations configured; actual Chat behavior not observed. |
 | Three ordered MAUI-agent prompts | Blocked | Their requested UI is implemented and exercised, but not by a VS Code MAUI chat session. |
@@ -242,19 +344,23 @@ The three prompts still needing a real **MAUI** agent chat are:
 
 ## Recorded environment and first failures
 
-Validation date: **2026-09-29**.
+Validation date: **2026-09-29 UTC**.
 
 | Component | Actual value |
 | --- | --- |
 | Host | macOS 26.7 (`25G229`), Apple Silicon |
-| Selected SDK | `11.0.100-rc.2.26475.136` |
-| Workload set | `11.0.100-rc.2.26478.2` |
-| MAUI | `11.0.0-rc.2.26475.3` |
+| Android SDK | `11.0.100-rc.2.26475.136` |
+| Android workload set | `11.0.100-rc.2.26478.2` |
+| Android MAUI | `11.0.0-rc.2.26475.3` |
 | Android workload | `37.2.0-rc.2.84` |
 | Runtime / configuration | CoreCLR, Debug, `android-arm64` |
 | Running device | Android 11 / API30, 1080 x 1920, density 2.625 |
 | Android toolchain | Target API37, build tools 36.0.0, JDK 21.0.8 |
-| iOS workload / Xcode | `27.0.12211-net11-rc.2` / Xcode 26.6 (`17F113`) |
+| Exact-event iOS workload (blocked) | `27.0.12211-net11-rc.2`; requires Xcode 27.0 |
+| Working iOS SDK / workload set | `11.0.100-preview.6.26359.118` / `11.0.100-preview.6.26364.2` |
+| Working iOS Apple pack / MAUI | `26.5.11720-net11-p6` / `11.0.0-rc.2.26474.65` |
+| Working iOS device / runtime | iPhone 17, iOS 26.5, CoreCLR, Debug, `iossimulator-arm64` |
+| Selected Xcode | 26.6 (`17F113`), unchanged |
 | VS Code | `1.139.0`, arm64, commit `2242ebbb54efeeb0129e08e919e7e8d43033cd83` |
 | .NET MAUI extension | `11.0.24`; differs from checklist `1.17.266` |
 | C# extension | `2.160.4` |
@@ -267,7 +373,9 @@ Validation date: **2026-09-29**.
 | --- | --- |
 | Public-only exact-RC2 restore: unauthorized/missing runtime packages | Existing authorized event identity with an external NuGet config; no credentials persisted in the repository. |
 | Direct nuget.org TLS: `Socket is not connected` | Used Microsoft's public NuGet mirror. |
-| iOS: `This version of .NET for iOS (27.0.12211-net11-rc.2) requires Xcode 27.0. The current version of Xcode is 26.6.` | Blocked. Did not disable version validation or substitute the earlier net10 screenshots. |
+| iOS: `This version of .NET for iOS (27.0.12211-net11-rc.2) requires Xcode 27.0. The current version of Xcode is 26.6.` | Exact event stack remains incompatible. The separate net11 Preview 6 Apple toolchain plus compatible MAUI RC2 package works with Xcode 26.6; no version-check bypass. |
+| Preview 6 launch: quoted `mlaunch` executable, `No such file or directory` | Sample-local, SDK/iOS-scoped target removes executable quotes and sets the project run directory. Actual watch launch verified. |
+| Preview 6 MAUI: `MAUI1002` experimental SourceGen warning; managed deltas applied but visible XAML stayed unchanged | Selected the iOS-26.5-compatible RC2 MAUI package; label/color/font and preserved state verified on screen. |
 | API36 emulator stayed offline; headless run logged `mprotect failed: Permission denied` | Different API30 AVD cold-booted with software rendering. |
 | Manually installed fast-deploy APK: `Failed to initialize CoreCLR. Error code: 80070002`, missing `System.Private.CoreLib.dll` | Run target with `EmbedAssembliesIntoApk=true`. |
 | MCP: `Another DevFlow session is driving this app (MCP client).` | Closed the previous client gracefully; used one mutation client at a time. |
@@ -300,3 +408,10 @@ without the DevFlow package/define. After deployment and cold launch, the
 source-backed `Updated live` label remained and the first counter tap changed
 0 to 2. The final source changes therefore do not depend on a surviving
 in-memory Hot Reload session.
+
+All 15 tests also passed under the iOS Preview 6 SDK profile. Its final ordinary
+iOS build completed with zero warnings/errors and no DevFlow package or
+compilation symbol. After installation, cold-launched PID 29213 restored the
+solved game ([native capture](Screenshots/ios-09-final-cold-launch.png)).
+SDK/property checks confirmed the parent Android SDK and MAUI pins were
+unchanged, and Xcode remained 26.6.

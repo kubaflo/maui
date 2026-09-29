@@ -10,6 +10,8 @@
     <EnablePreviewFeatures>true</EnablePreviewFeatures>
     <MauiXamlInflator>SourceGen</MauiXamlInflator>
     <MauiXamlHotReload>SourceGen</MauiXamlHotReload>
+    <!-- This RC2 package still targets iOS 26.5; the event's newer RC2 package needs Xcode 27. -->
+    <MauiVersion Condition="'$(TargetFramework)' == 'net11.0-ios' and '$(NETCoreSdkVersion)' == '11.0.100-preview.6.26359.118'">11.0.0-rc.2.26474.65</MauiVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>

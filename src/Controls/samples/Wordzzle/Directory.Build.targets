@@ -1,1 +1,11 @@
-<Project />
+<Project>
+  <Target Name="WordzzlePreview6MlaunchCommand"
+          AfterTargets="ComputeMlaunchRunArguments"
+          Condition="'$(TargetFramework)' == 'net11.0-ios' and '$(NETCoreSdkVersion)' == '11.0.100-preview.6.26359.118'">
+    <!-- Preview 6 quotes the executable as a shell command, but dotnet run starts it directly. -->
+    <PropertyGroup>
+      <RunCommand>$(MlaunchPath)</RunCommand>
+      <RunWorkingDirectory>$(MSBuildProjectDirectory)</RunWorkingDirectory>
+    </PropertyGroup>
+  </Target>
+</Project>
