@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Wordzzle"
+             x:Class="Wordzzle.HackathonPage"
+             x:DataType="local:HackathonState"
+             Title="MAUI 11 lab"
+             BackgroundColor="{AppThemeBinding Light=#F5F4EF, Dark=#17191C}">
+    <ContentPage.Resources>
+        <Style TargetType="Label">
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#30343B, Dark=#F5F4EF}" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="BackgroundColor" Value="#538D4E" />
+            <Setter Property="TextColor" Value="White" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+    </ContentPage.Resources>
+    <ScrollView AutomationId="LabScroll">
+        <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="600">
+            <Label Text="WORDZZLE / .NET 11" FontSize="12" CharacterSpacing="2" />
+            <Label AutomationId="LiveLabel"
+                   Text="Updated live"
+                   TextColor="#538D4E"
+                   FontSize="30"
+                   FontAttributes="Bold" />
+            <Label Text="The counter and session ID must survive Hot Reload. A live property edit is not a source edit." />
+            <Label AutomationId="SessionLabel"
+                   Text="{$'Session: {SessionId}'}"
+                   FontSize="12" />
+            <Border Stroke="#538D4E" StrokeShape="RoundRectangle 12" Padding="20">
+                <VerticalStackLayout Spacing="12">
+                    <Label AutomationId="CounterLabel"
+                           Text="{$'Counter: {ClickCount}'}"
+                           FontSize="32"
+                           FontAttributes="Bold" />
+                    <Label Text="This label uses a C# expression in XAML." />
+                    <Button AutomationId="CounterButton"
+                            Text="Count +2"
+                            Clicked="OnCounterClicked" />
+                </VerticalStackLayout>
+            </Border>
+            <Button AutomationId="HackathonButton"
+                    Text="Updated live"
+                    Clicked="OnHackathonClicked" />
+            <Label x:Name="CheckResult" AutomationId="CheckResult" Text="Tap to verify interaction." />
+            <Label Text="Name validation" FontSize="22" FontAttributes="Bold" />
+            <Entry AutomationId="NameEntry"
+                   Placeholder="Your name"
+                   Text="{Binding Name}"
+                   ReturnType="Done" />
+            <Label AutomationId="NameLengthLabel"
+                   Text="{$'Characters: {Name.Length}'}"
+                   FontSize="12" />
+            <Button AutomationId="SubmitButton" Text="Submit" Clicked="OnSubmitClicked" />
+            <Label AutomationId="ValidationMessage"
+                   Text="{Binding ValidationMessage}"
+                   FontSize="18"
+                   FontAttributes="Bold" />
+            <Label Text="Scroll inspection" FontSize="22" FontAttributes="Bold" Margin="0,32,0,0" />
+            <Label Text="Use the DevFlow tree to find controls by AutomationId. Try tap, fill, scroll, screenshot, get/set property, and a deliberately failing assertion." />
+            <BoxView HeightRequest="180" Color="Transparent" />
+            <Label AutomationId="ScrollTarget"
+                   Text="You reached the end of the lab."
+                   FontSize="20"
+                   HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

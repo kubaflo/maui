@@ -1,0 +1,7 @@
+<Project>
+  <!-- Test the shipped workload, independently of this repository's framework build. -->
+  <PropertyGroup>
+    <ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

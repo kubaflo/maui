@@ -1,13 +1,302 @@
-# Wordzzle MAUI sample
+# Wordzzle on .NET 11 / MAUI 11 RC2
 
-This in-tree sample ports Wordzzle's daily word-guessing loop to .NET MAUI. It includes four-to-seven-letter English puzzles, a tappable keyboard, duplicate-letter-aware scoring, local progress persistence, and basic game statistics.
+A runnable, offline migration of the daily word-game loop from
+[kubaflo/Wordzzle](https://github.com/kubaflo/Wordzzle), plus a dedicated MAUI 11
+hackathon lab. **The screenshots below are captures of the actual RC2 Android
+app, not mockups or the earlier .NET 10 build.**
 
-Build from the repository root with the platform target appropriate for your machine:
+The sample pins the event SDK and workload in [global.json](global.json).
+Its local `Directory.Build.props` and `Directory.Build.targets` deliberately
+isolate it from this framework checkout's .NET 10 source-build configuration.
+It consumes the MAUI 11 workload packages, not this checkout's MAUI assemblies.
+
+## See the app working
+
+Captured on Android 11 / API 30, running a `net11.0-android` CoreCLR Debug build.
+Most images come directly from the real DevFlow MCP screenshot tool; native
+dialogs require a device screenshot.
+
+| Daily puzzle | A submitted guess | Progress after a cold restart |
+| --- | --- | --- |
+| <img src="Screenshots/01-net11-daily.png" width="240" alt="Wordzzle daily game running on .NET 11" /> | <img src="Screenshots/02-first-guess.png" width="240" alt="CRANE scored against the daily answer" /> | <img src="Screenshots/03-restored-progress.png" width="240" alt="CRANE and partially typed CLO restored after restarting" /> |
+
+| Completed puzzle | Empty-input validation | Greeting and C# XAML expression |
+| --- | --- | --- |
+| <img src="Screenshots/04-solved.png" width="240" alt="CLOUD wins in two guesses" /> | <img src="Screenshots/07-empty-validation.png" width="240" alt="Empty input displays Please enter your name" /> | <img src="Screenshots/08-greeting.png" width="240" alt="Hello Maui tester and Characters 11" /> |
+
+### Real Hot Reload, not a rebuild
+
+These three captures share **Android PID 6418 and page session `f9a643b3`**.
+The running counter survives the XAML edit, then increases from 3 to 5 after
+changing the existing C# handler from `+= 1` to `+= 2`. Navigation is retained.
+
+| Before editing | XAML source Hot Reload | C# handler Hot Reload |
+| --- | --- | --- |
+| <img src="Screenshots/10-before-hotreload.png" width="240" alt="Original label, counter 3, session f9a643b3" /> | <img src="Screenshots/11-xaml-hotreload.png" width="240" alt="Updated live in green, counter still 3, same session" /> | <img src="Screenshots/12-csharp-hotreload.png" width="240" alt="Count plus 2 produces counter 5 in the same session" /> |
+
+**This is verified `dotnet watch` Hot Reload. It is not evidence of VS Code F5,
+the VS Code flame button, or a MAUI chat-agent session.** Those editor-specific
+lanes remain blocked; see the matrix below.
+
+### Watch the recordings
+
+| Recording | What to watch |
+| --- | --- |
+| **[Play XAML Hot Reload (20 seconds)](Videos/01-xaml-hotreload.mp4)** | Around 6 seconds, the label and button become `Updated live`; the label turns green and grows. Counter stays 3 and session stays `f9a643b3`. |
+| **[Play C# Hot Reload (23 seconds)](Videos/02-csharp-hotreload.mp4)** | Around 4 seconds, `Count +1` becomes `Count +2`. Around 17 seconds, tapping it changes the existing counter from 3 to 5, with the same session. |
+
+These are actual Android screen recordings, with only leading/trailing idle
+time removed and H.264 re-encoding for playback compatibility. Playback speed
+is unchanged. They show the device, **not the VS Code desktop**; the edits were
+applied through `dotnet watch` after VS Code input automation failed. They are
+not screenshot slideshows and are not labeled as editor Hot Reload evidence.
+
+| Local statistics | Recovery after an intentional compiler error |
+| --- | --- |
+| <img src="Screenshots/05-statistics.png" width="240" alt="Native statistics dialog shows one game, one win, and two guesses" /> | <img src="Screenshots/13-error-recovery.png" width="240" alt="Counter 10 after fixing the intentional syntax error" /> |
+
+## Migration scope
+
+Implemented: four-to-seven-letter English daily puzzles, six attempts, a
+tappable keyboard, count-aware duplicate-letter scoring, local per-puzzle
+progress, win statistics, help, and length selection. The puzzle date follows
+the original noon-UTC boundary when the game page is constructed.
+
+This is **not full feature parity** with the Xamarin.Forms application.
+The original calendar, other language dictionaries, Firebase battles,
+leaderboards, account synchronization, ads, audio, and notifications are not
+migrated. The English dictionaries here are small offline sample lists.
+There is no automatic noon rollover while an existing page stays open, and
+compact/landscape layouts and live theme switching have not been validated.
+
+The lab contains the counter/session marker, experimental C# XAML expressions,
+the hackathon button, a name field with empty-input validation, and a scroll
+target. Stable `AutomationId` values allow real runtime inspection.
+
+## Run the exact RC2 build
+
+Run commands **inside this sample directory**, not at the repository root:
 
 ```bash
-dotnet build src/Controls/samples/Wordzzle/Wordzzle.csproj --framework net10.0-android
-dotnet build src/Controls/samples/Wordzzle/Wordzzle.csproj --framework net10.0-ios
-dotnet build src/Controls/samples/Wordzzle/Wordzzle.csproj --framework net10.0-maccatalyst
+cd src/Controls/samples/Wordzzle
 ```
 
-The sample uses the MAUI source and target-framework settings in this checkout. Its small offline word lists replace the original cloud services; Firebase-backed battles, leaderboards, account sync, ads, notifications, and the other language dictionaries are not included.
+Install the SDK version in `global.json` using the event's approved distribution.
+For an isolated install, extract the SDK into the ignored `.dotnet/` directory:
+
+```bash
+export DOTNET_ROOT="$PWD/.dotnet"
+export PATH="$DOTNET_ROOT:$PATH"
+dotnet --version
+# 11.0.100-rc.2.26475.136
+```
+
+An existing installation of that exact SDK also works through the `$host$`
+fallback in `global.json`. There is deliberately no version roll-forward.
+
+The repository NuGet configuration contains only public Microsoft feeds.
+For the exact event runtime/workload packages, use an **external, authenticated
+NuGet configuration** supplied by the organizer. A public-only restore failed
+for some pinned RC2 packages on the validation host. Do not commit credentials,
+private feed URLs, or downloaded SDK archives.
+
+```bash
+export WORDZZLE_NUGET_CONFIG=/absolute/path/to/your/event-NuGet.config
+
+dotnet workload install maui --version 11.0.100-rc.2.26478.2 \
+  --configfile "$WORDZZLE_NUGET_CONFIG" --interactive
+
+export DEVICE=emulator-5582 # replace with your booted device's adb serial
+dotnet run --project Wordzzle.csproj --framework net11.0-android \
+  --device "$DEVICE" --runtime android-arm64 \
+  --property:TargetFrameworks=net11.0-android \
+  --property:EmbedAssembliesIntoApk=true \
+  --property:RestoreConfigFile="$WORDZZLE_NUGET_CONFIG"
+```
+
+Use the RID appropriate to your device. Embedding the assemblies makes the
+Debug APK self-contained for deployment; manually sideloading the initial
+fast-deployment APK without its assemblies failed to initialize CoreCLR.
+
+The project also declares iOS, Mac Catalyst, and Windows targets. **Only
+Android RC2 has been run successfully here.** The installed RC2 iOS workload
+requires Xcode 27.0, whereas the checklist and this host use Xcode 26.6.
+Windows was not tested.
+
+### Hot Reload
+
+```bash
+dotnet watch --project Wordzzle.csproj --framework net11.0-android \
+  --device "$DEVICE" --runtime android-arm64 \
+  --property:TargetFrameworks=net11.0-android \
+  --property:EmbedAssembliesIntoApk=true \
+  --property:RestoreConfigFile="$WORDZZLE_NUGET_CONFIG"
+```
+
+Use `--property:...`, not `-p:...`, with this watch build: combining the latter
+with `--project` produced `Cannot specify both '--project' and '-p' options.`
+
+Open **MAUI 11 hackathon lab**, tap the counter, and note both its value and
+session ID. The committed lab is left in the demonstrated `Updated live` /
+`Count +2` state. To reproduce the original sequence, first restore the initial
+values below before launching watch.
+
+| File | Before | After |
+| --- | --- | --- |
+| `HackathonPage.xaml`, `LiveLabel` | `Text="Ready for live edits"`, `FontSize="28"` | `Text="Updated live"`, `TextColor="#538D4E"`, `FontSize="30"` |
+| `HackathonPage.xaml`, `HackathonButton` | `Text="Hackathon check"` | `Text="Updated live"` |
+| `HackathonPage.xaml.cs`, `OnCounterClicked` | `_state.ClickCount += 1;` | `_state.ClickCount += 2;` |
+| `HackathonPage.xaml`, `CounterButton` | `Text="Count +1"` | `Text="Count +2"` |
+
+In the earlier error-recovery run (PID 4332, session `98947ca6`), reverting the
+source handler to `+= 1` produced counter 6;
+reapplying `+= 2` produced 8. This was source revert/reapply, not VS Code
+keyboard Undo/Redo. An intentional `_state.ClickCount += ;` then produced:
+
+```text
+Unable to apply changes due to compilation errors.
+HackathonPage.xaml.cs(15,30): error CS1525: Invalid expression term ';'
+```
+
+The app remained usable at counter 8. After correcting the source, the next
+tap produced 10 with the same process and session
+([recovery screenshot](Screenshots/13-error-recovery.png)). Reverting to the
+already-applied valid code reported `No managed code changes to apply`;
+no restart was used to hide the error.
+
+### VS Code and DevFlow
+
+Open this sample as its own VS Code folder. Extension recommendations and
+diagnostic settings are in `.vscode/`. Select this startup project and the
+Android device. Enable experimental C# Hot Reload and apply-on-save in the
+editor's user settings; the relevant machine-scoped settings are
+`csharp.experimental.debug.hotReload` and `csharp.debug.hotReloadOnSave`.
+Their state was **not verified** in the inaccessible editor UI.
+
+`MauiProgram.cs` contains `#if MAUI_DEVFLOW` guarded startup. Ordinary builds
+do not permanently reference the agent package. The MAUI extension can inject
+its Debug-only package/define through `MauiDevFlow.targets`; plain F5 does not
+automatically enable DevFlow.
+
+For the recorded direct-tool experiments, the launch also supplied:
+
+```text
+--property:MauiDevFlowEnabled=true
+--property:MauiDevFlowAgentVersion=0.1.0-preview.12.26421.1
+--property:CustomAfterMicrosoftCommonTargets=<installed-extension>/dist/resources/MSBuild/MauiDevFlow.targets
+```
+
+Broker discovery initially returned no agents despite the device HTTP server
+listening on port 9223. `adb -s "$DEVICE" forward tcp:9223 tcp:9223` and an
+explicit agent port allowed the extension's real `devflow mcp` server to be
+tested through stdio JSON-RPC. This is **actual MCP**, but not a claim that
+VS Code Chat discovered or selected these tools. Use only on a local,
+trusted development device; keep diagnostic ports off public interfaces.
+
+`maui_set_property` changed `LiveLabel.Text` to
+`Memory only - not Hot Reload`. A correct assertion passed; the intentional
+wrong assertion returned:
+
+```text
+FAIL: Text expected "deliberately wrong" but got "Memory only - not Hot Reload"
+```
+
+After a fresh launch, the source value `Ready for live edits` returned.
+The [memory-only capture](Screenshots/09-memory-property.png) is deliberately
+separate from the source Hot Reload evidence.
+
+## Hackathon coverage
+
+Results are observations, not promises. **Blocked** and **Not run** are not Pass.
+
+| Checklist area | Result | Evidence / remaining gap |
+| --- | --- | --- |
+| Create new project from template | Partial | Fresh isolated-hive RC2 `dotnet new maui` project created and Android build passed; that template app was not launched. |
+| Upgrade existing application | Partial | Wordzzle daily-game subset runs on exact MAUI 11 RC2; original service/feature parity remains out of scope. |
+| Experimental C# XAML expressions | Pass | `EnablePreviewFeatures=true`; counter/session interpolation and `Name.Length` update in the running app. |
+| Android launch and counter | Pass, CLI only | Real selected-device launch and counter interaction; not F5/debugger evidence. |
+| F5, breakpoint, inspect, step, continue | Blocked | VS Code exposed no editor accessibility nodes and rejected background input with `no_viable_candidate`. |
+| Three debugger stop/launch cycles | Not run | Three CLI cold launches passed (PIDs 8578, 8632, 8687) and the solved game persisted, but that does not validate debugger reconnects. |
+| Second-device debug switch | Blocked | API36 emulator stayed offline; API30 replacement worked. iOS RC2 requires an unavailable Xcode. No successful debugger device-switch claim. |
+| XAML Hot Reload: text/color/font | Pass, watch only | Same PID/session and counter 3; actual properties became `Updated live`, `#538D4E`, and `30`. |
+| C# Hot Reload: handler +1 to +2 | Pass, watch only | Counter 3 -> 5, without relaunch. |
+| Several edits, revert/reapply | Pass, watch only | Counter 5 -> 6 -> 8; VS Code keyboard Undo/Redo remains untested. |
+| Syntax error and recovery | Pass, watch only | Exact CS1525 retained; counter 8 -> 10 after correction, same session. |
+| VS Code XAML/C# Hot Reload | Blocked | CLI evidence is not substituted for editor evidence. |
+| MAUI agent recommendation/discovery | Not run | Recommendations configured; actual Chat behavior not observed. |
+| Three ordered MAUI-agent prompts | Blocked | Their requested UI is implemented and exercised, but not by a VS Code MAUI chat session. |
+| Agent device listing/switch, debug output/stop | Not run | Device/debug work used direct tools; editor agent unavailable. |
+| Plain Copilot vs MAUI agent | Not run | No comparative chat session; no model substitution. |
+| MCP tree/query/tap/fill/scroll/screenshot | Pass, direct MCP | Actual image returned; guesses, counter, scroll, empty-input error and `Maui tester` greeting verified. |
+| MCP get/set/assert, including failure | Pass, direct MCP | Original/read value, memory-only mutation, positive and negative assertion recorded. |
+| MCP relaunch/reconnect and reset | Pass, device launch | New app process inspected and source label restored; not MAUI debug-tool relaunch evidence. |
+| Environment/deviations | Recorded | Exact versions below; logs retained locally, secrets not published. |
+| Show-and-tell slides | Prepared | [Two-slide deck](Wordzzle-hackathon.pptx); no event upload, because the supplied destination was `TODO`. |
+| Bug-report workflow | Partial | Related issues searched; sanitized failures below. No internal tracker destination/access or public issue submission claimed. |
+
+The three prompts still needing a real **MAUI** agent chat are:
+
+1. "Add a button labeled 'Hackathon check'. Launch the app on my selected device and verify the button is visible."
+2. "Change that button's text to 'Updated live'. Use Hot Reload if supported and check the result."
+3. "Add a name field and a Submit button. Empty input should show an error; entering 'Maui tester' should show a greeting. Test both cases."
+
+## Recorded environment and first failures
+
+Validation date: **2026-09-29**.
+
+| Component | Actual value |
+| --- | --- |
+| Host | macOS 26.7 (`25G229`), Apple Silicon |
+| Selected SDK | `11.0.100-rc.2.26475.136` |
+| Workload set | `11.0.100-rc.2.26478.2` |
+| MAUI | `11.0.0-rc.2.26475.3` |
+| Android workload | `37.2.0-rc.2.84` |
+| Runtime / configuration | CoreCLR, Debug, `android-arm64` |
+| Running device | Android 11 / API30, 1080 x 1920, density 2.625 |
+| Android toolchain | Target API37, build tools 36.0.0, JDK 21.0.8 |
+| iOS workload / Xcode | `27.0.12211-net11-rc.2` / Xcode 26.6 (`17F113`) |
+| VS Code | `1.139.0`, arm64, commit `2242ebbb54efeeb0129e08e919e7e8d43033cd83` |
+| .NET MAUI extension | `11.0.24`; differs from checklist `1.17.266` |
+| C# extension | `2.160.4` |
+| C# Dev Kit | `3.40.204`; differs from checklist `3.40.210` |
+| Copilot Chat / selected editor agent | Not verified; no successful editor chat session |
+| XAML mode | `MauiXamlInflator=SourceGen`, `MauiXamlHotReload=SourceGen` |
+| DevFlow agent | `0.1.0-preview.12.26421.1`, commit `78e85a5cb9c7a3efaaacf85d6176ce971f40b7d6` |
+
+| First failure | Recovery / present status |
+| --- | --- |
+| Public-only exact-RC2 restore: unauthorized/missing runtime packages | Existing authorized event identity with an external NuGet config; no credentials persisted in the repository. |
+| Direct nuget.org TLS: `Socket is not connected` | Used Microsoft's public NuGet mirror. |
+| iOS: `This version of .NET for iOS (27.0.12211-net11-rc.2) requires Xcode 27.0. The current version of Xcode is 26.6.` | Blocked. Did not disable version validation or substitute the earlier net10 screenshots. |
+| API36 emulator stayed offline; headless run logged `mprotect failed: Permission denied` | Different API30 AVD cold-booted with software rendering. |
+| Manually installed fast-deploy APK: `Failed to initialize CoreCLR. Error code: 80070002`, missing `System.Private.CoreLib.dll` | Run target with `EmbedAssembliesIntoApk=true`. |
+| MCP: `Another DevFlow session is driving this app (MCP client).` | Closed the previous client gracefully; used one mutation client at a time. |
+| VS Code background controls: `no_viable_candidate` | Retried current tree, keyboard command and screenshot-addressed click. All rejected; no foreground automation workaround used. |
+| Mobile provider reported the running custom-port emulator as stopped | Explicit ADB target used instead; no device data erased. |
+| Mobile provider recording call failed for that custom-port emulator | Recorded the same selected device using Android's `screenrecord`; validated decoded frames and finalized MP4s. |
+
+Searches in `dotnet/macios`, `dotnet/maui`, `dotnet/sdk`, and `dotnet/android`
+did not identify matching issues for the searched Xcode, RC2 Hot Reload, or
+CoreCLR deployment messages. That is not proof there are no related issues.
+These are observed setup/tooling failures, not established product root causes.
+Private event logs remain local. Any report must use the appropriate tracker,
+one problem per report, with sanitized evidence and the actual launch method.
+
+## Model tests
+
+```bash
+dotnet test Tests/Wordzzle.Tests.csproj
+```
+
+The net11 test project links the platform-independent game and lab state.
+It covers all four word lengths, duplicate counts, invalid/incomplete guesses,
+six-attempt loss, valid and invalid persistence, transactional restore,
+name validation and binding notifications. These tests do not substitute for
+the device, debugger or Hot Reload scenarios above. All 15 tests passed on
+the pinned net11 SDK.
+
+A final ordinary Android build also completed with zero warnings/errors and
+without the DevFlow package/define. After deployment and cold launch, the
+source-backed `Updated live` label remained and the first counter tap changed
+0 to 2. The final source changes therefore do not depend on a surviving
+in-memory Hot Reload session.

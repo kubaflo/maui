@@ -3,9 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Wordzzle.MainPage"
              Title="Wordzzle"
+             NavigationPage.HasNavigationBar="False"
              BackgroundColor="{AppThemeBinding Light=#F5F4EF, Dark=#17191C}">
     <Grid Padding="14,8"
-          RowDefinitions="Auto,Auto,*,Auto,Auto"
+          RowDefinitions="Auto,Auto,*,Auto,Auto,Auto"
           RowSpacing="8">
         <Grid ColumnDefinitions="38,*,Auto,48,48"
               ColumnSpacing="4">
@@ -84,5 +85,13 @@
               AutomationId="GameKeyboard"
               Grid.Row="4"
               RowSpacing="5" />
+
+        <Button Grid.Row="5"
+                AutomationId="OpenLabButton"
+                Text="MAUI 11 hackathon lab"
+                FontSize="12"
+                BackgroundColor="Transparent"
+                TextColor="{AppThemeBinding Light=#426D3F, Dark=#9FD69B}"
+                Clicked="OnLabClicked" />
     </Grid>
 </ContentPage>

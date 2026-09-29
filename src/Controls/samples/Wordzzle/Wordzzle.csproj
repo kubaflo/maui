@@ -1,10 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>$(MauiSamplePlatforms)</TargetFrameworks>
-    <TargetFrameworks Condition=" '$(UseMaui)' != 'true' and '$(IncludePreviousTfms)' == 'true' ">$(TargetFrameworks);$(MauiSamplePreviousPlatforms)</TargetFrameworks>
+    <TargetFrameworks>net11.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net11.0-ios;net11.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net11.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <SingleProject>true</SingleProject>
+    <UseMaui>true</UseMaui>
+    <EnablePreviewFeatures>true</EnablePreviewFeatures>
+    <MauiXamlInflator>SourceGen</MauiXamlInflator>
+    <MauiXamlHotReload>SourceGen</MauiXamlHotReload>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
@@ -12,7 +17,11 @@
     <AssemblyName>Wordzzle</AssemblyName>
     <RuntimeIdentifier Condition="$(TargetFramework.Contains('-maccatalyst'))">maccatalyst-x64</RuntimeIdentifier>
     <RuntimeIdentifier Condition="$(TargetFramework.Contains('-maccatalyst')) and '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'arm64'">maccatalyst-arm64</RuntimeIdentifier>
-    <UseMaterial3>false</UseMaterial3>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">17.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -23,18 +32,14 @@
     <WindowsPackageType>None</WindowsPackageType>
   </PropertyGroup>
 
-  <ItemGroup Condition=" '$(UseMaui)' != 'true' ">
-    <ProjectReference Include="..\..\..\Core\src\Core.csproj" />
-    <ProjectReference Include="..\..\..\Essentials\src\Essentials.csproj" />
-    <ProjectReference Include="..\..\..\Controls\src\Xaml\Controls.Xaml.csproj" />
-    <ProjectReference Include="..\..\..\Controls\src\Core\Controls.Core.csproj" />
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <Compile Remove="Tests/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <MauiIcon Include="Resources\AppIcon\appicon.svg" />
     <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#F5F4EF" BaseSize="128,128" />
   </ItemGroup>
-
-  <Import Project="$(MauiSrcDirectory)Maui.InTree.props" Condition=" '$(UseMaui)' != 'true' " />
 
 </Project>

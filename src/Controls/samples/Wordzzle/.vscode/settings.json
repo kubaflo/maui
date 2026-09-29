@@ -1,0 +1,7 @@
+{
+  "dotnet.debug.hotReloadXAML": true,
+  "maui.configuration.debugVerbosity": "diagnostic",
+  "maui.configuration.logVerbosity": "diagnostic",
+  "maui.configuration.cliLogLevel": "trace",
+  "maui.configuration.autoSwitchToMauiAgent": true
+}
