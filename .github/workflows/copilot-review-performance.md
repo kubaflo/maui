@@ -1,6 +1,9 @@
 ---
 description: Measure selected managed benchmarks and review performance coverage for an authorized PR.
 
+imports:
+  - shared/gpt-6.1-sol.md
+
 on:
   push:
     branches: [kubaflo-performance-review-canary]
@@ -92,9 +95,11 @@ permissions:
   pull-requests: read
   copilot-requests: none
 
-model: gpt-5.6-sol
+model: gpt-6.1-sol
 engine:
   id: copilot
+  env:
+    COPILOT_PROVIDER_WIRE_API: responses
 
 skills:
   - .github/skills/perf-analysis
@@ -243,6 +248,7 @@ safe-outputs:
   needs: [evidence]
   staged: true
   data: true
+  allowed-domains: [img.shields.io]
   messages:
     body-header: "<!-- Performance Review -->\n<!-- review-performance-run:{run_url} -->"
   add-comment:
