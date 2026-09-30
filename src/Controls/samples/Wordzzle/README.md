@@ -16,6 +16,20 @@ It consumes MAUI 11 packages, not this checkout's MAUI assemblies.
 
 ## See the app working
 
+### VS Code editor capture
+
+**This is the actual VS Code window**, captured on 2026-09-30, showing the
+Wordzzle project and `MainPage.xaml.cs`. It is not a simulator screenshot.
+
+<img src="Screenshots/vscode-01-editor.jpg" width="1000" alt="Actual VS Code window with the Wordzzle project explorer and MainPage.xaml.cs open" />
+
+**Source view only:** this image does not show a running or paused debugger,
+F5, or editor-driven Hot Reload. The status bar shows three editor diagnostics
+that have not been inspected in the IDE. Window capture works, but background
+keyboard control still returns `no_viable_candidate`; attempts to select
+another editor file did not visibly change the window. The recordings below
+remain explicitly labeled as CLI `dotnet watch` evidence.
+
 ### Android RC2
 
 Captured on Android 11 / API 30, running a `net11.0-android` CoreCLR Debug build.
@@ -344,7 +358,8 @@ The three prompts still needing a real **MAUI** agent chat are:
 
 ## Recorded environment and first failures
 
-Validation date: **2026-09-29 UTC**.
+Runtime validation date: **2026-09-29 UTC**.
+VS Code window capture and input retry: **2026-09-30 UTC**.
 
 | Component | Actual value |
 | --- | --- |
@@ -379,7 +394,7 @@ Validation date: **2026-09-29 UTC**.
 | API36 emulator stayed offline; headless run logged `mprotect failed: Permission denied` | Different API30 AVD cold-booted with software rendering. |
 | Manually installed fast-deploy APK: `Failed to initialize CoreCLR. Error code: 80070002`, missing `System.Private.CoreLib.dll` | Run target with `EmbedAssembliesIntoApk=true`. |
 | MCP: `Another DevFlow session is driving this app (MCP client).` | Closed the previous client gracefully; used one mutation client at a time. |
-| VS Code background controls: `no_viable_candidate` | Retried current tree, keyboard command and screenshot-addressed click. All rejected; no foreground automation workaround used. |
+| VS Code background controls: `no_viable_candidate` | A genuine editor-window capture is now included above. Keyboard input still fails; screenshot-addressed clicks did not visibly switch editor content. No foreground automation workaround or debugger-success claim. |
 | Mobile provider reported the running custom-port emulator as stopped | Explicit ADB target used instead; no device data erased. |
 | Mobile provider recording call failed for that custom-port emulator | Recorded the same selected device using Android's `screenrecord`; validated decoded frames and finalized MP4s. |
 
