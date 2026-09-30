@@ -16,19 +16,58 @@ It consumes MAUI 11 packages, not this checkout's MAUI assemblies.
 
 ## See the app working
 
-### VS Code editor capture
+### VS Code F5: launch and counter verified
 
-**This is the actual VS Code window**, captured on 2026-09-30, showing the
-Wordzzle project and `MainPage.xaml.cs`. It is not a simulator screenshot.
+On **2026-09-30**, F5 in the actual Wordzzle VS Code window launched the
+Android RC2 app under the **CoreCLR mobile debugger**. The editor reported
+`Debugging started.`, `Call Stack - 1 active session`, and
+`C# Hot Reload is available`. The IDE's build/deploy task exited successfully;
+this was not the earlier build-only attempt with `skipDebug=true`.
 
-<img src="Screenshots/vscode-01-editor.jpg" width="1000" alt="Actual VS Code window with the Wordzzle project explorer and MainPage.xaml.cs open" />
+On the selected API30 emulator, opening the lab and tapping its existing
+`Count +2` button produced **Counter: 2**, with **PID 10140** and page session
+**`c962e370`**. No source edit or Hot Reload was involved in that tap.
 
-**Source view only:** this image does not show a running or paused debugger,
-F5, or editor-driven Hot Reload. The status bar shows three editor diagnostics
-that have not been inspected in the IDE. Window capture works, but background
-keyboard control still returns `no_viable_candidate`; attempts to select
-another editor file did not visibly change the window. The recordings below
-remain explicitly labeled as CLI `dotnet watch` evidence.
+**The hackathon debugger lane is still incomplete.** The desktop locked
+before the breakpoint, variable inspection, stepping, repeated launches,
+and editor Hot Reload checks. Desktop automation correctly refused further
+input. There is no paused-debugger screenshot or IDE Hot Reload recording
+yet; the device capture below is not presented as either.
+
+**Actual VS Code device-picker capture, before the successful launch:**
+
+<img src="Screenshots/vscode-02-device-picker.jpg" width="1000" alt="Actual VS Code MAUI device picker during the initial startup-selection failure, before successful debugging" />
+
+This preserves the initial picker failure rather than hiding it: selecting
+the running device did not persist the active target/platform. An explicit,
+local launch configuration subsequently worked. The pictured highlighted
+device is not the emulator used for the successful launch.
+
+**Actual F5-launched app after the counter tap:**
+
+<img src="Screenshots/vscode-03-f5-android-counter.png" width="300" alt="F5-launched Wordzzle Android app with counter 2 and session c962e370" />
+
+<details>
+<summary>Earlier source-only VS Code capture</summary>
+
+<img src="Screenshots/vscode-01-editor.jpg" width="1000" alt="Earlier actual VS Code window with Wordzzle and MainPage.xaml.cs open, without an active debugger" />
+
+This earlier picture is source view only. Its three diagnostics are historical;
+after the project-system and restore recovery, the editor showed zero errors,
+zero warnings, and one information item.
+
+</details>
+
+### Fresh RC2 template
+
+The isolated-hive `dotnet new maui` project was also built and launched on the
+API30 emulator. Its untouched counter changed from `Click me` to
+`Clicked 1 time`, then **`Clicked 2 times`**. This is a separate template app,
+not the Wordzzle migration and not an IDE-debugging test. The build used the
+exact RC2 SDK, `net11.0-android` / `android-arm64`, and
+`EmbedAssembliesIntoApk=true`; deployment and interaction used device tools.
+
+<img src="Screenshots/template-01-rc2-counter.png" width="300" alt="Fresh MAUI 11 RC2 template running on Android with its counter showing Clicked 2 times" />
 
 ### Android RC2
 
@@ -56,7 +95,8 @@ changing the existing C# handler from `+= 1` to `+= 2`. Navigation is retained.
 
 **This is verified `dotnet watch` Hot Reload. It is not evidence of VS Code F5,
 the VS Code flame button, or a MAUI chat-agent session.** Those editor-specific
-lanes remain blocked; see the matrix below.
+Hot Reload and agent lanes remain unverified; the separate F5 observation is
+above and the full status matrix is below.
 
 ### Watch the recordings
 
@@ -223,11 +263,69 @@ no restart was used to hide the error.
 ### VS Code and DevFlow
 
 Open this sample as its own VS Code folder. Extension recommendations and
-diagnostic settings are in `.vscode/`. Select this startup project and the
-Android device. Enable experimental C# Hot Reload and apply-on-save in the
-editor's user settings; the relevant machine-scoped settings are
-`csharp.experimental.debug.hotReload` and `csharp.debug.hotReloadOnSave`.
-Their state was **not verified** in the inaccessible editor UI.
+diagnostic settings are in `.vscode/`. On the validation host, C# Dev Kit
+initially derived the runtime root from an unnormalized Homebrew `dotnet`
+symlink, and its project-system host repeatedly exited 131. The workspace
+setting `dotnet.useLegacyDotnetResolution=true` resolved the real installation
+directory. Reloading the Wordzzle window then loaded C# Dev Kit **3.40.210**.
+Other editor windows were not restarted.
+
+Restore the **whole project**, not just the ARM64 Android target, using the
+external event NuGet configuration:
+
+```bash
+dotnet restore Wordzzle.csproj --configfile "$WORDZZLE_NUGET_CONFIG"
+```
+
+The editor's generated solution also needed the pinned Android x64 and
+Mac Catalyst ARM64 runtime packages. Restoring them resolved the editor's
+missing-package diagnostics; this does not mean those platforms were run.
+
+With MAUI extension **11.0.24**, both a relative `project` path and
+`${workspaceFolder}/Wordzzle.csproj` failed with
+`Debugging canceled: startup project not found.` The observed provider looks
+up the project before variable substitution. Omitting the field exposed only
+the test project in the startup picker, and device selection did not persist.
+For this extension build, create an **ignored, machine-local**
+`.vscode/launch.json`, replacing the example path and emulator serial:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Wordzzle - Android RC2",
+      "type": "maui",
+      "request": "launch",
+      "preLaunchTask": "maui: Build",
+      "project": "/absolute/path/to/Wordzzle/Wordzzle.csproj",
+      "targetFramework": "net11.0-android",
+      "platform": "android",
+      "device": "emulator-5554",
+      "configuration": "Debug"
+    }
+  ]
+}
+```
+
+Use the booted device's `adb devices` serial. The workspace enables
+`maui.configuration.useLaunchJsonConfigurations` so these explicit settings
+are used. This profile was exercised with F5; a portable variable-based
+profile is **not** claimed to work with the observed provider.
+
+Enable the following **user settings**, which are machine-scoped:
+
+```json
+{
+  "csharp.experimental.debug.hotReload": true,
+  "csharp.debug.hotReloadOnSave": true,
+  "csharp.debug.hotReloadVerbosity": "diagnostic"
+}
+```
+
+These settings were written on the validation host and the active debugger
+reported `C# Hot Reload is available`. Applying and verifying an editor edit
+is still outstanding; availability alone is not a Hot Reload pass.
 
 `MauiProgram.cs` contains `#if MAUI_DEVFLOW` guarded startup. Ordinary builds
 do not permanently reference the agent package. The MAUI extension can inject
@@ -326,21 +424,21 @@ Results are observations, not promises. **Blocked** and **Not run** are not Pass
 
 | Checklist area | Result | Evidence / remaining gap |
 | --- | --- | --- |
-| Create new project from template | Partial | Fresh isolated-hive RC2 `dotnet new maui` project created and Android build passed; that template app was not launched. |
+| Create new project from template | Pass, CLI/device tools | Fresh isolated-hive RC2 template built and launched on Android; actual counter reached 2. [Template capture](Screenshots/template-01-rc2-counter.png). |
 | Upgrade existing application | Partial | Daily-game subset runs on Android RC2 and the alternate net11 iOS profile; original service/feature parity remains out of scope. |
 | Experimental C# XAML expressions | Pass | `EnablePreviewFeatures=true`; counter/session interpolation and `Name.Length` update on Android and iOS. |
-| Android launch and counter | Pass, CLI only | Real selected-device launch and counter interaction; not F5/debugger evidence. |
+| Android launch and counter | Pass, CLI and F5 | Actual VS Code F5/CoreCLR session on the selected API30 emulator; counter 2, PID 10140, session `c962e370`. Device capture and limitations above. |
 | iOS launch and counter | Pass, CLI only | iPhone 17 / iOS 26.5, Xcode 26.6, compatible MAUI RC2 package; not the exact event SDK or F5 evidence. |
-| F5, breakpoint, inspect, step, continue | Blocked | VS Code exposed no editor accessibility nodes and rejected background input with `no_viable_candidate`. |
+| F5, breakpoint, inspect, step, continue | Partial | F5 and counter interaction verified; desktop locked before breakpoint, variable inspection, step, and continue. No paused-debugger capture. |
 | Three debugger stop/launch cycles | Not run | Three CLI cold launches passed (PIDs 8578, 8632, 8687) and the solved game persisted, but that does not validate debugger reconnects. |
-| Second-device debug switch | Blocked | Android and iOS CLI launches succeeded, but editor/debugger switching was not observed. |
+| Second-device debug switch | Blocked | Desktop locked; Android and iOS CLI launches do not validate editor/debugger switching. |
 | XAML Hot Reload: text/color/font | Pass, watch only | Android and iOS retain their PID/session and counter 3; actual properties become `Updated live`, `#538D4E`, and `30`. |
 | C# Hot Reload: handler +1 to +2 | Pass, watch only | Counter 3 -> 5 on Android and iOS, without relaunch. |
 | Several edits, revert/reapply | Pass, watch only | Counter 5 -> 6 -> 8; VS Code keyboard Undo/Redo remains untested. |
 | Syntax error and recovery | Pass, watch only | CS1525 retained; Android counter 8 -> 10 after correction. iOS old handler remains usable (5 -> 7), then 7 -> 9 after correction, same session. |
-| VS Code XAML/C# Hot Reload | Blocked | CLI evidence is not substituted for editor evidence. |
+| VS Code XAML/C# Hot Reload | Blocked | Debugger reports availability, but desktop locked before applying an edit; CLI evidence is not substituted. |
 | MAUI agent recommendation/discovery | Not run | Recommendations configured; actual Chat behavior not observed. |
-| Three ordered MAUI-agent prompts | Blocked | Their requested UI is implemented and exercised, but not by a VS Code MAUI chat session. |
+| Three ordered MAUI-agent prompts | Blocked | Desktop locked. Requested UI is implemented and exercised, but no MAUI chat prompt has been sent. |
 | Agent device listing/switch, debug output/stop | Not run | Device/debug work used direct tools; editor agent unavailable. |
 | Plain Copilot vs MAUI agent | Not run | No comparative chat session; no model substitution. |
 | MCP tree/query/tap/fill/scroll/screenshot | Pass, direct MCP | Actual image returned; guesses, counter, scroll, empty-input error and `Maui tester` greeting verified. |
@@ -358,8 +456,8 @@ The three prompts still needing a real **MAUI** agent chat are:
 
 ## Recorded environment and first failures
 
-Runtime validation date: **2026-09-29 UTC**.
-VS Code window capture and input retry: **2026-09-30 UTC**.
+CLI Hot Reload validation date: **2026-09-29 UTC**.
+VS Code recovery, F5/counter and template launch: **2026-09-30 UTC**.
 
 | Component | Actual value |
 | --- | --- |
@@ -379,7 +477,9 @@ VS Code window capture and input retry: **2026-09-30 UTC**.
 | VS Code | `1.139.0`, arm64, commit `2242ebbb54efeeb0129e08e919e7e8d43033cd83` |
 | .NET MAUI extension | `11.0.24`; differs from checklist `1.17.266` |
 | C# extension | `2.160.4` |
-| C# Dev Kit | `3.40.204`; differs from checklist `3.40.210` |
+| C# Dev Kit | `3.40.210` loaded after window reload; earlier attempts used `3.40.204` |
+| SDK selected by VS Code F5 | Sample-local `11.0.100-rc.2.26475.136`; IDE-generated build/deploy command verified |
+| IDE Hot Reload settings | Experimental C# and apply-on-save enabled in user settings; available indicator observed, edit application untested |
 | Copilot Chat / selected editor agent | Not verified; no successful editor chat session |
 | XAML mode | `MauiXamlInflator=SourceGen`, `MauiXamlHotReload=SourceGen` |
 | DevFlow agent | `0.1.0-preview.12.26421.1`, commit `78e85a5cb9c7a3efaaacf85d6176ce971f40b7d6` |
@@ -394,7 +494,12 @@ VS Code window capture and input retry: **2026-09-30 UTC**.
 | API36 emulator stayed offline; headless run logged `mprotect failed: Permission denied` | Different API30 AVD cold-booted with software rendering. |
 | Manually installed fast-deploy APK: `Failed to initialize CoreCLR. Error code: 80070002`, missing `System.Private.CoreLib.dll` | Run target with `EmbedAssembliesIntoApk=true`. |
 | MCP: `Another DevFlow session is driving this app (MCP client).` | Closed the previous client gracefully; used one mutation client at a time. |
-| VS Code background controls: `no_viable_candidate` | A genuine editor-window capture is now included above. Keyboard input still fails; screenshot-addressed clicks did not visibly switch editor content. No foreground automation workaround or debugger-success claim. |
+| VS Code background controls: `no_viable_candidate` | Controls became usable in the maximized Wordzzle window. A native zoom action reported failure despite changing the window; re-observation, not blind retry, established the new state. |
+| C# Dev Kit project-system host repeatedly exited 131 | Legacy .NET resolution normalized the Homebrew symlink to the real runtime root; the host stayed running and editor restore succeeded. |
+| Full editor restore lacked pinned Android x64 and Mac Catalyst ARM64 runtime packages | Full-project restore with the existing authorized event configuration, then successful editor solution restore. |
+| `Debugging canceled: startup project not found.` | Relative/variable project paths failed; an explicit absolute path in the ignored local launch configuration resolved Wordzzle. |
+| `save active debug target failed` / `save active platform failed` | Explicit `platform` and `device` plus launch-configuration mode produced a real F5/CoreCLR session. The earlier `skipDebug=true` build-only trial is not counted. |
+| Desktop became locked/secure during the active debug session | Automation refused further desktop input. No unlock or foreground workaround attempted; remaining IDE/agent evidence is blocked, not passed. |
 | Mobile provider reported the running custom-port emulator as stopped | Explicit ADB target used instead; no device data erased. |
 | Mobile provider recording call failed for that custom-port emulator | Recorded the same selected device using Android's `screenrecord`; validated decoded frames and finalized MP4s. |
 

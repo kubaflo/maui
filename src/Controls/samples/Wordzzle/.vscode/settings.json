@@ -1,4 +1,6 @@
 {
+  "dotnet.useLegacyDotnetResolution": true,
+  "maui.configuration.useLaunchJsonConfigurations": true,
   "dotnet.debug.hotReloadXAML": true,
   "maui.configuration.debugVerbosity": "diagnostic",
   "maui.configuration.logVerbosity": "diagnostic",
