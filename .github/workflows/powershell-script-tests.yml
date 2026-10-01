@@ -77,7 +77,8 @@ jobs:
         run: |
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Sample.ps1" `
             -InputDirectory "$env:RUNNER_TEMP/IssueInput" `
-            -OutputDirectory "$env:RUNNER_TEMP/SampleOutput"
+            -OutputDirectory "$env:RUNNER_TEMP/SampleOutput" `
+            -NuGetConfigPath "$env:RUNNER_TEMP/maui/NuGet.config"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
@@ -140,6 +141,12 @@ jobs:
           & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
           if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
           "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
+      - name: Build pinned MAUI tasks
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/maui
+        run: |
+          dotnet build Microsoft.Maui.BuildTasks.slnf -c Debug -p:BuildTaskOnlyBuild=true --nologo --verbosity quiet
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned MAUI build tasks failed.' }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
