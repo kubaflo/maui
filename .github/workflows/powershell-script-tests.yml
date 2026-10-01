@@ -124,8 +124,8 @@ jobs:
         run: |
           $feedbackArguments = @{}
           if ($env:FEEDBACK_RUN) {
-            $content = (Get-Content -LiteralPath "$env:RUNNER_TEMP/PreviousVerification/Verified1/test.log" -Tail 25) -join "`n"
-            if ($content.Length -gt 3500) { $content = $content.Substring($content.Length - 3500) }
+            . "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Core.ps1"
+            $content = Get-IssueReplicateFeedback -Path "$env:RUNNER_TEMP/PreviousVerification/Verified1/test.log"
             $feedback = "$env:RUNNER_TEMP/test-feedback.txt"
             Set-Content -LiteralPath $feedback -Value $content -Encoding utf8
             $feedbackArguments.FeedbackPath = $feedback
