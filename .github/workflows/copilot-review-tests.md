@@ -3,6 +3,7 @@ name: Fork regression trace dispatch
 description: Fork-only hosted dispatch harness for dotnet/maui PR 38710.
 
 imports:
+  - shared/gpt-6.1-sol.md
   - uses: shared/pat_pool.md
     with:
       environment: copilot-pat-pool
@@ -94,10 +95,11 @@ permissions:
   issues: read
   pull-requests: read
 
-model: gpt-5.6-sol
+model: gpt-6.1-sol
 engine:
   id: copilot
   env:
+    COPILOT_PROVIDER_WIRE_API: responses
     COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
 skills:
