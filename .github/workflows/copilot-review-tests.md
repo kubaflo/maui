@@ -150,7 +150,7 @@ steps:
   - name: Download frozen issue-regression context
     uses: actions/download-artifact@v8.0.1
     with:
-      name: issue-regression-context-${{ github.run_id }}-missing-context
+      name: issue-regression-context-${{ github.run_id }}
       path: ${{ runner.temp }}/gh-aw/issue-regression-${{ github.run_id }}
 ---
 
