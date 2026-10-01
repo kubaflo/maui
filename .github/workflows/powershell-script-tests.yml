@@ -1,118 +1,186 @@
-# Pester regression gate for reviewer scripts, release-critical helpers, and
-# their coupled pipeline assets.
-#
-# Why this exists: repository automation ships Pester suites for transport
-# gating, release publishing, safe-output expectation reconciliation, milestone
-# drift, and review triggers. A regression in that logic should be caught before
-# the workflow that consumes it runs in production.
-#
-# Security model:
-#   - `pull_request` (NOT `pull_request_target`): this job EXECUTES PowerShell
-#     authored by the PR, so it must never run with base-repo secrets or a
-#     writable token. Fork PRs get a read-only `GITHUB_TOKEN` and no secrets.
-#   - `permissions: contents: read` — the suite needs nothing else.
-#   - The suite is hermetic: every test stubs `gh`/network access and builds its
-#     own temp Git repositories, so no token or live API access is required.
-name: PowerShell Script Tests
+name: Fork Issue Replicate Canary
 
 on:
-  pull_request:
-    paths:
-      - '.github/scripts/**'
-      - '.github/patches/**'
-      - '.github/skills/run-device-tests/scripts/*.ps1'
-      - '.github/skills/verify-tests-fail-without-fix/scripts/*.ps1'
-      - '.github/workflows/**'
-      - 'eng/scripts/**'
-      - 'eng/pipelines/ci-copilot.yml'
-      - 'eng/pipelines/ci-issue-replicate.yml'
-      - 'eng/pipelines/common/issue-replicate-verify-job.yml'
-      - 'eng/pipelines/ci-official.yml'
-      - 'eng/pipelines/ci-official.Tests.ps1'
-      - 'eng/pipelines/ci-official-release.yml'
-      - 'eng/pipelines/ci-official-release.Tests.ps1'
-      - 'eng/pipelines/common/provision.yml'
-      - 'eng/pipelines/common/ui-tests-steps.yml'
-      - 'eng/scripts/nuget_release_packages.ps1'
-      - 'eng/scripts/nuget_release_packages.Tests.ps1'
-      - 'eng/pipelines/common/non-workload-publish.yml'
-      - '.github/workflows/powershell-script-tests.yml'
-      - 'src/Controls/tests/TestCases.Shared.Tests/UITest.cs'
   workflow_dispatch:
-
-concurrency:
-  group: powershell-script-tests-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    inputs:
+      issue_number:
+        description: Public dotnet/maui issue
+        default: '37323'
+        required: true
+      source_comment_id:
+        description: Existing comment on that issue (read-only canary)
+        default: '5262801924'
+        required: true
 
 permissions:
   contents: read
 
 jobs:
-  pester:
-    name: Pester scripts
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  intake:
+    if: github.repository == 'kubaflo/maui' && github.actor == 'kubaflo'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
     steps:
-      - name: Checkout PR
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
-      # Pinned so a new Pester release cannot change discovery/assertion
-      # behavior underneath the suite without an explicit bump here.
-      - name: Install Pester
+      - name: Run real bounded intake
         shell: pwsh
-        run: |
-          Set-StrictMode -Version Latest
-          $ErrorActionPreference = 'Stop'
-          Install-Module -Name Pester -RequiredVersion 5.9.0 -Force -Scope CurrentUser -SkipPublisherCheck
-          Import-Module Pester -RequiredVersion 5.9.0
-          "Pester $((Get-Module Pester).Version)"
-
-      # Deliberately NO `Set-StrictMode` here. StrictMode set in the host session
-      # leaks into every test body Pester dot-sources, and 16 tests in this suite
-      # legitimately read not-yet-assigned members. Enabling it turns a green
-      # suite red for reasons unrelated to the code under test.
-      - name: Run Pester
-        shell: pwsh
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          COMMENT_ID: ${{ inputs.source_comment_id }}
         run: |
           $ErrorActionPreference = 'Stop'
-          Import-Module Pester -RequiredVersion 5.9.0
-
-          $config = New-PesterConfiguration
-          $config.Run.Path = @(
-            '.github/scripts'
-            '.github/skills/run-device-tests/scripts'
-            '.github/skills/verify-tests-fail-without-fix/scripts'
-            'eng/pipelines/ci-official.Tests.ps1'
-            'eng/pipelines/ci-official-release.Tests.ps1'
-            'eng/scripts/nuget_release_packages.Tests.ps1'
-          )
-          $config.Run.PassThru = $true
-          $config.Output.Verbosity = 'Detailed'
-          $config.TestResult.Enabled = $true
-          $config.TestResult.OutputPath = 'pester-results.xml'
-          $config.TestResult.OutputFormat = 'NUnitXml'
-
-          $result = Invoke-Pester -Configuration $config
-
-          "::notice::Pester total=$($result.TotalCount) passed=$($result.PassedCount) failed=$($result.FailedCount) skipped=$($result.SkippedCount)"
-
-          if ($result.FailedCount -gt 0) {
-            foreach ($test in $result.Failed) {
-              "::error::Failed: $($test.ExpandedPath)"
-            }
-            throw "Pester reported $($result.FailedCount) failing test(s)."
-          }
-
-          if ($result.TotalCount -lt 1) {
-            throw 'Pester discovered no script tests; the gate would pass vacuously.'
-          }
-
-      - name: Upload Pester results
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+          & .github/scripts/IssueReplicate.Intake.ps1 `
+            -IssueNumber ([int]$env:ISSUE_NUMBER) -CommentId ([long]$env:COMMENT_ID) `
+            -Platform android -TargetRef main -OutputDirectory "$env:RUNNER_TEMP/IssueInput"
+          New-Item -ItemType Directory "$env:RUNNER_TEMP/IssueTools" | Out-Null
+          Copy-Item .github/scripts/IssueReplicate*.ps1 "$env:RUNNER_TEMP/IssueTools"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: pester-results
-          path: pester-results.xml
-          if-no-files-found: warn
+          name: IssueInput
+          path: ${{ runner.temp }}/IssueInput
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: IssueTools
+          path: ${{ runner.temp }}/IssueTools
+
+  sample:
+    needs: intake
+    runs-on: ubuntu-22.04
+    timeout-minutes: 80
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: IssueInput
+          path: ${{ runner.temp }}/IssueInput
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: IssueTools
+          path: ${{ runner.temp }}/IssueTools
+      - name: Fetch pinned public source
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Checkout.ps1" `
+            -ManifestPath "$env:RUNNER_TEMP/IssueInput/manifest.json" `
+            -Destination "$env:RUNNER_TEMP/maui"
+      - name: Provision pinned public SDK and workloads
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/maui
+        run: |
+          & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
+          "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
+      - name: Build the actual author sample
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Sample.ps1" `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" `
+            -OutputDirectory "$env:RUNNER_TEMP/SampleOutput"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: SampleOutput
+          path: ${{ runner.temp }}/SampleOutput
+
+  generate:
+    needs: intake
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: IssueInput
+          path: ${{ runner.temp }}/IssueInput
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: IssueTools
+          path: ${{ runner.temp }}/IssueTools
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+      - name: Install Copilot CLI
+        run: npm install --global @github/copilot && copilot --version
+      - name: Generate real tool-free GPT candidate
+        shell: pwsh
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" `
+            -OutputDirectory "$env:RUNNER_TEMP/Proposal1"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: Proposal1
+          path: ${{ runner.temp }}/Proposal1
+
+  verify:
+    needs: [sample, generate]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    env:
+      APPIUM_HOME: /home/runner/.appium
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: '*'
+          path: ${{ runner.temp }}/artifacts
+      - name: Fetch pinned public source
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/artifacts/IssueTools/IssueReplicate.Checkout.ps1" `
+            -ManifestPath "$env:RUNNER_TEMP/artifacts/IssueInput/manifest.json" `
+            -Destination "$env:RUNNER_TEMP/maui"
+      - name: Provision pinned public SDK and workloads
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/maui
+        run: |
+          & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
+          "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+      - name: Provision UI candidate dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$(jq -r .kind "$RUNNER_TEMP/artifacts/Proposal1/candidate.json")" != ui ]; then
+            exit 0
+          fi
+          dotnet build "$RUNNER_TEMP/maui/src/Provisioning/Provisioning.csproj" -t:ProvisionAppium -p:SkipAppiumDoctor=true
+          sudo chmod a+rw /dev/kvm
+          sdkmanager --install "system-images;android-30;google_apis;x86_64" "platforms;android-30"
+          echo no | avdmanager create avd --force --name IssueRepro --package "system-images;android-30;google_apis;x86_64"
+          "$ANDROID_SDK_ROOT/emulator/emulator" -avd IssueRepro -no-window -no-audio -no-snapshot -gpu swiftshader_indirect \
+            > "$RUNNER_TEMP/issue-emulator.log" 2>&1 &
+          timeout 600 adb wait-for-device
+          for _attempt in $(seq 1 120); do
+            if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; then
+              echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+              echo "$ANDROID_SDK_ROOT/emulator" >> "$GITHUB_PATH"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Android emulator failed to boot' >&2
+          exit 1
+      - name: Run real credential-free candidate verifier
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/artifacts/IssueTools/IssueReplicate.Verify.ps1" `
+            -ManifestPath "$env:RUNNER_TEMP/artifacts/IssueInput/manifest.json" `
+            -SampleResultPath "$env:RUNNER_TEMP/artifacts/SampleOutput/sample-result.json" `
+            -CandidatePath "$env:RUNNER_TEMP/artifacts/Proposal1/candidate.json" `
+            -RepoRoot "$env:RUNNER_TEMP/maui" -OutputDirectory "$env:RUNNER_TEMP/Verified1"
+          Get-Content "$env:RUNNER_TEMP/Verified1/result.json" >> $env:GITHUB_STEP_SUMMARY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: Verified1
+          path: |
+            ${{ runner.temp }}/Verified1
+            ${{ runner.temp }}/issue-emulator.log
+            ${{ runner.temp }}/maui/CustomAgentLogsTmp/UITests
