@@ -11,6 +11,9 @@ on:
         description: Existing comment on that issue (read-only canary)
         default: '5262801924'
         required: true
+      feedback_run_id:
+        description: Prior canary run supplying inconclusive test feedback
+        required: false
 
 permissions:
   contents: read
@@ -89,6 +92,9 @@ jobs:
     needs: intake
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
@@ -98,6 +104,13 @@ jobs:
         with:
           name: IssueTools
           path: ${{ runner.temp }}/IssueTools
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        if: inputs.feedback_run_id != ''
+        with:
+          name: Verified1
+          path: ${{ runner.temp }}/PreviousVerification
+          run-id: ${{ inputs.feedback_run_id }}
+          github-token: ${{ github.token }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
@@ -107,10 +120,19 @@ jobs:
         shell: pwsh
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          FEEDBACK_RUN: ${{ inputs.feedback_run_id }}
         run: |
+          $feedbackArguments = @{}
+          if ($env:FEEDBACK_RUN) {
+            $content = (Get-Content -LiteralPath "$env:RUNNER_TEMP/PreviousVerification/Verified1/test.log" -Tail 25) -join "`n"
+            if ($content.Length -gt 3500) { $content = $content.Substring($content.Length - 3500) }
+            $feedback = "$env:RUNNER_TEMP/test-feedback.txt"
+            Set-Content -LiteralPath $feedback -Value $content -Encoding utf8
+            $feedbackArguments.FeedbackPath = $feedback
+          }
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
             -InputDirectory "$env:RUNNER_TEMP/IssueInput" `
-            -OutputDirectory "$env:RUNNER_TEMP/Proposal1"
+            -OutputDirectory "$env:RUNNER_TEMP/Proposal1" @feedbackArguments
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
