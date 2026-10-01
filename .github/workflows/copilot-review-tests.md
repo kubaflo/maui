@@ -23,6 +23,18 @@ on:
         required: true
         type: number
         default: 34057
+      fixture_command_id:
+        description: Optional command comment on kubaflo/maui#928 for publication/minimization checks.
+        type: number
+        default: 0
+      simulate_missing_context:
+        description: Exercise the required snapshot download failure.
+        type: boolean
+        default: false
+      simulate_comment_race:
+        description: Exercise snapshot revalidation with an outdated captured issue marker.
+        type: boolean
+        default: false
   roles: [admin, maintain, write]
   reaction: none
   status-comment: false
@@ -42,6 +54,8 @@ on:
       env:
         GH_TOKEN: ${{ github.token }}
         SOURCE_ISSUE_NUMBER: ${{ inputs.source_issue_number }}
+        FIXTURE_COMMAND_ID: ${{ inputs.fixture_command_id }}
+        SIMULATE_COMMENT_RACE: ${{ inputs.simulate_comment_race }}
       run: |
         $ErrorActionPreference = 'Stop'
         'should_run=false' >> $env:GITHUB_OUTPUT
@@ -56,12 +70,39 @@ on:
         if (($permissionJson | ConvertFrom-Json).permission -notin @('admin', 'maintain', 'write')) {
           throw 'The dispatcher lacks write permission on the fork.'
         }
+        $commandId = 0L
+        if (-not [long]::TryParse($env:FIXTURE_COMMAND_ID, [ref]$commandId) -or $commandId -lt 0) {
+          throw 'A nonnegative fixture comment ID is required.'
+        }
+        if ($commandId -gt 0) {
+          $commandJson = Invoke-GhCommandWithRetry -Arguments @(
+            'api', "repos/kubaflo/maui/issues/comments/$commandId"
+          ) -Description 'read approved fork command fixture' -RequireOutput
+          $command = $commandJson | ConvertFrom-Json
+          if ($command.issue_url -cne 'https://api.github.com/repos/kubaflo/maui/issues/928' -or
+              $command.user.login -ine $env:GITHUB_ACTOR) {
+            throw 'The command must belong to the dispatcher on the fixed fork fixture.'
+          }
+          $event = [pscustomobject]@{
+            action = 'created'
+            repository = [pscustomobject]@{ full_name = 'dotnet/maui' }
+            issue = [pscustomobject]@{ number = 928 }
+            comment = $command
+          }
+          if ($null -eq (Get-IssueRegressionRequest -Event $event)) { return }
+        }
         $issueJson = Invoke-GhCommandWithRetry -Arguments @(
           'api', "repos/dotnet/maui/issues/$number"
         ) -Description 'read original upstream issue' -RequireOutput
         $issue = $issueJson | ConvertFrom-Json
         if ($null -ne $issue.pull_request -or $issue.number -ne $number) {
           throw 'The requested upstream issue did not resolve correctly.'
+        }
+        $issue.body = "Dispatch-only fenced example (not an issue-form field):`n" +
+          "~~~markdown`n### Version with bug`n0.1.0`n### Last version that worked well`n0.0.0`n~~~`n`n" +
+          $issue.body
+        if ($env:SIMULATE_COMMENT_RACE -eq 'true') {
+          $issue.updated_at = ([DateTimeOffset]$issue.updated_at).AddSeconds(-1).ToString('o')
         }
         $context = Get-IssueRegressionContext -Issue $issue
         $path = 'CustomAgentLogsTmp/IssueRegression/context.json'
@@ -90,6 +131,58 @@ jobs:
       issue_number: ${{ steps.context.outputs.issue_number }}
   activation:
     if: needs.pre_activation.outputs.should_run == 'true'
+  minimize_command:
+    needs: [pre_activation, activation, agent, safe_outputs]
+    if: >-
+      needs.pre_activation.outputs.should_run == 'true' &&
+      needs.safe_outputs.result == 'success' &&
+      needs.safe_outputs.outputs.comment_id != '' &&
+      inputs.fixture_command_id > 0
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout trusted command completion script
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Minimize the fork command only after actual report publication
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_COMMENT_ID: ${{ needs.safe_outputs.outputs.comment_id }}
+          FIXTURE_COMMAND_ID: ${{ inputs.fixture_command_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . .github/scripts/Get-IssueRegressionContext.ps1
+          function Test-IssueRegressionPermission {
+            param([string]$Requester)
+            $json = Invoke-GhCommandWithRetry -Arguments @(
+              'api', "repos/kubaflo/maui/collaborators/$Requester/permission"
+            ) -Description 'recheck fork command author permission' -AllowNotFound -RequireOutput
+            if ($null -eq $json -or ($json | ConvertFrom-Json).permission -notin @('admin', 'maintain', 'write')) {
+              Write-Host 'The command author is no longer authorized on the fork.'
+              return $false
+            }
+            return $true
+          }
+          $json = Invoke-GhCommandWithRetry -Arguments @(
+            'api', "repos/kubaflo/maui/issues/comments/$env:FIXTURE_COMMAND_ID"
+          ) -Description 'read fixed fork command before minimization' -RequireOutput
+          $command = $json | ConvertFrom-Json
+          if ($command.issue_url -cne 'https://api.github.com/repos/kubaflo/maui/issues/928' -or
+              $command.user.login -ine $env:GITHUB_ACTOR) {
+            throw 'The command is outside the approved fork fixture.'
+          }
+          $event = [pscustomobject]@{
+            action = 'created'
+            repository = [pscustomobject]@{ full_name = 'dotnet/maui' }
+            issue = [pscustomobject]@{ number = 928 }
+            comment = $command
+          }
+          Complete-IssueRegressionRequest -Event $event -PublishedCommentId $env:REPORT_COMMENT_ID
 
 permissions:
   contents: read
@@ -137,6 +230,7 @@ safe-outputs:
 
 concurrency:
   group: "fork-issue-trace-regression-${{ inputs.source_issue_number }}"
+  queue: max
   cancel-in-progress: false
 
 timeout-minutes: 30
@@ -150,7 +244,7 @@ steps:
   - name: Download frozen issue-regression context
     uses: actions/download-artifact@v8.0.1
     with:
-      name: issue-regression-context-${{ github.run_id }}
+      name: issue-regression-context-${{ github.run_id }}${{ inputs.simulate_missing_context && '-missing-context' || '' }}
       path: ${{ runner.temp }}/gh-aw/issue-regression-${{ github.run_id }}
 ---
 
