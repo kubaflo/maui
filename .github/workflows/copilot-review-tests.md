@@ -7,6 +7,7 @@ imports:
   - uses: shared/pat_pool.md
     with:
       environment: copilot-pat-pool
+      condition: ${{ needs.pre_activation.outputs.should_run == 'true' }}
       COPILOT_PAT_0: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
 environment: copilot-pat-pool
@@ -123,6 +124,7 @@ safe-outputs:
     max: 1
     target: "928"
     hide-older-comments: true
+    pull-requests: false
     discussions: false
     footer: false
   noop:
@@ -150,7 +152,7 @@ steps:
     uses: actions/download-artifact@v8.0.1
     with:
       name: issue-regression-context-${{ github.run_id }}
-      path: /tmp/gh-aw/agent/issue-regression-${{ github.run_id }}
+      path: ${{ runner.temp }}/gh-aw/issue-regression-${{ github.run_id }}
 ---
 
 # Trace an Issue Regression
@@ -162,7 +164,9 @@ other review/fix skills.
 
 - Repository: `dotnet/maui`
 - Issue: `${{ inputs.source_issue_number }}`
-- Frozen context: `/tmp/gh-aw/agent/issue-regression-${{ github.run_id }}/context.json`
+- Frozen context: `$RUNNER_TEMP/gh-aw/issue-regression-${{ github.run_id }}/context.json`
+
+Expand `RUNNER_TEMP` from the environment when reading the frozen context.
 
 This is a fork-only dispatch test of PR 38710. Investigate the original upstream
 issue and source history, not the fork fixture. Safe outputs enforce publication
