@@ -22,13 +22,18 @@ on:
       feedback_run_id:
         description: Prior canary run supplying inconclusive test feedback
         required: false
+      cleanup_only:
+        description: Clear transient artifacts and check storage without running a repro
+        type: boolean
+        default: false
+        required: true
 
 permissions:
   contents: read
 
 jobs:
   intake:
-    if: github.repository == 'kubaflo/maui' && github.actor == 'kubaflo'
+    if: github.repository == 'kubaflo/maui' && github.actor == 'kubaflo' && !inputs.cleanup_only
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
@@ -53,10 +58,12 @@ jobs:
         with:
           name: IssueInput
           path: ${{ runner.temp }}/IssueInput
+          retention-days: 7
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: IssueTools
           path: ${{ runner.temp }}/IssueTools
+          retention-days: 1
 
   sample:
     needs: intake
@@ -116,7 +123,10 @@ jobs:
         if: always()
         with:
           name: SampleOutput
-          path: ${{ runner.temp }}/SampleOutput
+          path: |
+            ${{ runner.temp }}/SampleOutput/sample-result.json
+            ${{ runner.temp }}/SampleOutput/sample-build.log
+          retention-days: 1
 
   generate:
     needs: intake
@@ -168,6 +178,7 @@ jobs:
         with:
           name: Proposal1
           path: ${{ runner.temp }}/Proposal1
+          retention-days: 7
 
   verify:
     needs: [sample, generate]
@@ -265,4 +276,54 @@ jobs:
           path: |
             ${{ runner.temp }}/Verified1
             ${{ runner.temp }}/issue-emulator.log
-            ${{ runner.temp }}/maui/CustomAgentLogsTmp/UITests
+            ${{ runner.temp }}/maui/CustomAgentLogsTmp/UITests/TestResults/*.trx
+          retention-days: 7
+
+  cleanup:
+    needs: [intake, sample, generate, verify]
+    if: always() && github.repository == 'kubaflo/maui' && github.actor == 'kubaflo'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      actions: write
+    steps:
+      - name: Record the storage check
+        if: inputs.cleanup_only
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          "Actions storage check for run $env:GITHUB_RUN_ID." |
+            Set-Content -LiteralPath "$env:RUNNER_TEMP/storage-check.txt" -Encoding utf8
+      - name: Check that artifact storage accepts a new upload
+        if: inputs.cleanup_only
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: storage-check
+          path: ${{ runner.temp }}/storage-check.txt
+          retention-days: 1
+          if-no-files-found: error
+      - name: Clear transient artifacts after all consumers finish
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner, repo, run_id: context.runId, per_page: 100
+            });
+            const transientNames = new Set(['IssueTools', 'SampleOutput', 'storage-check']);
+            let deletedBytes = 0;
+            let deletedCount = 0;
+            for (const artifact of artifacts) {
+              if (!transientNames.has(artifact.name)) continue;
+              await github.rest.actions.deleteArtifact({owner, repo, artifact_id: artifact.id});
+              deletedBytes += artifact.size_in_bytes;
+              deletedCount++;
+              core.info(`Deleted transient artifact ${artifact.id} (${artifact.name}).`);
+            }
+            await core.summary
+              .addHeading('Actions artifact cleanup')
+              .addRaw(`Deleted ${deletedCount} transient artifacts (${deletedBytes} bytes). `)
+              .addRaw('Input snapshots, proposals and verified evidence expire after seven days. ')
+              .addRaw('Published issue comments remain available.')
+              .write();
