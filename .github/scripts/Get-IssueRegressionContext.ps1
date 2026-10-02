@@ -325,7 +325,7 @@ function Assert-IssueRegressionOutputTarget {
             ([string]$item.repo).Trim() -cne ($Repository -split '/')[1]) {
             throw 'The report repository does not match the triggering repository.'
         }
-        foreach ($field in @('comment_id', 'commentId', 'comment-id')) {
+        foreach ($field in @('comment_id', 'commentId', 'comment-id', 'target')) {
             if ($null -ne $item.PSObject.Properties[$field].Value) {
                 throw 'A regression report must create a new comment, not edit an existing comment.'
             }
