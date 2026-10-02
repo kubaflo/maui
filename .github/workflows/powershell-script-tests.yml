@@ -5,27 +5,17 @@ on:
     inputs:
       issue_number:
         description: Public dotnet/maui issue
-        default: '37323'
+        default: '38821'
         required: true
       source_comment_id:
-        description: Existing comment on that issue (read-only canary)
-        default: '5262801924'
+        description: Existing comment on that issue
+        default: '5807905180'
         required: true
       platform:
-        description: Native platform for the canary (iOS uses a simulator)
+        description: Native platform (iOS uses a simulator)
         type: choice
-        options:
-          - android
-          - ios
+        options: [android, ios]
         default: android
-        required: true
-      feedback_run_id:
-        description: Prior canary run supplying inconclusive test feedback
-        required: false
-      cleanup_only:
-        description: Clear transient artifacts and check storage without running a repro
-        type: boolean
-        default: false
         required: true
 
 permissions:
@@ -33,14 +23,16 @@ permissions:
 
 jobs:
   intake:
-    if: github.repository == 'kubaflo/maui' && github.actor == 'kubaflo' && !inputs.cleanup_only
+    if: github.repository == 'kubaflo/maui' && github.actor == 'kubaflo'
     runs-on: ubuntu-22.04
     timeout-minutes: 10
+    outputs:
+      snapshot: ${{ steps.snapshot.outputs.payload }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Run real bounded intake
+      - name: Pin bounded public intake
         shell: pwsh
         env:
           GH_READ_TOKEN: ${{ github.token }}
@@ -52,57 +44,71 @@ jobs:
           & .github/scripts/IssueReplicate.Intake.ps1 `
             -IssueNumber ([int]$env:ISSUE_NUMBER) -CommentId ([long]$env:COMMENT_ID) `
             -Platform $env:ISSUE_PLATFORM -TargetRef main -OutputDirectory "$env:RUNNER_TEMP/IssueInput"
-          New-Item -ItemType Directory "$env:RUNNER_TEMP/IssueTools" | Out-Null
-          Copy-Item .github/scripts/IssueReplicate*.ps1 "$env:RUNNER_TEMP/IssueTools"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: IssueInput
-          path: ${{ runner.temp }}/IssueInput
-          retention-days: 7
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: IssueTools
-          path: ${{ runner.temp }}/IssueTools
-          retention-days: 1
+      - name: Transfer snapshot through job outputs
+        id: snapshot
+        shell: pwsh
+        run: |
+          & .github/scripts/IssueReplicate.Transport.ps1 -Mode Export -Kind Input `
+            -Directory "$env:RUNNER_TEMP/IssueInput" -Provider GitHub
 
   sample:
     needs: intake
     runs-on: ${{ inputs.platform == 'ios' && 'macos-15' || 'ubuntu-22.04' }}
     timeout-minutes: 80
+    permissions: {}
+    outputs:
+      result: ${{ steps.sample.outputs.payload }}
     env:
       DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.1.app/Contents/Developer' || '' }}
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: IssueInput
-          path: ${{ runner.temp }}/IssueInput
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: IssueTools
-          path: ${{ runner.temp }}/IssueTools
-      - name: Fetch pinned public source
+      - &tools
+        name: Fetch immutable public tools without credentials
         shell: pwsh
+        env:
+          TOOLS_SHA: ${{ github.sha }}
         run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:TOOLS_SHA -cnotmatch '^[0-9a-f]{40}$') { throw 'Tools revision is not pinned.' }
+          $source = "$env:RUNNER_TEMP/issue-tools-source"
+          git init --quiet $source
+          if ($LASTEXITCODE -ne 0) { throw 'Could not prepare trusted tools checkout.' }
+          git -c credential.helper= -c http.extraheader= -C $source fetch --quiet --no-tags --depth=1 `
+            https://github.com/kubaflo/maui.git $env:TOOLS_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch trusted public tools.' }
+          git -C $source checkout --quiet --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0 -or (git -C $source rev-parse HEAD).Trim() -cne $env:TOOLS_SHA) {
+            throw 'Tools checkout differs from the workflow revision.'
+          }
+          New-Item -ItemType Directory "$env:RUNNER_TEMP/IssueTools" | Out-Null
+          Copy-Item "$source/.github/scripts/IssueReplicate*.ps1" "$env:RUNNER_TEMP/IssueTools"
+      - name: Restore and re-fetch the immutable author sample
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
+            -Directory "$env:RUNNER_TEMP/IssueInput"
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Checkout.ps1" `
-            -ManifestPath "$env:RUNNER_TEMP/IssueInput/manifest.json" `
-            -Destination "$env:RUNNER_TEMP/maui"
-      - name: Provision pinned public SDK and workloads
+            -ManifestPath "$env:RUNNER_TEMP/IssueInput/manifest.json" -Destination "$env:RUNNER_TEMP/maui"
+      - name: Provision pinned native SDK and workloads
         shell: pwsh
         working-directory: ${{ runner.temp }}/maui
         run: |
           & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
           if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
           "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
-      - name: Install public MAUI workload for the author sample
+      - name: Install public author-sample workload
         shell: pwsh
         env:
           ISSUE_PLATFORM: ${{ inputs.platform }}
         run: |
-          $sampleSdk = "$env:RUNNER_TEMP/author-dotnet"
+          $sdk = "$env:RUNNER_TEMP/author-dotnet"
           & pwsh -NoProfile -File "$env:RUNNER_TEMP/IssueTools/IssueReplicate.ProvisionSample.ps1" `
-            -RepoRoot "$env:RUNNER_TEMP/maui" -InstallDirectory $sampleSdk -Platform $env:ISSUE_PLATFORM
-          if ($LASTEXITCODE -ne 0) { throw 'Public MAUI sample workload installation failed.' }
-          $sampleSdk >> $env:GITHUB_PATH
+            -RepoRoot "$env:RUNNER_TEMP/maui" -InstallDirectory $sdk -Platform $env:ISSUE_PLATFORM
+          if ($LASTEXITCODE -ne 0) { throw 'Public author-sample workload installation failed.' }
+          $sdk >> $env:GITHUB_PATH
       - name: Record iOS toolchain
         if: inputs.platform == 'ios'
         run: |
@@ -111,219 +117,162 @@ jobs:
           xcodebuild -version
           xcrun --find actool
           xcrun --sdk macosx --find actool
-          xcrun simctl list runtimes
-      - name: Build the actual author sample
+      - name: Build the author sample without credentials
         shell: pwsh
         run: |
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Sample.ps1" `
-            -InputDirectory "$env:RUNNER_TEMP/IssueInput" `
-            -OutputDirectory "$env:RUNNER_TEMP/SampleOutput" `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/SampleOutput" `
             -NuGetConfigPath "$env:RUNNER_TEMP/maui/NuGet.config"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        if: always()
-        with:
-          name: SampleOutput
-          path: |
-            ${{ runner.temp }}/SampleOutput/sample-result.json
-            ${{ runner.temp }}/SampleOutput/sample-build.log
-          retention-days: 1
+      - name: Transfer only the bounded build result
+        id: sample
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Export -Kind Sample `
+            -Directory "$env:RUNNER_TEMP/SampleOutput" -Provider GitHub
 
   generate:
-    needs: intake
+    needs: [intake, sample]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
-    permissions:
-      contents: read
-      actions: read
+    outputs:
+      candidate: ${{ steps.candidate.outputs.payload }}
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: IssueInput
-          path: ${{ runner.temp }}/IssueInput
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: IssueTools
-          path: ${{ runner.temp }}/IssueTools
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        if: inputs.feedback_run_id != ''
-        with:
-          name: Verified1
-          path: ${{ runner.temp }}/PreviousVerification
-          run-id: ${{ inputs.feedback_run_id }}
-          github-token: ${{ github.token }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - *tools
+      - name: Restore bounded generation input
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
+            -Directory "$env:RUNNER_TEMP/IssueInput"
+      - &node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
-      - name: Install Copilot CLI
+      - &copilot
+        name: Install Copilot CLI
         run: npm install --global @github/copilot && copilot --version
-      - name: Generate real tool-free GPT candidate
+      - name: Generate a tool-free GPT candidate
         shell: pwsh
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-          FEEDBACK_RUN: ${{ inputs.feedback_run_id }}
         run: |
-          $feedbackArguments = @{}
-          if ($env:FEEDBACK_RUN) {
-            . "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Core.ps1"
-            $content = Get-IssueReplicateFeedback -Path "$env:RUNNER_TEMP/PreviousVerification/Verified1/test.log"
-            $feedback = "$env:RUNNER_TEMP/test-feedback.txt"
-            Set-Content -LiteralPath $feedback -Value $content -Encoding utf8
-            $feedbackArguments.FeedbackPath = $feedback
-          }
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
-            -InputDirectory "$env:RUNNER_TEMP/IssueInput" `
-            -OutputDirectory "$env:RUNNER_TEMP/Proposal1" @feedbackArguments
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        if: always()
-        with:
-          name: Proposal1
-          path: ${{ runner.temp }}/Proposal1
-          retention-days: 7
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/Proposal"
+      - name: Transfer bounded candidate
+        id: candidate
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Export -Kind Candidate `
+            -Directory "$env:RUNNER_TEMP/Proposal" -Provider GitHub
 
   verify:
-    needs: [sample, generate]
-    runs-on: ${{ inputs.platform == 'ios' && 'macos-15' || 'ubuntu-22.04' }}
-    timeout-minutes: 120
-    env:
-      APPIUM_HOME: ${{ inputs.platform == 'ios' && '/Users/runner/.appium' || '/home/runner/.appium' }}
-      DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.1.app/Contents/Developer' || '' }}
-    steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          pattern: '*'
-          path: ${{ runner.temp }}/artifacts
-      - name: Fetch pinned public source
-        shell: pwsh
-        run: |
-          & "$env:RUNNER_TEMP/artifacts/IssueTools/IssueReplicate.Checkout.ps1" `
-            -ManifestPath "$env:RUNNER_TEMP/artifacts/IssueInput/manifest.json" `
-            -Destination "$env:RUNNER_TEMP/maui"
-      - name: Provision pinned public SDK and workloads
-        shell: pwsh
-        working-directory: ${{ runner.temp }}/maui
-        run: |
-          & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
-          if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
-          "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
-      - name: Build pinned MAUI tasks
-        shell: pwsh
-        working-directory: ${{ runner.temp }}/maui
-        run: |
-          dotnet build Microsoft.Maui.BuildTasks.slnf -c Debug -p:BuildTaskOnlyBuild=true --nologo --verbosity quiet
-          if ($LASTEXITCODE -ne 0) { throw 'Pinned MAUI build tasks failed.' }
-      - name: Record iOS toolchain
-        if: inputs.platform == 'ios'
-        run: |
-          sudo xcode-select -s "$DEVELOPER_DIR"
-          xcrun --kill-cache
-          xcodebuild -version
-          xcrun --find actool
-          xcrun --sdk macosx --find actool
-          xcrun simctl list runtimes
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '24'
-      - name: Provision UI candidate dependencies
-        shell: bash
-        env:
-          ISSUE_PLATFORM: ${{ inputs.platform }}
-        run: |
-          set -euo pipefail
-          if [ "$(jq -r .kind "$RUNNER_TEMP/artifacts/Proposal1/candidate.json")" != ui ]; then
-            exit 0
-          fi
-          dotnet build "$RUNNER_TEMP/maui/src/Provisioning/Provisioning.csproj" -t:ProvisionAppium -p:SkipAppiumDoctor=true
-          if [ "$ISSUE_PLATFORM" != android ]; then
-            exit 0
-          fi
-          sudo chmod a+rw /dev/kvm
-          test -d "$ANDROID_SDK_ROOT"
-          for tool_dir in "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin; do
-            if [ -x "$tool_dir/sdkmanager" ]; then
-              break
-            fi
-          done
-          test -x "$tool_dir/sdkmanager"
-          "$tool_dir/sdkmanager" --install "system-images;android-30;google_apis;x86_64" "platforms;android-30"
-          echo no | "$tool_dir/avdmanager" create avd --force --name IssueRepro --package "system-images;android-30;google_apis;x86_64"
-          "$ANDROID_SDK_ROOT/emulator/emulator" -avd IssueRepro -no-window -no-audio -no-snapshot -gpu swiftshader_indirect \
-            > "$RUNNER_TEMP/issue-emulator.log" 2>&1 &
-          adb="$ANDROID_SDK_ROOT/platform-tools/adb"
-          timeout 600 "$adb" wait-for-device
-          for _attempt in $(seq 1 120); do
-            if [ "$("$adb" shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; then
-              echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
-              echo "$ANDROID_SDK_ROOT/emulator" >> "$GITHUB_PATH"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo 'Android emulator failed to boot' >&2
-          exit 1
-      - name: Run real credential-free candidate verifier
-        shell: pwsh
-        run: |
-          & "$env:RUNNER_TEMP/artifacts/IssueTools/IssueReplicate.Verify.ps1" `
-            -ManifestPath "$env:RUNNER_TEMP/artifacts/IssueInput/manifest.json" `
-            -SampleResultPath "$env:RUNNER_TEMP/artifacts/SampleOutput/sample-result.json" `
-            -CandidatePath "$env:RUNNER_TEMP/artifacts/Proposal1/candidate.json" `
-            -RepoRoot "$env:RUNNER_TEMP/maui" -OutputDirectory "$env:RUNNER_TEMP/Verified1"
-          Get-Content "$env:RUNNER_TEMP/Verified1/result.json" >> $env:GITHUB_STEP_SUMMARY
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        if: always()
-        with:
-          name: Verified1
-          path: |
-            ${{ runner.temp }}/Verified1
-            ${{ runner.temp }}/issue-emulator.log
-            ${{ runner.temp }}/maui/CustomAgentLogsTmp/UITests/TestResults/*.trx
-          retention-days: 7
+    needs: [intake, sample, generate]
+    permissions: {}
+    uses: ./.github/workflows/issue-replicate-canary-verify.yml
+    with:
+      platform: ${{ inputs.platform }}
+      snapshot: ${{ needs.intake.outputs.snapshot }}
+      sample: ${{ needs.sample.outputs.result }}
+      candidate: ${{ needs.generate.outputs.candidate }}
 
-  cleanup:
-    needs: [intake, sample, generate, verify]
+  revise:
+    needs: [intake, verify]
+    if: needs.verify.outputs.verdict == 'inconclusive'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      candidate: ${{ steps.candidate.outputs.payload }}
+    steps:
+      - *tools
+      - name: Restore bounded input and first-run feedback
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+          REPRO_FEEDBACK: ${{ needs.verify.outputs.result }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
+            -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Verified `
+            -Encoded $env:REPRO_FEEDBACK -Directory "$env:RUNNER_TEMP/Verified"
+      - *node
+      - *copilot
+      - name: Revise once from actual bounded feedback
+        shell: pwsh
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/Proposal" `
+            -FeedbackPath "$env:RUNNER_TEMP/Verified/feedback.txt"
+      - name: Transfer the revised candidate
+        id: candidate
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Export -Kind Candidate `
+            -Directory "$env:RUNNER_TEMP/Proposal" -Provider GitHub
+
+  verify-revised:
+    needs: [intake, sample, revise]
+    if: always() && needs.revise.result == 'success'
+    permissions: {}
+    uses: ./.github/workflows/issue-replicate-canary-verify.yml
+    with:
+      platform: ${{ inputs.platform }}
+      snapshot: ${{ needs.intake.outputs.snapshot }}
+      sample: ${{ needs.sample.outputs.result }}
+      candidate: ${{ needs.revise.outputs.candidate }}
+
+  post:
+    needs: [intake, sample, generate, verify, revise, verify-revised]
     if: always() && github.repository == 'kubaflo/maui' && github.actor == 'kubaflo'
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    permissions:
-      actions: write
     steps:
-      - name: Record the storage check
-        if: inputs.cleanup_only
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          clean: true
+      - name: Prepare a validated comment on a fresh agent
         shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+          REPRO_VERIFIED1: ${{ needs.verify.outputs.result }}
+          REPRO_VERIFIED2: ${{ needs.verify-revised.outputs.result }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          COMMENT_ID: ${{ inputs.source_comment_id }}
         run: |
           $ErrorActionPreference = 'Stop'
-          "Actions storage check for run $env:GITHUB_RUN_ID." |
-            Set-Content -LiteralPath "$env:RUNNER_TEMP/storage-check.txt" -Encoding utf8
-      - name: Check that artifact storage accepts a new upload
-        if: inputs.cleanup_only
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: storage-check
-          path: ${{ runner.temp }}/storage-check.txt
-          retention-days: 1
-          if-no-files-found: error
-      - name: Clear transient artifacts after all consumers finish
-        if: always()
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
-        with:
-          script: |
-            const {owner, repo} = context.repo;
-            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
-              owner, repo, run_id: context.runId, per_page: 100
-            });
-            const transientNames = new Set(['IssueTools', 'SampleOutput', 'storage-check']);
-            let deletedBytes = 0;
-            let deletedCount = 0;
-            for (const artifact of artifacts) {
-              if (!transientNames.has(artifact.name)) continue;
-              await github.rest.actions.deleteArtifact({owner, repo, artifact_id: artifact.id});
-              deletedBytes += artifact.size_in_bytes;
-              deletedCount++;
-              core.info(`Deleted transient artifact ${artifact.id} (${artifact.name}).`);
-            }
-            await core.summary
-              .addHeading('Actions artifact cleanup')
-              .addRaw(`Deleted ${deletedCount} transient artifacts (${deletedBytes} bytes). `)
-              .addRaw('Input snapshots, proposals and verified evidence expire after seven days. ')
-              .addRaw('Published issue comments remain available.')
-              .write();
+          $inputDirectory = "$env:RUNNER_TEMP/IssueInput"
+          $resultsDirectory = "$env:RUNNER_TEMP/Verified"
+          if ($env:REPRO_INPUT) {
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Input `
+              -Encoded $env:REPRO_INPUT -Directory $inputDirectory
+            Write-Host "REPRO_INPUT=$env:REPRO_INPUT"
+          }
+          $verified = if ($env:REPRO_VERIFIED2) { $env:REPRO_VERIFIED2 } else { $env:REPRO_VERIFIED1 }
+          if ($verified) {
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Verified `
+              -Encoded $verified -Directory $resultsDirectory
+            Write-Host "REPRO_VERIFIED=$verified"
+          }
+          & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
+            -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
+            -InputDirectory $inputDirectory -ResultsDirectory $resultsDirectory `
+            -OutputPath "$env:RUNNER_TEMP/comment-preview.md"
+      - name: Publish only issue comments
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.ISSUE_REPRO_COMMENT_TOKEN }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          COMMENT_ID: ${{ inputs.source_comment_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:GH_TOKEN) { throw 'The dedicated issue-comment publishing credential is not configured.' }
+          & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
+            -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -ResultsDirectory "$env:RUNNER_TEMP/Verified"
