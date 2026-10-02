@@ -51,6 +51,11 @@ on:
         description: Bypass only the fork publication guard to exercise defensive receipt validation.
         type: boolean
         default: false
+      simulate_report_fault:
+        description: Alter one real report to exercise empty-body or duplicate-intent rejection.
+        type: choice
+        options: [none, empty, duplicate]
+        default: none
   roles: [admin, maintain, write]
   reaction: none
   status-comment: false
@@ -292,6 +297,27 @@ steps:
       name: issue-regression-context-${{ github.run_id }}${{ inputs.simulate_missing_context && '-missing-context' || '' }}
       path: ${{ runner.temp }}/gh-aw/issue-regression-${{ github.run_id }}
 post-steps:
+  - name: Inject a fork-only report-shape fault into the real emitted output
+    if: inputs.simulate_report_fault != 'none'
+    shell: pwsh
+    env:
+      REPORT_FAULT: ${{ inputs.simulate_report_fault }}
+    run: |
+      $ErrorActionPreference = 'Stop'
+      $path = '/tmp/gh-aw/agent_output.json'
+      $output = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+      $comments = @($output.items | Where-Object type -CEQ 'add_comment')
+      if ($comments.Count -ne 1) { throw 'Exactly one real add-comment output is required for this fixture.' }
+      if ($env:REPORT_FAULT -ceq 'empty') {
+        $comments[0].body = " `t`r`n"
+      } elseif ($env:REPORT_FAULT -ceq 'duplicate') {
+        $duplicate = $comments[0] | ConvertTo-Json -Depth 50 | ConvertFrom-Json
+        $duplicate | Add-Member -NotePropertyName temporary_id -NotePropertyValue '#aw_shape1' -Force
+        $output.items = @($output.items) + @($duplicate)
+      } else {
+        throw 'Unsupported fork report-shape fault.'
+      }
+      $output | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $path -Encoding utf8
   - name: Inject the fork-only cross-issue target into the real emitted output
     if: inputs.simulate_cross_issue
     shell: pwsh
