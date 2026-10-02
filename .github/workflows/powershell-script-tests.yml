@@ -86,6 +86,14 @@ jobs:
           & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
           if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
           "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
+      - name: Install public MAUI workload for the author sample
+        shell: pwsh
+        env:
+          ISSUE_PLATFORM: ${{ inputs.platform }}
+        run: |
+          dotnet workload install "maui-$env:ISSUE_PLATFORM" --skip-manifest-update `
+            --configfile "$env:RUNNER_TEMP/maui/NuGet.config" --verbosity minimal
+          if ($LASTEXITCODE -ne 0) { throw 'Public MAUI sample workload installation failed.' }
       - name: Record iOS toolchain
         if: inputs.platform == 'ios'
         run: |
