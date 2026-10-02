@@ -356,3 +356,33 @@ recognized. Other diagnostics can still be checked without editing the lock:
 actionlint -ignore 'unexpected key "queue" for "concurrency" section' \
   .github/workflows/issue-triage.lock.yml
 ```
+
+### Isolated fork canary
+
+On `kubaflo/maui` branch `kubaflo-glowing-bassoon` only, the already registered
+`daily-repo-status.lock.yml` dispatch path contains a dedicated triage canary.
+Neither repository's default branch nor the production triage workflow is changed.
+There is no schedule, apply-mode input, or failure-issue publisher in the canary.
+Its preparation accepts only `kubaflo` dispatches for upstream issues #38925 and
+#37440, and all built-in outputs have literal `staged: true`.
+
+The canary checks out immutable upstream revision
+`092c6f84930dfcff7e0b74da7ba2da7e6fe8ef54` for both trusted stages. It uses
+the fork's existing Copilot credential for upstream GET-only evidence/permission
+reads and GPT-6.1 Sol inference. The unchanged triage script runs in its local
+Gather/Validate mode; the fork-specific frontend enforces the execution
+repository, actor, rerun actor, ref, event and exact issue allowlist.
+An independent preparation hash binds the later re-fetch and validation.
+This exercises real upstream evidence, the unchanged skill/validator, the
+hosted model's structured output and staged handlers, **not** production
+default-branch/slash-command authorization, PAT-pool selection or real writes.
+
+```bash
+gh workflow run daily-repo-status.lock.yml --repo kubaflo/maui \
+  --ref kubaflo-glowing-bassoon -f issue_number=38925
+gh workflow run daily-repo-status.lock.yml --repo kubaflo/maui \
+  --ref kubaflo-glowing-bassoon -f issue_number=37440
+```
+
+Inspect the terminal jobs and retained context, agent-output and report artifacts;
+a dispatched or authorization-skipped run is not a successful canary.
