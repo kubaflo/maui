@@ -300,6 +300,10 @@ For a genuinely empty result, use `noop`; for missing required evidence, use
 `report_incomplete`. In staged mode, emit the same proposal: only the trusted
 safe-output handlers suppress writes.
 
+Use the exposed safeoutputs MCP tools directly, with `data.triage` on the
+`add_comment` tool. Do not run a safeoutputs CLI or shell-based schema probe:
+shell is disabled, and the MCP tools already expose the required schemas.
+
 This canary always stages all handlers. It retains the exact raw proposal for
 the unchanged trusted Validate stage, which runs locally with fresh upstream
 GETs and caller reauthorization after the hosted run. A successful hosted run
