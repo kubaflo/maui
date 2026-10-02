@@ -11,6 +11,14 @@ on:
         description: Existing comment on that issue (read-only canary)
         default: '5262801924'
         required: true
+      platform:
+        description: Native platform for the canary (iOS uses a simulator)
+        type: choice
+        options:
+          - android
+          - ios
+        default: android
+        required: true
       feedback_run_id:
         description: Prior canary run supplying inconclusive test feedback
         required: false
@@ -33,11 +41,12 @@ jobs:
           GH_READ_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ inputs.issue_number }}
           COMMENT_ID: ${{ inputs.source_comment_id }}
+          ISSUE_PLATFORM: ${{ inputs.platform }}
         run: |
           $ErrorActionPreference = 'Stop'
           & .github/scripts/IssueReplicate.Intake.ps1 `
             -IssueNumber ([int]$env:ISSUE_NUMBER) -CommentId ([long]$env:COMMENT_ID) `
-            -Platform android -TargetRef main -OutputDirectory "$env:RUNNER_TEMP/IssueInput"
+            -Platform $env:ISSUE_PLATFORM -TargetRef main -OutputDirectory "$env:RUNNER_TEMP/IssueInput"
           New-Item -ItemType Directory "$env:RUNNER_TEMP/IssueTools" | Out-Null
           Copy-Item .github/scripts/IssueReplicate*.ps1 "$env:RUNNER_TEMP/IssueTools"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -51,8 +60,10 @@ jobs:
 
   sample:
     needs: intake
-    runs-on: ubuntu-22.04
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-15' || 'ubuntu-22.04' }}
     timeout-minutes: 80
+    env:
+      DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.app/Contents/Developer' || '' }}
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
@@ -75,6 +86,9 @@ jobs:
           & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
           if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
           "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
+      - name: Record iOS toolchain
+        if: inputs.platform == 'ios'
+        run: xcodebuild -version && xcrun simctl list runtimes
       - name: Build the actual author sample
         shell: pwsh
         run: |
@@ -141,10 +155,11 @@ jobs:
 
   verify:
     needs: [sample, generate]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-15' || 'ubuntu-22.04' }}
     timeout-minutes: 120
     env:
-      APPIUM_HOME: /home/runner/.appium
+      APPIUM_HOME: ${{ inputs.platform == 'ios' && '/Users/runner/.appium' || '/home/runner/.appium' }}
+      DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.app/Contents/Developer' || '' }}
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
@@ -169,17 +184,25 @@ jobs:
         run: |
           dotnet build Microsoft.Maui.BuildTasks.slnf -c Debug -p:BuildTaskOnlyBuild=true --nologo --verbosity quiet
           if ($LASTEXITCODE -ne 0) { throw 'Pinned MAUI build tasks failed.' }
+      - name: Record iOS toolchain
+        if: inputs.platform == 'ios'
+        run: xcodebuild -version && xcrun simctl list runtimes
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
       - name: Provision UI candidate dependencies
         shell: bash
+        env:
+          ISSUE_PLATFORM: ${{ inputs.platform }}
         run: |
           set -euo pipefail
           if [ "$(jq -r .kind "$RUNNER_TEMP/artifacts/Proposal1/candidate.json")" != ui ]; then
             exit 0
           fi
           dotnet build "$RUNNER_TEMP/maui/src/Provisioning/Provisioning.csproj" -t:ProvisionAppium -p:SkipAppiumDoctor=true
+          if [ "$ISSUE_PLATFORM" != android ]; then
+            exit 0
+          fi
           sudo chmod a+rw /dev/kvm
           test -d "$ANDROID_SDK_ROOT"
           for tool_dir in "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin; do
