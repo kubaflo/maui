@@ -91,9 +91,17 @@ jobs:
         env:
           ISSUE_PLATFORM: ${{ inputs.platform }}
         run: |
-          dotnet workload install "maui-$env:ISSUE_PLATFORM" --skip-manifest-update `
+          $sdkVersion = (dotnet --version).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Could not identify the pinned SDK version.' }
+          $sampleSdk = "$env:RUNNER_TEMP/author-dotnet"
+          bash "$env:RUNNER_TEMP/maui/temp/dotnet-install.sh" `
+            --version $sdkVersion --install-dir $sampleSdk --no-path `
+            --azure-feed https://ci.dot.net/public
+          if ($LASTEXITCODE -ne 0) { throw 'Clean public sample SDK installation failed.' }
+          & "$sampleSdk/dotnet" workload install "maui-$env:ISSUE_PLATFORM" --skip-manifest-update `
             --configfile "$env:RUNNER_TEMP/maui/NuGet.config" --verbosity minimal
           if ($LASTEXITCODE -ne 0) { throw 'Public MAUI sample workload installation failed.' }
+          $sampleSdk >> $env:GITHUB_PATH
       - name: Record iOS toolchain
         if: inputs.platform == 'ios'
         run: |
