@@ -368,8 +368,9 @@ Its preparation accepts only `kubaflo` dispatches for upstream issues #38925 and
 
 The canary checks out immutable upstream revision
 `092c6f84930dfcff7e0b74da7ba2da7e6fe8ef54` for both trusted stages. It uses
-the fork's existing Copilot credential for upstream GET-only evidence/permission
-reads and GPT-6.1 Sol inference. The unchanged triage script runs in its local
+the fork's read-only Actions token for upstream GET-only evidence/permission
+reads and its existing Copilot credential only for GPT-6.1 Sol inference.
+The unchanged triage script runs in its local
 Gather/Validate mode; the fork-specific frontend enforces the execution
 repository, actor, rerun actor, ref, event and exact issue allowlist.
 An independent preparation hash binds the later re-fetch and validation.

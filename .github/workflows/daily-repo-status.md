@@ -55,7 +55,7 @@ on:
       id: context
       if: steps.command.outputs.authorized == 'true'
       env:
-        GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
         ISSUE_NUMBER: ${{ inputs.issue_number }}
       run: |
         timeout -k 30s 10m env GITHUB_ACTIONS=false pwsh -NoProfile \
@@ -222,7 +222,7 @@ safe-outputs:
         path: ${{ runner.temp }}/issue-triage-context
     - name: Reauthorize upstream requester and validate staged proposal
       env:
-        GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
         ISSUE_NUMBER: ${{ inputs.issue_number }}
         EXPECTED_CONTEXT_HASH: ${{ needs.canary_context.outputs.context_hash }}
       run: |
