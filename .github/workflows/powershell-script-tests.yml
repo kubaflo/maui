@@ -63,7 +63,7 @@ jobs:
     runs-on: ${{ inputs.platform == 'ios' && 'macos-15' || 'ubuntu-22.04' }}
     timeout-minutes: 80
     env:
-      DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.app/Contents/Developer' || '' }}
+      DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.1.app/Contents/Developer' || '' }}
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
@@ -88,7 +88,13 @@ jobs:
           "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
       - name: Record iOS toolchain
         if: inputs.platform == 'ios'
-        run: xcodebuild -version && xcrun simctl list runtimes
+        run: |
+          sudo xcode-select -s "$DEVELOPER_DIR"
+          xcrun --kill-cache
+          xcodebuild -version
+          xcrun --find actool
+          xcrun --sdk macosx --find actool
+          xcrun simctl list runtimes
       - name: Build the actual author sample
         shell: pwsh
         run: |
@@ -159,7 +165,7 @@ jobs:
     timeout-minutes: 120
     env:
       APPIUM_HOME: ${{ inputs.platform == 'ios' && '/Users/runner/.appium' || '/home/runner/.appium' }}
-      DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.app/Contents/Developer' || '' }}
+      DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.1.app/Contents/Developer' || '' }}
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
@@ -186,7 +192,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Pinned MAUI build tasks failed.' }
       - name: Record iOS toolchain
         if: inputs.platform == 'ios'
-        run: xcodebuild -version && xcrun simctl list runtimes
+        run: |
+          sudo xcode-select -s "$DEVELOPER_DIR"
+          xcrun --kill-cache
+          xcodebuild -version
+          xcrun --find actool
+          xcrun --sdk macosx --find actool
+          xcrun simctl list runtimes
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
