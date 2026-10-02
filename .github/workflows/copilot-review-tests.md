@@ -43,6 +43,14 @@ on:
         description: Fail command completion after the published command was minimized.
         type: boolean
         default: false
+      simulate_cross_issue:
+        description: Inject an explicit item_number for the isolated cross-issue fixture 929.
+        type: boolean
+        default: false
+      simulate_scope_bypass:
+        description: Bypass only the fork publication guard to exercise defensive receipt validation.
+        type: boolean
+        default: false
   roles: [admin, maintain, write]
   reaction: none
   status-comment: false
@@ -191,7 +199,8 @@ jobs:
             issue = [pscustomobject]@{ number = 928 }
             comment = $command
           }
-          Complete-IssueRegressionRequest -Event $event -PublishedCommentId $env:REPORT_COMMENT_ID
+          Complete-IssueRegressionRequest -Event $event -PublishedCommentId $env:REPORT_COMMENT_ID `
+            -Repository 'kubaflo/maui'
       - name: Simulate a completion-job failure after actual minimization
         if: inputs.simulate_completion_failure
         shell: bash
@@ -226,6 +235,26 @@ network:
     - img.shields.io
 
 safe-outputs:
+  steps:
+    - name: Checkout trusted report-scope validation
+      uses: actions/checkout@v7.0.1
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - name: Validate report scope before any publication
+      if: inputs.simulate_scope_bypass == false
+      shell: pwsh
+      env:
+        AGENT_OUTPUT_PATH: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        . .github/scripts/Get-IssueRegressionContext.ps1
+        . .github/scripts/shared/Copy-BoundedDiagnosticFile.ps1
+        $path = Join-Path $env:RUNNER_TEMP 'issue-regression-publication/agent_output.json'
+        $copy = Copy-BoundedDiagnosticFile -Source $env:AGENT_OUTPUT_PATH -Destination $path -MaxBytes 1MB
+        if ($copy.Truncated) { throw 'The report output exceeds the publication validation limit.' }
+        $output = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+        Assert-IssueRegressionOutputTarget -Output $output -IssueNumber 928 -Repository 'kubaflo/maui'
   messages:
     body-header: "<!-- Issue Regression Trace -->"
   add-comment:
@@ -263,6 +292,18 @@ steps:
       name: issue-regression-context-${{ github.run_id }}${{ inputs.simulate_missing_context && '-missing-context' || '' }}
       path: ${{ runner.temp }}/gh-aw/issue-regression-${{ github.run_id }}
 post-steps:
+  - name: Inject the fork-only cross-issue target into the real emitted output
+    if: inputs.simulate_cross_issue
+    shell: pwsh
+    run: |
+      $ErrorActionPreference = 'Stop'
+      $path = '/tmp/gh-aw/agent_output.json'
+      $output = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+      $comments = @($output.items | Where-Object type -CEQ 'add_comment')
+      if ($comments.Count -ne 1) { throw 'Exactly one real add-comment output is required for this fixture.' }
+      $comments[0] | Add-Member -NotePropertyName item_number -NotePropertyValue 929 -Force
+      $output | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+      Write-Host 'Injected item_number=929 into the emitted report for fork-only scope validation.'
   - name: Simulate an agent-job failure after emitted safe output
     if: inputs.simulate_agent_failure
     shell: bash
