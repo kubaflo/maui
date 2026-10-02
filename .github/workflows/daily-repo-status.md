@@ -1,7 +1,7 @@
 ---
 name: Issue Triage Fork Canary
 run-name: "Staged upstream issue triage #${{ inputs.issue_number }}"
-description: Fork-only staged triage of two real upstream issues using immutable trusted tooling.
+description: Fork-only staged GPT triage of real CLI-prepared evidence, with fresh local trusted validation.
 
 # Use a registered dispatch path only on this isolated fork branch.
 # The default-branch daily report and production triage remain unchanged.
@@ -20,6 +20,14 @@ on:
         description: Upstream issue number (38925 or 37440); all outputs are staged
         required: true
         type: number
+      prepared_context:
+        description: Bounded gzip/base64 context from the unchanged trusted Gather stage
+        required: true
+        type: string
+      prepared_sha256:
+        description: Independent SHA256 of the original uncompressed context bytes
+        required: true
+        type: string
   steps:
     - name: Authorize bounded fork-only canary
       id: command
@@ -44,25 +52,53 @@ on:
             throw new Error('The canary requester is no longer authorized.');
           }
           core.setOutput('authorized', 'true');
-    - name: Checkout immutable upstream triage tooling
-      if: steps.command.outputs.authorized == 'true'
-      uses: actions/checkout@v7.0.1
-      with:
-        repository: dotnet/maui
-        ref: 092c6f84930dfcff7e0b74da7ba2da7e6fe8ef54
-        persist-credentials: false
-    - name: Gather real upstream evidence in read-only local mode
+    - name: Check and retain the actual CLI-prepared evidence
       id: context
       if: steps.command.outputs.authorized == 'true'
+      shell: pwsh
       env:
-        GH_TOKEN: ${{ github.token }}
         ISSUE_NUMBER: ${{ inputs.issue_number }}
+        PREPARED_CONTEXT: ${{ inputs.prepared_context }}
+        PREPARED_SHA256: ${{ inputs.prepared_sha256 }}
       run: |
-        timeout -k 30s 10m env GITHUB_ACTIONS=false pwsh -NoProfile \
-          -File .github/scripts/IssueTriage.ps1 \
-          -Stage Gather -IssueNumber "$ISSUE_NUMBER" -Repository dotnet/maui \
-          -Actor "$GITHUB_ACTOR" -CommandCommentId 0 \
-          -OutputDirectory "$RUNNER_TEMP/issue-triage-context"
+        $ErrorActionPreference = 'Stop'
+        Set-StrictMode -Version Latest
+        if ($env:PREPARED_CONTEXT.Length -gt 50000 -or
+            $env:PREPARED_SHA256 -cnotmatch '^[A-F0-9]{64}$') {
+            throw 'Prepared dispatch evidence exceeds its bound or has no valid digest.'
+        }
+        $inputStream = [IO.MemoryStream]::new([Convert]::FromBase64String($env:PREPARED_CONTEXT))
+        $gzip = [IO.Compression.GZipStream]::new($inputStream, [IO.Compression.CompressionMode]::Decompress)
+        $outputStream = [IO.MemoryStream]::new()
+        $buffer = [byte[]]::new(8192)
+        try {
+            while (($count = $gzip.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                if ($outputStream.Length + $count -gt 1MB) {
+                    throw 'Uncompressed dispatch evidence exceeds 1 MiB.'
+                }
+                $outputStream.Write($buffer, 0, $count)
+            }
+            $bytes = $outputStream.ToArray()
+        } finally {
+            $gzip.Dispose()
+            $inputStream.Dispose()
+            $outputStream.Dispose()
+        }
+        if ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)) -cne $env:PREPARED_SHA256) {
+            throw 'The context bytes do not match the independently prepared digest.'
+        }
+        $prepared = [Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json -AsHashtable
+        if ($prepared.schemaVersion -ne 1 -or $prepared.repository -cne 'dotnet/maui' -or
+            [string]$prepared.issueNumber -cne $env:ISSUE_NUMBER -or
+            $prepared.actor -cne $env:GITHUB_ACTOR -or $prepared.commandCommentId -ne 0 -or
+            $prepared.contextHash -cnotmatch '^[A-F0-9]{64}$') {
+            throw 'Prepared evidence does not match this exact staged canary.'
+        }
+        $directory = Join-Path $env:RUNNER_TEMP 'issue-triage-context'
+        $null = New-Item -ItemType Directory -Path $directory
+        [IO.File]::WriteAllBytes((Join-Path $directory 'context.json'), $bytes)
+        Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "context_hash=$($prepared.contextHash)"
+        Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value 'ready=true'
     - name: Retain trusted issue evidence
       if: steps.context.outputs.ready == 'true'
       uses: actions/upload-artifact@v7.0.1
@@ -209,39 +245,13 @@ safe-outputs:
     create-issue: false
   report-failure-as-issue: false
   steps:
-    - name: Checkout immutable upstream triage validator
-      uses: actions/checkout@v7.0.1
-      with:
-        repository: dotnet/maui
-        ref: 092c6f84930dfcff7e0b74da7ba2da7e6fe8ef54
-        persist-credentials: false
-    - name: Download trusted context outside checkout
-      uses: actions/download-artifact@v8.0.1
-      with:
-        name: issue-triage-context-${{ github.run_id }}
-        path: ${{ runner.temp }}/issue-triage-context
-    - name: Reauthorize upstream requester and validate staged proposal
-      env:
-        GH_TOKEN: ${{ github.token }}
-        ISSUE_NUMBER: ${{ inputs.issue_number }}
-        EXPECTED_CONTEXT_HASH: ${{ needs.canary_context.outputs.context_hash }}
-      run: |
-        timeout -k 30s 10m env GITHUB_ACTIONS=false pwsh -NoProfile \
-          -File .github/scripts/IssueTriage.ps1 \
-          -Stage Validate -IssueNumber "$ISSUE_NUMBER" -Repository dotnet/maui \
-          -Actor "$GITHUB_ACTOR" -CommandCommentId 0 \
-          -ContextDirectory "$RUNNER_TEMP/issue-triage-context" \
-          -OutputDirectory "$RUNNER_TEMP/issue-triage-report" \
-          -ExpectedContextHash "$EXPECTED_CONTEXT_HASH" \
-          -AgentOutputPath /tmp/gh-aw/agent_output.json
-    - name: Retain proposal diagnostics
-      if: always()
+    - name: Retain raw proposal for fresh local trusted validation
       uses: actions/upload-artifact@v7.0.1
       with:
-        name: issue-triage-report-${{ github.run_id }}
-        path: ${{ runner.temp }}/issue-triage-report
+        name: issue-triage-raw-proposal-${{ github.run_id }}
+        path: /tmp/gh-aw/agent_output.json
         retention-days: 7
-        if-no-files-found: warn
+        if-no-files-found: error
 
 concurrency:
   group: fork-issue-triage-${{ inputs.issue_number || github.run_id }}
@@ -290,6 +300,7 @@ For a genuinely empty result, use `noop`; for missing required evidence, use
 `report_incomplete`. In staged mode, emit the same proposal: only the trusted
 safe-output handlers suppress writes.
 
-The separate safe-output job re-fetches context, reauthorizes the requester,
-checks evidence provenance and policy, rejects stale/unsupported proposals and
-renders its own explanatory comment. This canary always stages all handlers.
+This canary always stages all handlers. It retains the exact raw proposal for
+the unchanged trusted Validate stage, which runs locally with fresh upstream
+GETs and caller reauthorization after the hosted run. A successful hosted run
+alone does not establish that trusted evidence/transition validation passed.

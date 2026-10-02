@@ -366,24 +366,23 @@ There is no schedule, apply-mode input, or failure-issue publisher in the canary
 Its preparation accepts only `kubaflo` dispatches for upstream issues #38925 and
 #37440, and all built-in outputs have literal `staged: true`.
 
-The canary checks out immutable upstream revision
-`092c6f84930dfcff7e0b74da7ba2da7e6fe8ef54` for both trusted stages. It uses
-the fork's read-only Actions token for upstream GET-only evidence/permission
-reads and its existing Copilot credential only for GPT-6.1 Sol inference.
-The unchanged triage script runs in its local
-Gather/Validate mode; the fork-specific frontend enforces the execution
-repository, actor, rerun actor, ref, event and exact issue allowlist.
-An independent preparation hash binds the later re-fetch and validation.
+Both available fork credentials returned HTTP 403 when reading upstream
+collaborator permissions. The existing local CLI login can read those permissions;
+it is not copied into Actions or uploaded as a new secret. Instead, the unchanged
+Gather stage at upstream revision `092c6f84930dfcff7e0b74da7ba2da7e6fe8ef54`
+collects actual evidence locally. Its bounded context is supplied as gzip/base64
+dispatch data with an independent digest, not fabricated source records.
+The fork-specific frontend enforces the repository, actor, rerun actor, ref,
+event, exact issue allowlist, decompression bound, digest and prepared identity.
+The existing fork Copilot credential is used only for GPT-6.1 Sol inference.
+
+After each hosted run, download its `issue-triage-raw-proposal-*` artifact and
+run the unchanged trusted Validate stage locally with the original context hash.
+It re-fetches live upstream evidence and authority before checking the actual
+model proposal and rendering the explanatory report. Neither token is republished.
+
 This exercises real upstream evidence, the unchanged skill/validator, the
 hosted model's structured output and staged handlers, **not** production
-default-branch/slash-command authorization, PAT-pool selection or real writes.
-
-```bash
-gh workflow run daily-repo-status.lock.yml --repo kubaflo/maui \
-  --ref kubaflo-glowing-bassoon -f issue_number=38925
-gh workflow run daily-repo-status.lock.yml --repo kubaflo/maui \
-  --ref kubaflo-glowing-bassoon -f issue_number=37440
-```
-
-Inspect the terminal jobs and retained context, agent-output and report artifacts;
-a dispatched or authorization-skipped run is not a successful canary.
+default-branch/slash-command authorization, PAT-pool selection, fully hosted
+authority revalidation or real writes. A successful hosted job alone is not
+successful trusted validation; inspect both terminal jobs and local reports.
