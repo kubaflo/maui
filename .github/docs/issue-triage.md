@@ -377,7 +377,7 @@ event, exact issue allowlist, decompression bound, digest and prepared identity.
 The existing fork Copilot credential is used only for GPT-6.1 Sol inference.
 
 After each hosted run, download its `issue-triage-raw-proposal-*` artifact and
-run the unchanged trusted Validate stage locally with the original context hash.
+run the production trusted Validate stage locally with the original context hash.
 It re-fetches live upstream evidence and authority before checking the actual
 model proposal and rendering the explanatory report. Neither token is republished.
 
@@ -386,3 +386,15 @@ hosted model's structured output and staged handlers, **not** production
 default-branch/slash-command authorization, PAT-pool selection, fully hosted
 authority revalidation or real writes. A successful hosted job alone is not
 successful trusted validation; inspect both terminal jobs and local reports.
+
+The final corrected runs both passed, including fresh local trusted validation:
+
+| Upstream issue | Hosted run | Validated proposed delta |
+| --- | --- | --- |
+| [#38925](https://github.com/dotnet/maui/issues/38925) | [37004775466](https://github.com/kubaflo/maui/actions/runs/37004775466) | Add `perf/general`, `has-workaround`, `version/android-16`. |
+| [#37440](https://github.com/dotnet/maui/issues/37440) | [37004775679](https://github.com/kubaflo/maui/actions/runs/37004775679) | Add `material3`, `version/android-14`, `potential-regression`; remove `has-workaround`. |
+
+The first hosted proposals were correctly rejected for mixed missing-tool/label
+output. The final runs use native MCP guidance and the narrow generated-comment
+ID compatibility correction now present in the production validator. No original
+model proposal was edited to manufacture a passing result.
