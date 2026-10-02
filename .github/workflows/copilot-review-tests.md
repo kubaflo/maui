@@ -35,6 +35,14 @@ on:
         description: Exercise snapshot revalidation with an outdated captured issue marker.
         type: boolean
         default: false
+      simulate_agent_failure:
+        description: Fail the agent job after it has emitted its safe output.
+        type: boolean
+        default: false
+      simulate_completion_failure:
+        description: Fail command completion after the published command was minimized.
+        type: boolean
+        default: false
   roles: [admin, maintain, write]
   reaction: none
   status-comment: false
@@ -134,6 +142,7 @@ jobs:
   minimize_command:
     needs: [pre_activation, activation, agent, safe_outputs]
     if: >-
+      !cancelled() &&
       needs.pre_activation.outputs.should_run == 'true' &&
       needs.safe_outputs.result == 'success' &&
       needs.safe_outputs.outputs.comment_id != '' &&
@@ -183,6 +192,12 @@ jobs:
             comment = $command
           }
           Complete-IssueRegressionRequest -Event $event -PublishedCommentId $env:REPORT_COMMENT_ID
+      - name: Simulate a completion-job failure after actual minimization
+        if: inputs.simulate_completion_failure
+        shell: bash
+        run: |
+          echo 'Intentional fork-only completion failure after report publication and minimization.'
+          exit 24
 
 permissions:
   contents: read
@@ -227,6 +242,7 @@ safe-outputs:
   report-incomplete:
     create-issue: false
   report-failure-as-issue: false
+  report-failed-jobs: false
 
 concurrency:
   group: "fork-issue-trace-regression-${{ inputs.source_issue_number }}"
@@ -246,6 +262,13 @@ steps:
     with:
       name: issue-regression-context-${{ github.run_id }}${{ inputs.simulate_missing_context && '-missing-context' || '' }}
       path: ${{ runner.temp }}/gh-aw/issue-regression-${{ github.run_id }}
+post-steps:
+  - name: Simulate an agent-job failure after emitted safe output
+    if: inputs.simulate_agent_failure
+    shell: bash
+    run: |
+      echo 'Intentional fork-only agent failure after inference and safe-output emission.'
+      exit 23
 ---
 
 # Trace an Issue Regression
