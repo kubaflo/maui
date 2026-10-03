@@ -129,6 +129,7 @@ jobs:
             -NuGetConfigPath "$env:RUNNER_TEMP/maui/NuGet.config"
       - name: Transfer only the bounded build result
         id: sample
+        if: always()
         shell: pwsh
         run: |
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Export -Kind Sample `
@@ -247,6 +248,7 @@ jobs:
           REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
           REPRO_VERIFIED1: ${{ needs.verify.outputs.result }}
           REPRO_VERIFIED2: ${{ needs.verify-revised.outputs.result }}
+          REPRO_SAMPLE: ${{ needs.sample.outputs.result }}
           ISSUE_NUMBER: ${{ inputs.issue_number }}
           COMMENT_ID: ${{ inputs.source_comment_id }}
         run: |
@@ -258,6 +260,11 @@ jobs:
               -Encoded $env:REPRO_INPUT -Directory $inputDirectory
             Write-Host "REPRO_INPUT=$env:REPRO_INPUT"
           }
+          if ($env:REPRO_SAMPLE) {
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Sample `
+              -Encoded $env:REPRO_SAMPLE -Directory "$env:RUNNER_TEMP/SampleOutput"
+            Write-Host "REPRO_SAMPLE=$env:REPRO_SAMPLE"
+          }
           $verified = if ($env:REPRO_VERIFIED2) { $env:REPRO_VERIFIED2 } else { $env:REPRO_VERIFIED1 }
           if ($verified) {
             & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Verified `
@@ -267,7 +274,7 @@ jobs:
           & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
             -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
             -InputDirectory $inputDirectory -ResultsDirectory $resultsDirectory `
-            -OutputPath "$env:RUNNER_TEMP/comment-preview.md"
+            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput" -OutputPath "$env:RUNNER_TEMP/comment-preview.md"
       - name: Publish only issue comments
         shell: pwsh
         env:
@@ -279,4 +286,5 @@ jobs:
           if (-not $env:GH_TOKEN) { throw 'The dedicated issue-comment publishing credential is not configured.' }
           & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
             -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
-            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -ResultsDirectory "$env:RUNNER_TEMP/Verified"
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -ResultsDirectory "$env:RUNNER_TEMP/Verified" `
+            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput"
