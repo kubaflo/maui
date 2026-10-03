@@ -5,17 +5,17 @@ on:
     inputs:
       issue_number:
         description: Public dotnet/maui issue
-        default: '38821'
+        default: '38909'
         required: true
       source_comment_id:
         description: Existing comment on that issue
-        default: '5807905180'
+        default: '5868610701'
         required: true
       platform:
         description: Native platform (iOS uses a simulator)
         type: choice
         options: [android, ios]
-        default: android
+        default: ios
         required: true
 
 permissions:
@@ -53,13 +53,11 @@ jobs:
 
   sample:
     needs: intake
-    runs-on: ${{ inputs.platform == 'ios' && 'macos-15' || 'ubuntu-22.04' }}
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-26' || 'ubuntu-22.04' }}
     timeout-minutes: 80
     permissions: {}
     outputs:
       result: ${{ steps.sample.outputs.payload }}
-    env:
-      DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.1.app/Contents/Developer' || '' }}
     steps:
       - &tools
         name: Fetch immutable public tools without credentials
@@ -92,6 +90,12 @@ jobs:
             -Directory "$env:RUNNER_TEMP/IssueInput"
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Checkout.ps1" `
             -ManifestPath "$env:RUNNER_TEMP/IssueInput/manifest.json" -Destination "$env:RUNNER_TEMP/maui"
+      - name: Require Xcode matching the pinned iOS SDK
+        if: inputs.platform == 'ios'
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.SelectXcode.ps1" `
+            -RepoRoot "$env:RUNNER_TEMP/maui" -Provider GitHub
       - name: Provision pinned native SDK and workloads
         shell: pwsh
         working-directory: ${{ runner.temp }}/maui
@@ -180,7 +184,7 @@ jobs:
 
   revise:
     needs: [intake, verify]
-    if: needs.verify.outputs.verdict == 'inconclusive'
+    if: needs.verify.result == 'success' && needs.verify.outputs.verdict == 'inconclusive'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     outputs:

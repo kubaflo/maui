@@ -25,14 +25,13 @@ permissions: {}
 
 jobs:
   verify:
-    runs-on: ${{ inputs.platform == 'ios' && 'macos-15' || 'ubuntu-22.04' }}
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-26' || 'ubuntu-22.04' }}
     timeout-minutes: 120
     outputs:
       result: ${{ steps.transfer.outputs.payload }}
       verdict: ${{ steps.verdict.outputs.verdict }}
     env:
       APPIUM_HOME: ${{ inputs.platform == 'ios' && '/Users/runner/.appium' || '/home/runner/.appium' }}
-      DEVELOPER_DIR: ${{ inputs.platform == 'ios' && '/Applications/Xcode_26.0.1.app/Contents/Developer' || '' }}
     steps:
       - name: Fetch immutable public tools without credentials
         shell: pwsh
@@ -68,6 +67,12 @@ jobs:
             -Encoded $env:REPRO_CANDIDATE -Directory "$env:RUNNER_TEMP/Proposal"
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Checkout.ps1" `
             -ManifestPath "$env:RUNNER_TEMP/IssueInput/manifest.json" -Destination "$env:RUNNER_TEMP/maui"
+      - name: Require Xcode matching the pinned iOS SDK
+        if: inputs.platform == 'ios'
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.SelectXcode.ps1" `
+            -RepoRoot "$env:RUNNER_TEMP/maui" -Provider GitHub
       - name: Provision pinned native SDK and workloads
         shell: pwsh
         working-directory: ${{ runner.temp }}/maui
