@@ -94,8 +94,10 @@ jobs:
           if [[ "$_ReadGlobalVersion" == *-* ]]; then
             export runtime_source_feed=https://ci.dot.net/public
           fi
-          InitializeDotNetCli true
-          printf '%s\n' "$_InitializeDotNetCli" >> "$GITHUB_PATH"
+          bootstrap="$RUNNER_TEMP/issue-bootstrap-dotnet"
+          InstallDotNetSdk "$bootstrap" "$_ReadGlobalVersion"
+          printf '%s\n' "$bootstrap" >> "$GITHUB_PATH"
+          printf '%s\n' 'DOTNET_MULTILEVEL_LOOKUP=0' 'DOTNET_NOLOGO=1' >> "$GITHUB_ENV"
       - name: Provision pinned native SDK and workloads
         shell: pwsh
         working-directory: ${{ runner.temp }}/maui
