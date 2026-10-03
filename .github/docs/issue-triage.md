@@ -57,6 +57,7 @@ Exact label token boundaries apply to approvals and superseding decisions:
 All label decisions and both actions share non-question and affirmative-polarity
 checks with their supersession scan. "Do not remove p/1" and "Should we remove
 p/1?" cannot revoke "Apply p/1"; a directed "Do not apply p/1" can veto it.
+Indirect "we discussed whether to apply p/1" inquiries are not decisions either.
 Conditional/timing-contingent decision paragraphs cannot authorize additions,
 removals or superseding reversals. "Apply p/1 if the regression is confirmed" is
 not a current priority commitment, nor is "Remove p/1 once validation is complete"
@@ -65,6 +66,14 @@ unconditional decision rather than inferring that later evidence activated a
 previous condition.
 Directed prohibitions retain the existing conservative veto on older authority:
 "Do not apply p/1 until validation is complete" still blocks an older approval.
+The prohibition must begin an imperative sentence or clause, optionally with
+"please". Markdown unordered/ordered list prefixes do not hide that opening,
+including list items following other prose on a new line.
+Embedded hypothetical negations such as "If we do not apply p/1"
+are not directed vetoes. Tentative prohibitions such as "Maybe do not apply p/1"
+remain withheld; the directed-veto exception never bypasses uncertainty.
+Explanatory negation such as "this is not ready" or "we cannot commit" does not
+cancel a recognized directed veto. Questions remain non-decisions.
 It does not authorize a new removal or prove completion of the condition.
 The entire cited comment is also checked for a qualifying opposite decision or
 directed veto, not just the selected paragraph. "Apply p/1" and "Remove p/1" in
@@ -87,25 +96,77 @@ Negated, tentative, unrelated or mixed explanations and an independently cited
 area addition cannot justify deleting an existing area. If that narrow gate
 cannot establish the correction, preserve it or cite a current explicit
 maintainer removal. Unrelated secondary areas remain protected.
-Marker-bearing result comments from this workflow's publisher are excluded from
+Cause-only correction requires exactly one area in the freshly fetched current
+labels. Multiple current areas require an explicit current maintainer removal
+decision; counting proposed effective labels would allow removals to authorize
+themselves and is not permitted.
+Identified result comments from this workflow's publisher are excluded from
 evidence sources and related-reference intake. They remain in `resultComments`
 for context hashing and retry reconciliation only. Generated report reasons
 cannot become fresh facts after the original evidence is edited or removed.
 Suggestions and tentative candidates are not approvals.
 Tentative validation such as "should be reproducible on Android" is not an
-observed reproduction and cannot support confirmation labels.
+observed reproduction and cannot support confirmation labels. Confirmation uses
+the shared tentative-evidence gate, including "I think I reproduced this issue"
+and "apparently reproduced", for additions and confirmation-based removals.
+Explicit "unsure" wording also withholds confirmation and maintainer approvals;
+quoting an affirmative-looking fragment cannot hide the enclosing uncertainty.
+The shared enclosing-claim denial guard rejects "I cannot say I reproduced this
+issue" and "There is no evidence that this behavior worked in MAUI X and fails in
+MAUI Y". These are neither reproduction nor demonstrated regression boundaries.
+The same guard covers technical assessments, failed-workaround transitions and
+superseding evidence. Denied claim spans stop at sentence/paragraph or contrastive
+clause boundaries; masking them cannot erase separate observed positive results
+that veto a mixed-result no-repro assessment.
 Conditional outcomes such as "If the issue is reproduced on Android, collect
 logs" cannot supply observed confirmation, even when the citation omits the
 conditional prefix. The shared positive-evidence predicate applies to confirmation
 additions, removal transitions and contrary positive results. It distinguishes
 contingent outcomes from factual reproduction scenarios such as "I reproduced
-the issue when the keyboard was visible"; existing conservative negative-evidence
-vetoes are unchanged.
+the issue when the keyboard was visible". Negative-evidence vetoes must also
+concern the current report: failed reproduction of a foreign issue cannot invalidate current-issue
+confirmation, simulator reproduction or technical assessments. The full comment
+is still scanned for current-report negative outcomes, including repeated
+paragraphs; metadata-only foreign references remain scope constraints.
+Subject-negated outcomes such as "no one reproduced this issue" and
+"nobody verified this issue" share negative-evidence handling and cannot
+become positive validation. Only those negative spans are masked for positive
+matching, so separate positive outcomes still block mixed-result no-repro claims.
 Technical-state labels require their specific affirmative review, reproduction
 outcome or version recommendation, not merely an authorized comment author.
+Maintainer directives, technical assessments and failed-workaround observations
+are target-scoped. A paragraph about a foreign issue cannot authorize this
+issue's labels; foreign-reference context elsewhere in the comment requires an
+explicitly current-report supporting paragraph. Mixed-reference paragraphs are
+withheld rather than guessing which report an action concerns. A fetched
+canonical duplicate reference is permitted only as the bound "duplicate of"
+relationship, not as another action target.
+Deleted Markdown/HTML text is excluded from evidence, including strikethrough
+and nested or unclosed deletion markup. Adjective hedges such as "possible
+duplicate" and "looks like expected behavior" cannot supply definitive
+dispositions.
 Technical-assessment questions are rejected. No-repro is withheld when the cited
 comment reports resource access, build/download, authentication/network failure or
-timeout; not-regression cannot use a negated same-behavior comparison.
+timeout that prevented testing. A historical setup failure is not itself no-repro.
+It can be discharged only by an explicit resolution followed by a completed
+target-specific test and unsuccessful outcome in the same supporting paragraph.
+Every blocker must qualify; unresolved blockers elsewhere still withhold no-repro.
+Not-regression cannot use a negated same-behavior comparison.
+Factual "could not" and "couldn't" reproduction/replication failures share the
+same narrow normalization before tentative classification, including straight
+and curly apostrophes. The original outcome, target, resource-failure,
+conditional, uncertainty and mixed-result checks remain required.
+No-repro uses the observation-oriented conditional gate, so completed
+post-update or post-rebuild test context is not mistaken for a pending decision.
+Explicit lack of attempts, untested samples and pending prerequisites are not
+unsuccessful completed tests. Current-report qualifiers anywhere in the cited
+comment veto no-repro, including inability "until" a prerequisite is fulfilled
+or waiting for a sample. This does not restore a blanket timing-word veto.
+Questions remain withheld, but auxiliary/subject wording must begin a clause:
+declarative "I have this issue" does not turn a factual reproduction into a question.
+Indirect "we discussed whether this issue was reproduced" is not validation.
+Factual "this issue was reproduced whether or not X is enabled" remains eligible;
+an inquiry about whether or not an outcome occurred is not an observation.
 All technical assessments share chronology checks for additions and removal
 transitions. Later label removals, including automated Policy Service removals,
 contrary state labels, authorized contrary outcomes/retractions and explicit
@@ -139,25 +200,42 @@ substituted for framework package versions.
 An authoritative "expected behavior/by design" explanation or
 "duplicate of #..." disposition is also recognized for its respective label.
 Expected-behavior and duplicate dispositions must be affirmative, not tentative
-or questions. Duplicate decisions identify exactly one canonical target via
+or questions. Categorical "expected behavior" is not a tentative expectation;
+qualifiers such as "maybe expected behavior" still withhold that disposition.
+Duplicate decisions identify exactly one canonical target via
 "duplicate of #N" or a full same-repository issue/PR URL and cite that exact
 fetched related source; an unrelated fetched reference is not sufficient.
 Newer opposite maintainer decisions or label events supersede earlier approvals;
 an old approval cannot silently undo a later manual removal.
+Compounded decisions such as "Approve removing LABEL" or "Decline removal of LABEL"
+cannot authorize either action. Their label-bound action is not the outer approval
+verb; they conservatively veto stale support until an unambiguous decision is cited.
+Equal-second contrary evidence is also superseding because GitHub timestamps
+cannot reliably establish its order. A fresh affirmative comment must follow
+the contrary evidence, not merely share its timestamp.
 The same rule applies to confirmation labels: cite a newer positive confirmation
 or a later explicit maintainer re-add rather than reversing a newer removal.
 The confirmation gate and later-contrary-evidence veto share unsuccessful
 reproduce/confirm/verify/validate detection. The veto withholds confirmation;
 it does not turn an unsuccessful validation or infrastructure failure into
 `s/no-repro`.
+Denied regression history does not retract an independent current reproduction.
+Reproduction confirmation uses reproduction-specific claim denials; regression
+confirmation and first-bad decisions also retain the broader history-denial veto.
+A later denial of a WebView2-regression assessment uses the broader veto too;
+it supersedes the assessment without retracting independent reproduction.
 Confirmation-based removal transitions use the same freshness gate as additions,
 even when s/verified is already present. Later contrary validation or a newer
 maintainer removal cannot be bypassed to clear pending information/reproduction
 labels. Affirmative transition support also keeps its creation time when compared
 with the latest request assignment; cosmetic edits cannot revive older support.
-Negation must grammatically modify a validation verb, with bounded intervening
-auxiliaries/adverbs; an unrelated "not a duplicate" clause cannot negate a
-following successful verification. The full cited comment is checked for contrary
+Negation must grammatically modify a validation verb or the reported-outcome
+predicate, with bounded intervening auxiliaries/adverbs; an unrelated
+"not a duplicate" clause cannot negate a following successful verification.
+Confirming that this issue is fixed/resolved or no longer occurs/fails does not
+confirm reproduction. Such outcomes veto stale confirmation without independently
+authorizing no-repro or blocking a legitimate completed try-latest response.
+The full cited comment is checked for contrary
 validation, not just the selected paragraph. Mixed validation/retraction comments
 are conservatively withheld until a fresh unambiguous confirmation is supplied.
 Positive reproduction must concern the reported issue/behavior, not merely
@@ -167,15 +245,57 @@ Explicit target wording such as "this issue" or "the reported behavior" is
 required. A bare issue/bug/problem mention or reproduction of another, different
 or unrelated outcome cannot establish confirmation. The cited paragraph is
 checked, so an affirmative-looking quote cannot hide such a qualifier.
+When the cited comment references a foreign issue/PR, its validation must bind
+the outcome explicitly to the current report, using current-issue wording or
+the current issue's exact reference. "That issue" cannot carry confirmation
+from the referenced report. This shared target gate also applies to simulator
+transitions and contrary positive outcomes; reference metadata is a conservative
+scope check, not affirmative authority.
 Not-regression assessments must also be unconditional and non-tentative:
 "This is probably not a regression" cannot supply a definitive disposition or
 remove potential-regression through that transition.
+They must describe the current/reported issue or its same behavior on older
+explicitly named .NET/MAUI versions or releases. Older devices/OS versions or
+unqualified "earlier" wording cannot establish prior framework behavior.
+A foreign subject such as "the other issue" cannot supply the
+disposition or removal transition. The full cited comment is checked for
+foreign-outcome qualifiers, so selecting another paragraph cannot hide them.
+The same unconditional, non-tentative requirement applies to completed-review
+and no-repro assessments. No-repro requires an unsuccessful outcome for the
+reported issue, not "Do not reproduce this issue" or a hypothetical attempt.
+Factual "I could not reproduce this issue" remains eligible, subject to the
+existing authority, infrastructure and freshness checks.
+Mixed unsuccessful/successful validation cannot establish no-repro, including
+an initial failure followed by reproduction in the same paragraph. Positive
+outcomes elsewhere in the same cited comment also veto the assessment; the
+negative-outcome gate cannot hide that counterevidence.
 Regression confirmation additionally requires explicit working behavior tied
 to an earlier named .NET/MAUI version and failing/reproducing behavior tied to a
 later named version. Lists of tested versions do not establish their outcomes.
+Explicit fails/failed outcomes need not also say reproduced/confirmed/verified.
+"Fails to reproduce/replicate" describes unsuccessful validation, not a failing
+reported behavior, and cannot confirm a regression.
+Negated failures such as "no longer fails", "doesn't fail" or "can't reproduce"
+cannot supply a failing framework version or first-bad boundary.
+A directly continued "worked in MAUI X and fails starting in MAUI Y" statement
+can retain its subject; the version/outcome, scope and uncertainty guards remain.
+Version/outcome binding cannot cross an "and/or" clause into a separate subject's
+outcome; explicit repeated-subject clauses keep their own working/failing versions.
+The same regression confirmation supersedes older no-repro/not-regression
+assessments and supports suspected-to-confirmed transitions.
+WebView2-regression assessment requires an affirmative assertion concerning this
+issue, not merely both keywords in a reproduction comment. An explicit current
+negative WebView2 classification also supersedes older support; quote selection
+cannot hide it elsewhere in the cited comment.
+"This issue is a regression caused by WebView2" and "due to WebView2" are causal
+classifications with the same current-target and affirmative/negative safeguards.
 The first-bad citation must include both results and the explicit boundary
 matching that label, with no earlier contradictory failing outcome; merely
 asserting "regressed from" does not establish earlier passing behavior.
+Neither "regressed from" nor bare "from" establishes the first bad version;
+outcome/version binding cannot bridge a "regressed from" baseline as failure.
+The full enclosing cited paragraph is checked for that boundary; a selected
+quote cannot hide an earlier failing version.
 Preview and RC ordering is recognized; generic build success is insufficient.
 Unknown or ambiguous outcome/version bindings are conservatively withheld.
 Generic reproduction on a platform/OS version is not proof of regression.
@@ -190,6 +310,32 @@ Corrections are deltas, never whole-label replacement. Allow explicit maintainer
 removals and narrowly supported pending-to-validated, suspected-to-confirmed,
 root-cause area, disputed-workaround and device-to-simulator transitions. At most
 one dominant area is removed and two independently supported areas added.
+Failed-workaround transitions require an unconditional, non-tentative observed
+failure in one enclosing paragraph and in the selected quote. Questions,
+conditional advice and mixed working/failing outcomes are not such observations.
+Failure to reproduce, replicate or trigger the issue with a workaround is not
+failure of the workaround. Such a paragraph cannot support failure-based
+removal, while observed failure to work or fix the issue remains eligible.
+Setup, build/download/install, network and infrastructure failures cannot supply
+workaround-efficacy evidence. A bound "failed to ..." must concern working,
+fixing, resolving or helping, not a different attempted operation; inspect the
+whole cited paragraph rather than borrowing a later failure word.
+Positive continued clauses remain visible even when they omit the workaround
+subject: "The workaround failed initially, but now works" is mixed evidence,
+not authority to remove the label.
+Bind success to the workaround subject or a directly inherited/pronominal
+continuation. Unrelated "Working with the author", "Fixed the sample link" or
+"Helped the author collect logs" sentences are activities, not workaround efficacy.
+"Suggested workaround" names the attempted workaround, not a tentative failure;
+uncertainty about the outcome still withholds the transition.
+Device-to-simulator transitions require affirmative, unconditional, non-tentative
+reproduction of the reported issue on a simulator in both the quote and enclosing
+paragraph. Questions and unsuccessful attempts are not contradictory evidence;
+a device reproduction followed by "but not on the simulator" is not sufficient.
+Contrary validation elsewhere in the cited comment also vetoes this transition.
+Workaround/device-only contradiction evidence must be strictly later than the
+latest assignment when that event is available. An equal-second observation
+cannot authorize removal because its order relative to the assignment is unknown.
 Root-cause area corrections need a maintainer comment created after the latest
 assignment of the removed area, or a current explicit removal decision.
 Cosmetic edits cannot revive an older correction after a newer assignment.
@@ -197,9 +343,23 @@ The `needs-area-label` placeholder can be cleared using issue/comment evidence
 from an area addition validated in the same proposal. Current report content can
 predate the initial placeholder event; that transition does not require a newer
 validator comment. Existing area membership alone is not sufficient.
-Priority changes cannot leave conflicting priorities. Preserve unrelated manual
-labels, Policy Service staleness tags, release/automation outcomes, legacy names
-and unknown labels. Uncertain decisions are withheld with an explanation.
+The removal must cite at least one exact source/quote pair from that validated
+addition; a separate unrelated citation cannot stand in for its authority.
+Priority changes cannot leave conflicting priorities. Changes to status states
+cannot leave verified/needs-verification, verified/no-repro, suspected/confirmed regression or
+not-regression/regression states active together. No-repro also conflicts with `i/regression`,
+`blazor-webview2-regression` or any `regressed-in-*` label. These families
+also supersede older no-repro assessments. A first-bad-boundary change
+must leave at most one `regressed-in-*` label active, not accumulate differing
+boundaries. Every necessary removal still
+requires its own permitted authority or transition; otherwise withhold the
+change. Unrelated pre-existing conflicts are preserved, not silently cleaned up.
+The verified/pending-verification pair is incompatible for changes in either
+direction. A later verification request cannot be cleared by stale confirmation;
+without independently valid removal evidence, withhold the conflicting change.
+Preserve unrelated manual labels, Policy Service staleness tags,
+release/automation outcomes, legacy names and unknown labels.
+Uncertain decisions are withheld with an explanation.
 
 **Feedback side effects:** needs-info/repro/try-latest-version participate in
 Policy Service replies, staleness reminders and potential automatic closure.
@@ -250,7 +410,14 @@ Three/four/six/eight-digit color-shaped shorthand, including `#3333` and `#33333
 requires explicit issue/PR wording;
 ordinary `Fixes`, `Closes`, `Resolves`, `See` and related-reference wording also
 qualifies, including three-digit issue numbers. A full same-repository issue URL
-is unambiguous.
+or `dotnet/maui#N` reference is unambiguous. Intake and validation use the same
+reference grammar; other repositories' qualified references are not fetched
+as dotnet/maui issues. A qualified canonical duplicate still needs the existing
+explicit maintainer disposition and exact fetched related source.
+The same color-aware classification is shared with validation scope and
+positive-outcome matching; numeric colors are not foreign-issue references.
+Explicit issue/PR wording, repository-qualified references and full URLs still
+constrain the target.
 Nonexistent/inaccessible referenced items produce a warning and no related
 evidence instead of aborting otherwise valid triage. A missing canonical source
 still cannot authorize a duplicate disposition. Authentication, rate-limit and
@@ -261,6 +428,12 @@ Markdown handling uses the parser already bundled with PowerShell's
 One GPT-6.1 Sol/Copilot analysis reads prepared evidence and the declared local
 skill. Shell and GitHub tools are disabled. It has read-only repository
 permissions and does not receive the publication job's write token.
+It declares final intents through the exposed safeoutputs MCP tools, not shell
+CLI/schema probes. Structured triage data belongs to the comment tool.
+The pinned runtime automatically attaches an `aw_` plus eight-alphanumeric
+comment temporary ID; the validator accepts only that known transport shape and
+discards it before publication. Numeric target, evidence and incomplete-output
+checks remain mandatory; a mixed missing-tool/label proposal is still rejected.
 Known automation accounts are excluded from both maintainer and validator
 authority even when GitHub reports their account type as `User`, including the
 write collaborator `vs-mobiletools-engineering-service2`. The explicit denylist
@@ -298,19 +471,37 @@ result rather than interpreting the absence of a comment as success.
 Label/comment APIs are **not an atomic transaction**: inspect the Actions result
 for actual application, particularly after a partial failure. The explanation
 describes a validated requested delta, not an unconditional delivery claim.
-Rerun all jobs to gather current state and reconcile remaining deltas. Each
-rendered decision carries a canonical fingerprint of its action, label,
-reason, exact evidence and request. Retrying the same invocation suppresses a
-duplicate comment only when every remaining decision exactly matches one in its
-original report. Decision/evidence ordering and changing context hashes do not
-prevent an otherwise identical partial retry.
-A changed/new decision or a legacy report without matching fingerprints fails
-before publication and requires a fresh command or manual dispatch, rather than
-applying a different delta under an old explanation. Multiple reports for one
-invocation also fail visibly. The original report remains a historical requested
-plan; the workflow result records the actual remaining application.
-Rerunning only a failed publication job after partial writes intentionally fails
-the stale-context check.
+Job reruns are deliberately unsupported: the authorization step rejects them
+before exposing the Copilot pool, and the trusted validator rejects publication
+job reruns too. The pool and the compiled agent, detection and safe-output job
+conditions explicitly require attempt one, including partial failed-job reruns
+that reuse successful dependency outputs. Top-level workflow `if` gates
+activation, not each downstream job; additive built-in job conditions supply
+the downstream guards without replacing compiler checks.
+The pinned compiler emits immutable,
+fixed-name artifacts, so changing only this workflow's custom artifact names
+would not make reruns safe.
+Use a fresh `/issue triage` comment or manual dispatch to gather current state
+and assess remaining deltas. Each rendered decision carries a canonical
+fingerprint of its action, label, reason, exact evidence and request.
+Invocation identifiers and decision fingerprints are visible inline-code lines,
+not HTML comments removed by the pinned publisher's sanitizer. Intake recognizes
+these reports only from `github-actions[bot]` and never treats them as evidence.
+Legacy intact HTML identifiers remain readable. Legacy sanitized reports with
+the publisher-injected `Issue Triage` header and validated-proposal heading are
+also excluded from evidence, but missing invocation or decision identifiers
+cannot establish exact retry coverage.
+Duplicate-report protection remains
+defensive: a report for the same invocation can suppress a new comment only
+when it covers all decisions exactly; changed decisions or multiple reports
+fail visibly. This is not a supported job-rerun recovery mechanism.
+The validated `report.md`, `decision.json` and `validation.json` are retained
+before any label/comment handler runs. If comment publication fails while
+labels succeed, retrieve that report artifact for the historical explanation.
+A fresh invocation proposes only remaining changes and may legitimately use
+`noop`; it does not reconstruct or automatically repost the missing historical
+comment. Inspect the original run and retained report for actual partial
+publication, rather than treating the new no-op as proof of prior delivery.
 
 ## Deployment and staged operation
 
@@ -334,8 +525,14 @@ gh workflow run issue-triage.lock.yml --repo dotnet/maui --ref main \
 Manual dispatch defaults to staged mode. It performs normal proposal validation
 and retains `issue-triage-context-*` and `issue-triage-report-*` artifacts for
 seven days, but built-in handlers suppress label and comment writes.
+The retained report describes the validated requested delta, not completed
+writes. Check the run's staged mode and handler outcomes before claiming delivery.
 Omitting `issue_number` is rejected, even though gh-aw requires the dispatch
 input itself to be declared non-required for slash-command compatibility.
+The compiler-added `aw_context` input must be empty. Authorization rejects
+caller workspace context before trusted checkout, intake or PAT selection, and
+both trusted script stages independently enforce the same dispatch constraint.
+It cannot select an unrelated PR checkout for issue analysis.
 Use `staged=false` only for intentional application; `/issue triage` comments
 are apply-mode commands. New workflows are not dispatchable until recognized
 on the default branch, so local compilation is not end-to-end hosted validation.
@@ -357,44 +554,31 @@ actionlint -ignore 'unexpected key "queue" for "concurrency" section' \
   .github/workflows/issue-triage.lock.yml
 ```
 
-### Isolated fork canary
+### Real hosted fork canaries
 
-On `kubaflo/maui` branch `kubaflo-glowing-bassoon` only, the already registered
-`daily-repo-status.lock.yml` dispatch path contains a dedicated triage canary.
-Neither repository's default branch nor the production triage workflow is changed.
-There is no schedule, apply-mode input, or failure-issue publisher in the canary.
-Its preparation accepts only `kubaflo` dispatches for upstream issues #38925 and
-#37440, and all built-in outputs have literal `staged: true`.
-
-Both available fork credentials returned HTTP 403 when reading upstream
-collaborator permissions. The existing local CLI login can read those permissions;
-it is not copied into Actions or uploaded as a new secret. Instead, the unchanged
-Gather stage at upstream revision `092c6f84930dfcff7e0b74da7ba2da7e6fe8ef54`
-collects actual evidence locally. Its bounded context is supplied as gzip/base64
-dispatch data with an independent digest, not fabricated source records.
-The fork-specific frontend enforces the repository, actor, rerun actor, ref,
-event, exact issue allowlist, decompression bound, digest and prepared identity.
-The existing fork Copilot credential is used only for GPT-6.1 Sol inference.
-
-After each hosted run, download its `issue-triage-raw-proposal-*` artifact and
-run the production trusted Validate stage locally with the original context hash.
-It re-fetches live upstream evidence and authority before checking the actual
-model proposal and rendering the explanatory report. Neither token is republished.
-
-This exercises real upstream evidence, the unchanged skill/validator, the
-hosted model's structured output and staged handlers, **not** production
-default-branch/slash-command authorization, PAT-pool selection, fully hosted
-authority revalidation or real writes. A successful hosted job alone is not
-successful trusted validation; inspect both terminal jobs and local reports.
-
-The final corrected runs both passed, including fresh local trusted validation:
+Two GPT-6.1 Sol dispatches on an isolated `kubaflo/maui` feature branch completed
+successfully; their original model outputs also passed this trusted validator
+locally against freshly re-fetched upstream evidence and authority.
 
 | Upstream issue | Hosted run | Validated proposed delta |
 | --- | --- | --- |
 | [#38925](https://github.com/dotnet/maui/issues/38925) | [37004775466](https://github.com/kubaflo/maui/actions/runs/37004775466) | Add `perf/general`, `has-workaround`, `version/android-16`. |
 | [#37440](https://github.com/dotnet/maui/issues/37440) | [37004775679](https://github.com/kubaflo/maui/actions/runs/37004775679) | Add `material3`, `version/android-14`, `potential-regression`; remove `has-workaround`. |
 
-The first hosted proposals were correctly rejected for mixed missing-tool/label
-output. The final runs use native MCP guidance and the narrow generated-comment
-ID compatibility correction now present in the production validator. No original
-model proposal was edited to manufacture a passing result.
+The runs exercised actual source quotations, conflicting reproduction/version
+evidence, an ineffective workaround, preservation of existing areas and
+withholding unsupported priority/confirmed-regression decisions. Initial hosted
+proposals exposed unnecessary blocked shell probes and automatic comment-ID
+metadata; they were rejected rather than sanitized into success. Native MCP
+guidance and narrow transport-ID handling were corrected before both reruns
+passed. No pipeline test files or synthetic evidence were introduced.
+
+This was **split validation**, not production end-to-end authorization. Both
+fork credentials returned HTTP 403 on upstream collaborator-permission reads.
+The existing local CLI login therefore performed real Gather and final Validate
+GETs; its credential was never copied into Actions. Bounded compressed dispatch
+data was independently hashed, and downloaded hosted context matched the
+prepared bytes. The fork used its existing Copilot secret only for inference,
+and literal staged handlers made no label/comment writes. Both issue states and
+the fork's default branch were unchanged. Production default-branch/slash-command
+gates, PAT-pool selection and apply-mode delivery remain unexercised.

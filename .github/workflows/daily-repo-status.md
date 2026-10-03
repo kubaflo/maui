@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       issue_number:
-        description: Upstream issue number (38925 or 37440); all outputs are staged
+        description: Upstream issue number (39091, 39076 or 38926); all outputs are staged
         required: true
         type: number
       prepared_context:
@@ -37,13 +37,17 @@ on:
       with:
         script: |
           core.setOutput('authorized', 'false');
+          if (Number(process.env.GITHUB_RUN_ATTEMPT) !== 1 ||
+              (context.payload.inputs?.aw_context ?? '') !== '') {
+            throw new Error('Use a fresh canary dispatch without caller workspace context.');
+          }
           if (context.payload.repository.full_name !== 'kubaflo/maui' ||
               context.ref !== 'refs/heads/kubaflo-glowing-bassoon' ||
               context.eventName !== 'workflow_dispatch' ||
               context.actor !== 'kubaflo' ||
               process.env.GITHUB_TRIGGERING_ACTOR !== 'kubaflo' ||
-              !['38925', '37440'].includes(process.env.ISSUE_NUMBER)) {
-            throw new Error('This canary only accepts the two staged fork dispatches.');
+              !['39091', '39076', '38926'].includes(process.env.ISSUE_NUMBER)) {
+            throw new Error('This canary only accepts the three designated staged fork dispatches.');
           }
           const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
             ...context.repo, username: context.actor
@@ -108,7 +112,7 @@ on:
         retention-days: 7
         if-no-files-found: error
 
-if: needs.pre_activation.outputs.triage_ready == 'true'
+if: needs.pre_activation.outputs.triage_ready == 'true' && github.run_attempt == 1
 
 permissions:
   contents: read
@@ -125,12 +129,18 @@ skills:
   - .github/skills/issue-triage-labels
 
 jobs:
+  agent:
+    if: github.run_attempt == 1
+  detection:
+    if: github.run_attempt == 1
+  safe_outputs:
+    if: github.run_attempt == 1
   pre-activation:
     outputs:
       triage_ready: ${{ steps.context.outputs.ready }}
       context_hash: ${{ steps.context.outputs.context_hash }}
   canary_context:
-    if: needs.pre_activation.outputs.triage_ready == 'true'
+    if: needs.pre_activation.outputs.triage_ready == 'true' && github.run_attempt == 1
     needs: [pre_activation]
     runs-on: ubuntu-slim
     outputs:

@@ -31,9 +31,12 @@ $validators = @([regex]::Matches($validatorRules[0], '(?m)^            user: ([A
 if ($validators.Count -eq 0) { throw 'The trusted validator identity policy is empty or its format changed.' }
 $permissions = @{}
 $frameworkVersionPattern = '(?<![\w.-])\d+\.\d+\.\d+(?:\.\d+)?(?:-(?:preview|rc)\.\d+(?:\.\d+)*)?(?![\w.-])'
+$validationReferencePattern = '(?:https://github\.com/(?<repository>[A-Za-z0-9_.-]{1,39}/[A-Za-z0-9_.-]{1,100})/(?:issues|pull)/|(?<repository>[A-Za-z0-9_.-]{1,39}/[A-Za-z0-9_.-]{1,100})#|(?<![\w/])#)(?<number>[1-9][0-9]{0,8})(?![\w])'
 $null = ConvertFrom-Markdown -InputObject ' '
 $markdownBuilder = [Markdig.MarkdownPipelineBuilder]::new()
 $markdownBuilder.PreciseSourceLocation = $true
+$null = [Markdig.MarkdownExtensions]::UseEmphasisExtras(
+    $markdownBuilder, [Markdig.Extensions.EmphasisExtras.EmphasisExtraOptions]::Strikethrough)
 $markdownPipeline = $markdownBuilder.Build()
 
 function Get-Timestamp($Value) {
@@ -52,7 +55,17 @@ function Get-Hash($Value) {
 
 function Test-TriageResultComment([string]$Body, [string]$Author) {
     return $Author -ceq 'github-actions[bot]' -and
-        $Body -cmatch '(?m)^<!-- issue-triage-(?:command:[1-9][0-9]*|run:[1-9][0-9]*|local:[A-F0-9]{64}) -->\r?$'
+        ($Body -cmatch '(?m)^Issue triage invocation: `issue-triage-(?:command:[1-9][0-9]*|run:[1-9][0-9]*|local:[A-F0-9]{64})`\r?$' -or
+            $Body -cmatch '(?m)^<!-- issue-triage-(?:command:[1-9][0-9]*|run:[1-9][0-9]*|local:[A-F0-9]{64}) -->\r?$' -or
+            ($Body -cmatch '(?m)^<!-- Issue Triage -->\r?$' -and
+                $Body -cmatch '(?m)^\*\*Issue triage: validated label proposal\*\*\r?$'))
+}
+
+function Test-TriageReportMarker([string]$Body, [string]$Marker,
+    [ValidateSet('invocation', 'decision')][string]$Kind) {
+    $token = [regex]::Escape($Marker)
+    return $Body -cmatch "(?m)^Issue triage ${Kind}: ``$token``\r?$" -or
+        $Body -cmatch "(?m)^<!-- $token -->\r?$"
 }
 
 function Get-DecisionFingerprint($Decision, [string]$Action) {
@@ -173,6 +186,9 @@ function Assert-Actor {
         throw 'The command requester does not currently have write/maintain/admin permission.'
     }
     if ($env:GITHUB_ACTIONS -eq 'true') {
+        if ($env:GITHUB_RUN_ATTEMPT -cne '1') {
+            throw 'Issue triage does not support job reruns. Inspect the retained report and request a fresh command or manual dispatch.'
+        }
         if ($env:GITHUB_REPOSITORY -cne $Repository -or $env:GITHUB_ACTOR -cne $Actor) {
             throw 'The invocation does not match the repository/requester.'
         }
@@ -191,6 +207,10 @@ function Assert-Actor {
                 throw 'The invocation is not a new comment on the exact target issue.'
             }
         } elseif ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            if ($event.inputs.ContainsKey('aw_context') -and
+                $null -ne $event.inputs.aw_context -and [string]$event.inputs.aw_context -cne '') {
+                throw 'Issue triage does not accept caller workspace context.'
+            }
             if ([string]$event.inputs.issue_number -cne [string]$IssueNumber -or $CommandCommentId -ne 0) {
                 throw 'The invocation does not match the manual target.'
             }
@@ -202,6 +222,12 @@ function Assert-Actor {
 
 function Test-Pattern([string]$Name, [string]$Pattern) {
     return $Name -cmatch ('^' + [regex]::Escape($Pattern).Replace('\*', '.*') + '$')
+}
+
+function Test-IssueReferenceMatch([Text.RegularExpressions.Match]$Match, [string]$Text) {
+    # Color-shaped shorthand needs an explicit issue/PR context.
+    return -not ($Match.Value.StartsWith('#') -and $Match.Groups['number'].Length -in @(3, 4, 6, 8) -and
+        $Text.Substring(0, $Match.Index) -notmatch '(?i)\b(?:issue|PR|pull request|duplicate of|fix(?:es|ed)?|clos(?:e|es|ed)|resolv(?:e|es|ed)|see(?: also)?|refs?|references?|related to)\s+$')
 }
 
 function Get-Category([string]$Label) {
@@ -293,13 +319,11 @@ function Get-Snapshot {
     foreach ($source in $sources) {
         $referenceText = Get-MarkdownText $source.body -IncludeQuotes
         foreach ($match in [regex]::Matches($referenceText,
-            '(?:https://github\.com/dotnet/maui/(?:issues|pull)/|(?<![\w/])#)([1-9][0-9]{0,8})(?![\w])')) {
-            # Color-shaped shorthand needs an explicit issue/PR context.
-            if ($match.Value.StartsWith('#') -and $match.Groups[1].Length -in @(3, 4, 6, 8) -and
-                $referenceText.Substring(0, $match.Index) -notmatch '(?i)\b(?:issue|PR|pull request|duplicate of|fix(?:es|ed)?|clos(?:e|es|ed)|resolv(?:e|es|ed)|see(?: also)?|refs?|references?|related to)\s+$') {
-                continue
-            }
-            $number = [int]$match.Groups[1].Value
+            $validationReferencePattern, [Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+            if ($match.Groups['repository'].Success -and
+                $match.Groups['repository'].Value -ine $Repository) { continue }
+            if (-not (Test-IssueReferenceMatch $match $referenceText)) { continue }
+            $number = [int]$match.Groups['number'].Value
             if ($number -ne $IssueNumber) { $null = $references.Add($number) }
         }
     }
@@ -366,6 +390,7 @@ function Get-MarkdownText([string]$Body, [switch]$IncludeQuotes, [switch]$Exclud
             $node -is [Markdig.Syntax.Inlines.CodeInline] -or
             $node -is [Markdig.Syntax.HtmlBlock] -or
             $node -is [Markdig.Syntax.Inlines.HtmlInline] -or
+            ($node -is [Markdig.Syntax.Inlines.EmphasisInline] -and $node.DelimiterChar -ceq '~') -or
             (-not $IncludeQuotes -and $node -is [Markdig.Syntax.QuoteBlock]) -or
             ($ExcludeLinkMetadata -and (
                 $node -is [Markdig.Syntax.LinkReferenceDefinition] -or
@@ -385,6 +410,19 @@ function Get-MarkdownText([string]$Body, [switch]$IncludeQuotes, [switch]$Exclud
         [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(2))) {
         $ranges.Add(@{ start = $match.Index; end = $match.Index + $match.Length - 1 })
     }
+    $deletions = [Collections.Generic.Stack[object]]::new()
+    foreach ($match in [regex]::Matches($Body, '(?is)<(?<closing>/)?(?<tag>del|s|strike)\b[^>]*>',
+        [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(2))) {
+        if (-not $match.Groups['closing'].Success) {
+            $deletions.Push(@{ tag = $match.Groups['tag'].Value; start = $match.Index })
+        } elseif ($deletions.Count -gt 0 -and $deletions.Peek().tag -ieq $match.Groups['tag'].Value) {
+            $opening = $deletions.Pop()
+            $ranges.Add(@{ start = $opening.start; end = $match.Index + $match.Length - 1 })
+        }
+    }
+    foreach ($opening in $deletions) {
+        $ranges.Add(@{ start = $opening.start; end = $Body.Length - 1 })
+    }
     $text = [Text.StringBuilder]::new($Body)
     $next = 0
     foreach ($range in @($ranges | Sort-Object start, end)) {
@@ -402,8 +440,11 @@ function Get-Prose([string]$Body) {
 }
 
 function Test-Interrogative([string]$Prose) {
+    $inquiry = '(?:ask(?:s|ed|ing)?|discuss(?:es|ed|ing)?|wonder(?:s|ed|ing)?|question(?:s|ed|ing)?|debate(?:s|d)?|debating|determine(?:s|d)?|determining|check(?:s|ed|ing)?|know(?:s|n)?|knew)'
+    $gap = '(?:(?![;!?]|\.(?:\s|$)|\r?\n[ \t]*\r?\n|\b(?:reproduce[ds]?|reproducing|reproducible|confirm(?:s|ed|ing)?|verify|verified|verifying|validate[ds]?|validating)\b).){0,80}'
     return $Prose.Contains('?') -or
-        $Prose -match '(?i)\b(can|could|should|would|will|may|might|is|are|was|were|does|do|did|has|have)\s+(we|i|you|they|he|she|this|it|that|LABEL|the (?:issue|report|behavior))\b'
+        $Prose -match '(?i)(?:^|[.!;:,]|\r?\n[ \t]*\r?\n)\s*(?:please\s+)?(can|could|should|would|will|may|might|is|are|was|were|does|do|did|has|have)\s+(we|i|you|they|he|she|this|it|that|LABEL|the (?:issue|report|behavior))\b' -or
+        $Prose -match "(?is)\bwhether\b(?!\s+or\s+not\b)|\b$inquiry\b$gap\bwhether\b"
 }
 
 function Test-ConditionalEvidence([string]$Paragraph, [switch]$Decision) {
@@ -421,7 +462,25 @@ function Test-ConditionalEvidence([string]$Paragraph, [switch]$Decision) {
 
 function Test-TentativeEvidence([string]$Paragraph) {
     $candidate = [regex]::Replace($Paragraph, '(?i)\bas\s+expected\b', '')
-    return $candidate -match '(?i)\b(?:should|could|may|might|would|will|maybe|perhaps|possibly|probably|likely|potentially|apparently|suspect(?:ed|s)?|assum(?:e|ed|ing)|expect(?:ed)?|seems?|appears?|suggest(?:s|ed)?|uncertain|tentative)\b'
+    return $candidate -match '(?i)\b(?:should|could|may|might|would|will|maybe|perhaps|possibl(?:e|y)|probabl(?:e|y)|likely|potential(?:ly)?|apparently|suspect(?:ed|s)?|assum(?:e|ed|ing)|expect(?:ed)?|seems?|appears?|look(?:s|ed)?\s+like|suggest(?:s|ed)?|think|thinks|thought|believe(?:d|s)?|unsure|uncertain(?:ty)?|tentative(?:ly)?)\b'
+}
+
+function Get-NegativeOutcomePattern {
+    return "(?:not|never|no longer|cannot|can['\u2019]t|unable to|fail(?:s|ed)?\s+to|couldn['\u2019]t|could not|did not|(?:do|does|did|is|was|were|has|have|are)n['\u2019]t)"
+}
+
+function Get-DeniedEvidencePattern([switch]$ReproductionOnly) {
+    $negative = "(?:not|never|cannot|can['\u2019]t|unable to|could not|couldn['\u2019]t|(?:do|does|did|has|have|had)n['\u2019]t)"
+    $modifiers = '(?:(?:yet|actually|really|honestly|definitely|definitively|currently|reliably|with certainty)\s+)*'
+    $claim = '(?:say|state|assert|claim|conclude|establish|confirm|verify|validate|demonstrate|prove|know)'
+    $missing = '(?:no|without)\s+(?:(?:direct|clear|concrete|empirical|reliable|actual|definitive|conclusive)\s+)*(?:evidence|proof|confirmation)'
+    $denial = "(?:$negative\s+$modifiers$claim|$missing|(?:(?:is|was)\s+not|isn['\u2019]t|wasn['\u2019]t)\s+(?:true|established|demonstrated|proven))(?:\s+(?:yet|currently|so far))?"
+    $clause = '(?:(?![;!?]|\.(?:\s|$)|\r?\n[ \t]*\r?\n|\b(?:but|however|although|except|yet)\b).)'
+    $outcome = '(?:reproduce[ds]?|reproducing|reproducible|replicate[ds]?|replicating|confirm(?:s|ed|ing)?|verify|verified|verifying|validate[ds]?|validating|worked|working|works|passed|fails|failed|review(?:ed)?|triage(?:d)?|investigate(?:d)?|completed|finished|regression|same\s+(?:behavior|issue|problem)|try|retest(?:ed)?|test(?:ed)?|update[ds]?|upgrade[ds]?)'
+    if ($ReproductionOnly) {
+        $outcome = '(?:reproduce[ds]?|reproducing|reproducible|replicate[ds]?|replicating|confirm(?:s|ed|ing)?|verify|verified|verifying|validate[ds]?|validating|correctly detect(?:s|ing)?)'
+    }
+    return "(?is)\b$denial\b(?=$clause*\b$outcome\b)$clause*"
 }
 
 function Get-LabelPattern([string]$Label) {
@@ -429,7 +488,7 @@ function Get-LabelPattern([string]$Label) {
         '(?![\p{L}\p{N}\p{M}\p{S}_/:-]|\.(?=[\p{L}\p{N}\p{M}\p{S}_/.:-]))'
 }
 
-function Test-DecisionParagraph([string]$Paragraph, [string]$Label, [string]$Action, $Evidence, [switch]$Superseding) {
+function Test-DecisionParagraph([string]$Paragraph, [string]$Label, [string]$Action, $Evidence, [string]$ReferenceContext = '', [switch]$Superseding) {
     $labelText = Get-LabelPattern $Label
     $addVerbs = 'add|apply|set|assign|approve|approved|accept|accepted|mark|prioritize|prioritized'
     $removeVerbs = 'remove|drop|clear|withdraw|revoke|reject|decline'
@@ -438,26 +497,39 @@ function Test-DecisionParagraph([string]$Paragraph, [string]$Label, [string]$Act
     $prohibited = $false
     if ($Superseding) {
         $negatedVerbs = if ($Action -eq 'remove') { $addVerbs } else { $removeVerbs }
-        $prohibition = "(?i)\b(?:do\s+not|don['\u2019]t|never)\s+(?:$negatedVerbs)\b(?=$gap$labelText)"
+        $listMarker = '(?:[-*+]|\d{1,9}[.)])[ \t]+'
+        $opening = "(?:(?:^|[.!;]\s+)\s*(?:$listMarker)?|(?:^|\r?\n)[ \t]*$listMarker)"
+        $prohibition = "(?i)(?<prefix>$opening(?:please\s+)?)(?:do\s+not|don['\u2019]t|never)\s+(?:$negatedVerbs)\b(?=$gap$labelText)"
         $prohibited = [regex]::IsMatch($candidate, $prohibition)
-        $candidate = [regex]::Replace($candidate, $prohibition, $Action)
+        $candidate = [regex]::Replace($candidate, $prohibition, '${prefix}' + $Action)
     }
     $withoutLabel = [regex]::Replace($candidate, $labelText, 'LABEL', [Text.RegularExpressions.RegexOptions]::IgnoreCase)
-    if ((Test-Interrogative $withoutLabel) -or
-        ((Test-ConditionalEvidence $withoutLabel -Decision) -and -not $prohibited)) { return $false }
     if ($Action -eq 'add' -and $Label -eq 's/not-a-bug') {
-        $withoutLabel = [regex]::Replace($withoutLabel, '(?i)\bnot a bug\b', 'DISPOSITION')
+        $withoutLabel = [regex]::Replace($withoutLabel, '(?i)\b(?:expected behavior|not a bug)\b', 'DISPOSITION')
     }
-    if ($withoutLabel -match "(?i)\b(not|no|never|cannot|can['\u2019]t|(?:do|does|did|is|was|were|has|have|are)n['\u2019]t|do not|can|should|could|may|might|would|will|maybe|perhaps|possibly|probably|likely|potentially|suspect|assume|expect|consider|candidate|asked|suggested|requested|evaluation|experiment|simulation)\b") { return $false }
-    if ($prohibited) { return $true }
-    if ($Action -eq 'add' -and $Label -eq 's/duplicate 2️⃣') {
+    if ((Test-Interrogative $withoutLabel) -or
+        (Test-TentativeEvidence $withoutLabel) -or
+        ((Test-ConditionalEvidence $withoutLabel -Decision) -and -not $prohibited)) { return $false }
+    $allowedReferencePattern = ''
+    if (-not $prohibited -and $Action -eq 'add' -and $Label -eq 's/duplicate 2️⃣') {
         $canonical = @([regex]::Matches($candidate,
-            '(?i)\bduplicate of\s+(?:#|<?https://github\.com/dotnet/maui/(?:issues|pull)/)([1-9][0-9]{0,8})(?![\w])') |
+            '(?i)\bduplicate of\s+(?:#|dotnet/maui#|<?https://github\.com/dotnet/maui/(?:issues|pull)/)([1-9][0-9]{0,8})(?![\w])') |
             ForEach-Object { "related:$($_.Groups[1].Value)" } | Sort-Object -Unique)
         if ($canonical.Count -ne 1 -or -not $sourceMap.ContainsKey($canonical[0]) -or
             (-not $Superseding -and @($Evidence | Where-Object { $_.source -ceq $canonical[0] }).Count -eq 0)) { return $false }
-        return $true
+        $canonicalNumber = $canonical[0].Substring('related:'.Length)
+        $allowedReferencePattern = "(?i)\bduplicate of\s+(?:#|dotnet/maui#|<?https://github\.com/dotnet/maui/(?:issues|pull)/)$canonicalNumber(?![\w/-]|\.(?=\w))"
     }
+    if (-not (Test-CurrentIssueScope $Paragraph $ReferenceContext $allowedReferencePattern)) { return $false }
+    $approval = '(?:approv(?:e|ed|ing|al)|accept(?:ed|ance)?|reject(?:ed|ion)?|declin(?:e|ed|ing)|den(?:y|ied|ial))'
+    $nestedAction = '(?:add(?:ed|ing|itions?)?|appl(?:y|ied|ying|ication)|set(?:ting)?|assign(?:ed|ing|ments?)?|remov(?:e|ed|ing|al)|drop(?:ped|ping)?|clear(?:ed|ing)?|withdraw(?:n|ing|al)?|revok(?:e|ed|ing)|revocation)'
+    # Compounded decisions veto stale support without authorizing either action.
+    if ($Paragraph -match "(?i)\b$approval\b$gap\b$nestedAction\b$gap$labelText") {
+        return [bool]$Superseding
+    }
+    if ($prohibited) { return $true }
+    if ($withoutLabel -match "(?i)\b(not|no|never|cannot|can['\u2019]t|(?:do|does|did|is|was|were|has|have|are)n['\u2019]t|do not|can|should|could|may|might|would|will|maybe|perhaps|possibly|probably|likely|potentially|suspect|assume|expect|consider|candidate|asked|suggested|requested|evaluation|experiment|simulation)\b") { return $false }
+    if ($allowedReferencePattern) { return $true }
     if ($Action -eq 'add' -and $Label -eq 's/not-a-bug' -and
         $candidate -match '(?i)\b(expected behavior|by design|working as intended|not a bug)\b' -and
         $candidate -notmatch "(?i)\b(not|isn.t)\s+(expected|by design|working as intended|not a bug)\b") { return $true }
@@ -470,21 +542,24 @@ function Test-Decision($Evidence, [string]$Label, [string]$Action) {
         $source = $sourceMap[$reference.source]
         if (-not $source.isMaintainer -or $source.kind -cne 'comment') { continue }
         $prose = Get-Prose $source.body
+        $referenceContext = Get-MarkdownText $source.body
         $sourceParagraphs = @($prose -split '\r?\n[ \t]*\r?\n')
         $paragraphs = @($sourceParagraphs |
             Where-Object { $_.Contains($reference.quote, [StringComparison]::Ordinal) })
         if ($paragraphs.Count -ne 1 -or
-            -not (Test-DecisionParagraph $paragraphs[0] $Label $Action $Evidence)) { continue }
+            -not (Test-DecisionParagraph $paragraphs[0] $Label $Action $Evidence -ReferenceContext $referenceContext)) { continue }
         $oppositeAction = if ($Action -eq 'add') { 'remove' } else { 'add' }
         $oppositeEvent = if ($Action -eq 'add') { 'unlabeled' } else { 'labeled' }
         if (@($sourceParagraphs | Where-Object {
-            Test-DecisionParagraph $_ $Label $oppositeAction @() -Superseding
+            Test-DecisionParagraph $_ $Label $oppositeAction @() -ReferenceContext $referenceContext -Superseding
         }).Count -gt 0) { continue }
         $superseded = @($sourceMap.Values | Where-Object {
-            $_.isMaintainer -and (Get-SupersessionTime $_) -gt $source.createdAt -and (
+            $candidateSource = $_
+            $_.id -cne $source.id -and $_.isMaintainer -and
+            (Get-SupersessionTime $_) -ge $source.createdAt -and (
                 ($_.kind -ceq $oppositeEvent -and $_.body -ceq "${oppositeEvent}: $Label") -or
                 ($_.kind -ceq 'comment' -and @((Get-Prose $_.body) -split '\r?\n[ \t]*\r?\n' |
-                    Where-Object { Test-DecisionParagraph $_ $Label $oppositeAction @() -Superseding }).Count -gt 0)
+                    Where-Object { Test-DecisionParagraph $_ $Label $oppositeAction @() -ReferenceContext (Get-MarkdownText $candidateSource.body) -Superseding }).Count -gt 0)
             )
         })
         if ($superseded.Count -eq 0) { return $true }
@@ -492,30 +567,124 @@ function Test-Decision($Evidence, [string]$Label, [string]$Action) {
     return $false
 }
 
-function Test-NegativeValidation([string]$Prose) {
-    $negative = "(?:not|never|no longer|cannot|can['\u2019]t|unable to|failed to|couldn['\u2019]t|could not|did not|(?:do|does|did|is|was|were|has|have|are)n['\u2019]t)"
+function Get-SubjectNegativeValidationPattern([string]$ReferenceContext) {
+    $subject = '(?:no(?:\s+|-)one|nobody|none|neither)(?:\s+of\s+(?:(?:the|these|those|our|their)\s+)?(?:us|them|tests?|testers?|validators?|developers?|maintainers?))?'
+    $auxiliary = '(?:(?:has|have|had|is|are|was|were|can|could)\s+){0,2}'
+    $modifiers = '(?:(?:be|been|being|able to|yet|ever|still|currently|successfully|reliably|consistently|actually|fully|independently|personally|locally)\s+){0,4}'
+    $verbs = '(?:reproduce[ds]?|reproducing|reproducible|replicate[ds]?|replicating|confirm(?:s|ed|ing)?|verify|verified|verifying|validate[ds]?|validating|correctly detect(?:s|ing)?)'
+    $gap = '(?:(?![,;!?\r\n]|\.(?:\s|$)|\b(?:but|however|although|except|yet|and|or)\b).){0,50}?'
+    $outcome = Get-ValidationOutcomePattern $ReferenceContext
+    return "(?i)\b$subject\s+$auxiliary$modifiers$verbs\b$gap(?<![\w])$outcome(?![\w])"
+}
+
+function Test-NegativeValidation([string]$Prose, [string]$ReferenceContext = '',
+    [switch]$RequireRegression, [switch]$IncludeAbsentOutcome) {
+    if (-not $ReferenceContext) { $ReferenceContext = $Prose }
+    $negative = Get-NegativeOutcomePattern
     $modifiers = '(?:(?:be|been|being|able to|possible to|yet|ever|still|currently|at all|successfully|reliably|consistently|actually|fully|independently|definitively|personally|locally|readily|easily|immediately)\s+){0,4}'
-    $verbs = '(?:reproduce[ds]?|reproducing|reproducible|confirm(?:s|ed|ing)?|verify|verified|verifying|validate[ds]?|validating|correctly detect(?:s|ing)?)'
+    $verbs = '(?:reproduce[ds]?|reproducing|reproducible|replicate[ds]?|replicating|confirm(?:s|ed|ing)?|verify|verified|verifying|validate[ds]?|validating|correctly detect(?:s|ing)?)'
     $pattern = "(?i)\b$negative\s+$modifiers$verbs\b"
     $outcome = '(?:(?:the|this|that|reported|same|actual|original)\s+){1,4}(?:behavior|issue|bug|regression|problem)'
     $postposed = "(?i)\b$verbs\b(?:(?![;!?\r\n]|\.(?:\s|$)).){0,100}\b$negative\s+$outcome\b"
-    foreach ($paragraph in ($Prose -split '\r?\n[ \t]*\r?\n')) {
-        if ($paragraph -match $pattern -or $paragraph -match $postposed) { return $true }
+    $subjectNegative = Get-SubjectNegativeValidationPattern $ReferenceContext
+    $deniedEvidence = Get-DeniedEvidencePattern -ReproductionOnly:(-not $RequireRegression)
+    $absentOutcome = Get-AbsentValidationOutcomePattern $ReferenceContext
+    $paragraphs = @($Prose -split '\r?\n[ \t]*\r?\n')
+    $position = 0
+    # Repeated paragraphs retain their own reference-metadata positions.
+    foreach ($paragraph in [regex]::Split((Get-Prose $ReferenceContext), '(\r?\n[ \t]*\r?\n)')) {
+        if ($paragraph -cin $paragraphs -and
+            ($paragraph -match $pattern -or $paragraph -match $postposed -or
+                $paragraph -match $subjectNegative -or $paragraph -match $deniedEvidence -or
+                ($IncludeAbsentOutcome -and $paragraph -match $absentOutcome)) -and
+            (Test-CurrentIssueScope $paragraph $ReferenceContext -ReferenceStart $position)) { return $true }
+        $position += $paragraph.Length
     }
     return $false
 }
 
-function Test-PositiveValidation([string]$Paragraph) {
-    if (Test-ConditionalEvidence $Paragraph) { return $false }
-    if ($Paragraph -match '(?i)\b(?:(?:completely|entirely|totally)\s+)?(?:another|different|unrelated|separate|other)\s+(?:(?:reported|actual|original)\s+){0,2}(?:behavior|issue|bug|regression|problem)\b') { return $false }
-    $outcome = '(?:(?:the|this|that|reported|same|actual|original)\s+){1,4}(?:behavior|issue|bug|regression|problem)'
+function Test-ForeignOutcome([string]$Paragraph) {
+    return $Paragraph -match '(?i)\b(?:(?:completely|entirely|totally)\s+)?(?:another|different|unrelated|separate|other)\s+(?:(?:reported|actual|original)\s+){0,2}(?:behavior|issue|bug|regression|problem|report)\b'
+}
+
+function Test-ForeignIssueReference([string]$Text) {
+    $references = [regex]::Matches($Text, $validationReferencePattern, [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    return @($references | Where-Object {
+        (Test-IssueReferenceMatch $_ $Text) -and (
+            [int]$_.Groups['number'].Value -ne $IssueNumber -or
+            ($_.Groups['repository'].Success -and $_.Groups['repository'].Value -ine $Repository))
+    }).Count -gt 0
+}
+
+function Get-ValidationOutcomePattern([string]$ReferenceContext) {
+    if (-not (Test-ForeignIssueReference $ReferenceContext) -and
+        -not (Test-ForeignOutcome $ReferenceContext)) {
+        return '(?:(?:the|this|that|reported|same|actual|original)\s+){1,4}(?:behavior|issue|bug|regression|problem)'
+    }
+    $current = '(?:(?:the|this)\s+)?current\s+(?:behavior|issue|bug|regression|problem|report)'
+    $reference = "(?<![\w/])(?:#|dotnet/maui#|https://github\.com/dotnet/maui/(?:issues|pull)/)${IssueNumber}(?![\w/-]|\.(?=\w))"
+    return "(?:$current|$reference)"
+}
+
+function Get-AbsentValidationOutcomePattern([string]$ReferenceContext) {
+    $outcome = Get-ValidationOutcomePattern $ReferenceContext
+    $negative = Get-NegativeOutcomePattern
+    $auxiliary = '(?:(?:is|was|has been|had been|does|do|did|can|could|has|have|had)\s+)?'
+    $modifiers = '(?:(?:be|been|being|now|currently|already|fully|completely|actually|reliably|consistently|successfully)\s+){0,4}'
+    $absence = '(?:occur(?:s|red|ring)?|happen(?:s|ed|ing)?|recur(?:s|red|ring)?|fail(?:s|ed|ing)?|reproduce[ds]?|reproducing|reproducible)'
+    return "(?i)(?<![\w])$outcome(?![\w])\s+$auxiliary$modifiers(?:$negative\s+$modifiers$absence|fixed|resolved|corrected|gone|absent)\b"
+}
+
+function Test-CurrentIssueScope([string]$Paragraph, [string]$ReferenceContext = '',
+    [string]$AllowedReferencePattern = '', [int]$ReferenceStart = -1) {
+    if (-not $ReferenceContext) { $ReferenceContext = $Paragraph }
+    $referenceProse = Get-Prose $ReferenceContext
+    $start = if ($ReferenceStart -ge 0) { $ReferenceStart }
+        else { $referenceProse.IndexOf($Paragraph, [StringComparison]::Ordinal) }
+    if ($start -lt 0 -or $start + $Paragraph.Length -gt $referenceProse.Length -or
+        $referenceProse.Substring($start, $Paragraph.Length) -cne $Paragraph -or
+        ($ReferenceStart -lt 0 -and
+            $referenceProse.IndexOf($Paragraph, $start + $Paragraph.Length, [StringComparison]::Ordinal) -ge 0)) {
+        return $false
+    }
+    $referenceParagraph = $ReferenceContext.Substring($start, $Paragraph.Length)
+    if ($AllowedReferencePattern) {
+        $Paragraph = [regex]::Replace($Paragraph, $AllowedReferencePattern, 'CANONICAL')
+        $referenceParagraph = [regex]::Replace($referenceParagraph, $AllowedReferencePattern, 'CANONICAL')
+        $ReferenceContext = [regex]::Replace($ReferenceContext, $AllowedReferencePattern, 'CANONICAL')
+    }
+    if ((Test-ForeignIssueReference $referenceParagraph) -or (Test-ForeignOutcome $Paragraph)) { return $false }
+    if (-not (Test-ForeignIssueReference $ReferenceContext) -and
+        -not (Test-ForeignOutcome $ReferenceContext)) { return $true }
+    $currentTarget = Get-ValidationOutcomePattern $ReferenceContext
+    return $Paragraph -match "(?i)(?<![\w])$currentTarget(?![\w])"
+}
+
+function Test-PositiveValidation([string]$Paragraph, [string]$ReferenceContext = '') {
+    if ((Test-ConditionalEvidence $Paragraph) -or (Test-ForeignOutcome $Paragraph)) { return $false }
+    if (-not $ReferenceContext) { $ReferenceContext = $Paragraph }
+    if (-not (Test-CurrentIssueScope $Paragraph $ReferenceContext)) { return $false }
+    $candidate = [regex]::Replace($Paragraph, $validationReferencePattern, {
+        param($match)
+        if (Test-IssueReferenceMatch $match $Paragraph) { return $match.Value }
+        return ' ' * $match.Length
+    }, [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    # Mask denied claims and subject-negative outcomes, retaining separate observations.
+    $negativeEvidence = "(?:$(Get-SubjectNegativeValidationPattern $ReferenceContext)|$(Get-DeniedEvidencePattern)|$(Get-AbsentValidationOutcomePattern $ReferenceContext))"
+    $candidate = [regex]::Replace($candidate, $negativeEvidence, {
+        param($match)
+        return [regex]::Replace($match.Value, '\S', ' ')
+    })
+    $outcome = Get-ValidationOutcomePattern $ReferenceContext
+    $target = "(?<![\w])$outcome(?![\w])"
     $reproduction = '(?:reproduced|reproducible|can reproduce)'
-    $clause = '(?:(?![;!?\r\n]|\.(?:\s|$)|\b(?:but|however|although|except|yet|not|never|cannot)\b).){0,50}'
-    if ($Paragraph -match "(?i)\b$outcome\b$clause\b$reproduction\b|\b$reproduction\b$clause\b$outcome\b|\b(?:confirmed|verified)\b$clause\b$outcome\b|\btest\b$clause\bcorrectly detect(?:s|ing)\b$clause\b$outcome\b") {
+    $clause = "(?:(?![;!?\r\n]|\.(?:\s|$)|\b(?:but|however|although|except|yet|not|never|cannot)\b|$validationReferencePattern).){0,50}"
+    if ($candidate -match "(?i)$target$clause\b$reproduction\b|\b$reproduction\b$clause$target|\b(?:confirmed|verified)\b$clause$target|\btest\b$clause\bcorrectly detect(?:s|ing)\b$clause$target") {
         return $true
     }
-    return $Paragraph -match "(?i)^\s*$outcome\b" -and
-        $Paragraph -match "(?i)\bit\s+(?:can be|is|was|has been)\s+(?:(?:successfully|reliably|consistently)\s+)?$reproduction\b"
+    if ((Test-ForeignIssueReference $ReferenceContext) -or (Test-ForeignOutcome $ReferenceContext)) { return $false }
+    return $candidate -match "(?i)^\s*$outcome\b" -and
+        $candidate -match "(?i)\bit\s+(?:can be|is|was|has been)\s+(?:(?:successfully|reliably|consistently)\s+)?$reproduction\b"
 }
 
 function Get-FrameworkVersion([string]$Text) {
@@ -613,7 +782,8 @@ function Get-AuthorVersionCandidates([string]$Prose) {
     return @{ scoped = $scoped.ToArray(); unscoped = $unscoped.ToArray() }
 }
 
-function Test-NewerPublishedVersionRequest([string]$Paragraph, [string]$Quote) {
+function Test-NewerPublishedVersionRequest([string]$Paragraph, [string]$Quote, [string]$ReferenceContext = '') {
+    if (-not (Test-CurrentIssueScope $Paragraph $ReferenceContext)) { return $false }
     $versionPattern = $frameworkVersionPattern
     $gap = '(?:(?![;!?\r\n]|\.(?:\s|$)|\b(?:but|however|MAUI)\b|\b\d+\.\d+).){0,80}'
     $requested = @([regex]::Matches($Paragraph,
@@ -659,26 +829,38 @@ function Test-NewerPublishedVersionRequest([string]$Paragraph, [string]$Quote) {
 }
 
 function Test-RegressionValidation([string]$Paragraph, [string]$FirstBadVersion = '') {
-    if ((Test-ConditionalEvidence $Paragraph) -or (Test-TentativeEvidence $Paragraph)) { return $false }
+    if ((Test-ConditionalEvidence $Paragraph) -or (Test-TentativeEvidence $Paragraph) -or
+        $Paragraph -match (Get-DeniedEvidencePattern)) { return $false }
     $framework = '(?:\.NET(?:\s+MAUI)?|MAUI)'
     $version = '\d+(?:\.\d+){0,3}(?:[- .]*(?:preview|rc)[- .]*\d+(?:\.\d+)*)?(?![\w-]|\.(?=\w))'
-    $gap = '(?:(?![;!?\r\n]|\.(?:\s|$)|\b(?:but|however|not|never|cannot|didn.t|isn.t|wasn.t|MAUI)\b|(?<![\w])\.NET\b|\b\d).){0,80}'
+    $negative = Get-NegativeOutcomePattern
+    $gap = "(?:(?![;!?\r\n]|\.(?:\s|$)|\b(?:and|or|but|however|$negative|regressed\s+from|MAUI)\b|(?<![\w])\.NET\b|\b\d).){0,80}"
     $target = '(?:(?:the|this|that|reported|same|actual|original)\s+){1,4}'
     $working = "\b$target(?:behavior|scenario|feature)\s+(?:(?:was|is|has(?: been)?)\s+)?(?:worked|working|works|passed)\b"
     $namedVersion = "(?<![\w])$framework\s+(?:versions?\s+)?(?<version>$version)"
-    $workingVersions = @([regex]::Matches($Paragraph,
-        "(?i)$working$gap$namedVersion|$namedVersion$gap$working") |
+    $workingMatches = [regex]::Matches($Paragraph,
+        "(?i)$working$gap$namedVersion|$namedVersion$gap$working")
+    $workingVersions = @($workingMatches |
         ForEach-Object { Get-FrameworkVersion $_.Groups['version'].Value } |
         Where-Object { $null -ne $_ })
     if ($workingVersions.Count -eq 0) { return $false }
     $outcome = "$target(?:behavior|issue|bug|regression|problem)"
     $reproduction = '(?:reproduced|reproducible|can reproduce)'
     $failing = "(?:\b$outcome\b$gap\b(?:$reproduction|fails|failed)\b|\b$reproduction\b$gap\b$outcome\b|\bit\s+(?:can be|is|was|has been)\s+(?:(?:successfully|reliably|consistently)\s+)?$reproduction\b)"
-    $boundary = "\b(?:from|since|introduced(?: in| with)?|starting(?: in| with)?|first bad(?: version)?(?: is|:)?|regressed (?:in|since|from))\s+(?:$framework\s+(?:version\s+)?)?(?<version>$version)"
+    $boundary = "\b(?:since|introduced(?: in| with)?|starting(?: in| with)?|first bad(?: version)?(?: is|:)?|regressed (?:in|since))\s+(?:$framework\s+(?:version\s+)?)?(?<version>$version)"
     $failingVersions = @([regex]::Matches($Paragraph,
         "(?i)$failing$gap(?:$namedVersion|$boundary)|$namedVersion$gap$failing") |
         ForEach-Object { Get-FrameworkVersion $_.Groups['version'].Value } |
         Where-Object { $null -ne $_ })
+    foreach ($workingMatch in $workingMatches) {
+        $continued = $Paragraph.Substring($workingMatch.Index + $workingMatch.Length)
+        $failure = [regex]::Match($continued,
+            "(?i)^\s*,?\s*(?:and|but|however)\s+(?:(?:now|currently)\s+)?(?:fails|failed)\b$gap(?:$namedVersion|$boundary)")
+        if ($failure.Success) {
+            $parsedVersion = Get-FrameworkVersion $failure.Groups['version'].Value
+            if ($null -ne $parsedVersion) { $failingVersions += $parsedVersion }
+        }
+    }
     if ($failingVersions.Count -eq 0) { return $false }
     foreach ($workingVersion in $workingVersions) {
         if (@($failingVersions | Where-Object {
@@ -711,14 +893,32 @@ function Test-RegressionValidation([string]$Paragraph, [string]$FirstBadVersion 
     return $false
 }
 
-function Test-ConfirmationParagraph([string]$Paragraph) {
+function Test-ConfirmationParagraph([string]$Paragraph, [string]$ReferenceContext = '',
+    [switch]$RequireRegression, [string]$FirstBadVersion = '') {
+    $validated = if ($RequireRegression) {
+        (Test-CurrentIssueScope $Paragraph $ReferenceContext) -and
+        (Test-RegressionValidation $Paragraph $FirstBadVersion)
+    } else {
+        Test-PositiveValidation $Paragraph $ReferenceContext
+    }
     return -not (Test-Interrogative $Paragraph) -and
-        (Test-PositiveValidation $Paragraph) -and
-        $Paragraph -notmatch '(?is)\b(should|could|may|might|would|will|maybe|perhaps|possibly|probably|likely|potentially|suspect|assume|expect)\b.{0,50}\b(reproduce[ds]?|reproducible|confirm(?:ed|ing)?|verify|verified|validate[ds]?|validating|correctly detect(?:s|ing)?)\b' -and
-        -not (Test-NegativeValidation $Paragraph)
+        $validated -and
+        -not (Test-TentativeEvidence $Paragraph) -and
+        -not (Test-NegativeValidation $Paragraph $ReferenceContext -RequireRegression:$RequireRegression -IncludeAbsentOutcome)
 }
 
-function Get-Confirmation($Evidence, [switch]$RequireRegression) {
+function Test-SimulatorReproduction([string]$Paragraph, [string]$ReferenceContext = '') {
+    if (-not $ReferenceContext) { $ReferenceContext = $Paragraph }
+    if (-not (Test-ConfirmationParagraph $Paragraph $ReferenceContext)) { return $false }
+    $separator = '(?i)[;!?\r\n]|\.(?:\s|$)|\b(?:but|however|although|except|yet)\b'
+    $gap = '(?:(?!\b(?:not|never|cannot)\b).){0,80}'
+    return @($Paragraph -split $separator | Where-Object {
+        (Test-PositiveValidation $_ $ReferenceContext) -and
+        $_ -match "(?i)\b(?:reproduced|reproducible|can reproduce)\b$gap\bsimulator\b"
+    }).Count -gt 0
+}
+
+function Get-Confirmation($Evidence, [switch]$RequireRegression, [string]$FirstBadVersion) {
     return @($Evidence | Where-Object {
         $reference = $_
         $source = $sourceMap[$reference.source]
@@ -729,19 +929,20 @@ function Get-Confirmation($Evidence, [switch]$RequireRegression) {
         $prose.Contains($reference.quote, [StringComparison]::Ordinal) -and
         $prose -match '(?i)\b(Android|iOS|Windows|MacCatalyst|MacOS|Tizen|Linux|MAUI)\b|\.NET\s*\d+|\b\d+\.\d+' -and
         $paragraphs.Count -eq 1 -and
-        (Test-ConfirmationParagraph $paragraphs[0]) -and
-        (-not $RequireRegression -or (Test-RegressionValidation $paragraphs[0])) -and
-        -not (Test-NegativeValidation $prose)
+        (Test-ConfirmationParagraph $paragraphs[0] (Get-MarkdownText $source.body) `
+            -RequireRegression:$RequireRegression -FirstBadVersion $FirstBadVersion) -and
+        -not (Test-NegativeValidation $prose (Get-MarkdownText $source.body) -RequireRegression:$RequireRegression -IncludeAbsentOutcome)
     })
 }
 
 function Test-CurrentConfirmation($Confirmations, $Evidence, [string]$Label, $Snapshot) {
     if ($Confirmations.Count -eq 0) { return $false }
+    $requireRegression = $Label -ceq 'i/regression' -or $Label -cmatch '^regressed-in-'
     $latest = @($Confirmations | Sort-Object { $sourceMap[$_.source].createdAt })[-1]
     if (@($Snapshot.sources | Where-Object {
         $_.kind -ceq 'comment' -and $_.isValidator -and
-        (Get-SupersessionTime $_) -gt $sourceMap[$latest.source].createdAt -and
-        (Test-NegativeValidation (Get-Prose $_.body))
+        (Get-SupersessionTime $_) -ge $sourceMap[$latest.source].createdAt -and
+        (Test-NegativeValidation (Get-Prose $_.body) (Get-MarkdownText $_.body) -RequireRegression:$requireRegression -IncludeAbsentOutcome)
     }).Count -gt 0) { return $false }
     $laterRemovals = @($Snapshot.sources | Where-Object {
         $_.isMaintainer -and $_.kind -ceq 'unlabeled' -and $_.body -ceq "unlabeled: $Label" -and
@@ -771,11 +972,32 @@ function Test-AreaCause([string]$Paragraph, [string]$Quote, [string]$Replacement
     return $Paragraph -match "(?i)$cause" -and $Quote -match "(?i)$cause"
 }
 
-function Test-BlockedValidation([string]$Prose) {
+function Test-BlockedValidation([string]$Prose, [string]$CompletedReproduction = '',
+    [string]$ReferenceContext = '') {
     $resource = '(?:sample|repro(?:duction)?|repo(?:sitory)?|link|attachment|archive)'
     $blocked = '(?:inaccessible|unavailable|expired|missing|broken|not found|404|403|unauthorized|forbidden)'
-    return $Prose -match "(?i)\b$resource\b.{0,60}\b$blocked\b|\b$blocked\b.{0,60}\b$resource\b" -or
-        $Prose -match '(?i)\b(?:timed out|timeout|permission denied|authentication failed|authorization failed|network failure|infrastructure failure|build failed|failed to (?:download|clone|build|compile|install)|cannot (?:download|clone|build|compile|install))\b'
+    $failures = [regex]::Matches($Prose,
+        "(?i)\b$resource\b.{0,60}\b$blocked\b|\b$blocked\b.{0,60}\b$resource\b|" +
+        "\b(?:timed out|timeout|permission denied|authentication failed|authorization failed|network failure|infrastructure failure|build failed|failed to (?:download|clone|build|compile|install)|cannot (?:download|clone|build|compile|install))\b")
+    if ($failures.Count -eq 0) { return $false }
+    if (-not $CompletedReproduction -or
+        -not (Test-CurrentIssueScope $CompletedReproduction $ReferenceContext)) { return $true }
+    $start = $Prose.IndexOf($CompletedReproduction, [StringComparison]::Ordinal)
+    $gap = '[\s\S]{0,160}?'
+    $object = '(?:it|(?:(?:the|this|that|sample)\s+){0,3}(?:build|setup|problem|failure|link|sample|repro(?:duction)?|access))'
+    if ($CompletedReproduction -match "(?i)\b(?:not|no longer|cannot|can['\u2019]t|didn['\u2019]t|hasn['\u2019]t|haven['\u2019]t)\s+(?:(?:actually|yet|fully|successfully)\s+){0,3}(?:fixed|fixing|resolved|resolving|corrected|correcting|repaired|repairing)\s+$object\b") {
+        return $true
+    }
+    $resolved = "\b(?:after\s+(?:fixing|resolving|correcting|repairing)\s+|(?:(?:I|we)\s+)?(?:fixed|resolved|corrected|repaired)\s+)$object\b"
+    $outcome = Get-ValidationOutcomePattern $ReferenceContext
+    $completed = "\b(?:tested|retested)\s+$outcome\b$gap(?:$(Get-NoReproductionOutcomePattern $ReferenceContext))"
+    foreach ($failure in $failures) {
+        if ($start -lt 0 -or $failure.Index -lt $start -or
+            $failure.Index + $failure.Length -gt $start + $CompletedReproduction.Length) { return $true }
+        $remaining = $CompletedReproduction.Substring($failure.Index + $failure.Length - $start)
+        if ($remaining -notmatch "(?i)^$gap$resolved$gap$completed") { return $true }
+    }
+    return $false
 }
 
 function Test-TriageRetraction([string]$Paragraph) {
@@ -785,9 +1007,90 @@ function Test-TriageRetraction([string]$Paragraph) {
         $Paragraph -match '(?i)\b(triage|review|investigation)\s+(?:is|was|remains)\s+(incomplete|unfinished)\b'
 }
 
+function Get-NoReproductionOutcomePattern([string]$ReferenceContext) {
+    $outcome = Get-ValidationOutcomePattern $ReferenceContext
+    $modifiers = '(?:(?:successfully|reliably|consistently|actually|locally|independently)\s+){0,3}'
+    $negative = "(?:cannot|can['\u2019]t|could not|couldn['\u2019]t|(?:was|were|have been)\s+unable to|unable to|did not|didn['\u2019]t)"
+    return "(?:\b$negative\s+$modifiers(?:reproduce|replicate)\s+$outcome\b|\b$outcome\s+(?:(?:is|was|has been)\s+not|cannot|can['\u2019]t|could not|couldn['\u2019]t)\s+(?:be\s+)?$modifiers(?:reproduced|replicated)\b)"
+}
+
+function Test-UnobservedReproduction([string]$Prose, [string]$ReferenceContext = '') {
+    if (-not $ReferenceContext) { $ReferenceContext = $Prose }
+    $outcome = Get-ValidationOutcomePattern $ReferenceContext
+    $negative = "(?:did not|didn['\u2019]t|have not|haven['\u2019]t|has not|hasn['\u2019]t|had not|hadn['\u2019]t|never)"
+    $modifiers = '(?:(?:actually|yet|ever|even|personally|locally)\s+){0,3}'
+    $object = "(?:it|$outcome|(?:(?:the|this|your|provided)\s+)?(?:sample|repro(?:duction)?|project))"
+    $nonAttempt = "(?i)\b$negative\s+$modifiers(?:try|tried|test|tested|attempt(?:ed)?|run|ran|execute[ds]?)\b(?:\s+$object\b|\s*(?=[.;!?\r\n]|$))"
+    $untested = "(?i)(?<![\w])$object\s+(?:is|was|remains)\s+(?:untested|not\s+(?:yet\s+)?tested|never\s+tested)\b"
+    $gap = '(?:(?![;!?\r\n]|\.(?:\s|$)|\b(?:but|however|although|except|yet)\b).){0,60}'
+    $pendingOutcome = "(?i)(?:$(Get-NoReproductionOutcomePattern $ReferenceContext))$gap\b(?:until|pending|while\s+(?:awaiting|waiting\s+(?:for|on)))\b"
+    $pendingResource = '(?i)\b(?:pending|awaiting|waiting\s+(?:for|on))\s+(?:(?:a|an|the|your|their|requested|usable|working|minimal)\s+){0,3}(?:sample|repro(?:duction)?|project|access|permission|build|download)\b'
+    $paragraphs = @($Prose -split '\r?\n[ \t]*\r?\n')
+    $position = 0
+    foreach ($paragraph in [regex]::Split((Get-Prose $ReferenceContext), '(\r?\n[ \t]*\r?\n)')) {
+        if ($paragraph -cin $paragraphs -and
+            ($paragraph -match $nonAttempt -or $paragraph -match $untested -or
+                $paragraph -match $pendingOutcome -or $paragraph -match $pendingResource) -and
+            (Test-CurrentIssueScope $paragraph $ReferenceContext -ReferenceStart $position)) { return $true }
+        $position += $paragraph.Length
+    }
+    return $false
+}
+
+function Test-NoReproductionParagraph([string]$Paragraph, [string]$ReferenceContext = '') {
+    if (-not $ReferenceContext) { $ReferenceContext = $Paragraph }
+    $modifiers = '(?:(?:successfully|reliably|consistently|actually|locally|independently)\s+){0,3}'
+    $pastNegative = "\b(?:could\s+not|couldn['\u2019]t)\s+(?=(?:be\s+)?$modifiers(?:reproduce|replicate)d?\b)"
+    $candidate = [regex]::Replace($Paragraph, "(?i)$pastNegative", 'not ')
+    if ((Test-Interrogative $Paragraph) -or (Test-ConditionalEvidence $Paragraph) -or
+        (Test-TentativeEvidence $candidate) -or (Test-PositiveValidation $Paragraph $ReferenceContext) -or
+        (Test-UnobservedReproduction $Paragraph $ReferenceContext) -or
+        $Paragraph -match "(?i)\b(?:please|do not|don['\u2019]t|never|avoid|should not|must not|asked|instruct(?:ed|ion)?|recommend(?:ed|ation)?)\b") {
+        return $false
+    }
+    return $Paragraph -match "(?i)$(Get-NoReproductionOutcomePattern $ReferenceContext)"
+}
+
+function Test-NonRegressionValidation([string]$Paragraph, [string]$Prose, [string]$ReferenceContext = '') {
+    if ((Test-Interrogative $Paragraph) -or (Test-ConditionalEvidence $Paragraph -Decision) -or
+        (Test-TentativeEvidence $Paragraph) -or (Test-ForeignOutcome $Prose) -or
+        $Paragraph -match "(?i)\b(not|never|no longer|isn.t|wasn.t|doesn.t)\s+(?:(?:the|exactly|quite|really|actually|necessarily|at all|even)\s+){0,3}same (?:behavior|issue|problem)\b|\b(not|isn.t|wasn.t)\s+not (?:a )?regression\b") {
+        return $false
+    }
+    if (-not $ReferenceContext) { $ReferenceContext = $Prose }
+    $outcome = Get-ValidationOutcomePattern $ReferenceContext
+    $subject = $outcome
+    $foreignReference = Test-ForeignIssueReference $ReferenceContext
+    if (-not $foreignReference) { $subject = "(?:$outcome|this|it)" }
+    $clause = "(?:(?![;!?\r\n]|\.(?:\s|$)|\b(?:but|however|although|except|yet|not|never|cannot|isn['\u2019]t|wasn['\u2019]t|doesn['\u2019]t)\b).){0,80}"
+    $sameOutcome = '(?:(?:the|this|that|reported|actual|original)\s+){1,3}same (?:behavior|issue|problem)'
+    $comparison = "(?<![\w])$subject(?![\w])$clause\bsame (?:behavior|issue|problem)\b"
+    if (-not $foreignReference) { $comparison = "(?:$comparison|\b$sameOutcome\b)" }
+    $framework = '(?:\.NET(?:\s+MAUI)?|MAUI)'
+    $version = '\d+(?:\.\d+){0,3}(?:[- .]*(?:preview|rc)[- .]*\d+(?:\.\d+)*)?(?![\w-]|\.(?=\w))'
+    $earlierVersion = "\b(?:older|previous|earlier)\s+(?:(?:versions?|releases?)\s+of\s+)?$framework\s+(?:(?:versions?|releases?)\s+)?$version"
+    return $Paragraph -match "(?i)(?<![\w])$subject\s+(?:is|was)\s+not\s+(?:a\s+)?regression\b" -or
+        $Paragraph -match "(?i)$comparison$clause$earlierVersion"
+}
+
+function Test-WebView2Regression([string]$Paragraph, [string]$ReferenceContext = '', [switch]$Negative) {
+    if ((Test-Interrogative $Paragraph) -or (Test-ConditionalEvidence $Paragraph -Decision) -or
+        (Test-TentativeEvidence $Paragraph) -or $Paragraph -match (Get-DeniedEvidencePattern) -or
+        -not (Test-CurrentIssueScope $Paragraph $ReferenceContext)) { return $false }
+    if (-not $ReferenceContext) { $ReferenceContext = $Paragraph }
+    $subject = Get-ValidationOutcomePattern $ReferenceContext
+    if (-not (Test-ForeignIssueReference $ReferenceContext) -and
+        -not (Test-ForeignOutcome $ReferenceContext)) { $subject = "(?:$subject|this|it)" }
+    $classification = '(?:(?:a|the)\s+)?(?:(?:confirmed|known)\s+)?(?:WebView2(?:\s+runtime)?\s+regression|regression\s+(?:in|within|from|caused by|due to)\s+(?:the\s+)?WebView2(?:\s+runtime)?)\b'
+    $predicate = if ($Negative) {
+        "(?:(?:is|was|has been)\s+(?:not|no longer)|isn['\u2019]t|wasn['\u2019]t)\s+"
+    } else { '(?:is|was|has been)\s+' }
+    return $Paragraph -match "(?i)(?<![\w])$subject\s+$predicate(?:(?:caused by|due to)\s+)?$classification"
+}
+
 function Test-AssessmentSuperseded($Source, [string]$Label) {
     $contraryLabels = @(switch ($Label) {
-        's/no-repro' { 's/verified'; 'i/regression'; 'blazor-webview2-regression' }
+        's/no-repro' { 's/verified'; 'i/regression'; 'blazor-webview2-regression'; 'regressed-in-*' }
         'not-regression' { 'i/regression'; 'potential-regression'; 'blazor-webview2-regression'; 'regressed-in-*' }
         's/try-latest-version' { 's/verified'; 's/no-repro' }
     })
@@ -799,37 +1102,42 @@ function Test-AssessmentSuperseded($Source, [string]$Label) {
             @($contraryLabels | Where-Object { Test-Pattern $candidate.body "labeled: $_" }).Count -gt 0) { return $true }
         if ($candidate.kind -cne 'comment') { continue }
         $sameSource = $candidate.id -ceq $Source.id
-        if (-not $sameSource -and (Get-SupersessionTime $candidate) -le $Source.createdAt) { continue }
+        if (-not $sameSource -and (Get-SupersessionTime $candidate) -lt $Source.createdAt) { continue }
         if ($Label -ceq 's/try-latest-version' -and -not $sameSource -and
             $candidate.author -ceq $sourceMap["issue:$IssueNumber"].author -and -not $candidate.isMaintainer -and
             $candidate.author -match '^[A-Za-z0-9_-]+$' -and
             $policy.automationAuthors -notcontains $candidate.author) { return $true }
         if (-not $candidate.isValidator) { continue }
         $prose = Get-Prose $candidate.body
+        $referenceContext = Get-MarkdownText $candidate.body
         foreach ($paragraph in ($prose -split '\r?\n[ \t]*\r?\n')) {
             if ($candidate.isMaintainer -and
-                (Test-DecisionParagraph $paragraph $Label 'remove' @() -Superseding)) { return $true }
+                (Test-DecisionParagraph $paragraph $Label 'remove' @() -ReferenceContext $referenceContext -Superseding)) { return $true }
             if (Test-Interrogative $paragraph) { continue }
             if ($Label -notin @('s/no-repro', 'not-regression') -and
                 $paragraph -match '(?i)\b(should|could|may|might|would|will|maybe|perhaps|possibly|probably|likely|potentially|suspect|assume|expect)\b') { continue }
             switch ($Label) {
                 's/no-repro' {
-                    if (Test-ConfirmationParagraph $paragraph) { return $true }
+                    if ((Test-PositiveValidation $paragraph $referenceContext) -or
+                        (Test-ConfirmationParagraph $paragraph $referenceContext -RequireRegression)) { return $true }
                 }
                 'not-regression' {
-                    if ((Test-ConfirmationParagraph $paragraph) -and
-                        (Test-RegressionValidation $paragraph)) { return $true }
+                    if (Test-ConfirmationParagraph $paragraph $referenceContext -RequireRegression) { return $true }
                 }
                 'blazor-webview2-regression' {
-                    if (Test-NegativeValidation $paragraph) { return $true }
+                    if ((Test-NegativeValidation $paragraph $referenceContext -RequireRegression -IncludeAbsentOutcome) -or
+                        (Test-WebView2Regression $paragraph $referenceContext -Negative)) { return $true }
                 }
                 's/triaged' {
-                    if (Test-TriageRetraction $paragraph) { return $true }
+                    if ((Test-CurrentIssueScope $paragraph $referenceContext) -and
+                        (Test-TriageRetraction $paragraph)) { return $true }
                 }
                 's/try-latest-version' {
                     if (-not $sameSource -and
+                        (Test-CurrentIssueScope $paragraph $referenceContext) -and
                         $paragraph -match $completedResponse -and
-                        -not (Test-NegativeValidation $paragraph) -and
+                        $paragraph -notmatch (Get-DeniedEvidencePattern) -and
+                        -not (Test-NegativeValidation $paragraph $referenceContext) -and
                         -not (Test-BlockedValidation $prose)) { return $true }
                 }
             }
@@ -844,32 +1152,34 @@ function Get-TechnicalAssessment($Evidence, [string]$Label) {
         $source = $sourceMap[$reference.source]
         if (-not $source.isValidator -or $source.kind -cne 'comment') { return $false }
         $prose = Get-Prose $source.body
+        $referenceContext = Get-MarkdownText $source.body
         $paragraphs = @($prose -split '\r?\n[ \t]*\r?\n' |
             Where-Object { $_.Contains($reference.quote, [StringComparison]::Ordinal) })
         if ($paragraphs.Count -ne 1) { return $false }
         $paragraph = $paragraphs[0]
-        if (Test-Interrogative $paragraph) { return $false }
+        if ((Test-Interrogative $paragraph) -or
+            $paragraph -match (Get-DeniedEvidencePattern) -or
+            -not (Test-CurrentIssueScope $paragraph $referenceContext)) { return $false }
         $assessed = switch ($Label) {
             's/triaged' {
+                -not (Test-ConditionalEvidence $paragraph -Decision) -and
+                -not (Test-TentativeEvidence $paragraph) -and
                 $paragraph -match '(?i)\b(reviewed|triaged|investigated)\b.{0,50}\b(issue|report|reproduction|sample|behavior)\b|\b(completed|finished)\b.{0,30}\b(triage|review|investigation)\b' -and
                 -not (Test-TriageRetraction $paragraph)
             }
             's/try-latest-version' {
-                Test-NewerPublishedVersionRequest $paragraph $reference.quote
+                Test-NewerPublishedVersionRequest $paragraph $reference.quote $referenceContext
             }
             's/no-repro' {
-                $paragraph -match "(?i)\b(cannot|can't|unable to|could not|not)\s+(?:be\s+)?reproduce(?:d)?\b" -and
-                -not (Test-BlockedValidation $prose)
+                (Test-NoReproductionParagraph $paragraph $referenceContext) -and
+                -not (Test-BlockedValidation $prose -CompletedReproduction $paragraph -ReferenceContext $referenceContext) -and
+                -not (Test-UnobservedReproduction $prose $referenceContext)
             }
             'not-regression' {
-                -not (Test-ConditionalEvidence $paragraph -Decision) -and
-                -not (Test-TentativeEvidence $paragraph) -and
-                $paragraph -match '(?i)\bnot (?:a )?regression\b|\bsame (?:behavior|issue|problem)\b.{0,80}\b(?:older|previous|earlier)\b' -and
-                $paragraph -notmatch "(?i)\b(not|never|no longer|isn.t|wasn.t|doesn.t)\s+(?:(?:the|exactly|quite|really|actually|necessarily|at all|even)\s+){0,3}same (?:behavior|issue|problem)\b|\b(not|isn.t|wasn.t)\s+not (?:a )?regression\b"
+                Test-NonRegressionValidation $paragraph $prose $referenceContext
             }
             'blazor-webview2-regression' {
-                $paragraph -match '(?i)\bWebView2\b' -and
-                $paragraph -match '(?i)\b(regression|regressed)\b' -and
+                (Test-WebView2Regression $paragraph $referenceContext) -and
                 @(Get-Confirmation @($reference)).Count -gt 0
             }
             default { throw "Unsupported technical assessment: $Label" }
@@ -878,13 +1188,39 @@ function Get-TechnicalAssessment($Evidence, [string]$Label) {
     })
 }
 
+function Test-WorkaroundFailure([string]$Paragraph, [string]$ReferenceContext = '') {
+    if (-not (Test-CurrentIssueScope $Paragraph $ReferenceContext)) { return $false }
+    $candidate = [regex]::Replace($Paragraph, '(?i)\bsuggested\s+(?=workarounds?\b)', '')
+    if ((Test-Interrogative $Paragraph) -or (Test-ConditionalEvidence $Paragraph -Decision) -or
+        (Test-TentativeEvidence $candidate) -or $candidate -match (Get-DeniedEvidencePattern) -or
+        (Test-ForeignOutcome $Paragraph) -or (Test-BlockedValidation $Paragraph) -or
+        $Paragraph -match '(?i)\b(?:do|does|did|has|have|is|are|was|were)\s+(?:(?:the|this|that|suggested|my|your|our|their|a|any)\s+){0,3}workarounds?\b') {
+        return $false
+    }
+    $negative = "(?:not|never|cannot|can['\u2019]t|(?:do|does|did|is|was|were|has|have|are)n['\u2019]t)"
+    $gap = "(?:(?![;!?\r\n]|\.(?:\s|$)|\b(?:but|however|instead|can|$negative)\b).){0,80}?"
+    $positive = '(?:work(?:s|ed|ing)?|fix(?:es|ed|ing)?|resolv(?:e[ds]?|ing)|help(?:s|ed|ing)?|succeed(?:s|ed|ing)?)'
+    $state = '(?:(?:is|was|are|were|has|have|had|been|does|did|now|currently|still|actually|successfully|reliably|consistently|again|finally)\s+){0,6}'
+    $contrast = 'and|but|however|although|except|yet|instead'
+    $clause = "(?:(?![,;!?\r\n]|\.(?:\s|$)|\b(?:$contrast)\b).){0,120}"
+    $connector = "(?:[,;]\s*(?:(?:$contrast)\s+)?|\b(?:$contrast)\b\s+|\.(?:\s|$)(?:now\s+)?it\s+)"
+    # Inherited outcomes stay bound to the preceding workaround statement.
+    $continuation = "\bworkarounds?\b$clause$connector(?:it\s+)?$state$positive\b"
+    if ($Paragraph -match "(?i)\bworkarounds?\s+$state$positive\b|$continuation") { return $false }
+    $attempt = '(?:(?:successfully|reliably|consistently|actually|fully|independently|personally|locally|easily|immediately)\s+){0,4}(?<outcome>[a-z]+)\b'
+    foreach ($failure in [regex]::Matches($Paragraph, "(?i)\bworkarounds?\b$gap\bfail(?:s|ed)?\s+to\s+$attempt")) {
+        if ($failure.Groups['outcome'].Value -notin @('work', 'fix', 'resolve', 'help')) { return $false }
+    }
+    return $Paragraph -match "(?i)\bworkarounds?\b$gap\b(?:(?:does(?:n.t| not)|do(?:n.t| not))\s+(?:work|fix|resolve|help)|fail(?:s|ed)?)\b"
+}
+
 function Assert-Evidence($Decision) {
     if ($Decision.evidence -isnot [array] -or $Decision.evidence.Count -lt 1 -or
         $Decision.evidence.Count -gt $policy.maxSources) { throw 'Each change needs one to four evidence sources.' }
     foreach ($reference in $Decision.evidence) {
         Assert-Keys $reference @('source', 'quote')
         if ($reference.source -isnot [string] -or -not $sourceMap.ContainsKey($reference.source) -or
-            $reference.quote -isnot [string] -or $reference.quote.Length -lt 12 -or $reference.quote.Length -gt 1500 -or
+            $reference.quote -isnot [string] -or $reference.quote.Length -lt 7 -or $reference.quote.Length -gt 1500 -or
             -not $sourceMap[$reference.source].body.Contains($reference.quote, [StringComparison]::Ordinal) -or
             -not (Get-Prose $sourceMap[$reference.source].body).Contains($reference.quote, [StringComparison]::Ordinal)) {
             throw "Invalid, fabricated or non-prose evidence for $($Decision.label)."
@@ -942,9 +1278,10 @@ function Assert-Change($Decision, [string]$Action, $Snapshot, [string[]]$Effecti
         }
         if ($label.StartsWith('regressed-in-')) {
             $version = $label.Substring('regressed-in-'.Length)
-            if ($version -notmatch '^\d' -or @($confirmations | Where-Object {
-                Test-RegressionValidation $_.quote $version
-            }).Count -eq 0) { throw "No first-bad-version evidence supports $label." }
+            if ($version -notmatch '^\d' -or
+                @(Get-Confirmation $Decision.evidence -RequireRegression -FirstBadVersion $version).Count -eq 0) {
+                throw "No full-paragraph first-bad-version evidence supports $label."
+            }
         }
         if ($policy.technicalAssessment -ccontains $label -and
             @(Get-TechnicalAssessment $Decision.evidence $label).Count -eq 0) {
@@ -975,7 +1312,13 @@ function Assert-Change($Decision, [string]$Action, $Snapshot, [string[]]$Effecti
             } elseif ((Get-Category $replacementLabel) -ceq 'content') {
                 $transitionEvidence += @($proposal.additions | Where-Object { $_.label -ceq $replacementLabel } |
                     ForEach-Object { $_.evidence } |
-                    Where-Object { $sourceMap[$_.source].kind -in @('issue', 'comment') })
+                    Where-Object {
+                        $reference = $_
+                        $sourceMap[$reference.source].kind -in @('issue', 'comment') -and
+                        @($Decision.evidence | Where-Object {
+                            $_.source -ceq $reference.source -and $_.quote -ceq $reference.quote
+                        }).Count -gt 0
+                    })
             } else {
                 $transitionEvidence += $validatorEvidence
             }
@@ -987,11 +1330,12 @@ function Assert-Change($Decision, [string]$Action, $Snapshot, [string[]]$Effecti
         if ($confirmedTransition -and $label -cne 'needs-area-label' -and $lastRequest.Count -gt 0 -and
             @($transitionEvidence | Where-Object {
                 $source = $sourceMap[$_.source]
-                $source.createdAt -ge $lastRequest[0].createdAt
+                $source.createdAt -gt $lastRequest[0].createdAt
             }).Count -eq 0) {
             $confirmedTransition = $false
         }
         $areaCorrection = $label.StartsWith('area-') -and
+            @($Snapshot.labels | Where-Object { $_.StartsWith('area-') }).Count -eq 1 -and
             @($proposal.additions | Where-Object {
                 $addition = $_
                 $addition.label.StartsWith('area-') -and @($maintainerEvidence | Where-Object {
@@ -1010,11 +1354,22 @@ function Assert-Change($Decision, [string]$Action, $Snapshot, [string[]]$Effecti
         $contradictedFacet = $label -in @('has-workaround', 'repro:device-only') -and
             @($Decision.evidence | Where-Object {
                 $source = $sourceMap[$_.source]
-                $recent = $lastRequest.Count -eq 0 -or
-                    ($source.kind -eq 'comment' -and (Get-SupersessionTime $source) -ge $lastRequest[0].createdAt)
+                $recent = $source.kind -in @('issue', 'comment') -and
+                    ($lastRequest.Count -eq 0 -or
+                        ($source.kind -eq 'comment' -and (Get-SupersessionTime $source) -gt $lastRequest[0].createdAt))
+                $prose = Get-Prose $source.body
+                $referenceContext = Get-MarkdownText $source.body
+                $quote = $_.quote
+                $paragraphs = @($prose -split '\r?\n[ \t]*\r?\n' |
+                    Where-Object { $_.Contains($quote, [StringComparison]::Ordinal) })
                 $recent -and (
-                    ($label -eq 'has-workaround' -and $_.quote -match "(?i)\bworkarounds?\b.{0,80}\b(?:(?:does(?:n.t| not)|do(?:n.t| not))\s+(?:work|fix|resolve|help)|fail(?:s|ed)?)\b") -or
-                    ($label -eq 'repro:device-only' -and $_.quote -match '(?i)\b(reproduced|reproducible)\b.{0,80}\bsimulator\b')
+                    ($label -eq 'has-workaround' -and $paragraphs.Count -eq 1 -and
+                        (Test-WorkaroundFailure $quote $referenceContext) -and
+                        (Test-WorkaroundFailure $paragraphs[0] $referenceContext)) -or
+                    ($label -eq 'repro:device-only' -and $paragraphs.Count -eq 1 -and
+                        (Test-SimulatorReproduction $quote $referenceContext) -and
+                        (Test-SimulatorReproduction $paragraphs[0] $referenceContext) -and
+                        -not (Test-NegativeValidation $prose $referenceContext -IncludeAbsentOutcome))
                 )
             }).Count -gt 0
         if (-not ($confirmedTransition -or $areaCorrection -or $contradictedFacet)) {
@@ -1113,6 +1468,30 @@ if (@($allDecisions | Where-Object { $_.label.StartsWith('p/') }).Count -gt 0 -a
     @($effectiveLabels | Where-Object { $_.StartsWith('p/') }).Count -gt 1) {
     throw 'A priority change must not leave conflicting priority commitments.'
 }
+if (@($names | Where-Object { Test-Pattern $_ 'regressed-in-*' }).Count -gt 0 -and
+    @($effectiveLabels | Where-Object { Test-Pattern $_ 'regressed-in-*' }).Count -gt 1) {
+    throw 'A regression boundary change must not leave multiple regressed-in-* labels active; propose supported removals or withhold the change.'
+}
+$incompatibleStates = @(
+    @{ label = 's/needs-verification'; contrary = @('s/verified') }
+    @{ label = 's/no-repro'; contrary = @('s/verified', 'i/regression', 'blazor-webview2-regression', 'regressed-in-*') }
+    @{ label = 'not-regression'; contrary = @('potential-regression', 'i/regression', 'blazor-webview2-regression', 'regressed-in-*') }
+    @{ label = 'potential-regression'; contrary = @('i/regression', 'blazor-webview2-regression', 'regressed-in-*') }
+)
+foreach ($state in $incompatibleStates) {
+    $family = @($state.label) + $state.contrary
+    $changed = @($names | Where-Object {
+        $name = $_
+        @($family | Where-Object { Test-Pattern $name $_ }).Count -gt 0
+    })
+    $contrary = @($effectiveLabels | Where-Object {
+        $name = $_
+        @($state.contrary | Where-Object { Test-Pattern $name $_ }).Count -gt 0
+    })
+    if ($changed.Count -gt 0 -and $effectiveLabels -ccontains $state.label -and $contrary.Count -gt 0) {
+        throw "A status change must not leave $($state.label) active with $($contrary -join ', '); propose supported removals or withhold the change."
+    }
+}
 foreach ($action in @('add', 'remove')) {
     $decisions = @(if ($action -eq 'add') { $proposal.additions } else { $proposal.removals })
     foreach ($decision in $decisions) { Assert-Change $decision $action $current $effectiveLabels }
@@ -1148,21 +1527,22 @@ $marker = if ($CommandCommentId -gt 0) { "issue-triage-command:$CommandCommentId
     elseif ($env:GITHUB_RUN_ID) { "issue-triage-run:$($env:GITHUB_RUN_ID)" }
     else { "issue-triage-local:$($current.contextHash)" }
 $existing = @($current.resultComments | Where-Object {
-    $_.body.Contains("<!-- $marker -->")
+    Test-TriageReportMarker $_.body $marker 'invocation'
 })
 if ($existing.Count -gt 1) { throw 'Multiple triage reports exist for this invocation; use a fresh command or manual dispatch.' }
 $report = [Collections.Generic.List[string]]::new()
 $decisionMarkers = [Collections.Generic.List[string]]::new()
-$report.Add("<!-- $marker -->")
+$report.Add("Issue triage invocation: ``$marker``")
+$report.Add('')
 $report.Add('**Issue triage: validated label proposal**')
 $report.Add('')
-$report.Add('The label handlers apply the delta below. Their final outcome is recorded in the workflow run; publication is not an atomic transaction.')
+$report.Add('This report describes the validated requested delta, not completed writes. Staged runs suppress writes; consult the workflow result for actual handler outcomes. Publication is not an atomic transaction.')
 foreach ($action in @('add', 'remove', 'withheld')) {
     $decisions = @(switch ($action) { 'add' { $proposal.additions }; 'remove' { $proposal.removals }; 'withheld' { $proposal.withheld } })
     foreach ($decision in $decisions) {
-        $decisionMarker = "<!-- issue-triage-decision:${action}:$(Get-DecisionFingerprint $decision $action) -->"
+        $decisionMarker = "issue-triage-decision:${action}:$(Get-DecisionFingerprint $decision $action)"
         $decisionMarkers.Add($decisionMarker)
-        $report.Add($decisionMarker)
+        $report.Add("Issue triage decision: ``$decisionMarker``")
         $reason = [Net.WebUtility]::HtmlEncode($decision.reason) -replace '([\\`*_{}\[\]|])', '\$1'
         $report.Add("- **${action}:** ``$($decision.label)`` - $reason")
         if ($action -ne 'withheld') {
@@ -1188,7 +1568,7 @@ if ($env:GITHUB_RUN_ID) {
 $body = $report -join "`n"
 if ($body.Length -gt 50000) { throw 'The rendered comment exceeds its limit.' }
 if ($existing.Count -eq 1 -and @($decisionMarkers | Where-Object {
-    -not $existing[0].body.Contains($_, [StringComparison]::Ordinal)
+    -not (Test-TriageReportMarker $existing[0].body $_ 'decision')
 }).Count -gt 0) {
     throw 'The prior triage report does not cover this proposal; use a fresh command or manual dispatch before applying changed decisions.'
 }
