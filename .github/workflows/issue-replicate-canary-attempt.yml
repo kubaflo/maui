@@ -26,6 +26,8 @@ on:
         value: ${{ jobs.verify.outputs.result }}
       verdict:
         value: ${{ jobs.verify.outputs.verdict }}
+      observed_assertion:
+        value: ${{ jobs.verify.outputs.observed_assertion }}
 
 permissions: {}
 
@@ -36,6 +38,7 @@ jobs:
     outputs:
       result: ${{ steps.transfer.outputs.payload }}
       verdict: ${{ steps.transfer.outputs.verdict }}
+      observed_assertion: ${{ steps.transfer.outputs.observedAssertion }}
     env:
       APPIUM_HOME: ${{ inputs.platform == 'ios' && '/Users/runner/.appium' || '/home/runner/.appium' }}
     steps:
