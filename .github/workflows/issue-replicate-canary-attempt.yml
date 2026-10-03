@@ -84,6 +84,18 @@ jobs:
         run: |
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.SelectXcode.ps1" `
             -RepoRoot "$env:RUNNER_TEMP/maui" -Provider GitHub
+      - name: Bootstrap the exact source-pinned SDK before restoring tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          export use_installed_dotnet_cli=false
+          source "$RUNNER_TEMP/maui/eng/common/tools.sh"
+          ReadGlobalVersion dotnet
+          if [[ "$_ReadGlobalVersion" == *-* ]]; then
+            export runtime_source_feed=https://ci.dot.net/public
+          fi
+          InitializeDotNetCli true
+          printf '%s\n' "$_InitializeDotNetCli" >> "$GITHUB_PATH"
       - name: Provision pinned native SDK and workloads
         shell: pwsh
         working-directory: ${{ runner.temp }}/maui
