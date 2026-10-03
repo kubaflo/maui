@@ -78,6 +78,11 @@ fetches trusted scripts from the immutable public pipeline commit. Jobs needing
 the sample re-download its pinned public source and require the original ZIP hash.
 If the source changes or disappears, the attempt is explicitly inconclusive.
 
+The trusted execution wrapper loads the validator, executor and bounded exporter
+into its parent process before launching an author build or generated test.
+It exports in that same process, including bounded failed-build diagnostics;
+no later task re-reads executable scripts from the mutable native job workspace.
+
 The isolated posting job imports only the snapshot, bounded sample build record,
 and verified result, validates
 the existing issue/revision/patch contracts, and publishes the expandable report.
@@ -94,6 +99,15 @@ states that no generated test ran and publishes no candidate or assertion claim.
 iOS UI execution uses a hosted simulator, not a physical iPhone. Reports labeled
 `repro:device-only` still need physical-device validation; a simulator pass or an
 unsupported generated candidate cannot rule out the reported behavior.
+
+Repeated assertions run in separate fresh hosted jobs, each independently
+provisioning and checking out the same pinned source and candidate. First-attempt
+build outputs, ignored files, SDK directories and simulator state are never
+transferred to the second job. Only the bounded first-attempt identities and
+candidate hash are compared. Tracked framework and candidate files are hashed
+before execution and rechecked afterward; changes invalidate the attempt.
+Constant-only NUnit and xUnit assertions are rejected, but generated code still
+requires human fidelity review: an executed failure is not proof of the original bug.
 
 ## Deployment and isolation
 

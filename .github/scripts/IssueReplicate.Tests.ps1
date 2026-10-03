@@ -168,7 +168,9 @@ Describe 'Bounded generated tests and reports' {
             })
         }
         foreach ($content in @('Assert.Fail("fake reproduction");', 'Assert.True(false);',
-            'Assert.True(false, "fake reproduction");')) {
+            'Assert.True(false, "fake reproduction");', 'Assert.That(false, Is.True);',
+            'Assert.That(false);', 'Assert.That(1, Is.EqualTo(0));', 'Assert.Equal(1, 0);', 'Assert.Equal(1 + 1, 0);',
+            'Assert.AreEqual("expected", "wrong");', 'Assert.IsFalse(true);')) {
             $candidate.files[0].content = $content
             { Assert-IssueReplicateCandidate -Candidate $candidate -IssueNumber 12345 } | Should -Throw
         }
@@ -346,7 +348,139 @@ Describe 'Tool-free candidate generation' {
     }
 }
 
+Describe 'Bounded data serialization' {
+    BeforeAll {
+        function New-TestEnvelope {
+            param($Value)
+            $bytes = [Text.Encoding]::UTF8.GetBytes(($Value | ConvertTo-Json -Depth 6 -Compress))
+            $stream = [IO.MemoryStream]::new()
+            $gzip = [IO.Compression.GZipStream]::new($stream, [IO.Compression.CompressionLevel]::Optimal, $true)
+            try { $gzip.Write($bytes, 0, $bytes.Length) } finally { $gzip.Dispose() }
+            try { [Convert]::ToBase64String($stream.ToArray()) } finally { $stream.Dispose() }
+        }
+    }
+
+    It 'round-trips only approved regular data files (<Kind>)' -TestCases @(
+        @{ Kind = 'Input'; Name = 'manifest.json' },
+        @{ Kind = 'Sample'; Name = 'sample-result.json' },
+        @{ Kind = 'Candidate'; Name = 'candidate.json' },
+        @{ Kind = 'Verified'; Name = 'result.json' }
+    ) {
+        param($Kind, $Name)
+        $source = Join-Path $TestDrive "encode-$Kind"
+        $target = Join-Path $TestDrive "decode-$Kind"
+        New-Item -ItemType Directory $source | Out-Null
+        $bytes = [Text.Encoding]::UTF8.GetBytes('{"value":"preserved bytes"}')
+        [IO.File]::WriteAllBytes((Join-Path $source $Name), $bytes)
+        Set-Content (Join-Path $source 'unapproved.ps1') 'throw "must never transfer"'
+        $encoded = & (Join-Path $PSScriptRoot 'IssueReplicate.Transport.ps1') `
+            -Mode Export -Kind $Kind -Directory $source
+        & (Join-Path $PSScriptRoot 'IssueReplicate.Transport.ps1') `
+            -Mode Import -Kind $Kind -Directory $target -Encoded $encoded
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $target $Name))) |
+            Should -Be ([Convert]::ToBase64String($bytes))
+        @(Get-ChildItem $target).Count | Should -Be 1
+        { & (Join-Path $PSScriptRoot 'IssueReplicate.Transport.ps1') `
+            -Mode Import -Kind $Kind -Directory $target -Encoded $encoded } |
+            Should -Throw '*overwrite*'
+    }
+
+    It 'rejects invalid envelopes before writing files (<Invalid>)' -TestCases @(
+        @{ Invalid = 'hash' }, @{ Invalid = 'duplicate' }, @{ Invalid = 'missing' },
+        @{ Invalid = 'path' }, @{ Invalid = 'oversized' }, @{ Invalid = 'malformed' }
+    ) {
+        param($Invalid)
+        $bytes = [Text.Encoding]::UTF8.GetBytes('{}')
+        $file = @{
+            name = 'result.json'
+            content = [Convert]::ToBase64String($bytes)
+            sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+        }
+        $envelope = @{ schemaVersion = 1; kind = 'Verified'; files = @($file) }
+        switch ($Invalid) {
+            'hash' { $file.sha256 = '0' * 64 }
+            'duplicate' { $envelope.files += $file.Clone() }
+            'missing' { $file.name = 'feedback.txt' }
+            'path' { $file.name = '../result.json' }
+            'oversized' { $file.content = [Convert]::ToBase64String([byte[]]::new(16385)) }
+            'malformed' { $file.content = 'not-base64!' }
+        }
+        $target = Join-Path $TestDrive "rejected-$Invalid"
+        $encoded = New-TestEnvelope $envelope
+        { & (Join-Path $PSScriptRoot 'IssueReplicate.Transport.ps1') `
+            -Mode Import -Kind Verified -Directory $target -Encoded $encoded } | Should -Throw
+        Test-Path $target | Should -BeFalse
+    }
+
+    It 'rejects missing required data, malformed encoding and bounded-decompression overflow' {
+        $source = Join-Path $TestDrive 'missing-required'
+        New-Item -ItemType Directory $source | Out-Null
+        { & (Join-Path $PSScriptRoot 'IssueReplicate.Transport.ps1') `
+            -Mode Export -Kind Verified -Directory $source } | Should -Throw '*Required*'
+        foreach ($encoded in @('bad!', ('a' * 122881), (New-TestEnvelope @{ padding = 'a' * 330000 }))) {
+            { & (Join-Path $PSScriptRoot 'IssueReplicate.Transport.ps1') `
+                -Mode Import -Kind Verified -Directory (Join-Path $TestDrive 'overflow') -Encoded $encoded } |
+                Should -Throw
+        }
+        Test-Path (Join-Path $TestDrive 'overflow') | Should -BeFalse
+    }
+}
+
 Describe 'Author sample target selection' {
+    It 'exports with preloaded trusted code even when the child replaces scripts (exit=<ExitCode>)' -TestCases @(
+        @{ ExitCode = 0 }, @{ ExitCode = 1 }
+    ) {
+        param($ExitCode)
+        $tools = Join-Path $TestDrive "protected-tools-$ExitCode"
+        $inputDir = Join-Path $TestDrive "protected-input-$ExitCode"
+        $outputDir = Join-Path $TestDrive "protected-output-$ExitCode"
+        New-Item -ItemType Directory -Path $tools, $inputDir | Out-Null
+        foreach ($name in @('Core', 'Sample', 'Transport', 'Run')) {
+            Copy-Item -LiteralPath (Join-Path $PSScriptRoot "IssueReplicate.$name.ps1") -Destination $tools
+        }
+        $zipPath = Join-Path $inputDir 'sample.zip'
+        $stream = [IO.File]::Create($zipPath)
+        $zip = [IO.Compression.ZipArchive]::new($stream, [IO.Compression.ZipArchiveMode]::Create)
+        $writer = [IO.StreamWriter]::new($zip.CreateEntry('Sample.csproj').Open())
+        $writer.Write('<Project><PropertyGroup><TargetFramework>net10.0-ios27.0</TargetFramework></PropertyGroup></Project>')
+        $writer.Dispose()
+        $zip.Dispose()
+        $stream.Dispose()
+        @{
+            schemaVersion = 1; platform = 'ios'; targetSha = 'a' * 40
+            sampleSha256 = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        } | ConvertTo-Json | Set-Content (Join-Path $inputDir 'manifest.json')
+        $global:issueReplicatePoisonedTools = $tools
+        $global:issueReplicateChildExit = $ExitCode
+        function dotnet {
+            foreach ($name in @('Core', 'Transport')) {
+                Set-Content (Join-Path $global:issueReplicatePoisonedTools "IssueReplicate.$name.ps1") `
+                    'throw "Mutable exporter was executed after child code."'
+            }
+            $global:LASTEXITCODE = $global:issueReplicateChildExit
+            if ($global:issueReplicateChildExit) { 'error NETSDK1140: Unsupported iOS target.' }
+        }
+        $priorOutput = $env:GITHUB_OUTPUT
+        $env:GITHUB_OUTPUT = Join-Path $TestDrive "protected-github-output-$ExitCode"
+        try {
+            $run = {
+                & (Join-Path $tools 'IssueReplicate.Run.ps1') -Mode Sample -InputDirectory $inputDir `
+                    -OutputDirectory $outputDir -Provider GitHub
+            }
+            if ($ExitCode) { $run | Should -Throw '*did not build*' } else { & $run }
+            $encoded = (Get-Content -Raw $env:GITHUB_OUTPUT).Trim().Substring('payload='.Length)
+            $decoded = Join-Path $TestDrive "protected-decoded-$ExitCode"
+            & (Join-Path $PSScriptRoot 'IssueReplicate.Transport.ps1') -Mode Import -Kind Sample `
+                -Directory $decoded -Encoded $encoded
+            $record = Get-Content -Raw (Join-Path $decoded 'sample-result.json') | ConvertFrom-Json
+            $record.buildSucceeded | Should -Be ($ExitCode -eq 0)
+            $record.targetFramework | Should -Be 'net10.0-ios27.0'
+        } finally {
+            $env:GITHUB_OUTPUT = $priorOutput
+            Remove-Variable issueReplicatePoisonedTools, issueReplicateChildExit -Scope Global
+        }
+    }
+
     It 'builds the exact existing iOS TFM without dropping its platform version' -TestCases @(
         @{ Tfm = 'net10.0-ios'; ExitCode = 0 },
         @{ Tfm = 'net10.0-ios27.0'; ExitCode = 0 },
@@ -397,22 +531,26 @@ Describe 'Author sample target selection' {
 
 Describe 'Pinned test verification' {
     It 'exports only immutable candidates with matching assertions (mutation=<Mutate>, different=<Different>)' -TestCases @(
-        @{ Mutate = $false; Different = $false },
-        @{ Mutate = $true; Different = $false },
-        @{ Mutate = $false; Different = $true }
+        @{ Mutate = $false; Different = $false; TrackedMutation = $false },
+        @{ Mutate = $true; Different = $false; TrackedMutation = $false },
+        @{ Mutate = $false; Different = $true; TrackedMutation = $false },
+        @{ Mutate = $false; Different = $false; TrackedMutation = $true }
     ) {
-        param($Mutate, $Different)
-        $repo = Join-Path $TestDrive "maui-fixture-$Mutate-$Different"
+        param($Mutate, $Different, $TrackedMutation)
+        $repo = Join-Path $TestDrive "maui-fixture-$Mutate-$Different-$TrackedMutation"
         $projectDir = Join-Path $repo 'src/Core/tests/UnitTests'
         New-Item -ItemType Directory -Path $projectDir -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $projectDir 'Core.UnitTests.csproj') -Value '<Project />'
         & git -C $repo init -q
-        & git -C $repo -c user.name=Fixture -c user.email=fixture@example.invalid commit -q --allow-empty -m Fixture
+        Set-Content -LiteralPath (Join-Path $repo '.gitignore') -Value 'bin/'
+        & git -C $repo add .
+        & git -C $repo -c user.name=Fixture -c user.email=fixture@example.invalid commit -q -m Fixture
         $revision = (& git -C $repo rev-parse HEAD).Trim()
         $manifestPath = Join-Path $TestDrive 'manifest.json'
         $samplePath = Join-Path $TestDrive 'sample-result.json'
         $candidatePath = Join-Path $TestDrive 'candidate.json'
-        $results = Join-Path $TestDrive "verification-$Mutate-$Different"
+        $results = Join-Path $TestDrive "verification-$Mutate-$Different-$TrackedMutation"
+        $firstResults = "$results-first"
         @{
             schemaVersion = 1
             issueNumber = 12345
@@ -437,6 +575,7 @@ Describe 'Pinned test verification' {
         $global:issueReplicateFixtureRepo = $repo
         $global:issueReplicateFixtureMutate = $Mutate
         $global:issueReplicateFixtureDifferent = $Different
+        $global:issueReplicateFixtureTrackedMutation = $TrackedMutation
         function dotnet {
             $parameters = @($args)
             $directory = $parameters[[array]::IndexOf($parameters, '--results-directory') + 1]
@@ -458,21 +597,39 @@ Describe 'Pinned test verification' {
                 [IO.File]::WriteAllText((Join-Path $global:issueReplicateFixtureRepo `
                     'src/Core/tests/UnitTests/Issues/Issue12345.cs'), 'public class NeverCompiled { }')
             }
+            if ($global:issueReplicateFixtureTrackedMutation) {
+                Set-Content -LiteralPath 'src/Core/tests/UnitTests/Core.UnitTests.csproj' -Value '<Changed />'
+            }
+            if ($name -eq 'attempt-1.trx') {
+                New-Item -ItemType Directory -Path bin -Force | Out-Null
+                Set-Content -LiteralPath 'bin/poison.dll' -Value 'untrusted first-attempt output'
+            } elseif (Test-Path -LiteralPath 'bin/poison.dll') {
+                throw 'The second attempt reused first-attempt build output.'
+            }
             Set-Content -LiteralPath (Join-Path $directory $name) -Value $trx
             $global:LASTEXITCODE = 1
             'One assertion failed'
         }
         $verify = {
-            & (Join-Path $PSScriptRoot 'IssueReplicate.Verify.ps1') -ManifestPath $manifestPath `
+            $null = & (Join-Path $PSScriptRoot 'IssueReplicate.Run.ps1') -Mode Verify -InputDirectory (Split-Path $manifestPath) `
                 -SampleResultPath $samplePath -CandidatePath $candidatePath -RepoRoot $repo `
-                -OutputDirectory $results
+                -OutputDirectory $firstResults -Attempt 1
         }
-        if ($Mutate) {
+        if ($Mutate -or $TrackedMutation) {
             $verify | Should -Throw '*changed the candidate source*'
             Test-Path -LiteralPath (Join-Path $results 'test.patch') | Should -BeFalse
             return
         }
         & $verify
+        Test-Path -LiteralPath (Join-Path $firstResults 'test.patch') | Should -BeFalse
+        $first = Get-Content -Raw -LiteralPath (Join-Path $firstResults 'result.json') | ConvertFrom-Json
+        $first.status | Should -Be 'inconclusive'
+        $first.observedAssertion | Should -BeTrue
+        $secondRepo = "$repo-second"
+        & git clone --quiet --no-local $repo $secondRepo
+        $null = & (Join-Path $PSScriptRoot 'IssueReplicate.Run.ps1') -Mode Verify -InputDirectory (Split-Path $manifestPath) `
+            -SampleResultPath $samplePath -CandidatePath $candidatePath -RepoRoot $secondRepo `
+            -OutputDirectory $results -Attempt 2 -PreviousResultPath (Join-Path $firstResults 'result.json')
         $outcome = Get-Content -Raw -LiteralPath (Join-Path $results 'result.json') | ConvertFrom-Json
         $outcome.status | Should -Be $(if ($Different) { 'inconclusive' } else { 'candidate-failed' })
         $outcome.testExecuted | Should -BeTrue
@@ -481,7 +638,7 @@ Describe 'Pinned test verification' {
     }
 
     AfterEach {
-        Remove-Variable issueReplicateFixtureRepo, issueReplicateFixtureMutate, issueReplicateFixtureDifferent `
+        Remove-Variable issueReplicateFixtureRepo, issueReplicateFixtureMutate, issueReplicateFixtureDifferent, issueReplicateFixtureTrackedMutation `
             -Scope Global -ErrorAction SilentlyContinue
     }
 }

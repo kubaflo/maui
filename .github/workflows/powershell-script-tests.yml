@@ -122,18 +122,12 @@ jobs:
           xcrun --find actool
           xcrun --sdk macosx --find actool
       - name: Build the author sample without credentials
-        shell: pwsh
-        run: |
-          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Sample.ps1" `
-            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/SampleOutput" `
-            -NuGetConfigPath "$env:RUNNER_TEMP/maui/NuGet.config"
-      - name: Transfer only the bounded build result
         id: sample
-        if: always()
         shell: pwsh
         run: |
-          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Export -Kind Sample `
-            -Directory "$env:RUNNER_TEMP/SampleOutput" -Provider GitHub
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Run.ps1" -Mode Sample `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/SampleOutput" `
+            -NuGetConfigPath "$env:RUNNER_TEMP/maui/NuGet.config" -Provider GitHub
 
   generate:
     needs: [intake, sample]
