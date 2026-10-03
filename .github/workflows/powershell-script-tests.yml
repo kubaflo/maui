@@ -79,6 +79,7 @@ jobs:
           }
           New-Item -ItemType Directory "$env:RUNNER_TEMP/IssueTools" | Out-Null
           Copy-Item "$source/.github/scripts/IssueReplicate*.ps1" "$env:RUNNER_TEMP/IssueTools"
+          Copy-Item "$source/.github/issue-replicate-cli" "$env:RUNNER_TEMP/IssueTools/Cli" -Recurse
       - name: Restore and re-fetch the immutable author sample
         shell: pwsh
         env:
@@ -169,8 +170,13 @@ jobs:
         with:
           node-version: '24'
       - &copilot
-        name: Install Copilot CLI
-        run: npm install --global @github/copilot && copilot --version
+        name: Install lockfile-pinned Copilot CLI
+        run: |
+          set -euo pipefail
+          cli="$RUNNER_TEMP/IssueTools/Cli"
+          npm ci --prefix "$cli" --ignore-scripts --no-audit --no-fund
+          "$cli/node_modules/.bin/copilot" --version
+          printf '%s\n' "$cli/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Generate a tool-free GPT candidate
         shell: pwsh
         env:
