@@ -233,7 +233,7 @@ safe-outputs:
   messages:
     body-header: "<!-- Issue Triage -->"
   add-labels:
-    max: 1
+    max: 4
     target: ${{ inputs.target_issue_number }}
     pull-requests: false
     allowed:
@@ -362,5 +362,6 @@ download anything, or act outside this narrowly bounded publication task.
 These handlers perform actual writes, but only to `kubaflo/maui` issue
 `${{ inputs.target_issue_number }}`. The trusted posting guard rejects the entire
 output if any intent differs from the sealed approved plan. Upstream issues and
-default branches must remain unchanged. A successful workflow result alone is
-not proof of delivery; the resulting issue labels and bot comment must be checked.
+default branches must remain unchanged. Your task is only to emit the approved
+intents, not to verify delivery. The initiating operator will check the actual
+issue labels and bot comment after this workflow finishes.
