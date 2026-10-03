@@ -1,274 +1,284 @@
-name: Issue Replicate Trigger
+name: Fork Issue Replicate Canary
 
 on:
-  issue_comment:
-    types: [created]
   workflow_dispatch:
     inputs:
       issue_number:
-        description: 'Issue containing the repro'
+        description: Public dotnet/maui issue
+        default: '38909'
         required: true
       source_comment_id:
-        description: 'Existing /issue replicate comment ID (also used by recovery)'
+        description: Existing comment on that issue
+        default: '5868610701'
+        required: true
+      platform:
+        description: Native platform (iOS uses a simulator)
+        type: choice
+        options: [android, ios]
+        default: ios
         required: true
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
-  authorize:
-    if: >-
-      github.repository == 'dotnet/maui' &&
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'workflow_dispatch' || github.event.issue.pull_request == null)
-    runs-on: ubuntu-latest
+  intake:
+    if: github.repository == 'kubaflo/maui' && github.actor == 'kubaflo'
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
-    permissions:
-      contents: read
-      issues: read
     outputs:
-      proceed: ${{ steps.gate.outputs.proceed }}
-      issue: ${{ steps.gate.outputs.issue }}
-      comment: ${{ steps.gate.outputs.comment }}
-      platform: ${{ steps.gate.outputs.platform }}
-      branch: ${{ steps.gate.outputs.branch }}
+      snapshot: ${{ steps.snapshot.outputs.payload }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: main
           persist-credentials: false
-      - name: Validate command and current permission
-        id: gate
+      - name: Pin bounded public intake
         shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_ISSUE: ${{ github.event.issue.number }}
-          EVENT_COMMENT: ${{ github.event.comment.id }}
-          INPUT_ISSUE: ${{ inputs.issue_number }}
-          INPUT_COMMENT: ${{ inputs.source_comment_id }}
+          GH_READ_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          COMMENT_ID: ${{ inputs.source_comment_id }}
+          ISSUE_PLATFORM: ${{ inputs.platform }}
         run: |
           $ErrorActionPreference = 'Stop'
-          . .github/scripts/IssueReplicate.Core.ps1
-          $issueNumber = if ($env:EVENT_NAME -eq 'issue_comment') { $env:EVENT_ISSUE } else { $env:INPUT_ISSUE }
-          $commentId = if ($env:EVENT_NAME -eq 'issue_comment') { $env:EVENT_COMMENT } else { $env:INPUT_COMMENT }
-          if ($issueNumber -cnotmatch '^[1-9][0-9]*$' -or $commentId -cnotmatch '^[1-9][0-9]*$') {
-            throw 'Issue and comment must be positive integers.'
-          }
-          $comment = gh api "repos/$env:REPO/issues/comments/$commentId" | ConvertFrom-Json
-          if ($LASTEXITCODE -ne 0 -or $comment.issue_url -cne "https://api.github.com/repos/$env:REPO/issues/$issueNumber") {
-            throw 'The comment does not belong to the requested issue.'
-          }
-          $command = Parse-IssueReplicateCommand -Body $comment.body
-          if ($null -eq $command) {
-            "proceed=false" >> $env:GITHUB_OUTPUT
-            exit 0
-          }
-          $permission = gh api "repos/$env:REPO/collaborators/$($comment.user.login)/permission" --jq .permission
-          if ($LASTEXITCODE -ne 0) { throw 'Could not verify the comment author permission.' }
-          if ($permission -cnotin @('admin', 'maintain', 'write')) {
-            "proceed=false" >> $env:GITHUB_OUTPUT
-            exit 0
-          }
-          $issue = gh api "repos/$env:REPO/issues/$issueNumber" | ConvertFrom-Json
-          if ($LASTEXITCODE -ne 0 -or $issue.state -ne 'open' -or $issue.pull_request) {
-            throw 'The command is only supported on an open issue, not a pull request.'
-          }
-          if ($issue.comments -gt 300) { throw 'This issue exceeds bounded repro discovery.' }
-          if ($issue.comments -eq 300) {
-            $existing = @(gh api --paginate --slurp "repos/$env:REPO/issues/$issueNumber/comments?per_page=100" |
-              ConvertFrom-Json | ForEach-Object { $_ } | Where-Object {
-                $_.user.login -eq 'github-actions[bot]' -and
-                  $_.body -clike "<!-- issue-replicate-start:${commentId}:pending -->*"
-              })
-            if ($LASTEXITCODE -ne 0) { throw 'Could not check acknowledgement headroom.' }
-            if ($existing.Count -eq 0) { throw 'This issue has no acknowledgement headroom for bounded repro discovery.' }
-          }
-          $platform = Resolve-IssueReplicatePlatform -Labels @($issue.labels | ForEach-Object name) -Requested $command.Platform
-          "proceed=true" >> $env:GITHUB_OUTPUT
-          "issue=$issueNumber" >> $env:GITHUB_OUTPUT
-          "comment=$commentId" >> $env:GITHUB_OUTPUT
-          "platform=$platform" >> $env:GITHUB_OUTPUT
-          "branch=$($command.Branch)" >> $env:GITHUB_OUTPUT
+          & .github/scripts/IssueReplicate.Intake.ps1 `
+            -IssueNumber ([int]$env:ISSUE_NUMBER) -CommentId ([long]$env:COMMENT_ID) `
+            -Platform $env:ISSUE_PLATFORM -TargetRef main -OutputDirectory "$env:RUNNER_TEMP/IssueInput"
+      - name: Transfer snapshot through job outputs
+        id: snapshot
+        shell: pwsh
+        run: |
+          & .github/scripts/IssueReplicate.Transport.ps1 -Mode Export -Kind Input `
+            -Directory "$env:RUNNER_TEMP/IssueInput" -Provider GitHub
 
-  dispatch:
-    needs: authorize
-    if: needs.authorize.outputs.proceed == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    concurrency:
-      group: issue-replicate-${{ needs.authorize.outputs.issue }}
-      cancel-in-progress: false
-    permissions:
-      id-token: write
-      issues: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      REPO: ${{ github.repository }}
-      ISSUE: ${{ needs.authorize.outputs.issue }}
-      COMMENT: ${{ needs.authorize.outputs.comment }}
-      PLATFORM: ${{ needs.authorize.outputs.platform }}
-      TARGET_REF: ${{ needs.authorize.outputs.branch }}
+  sample:
+    needs: intake
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-26' || 'ubuntu-22.04' }}
+    timeout-minutes: 80
+    permissions: {}
+    outputs:
+      result: ${{ steps.sample.outputs.payload }}
     steps:
-      - name: Check durable acknowledgement
-        id: dedupe
-        shell: bash
-        run: |
-          set -euo pipefail
-          if gh api --paginate --slurp "repos/${REPO}/issues/comments/${COMMENT}/reactions?per_page=100" |
-             jq -e 'any(.[][]; .content == "rocket" and .user.login == "github-actions[bot]")' >/dev/null; then
-            echo "handled=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          comments=$(gh api --paginate --slurp "repos/${REPO}/issues/${ISSUE}/comments?per_page=100")
-          if printf '%s' "$comments" |
-             jq -e --arg pattern "^<!-- issue-replicate-start:${COMMENT}:[1-9][0-9]* -->" \
-               'any(.[][]; .user.login == "github-actions[bot]" and ((.body // "") | test($pattern)))' >/dev/null; then
-            echo "handled=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          pending=$(printf '%s' "$comments" | jq -c --arg marker "<!-- issue-replicate-start:${COMMENT}:pending -->" \
-            '[.[][] | select(.user.login == "github-actions[bot]" and ((.body // "") | startswith($marker)))] | first // empty')
-          if [ -n "$pending" ]; then
-            updated=$(printf '%s' "$pending" | jq -er '.updated_at | fromdateiso8601')
-            if [ "$(( $(date +%s) - updated ))" -lt 2100 ]; then
-              echo "handled=true" >> "$GITHUB_OUTPUT"
-              echo "::notice::The trusted pending acknowledgement has an active 35-minute lease."
-              exit 0
-            fi
-            printf 'ack_id=%s\n' "$(printf '%s' "$pending" | jq -er .id)" >> "$GITHUB_OUTPUT"
-            printf 'reserved_at=%s\n' "$(printf '%s' "$pending" | jq -er .created_at)" >> "$GITHUB_OUTPUT"
-          fi
-          echo "handled=false" >> "$GITHUB_OUTPUT"
-
-      - name: Reserve command before queueing
-        id: reserve
-        if: steps.dedupe.outputs.handled == 'false'
-        shell: bash
+      - &tools
+        name: Fetch immutable public tools without credentials
+        shell: pwsh
         env:
-          EXISTING_ACK_ID: ${{ steps.dedupe.outputs.ack_id }}
-          RESERVED_AT: ${{ steps.dedupe.outputs.reserved_at }}
+          TOOLS_SHA: ${{ github.sha }}
         run: |
-          set -euo pipefail
-          # shellcheck disable=SC2016
-          body=$(printf '<!-- issue-replicate-start:%s:pending -->\n> [!NOTE]\n> `/issue replicate` is queueing a public reproduction build.\n' "$COMMENT")
-          ack_id="$EXISTING_ACK_ID"
-          if [ -n "$ack_id" ]; then
-            gh api "repos/${REPO}/issues/comments/${ack_id}" --method PATCH -f body="$body" --silent
-          else
-            acknowledgement=$(gh api "repos/${REPO}/issues/${ISSUE}/comments" --method POST -f body="$body")
-            ack_id=$(printf '%s' "$acknowledgement" | jq -er .id)
-            RESERVED_AT=$(printf '%s' "$acknowledgement" | jq -er .created_at)
-          fi
-          if ! [[ "$ack_id" =~ ^[1-9][0-9]*$ ]]; then
-            echo "::error::Could not reserve the command on the issue."
-            exit 1
-          fi
-          echo "ack_id=${ack_id}" >> "$GITHUB_OUTPUT"
-          echo "reserved_at=${RESERVED_AT}" >> "$GITHUB_OUTPUT"
-
-      - name: Queue public Azure pipeline
-        id: queue
-        if: steps.reserve.outcome == 'success'
-        shell: bash
+          $ErrorActionPreference = 'Stop'
+          if ($env:TOOLS_SHA -cnotmatch '^[0-9a-f]{40}$') { throw 'Tools revision is not pinned.' }
+          $source = "$env:RUNNER_TEMP/issue-tools-source"
+          git init --quiet $source
+          if ($LASTEXITCODE -ne 0) { throw 'Could not prepare trusted tools checkout.' }
+          git -c credential.helper= -c http.extraheader= -C $source fetch --quiet --no-tags --depth=1 `
+            https://github.com/kubaflo/maui.git $env:TOOLS_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch trusted public tools.' }
+          git -C $source checkout --quiet --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0 -or (git -C $source rev-parse HEAD).Trim() -cne $env:TOOLS_SHA) {
+            throw 'Tools checkout differs from the workflow revision.'
+          }
+          New-Item -ItemType Directory "$env:RUNNER_TEMP/IssueTools" | Out-Null
+          Copy-Item "$source/.github/scripts/IssueReplicate*.ps1" "$env:RUNNER_TEMP/IssueTools"
+      - name: Restore and re-fetch the immutable author sample
+        shell: pwsh
         env:
-          TENANT_ID: ${{ secrets.AZDO_TRIGGER_TENANT_ID }}
-          CLIENT_ID: ${{ secrets.AZDO_TRIGGER_CLIENT_ID }}
-          PIPELINE_ID: ${{ vars.ISSUE_REPLICATE_PIPELINE_ID }}
-          RESERVED_AT: ${{ steps.reserve.outputs.reserved_at }}
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
         run: |
-          set -euo pipefail
-          if ! [[ "$PIPELINE_ID" =~ ^[1-9][0-9]*$ ]]; then
-            echo "::error::ISSUE_REPLICATE_PIPELINE_ID must identify the dnceng-public/public pipeline."
-            exit 1
-          fi
-          oidc=$(curl --fail-with-body --silent --show-error --max-time 30 \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api://AzureADTokenExchange" | jq -er '.value')
-          echo "::add-mask::${oidc}"
-          token=$(curl --fail-with-body --silent --show-error --max-time 30 \
-            -X POST "https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token" \
-            --data-urlencode 'grant_type=client_credentials' \
-            --data-urlencode "client_id=${CLIENT_ID}" \
-            --data-urlencode 'client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer' \
-            --data-urlencode "client_assertion=${oidc}" \
-            --data-urlencode 'scope=499b84ac-1321-427f-aa17-267ca6975798/.default' | jq -er '.access_token')
-          unset oidc
-          echo "::add-mask::${token}"
-          runs=$(curl --fail-with-body --silent --show-error --max-time 30 \
-            "https://dev.azure.com/dnceng-public/public/_apis/pipelines/${PIPELINE_ID}/runs?api-version=7.1" \
-            -H "Authorization: Bearer ${token}")
-          runs=$(printf '%s' "$runs" | jq -ec '{value: .value[:100]}')
-          count=$(printf '%s' "$runs" | jq -er '.value | length')
-          if [ "$count" -ge 100 ] &&
-             printf '%s' "$runs" | jq -e --arg reserved "$RESERVED_AT" \
-               '([.value[].createdDate] | min) > $reserved' >/dev/null; then
-            echo "::error::The bounded Azure history cannot reconcile this reservation safely."
-            exit 1
-          fi
-          match_id=""
-          while IFS= read -r prior_id; do
-            if ! [[ "$prior_id" =~ ^[1-9][0-9]*$ ]]; then exit 1; fi
-            prior=$(curl --fail-with-body --silent --show-error --max-time 30 \
-              "https://dev.azure.com/dnceng-public/public/_apis/pipelines/${PIPELINE_ID}/runs/${prior_id}?api-version=7.1" \
-              -H "Authorization: Bearer ${token}")
-            if printf '%s' "$prior" | jq -e --argjson issue "$ISSUE" --argjson comment "$COMMENT" \
-               '(.templateParameters.IssueNumber // 0 | tonumber) == $issue and
-                (.templateParameters.CommentId // 0 | tonumber) == $comment and
-                .resources.repositories.self.refName == "refs/heads/main"' >/dev/null; then
-              if [ -n "$match_id" ]; then
-                echo "::error::Multiple Azure runs exist for this command; refusing another dispatch."
-                exit 1
-              fi
-              match_id="$prior_id"
-            fi
-          done < <(printf '%s' "$runs" | jq -r '.value[].id')
-          if [ -n "$match_id" ]; then
-            echo "run_id=${match_id}" >> "$GITHUB_OUTPUT"
-            unset token
-            exit 0
-          fi
-          payload=$(jq -n --argjson issue "$ISSUE" --argjson comment "$COMMENT" \
-            --arg platform "$PLATFORM" --arg target "$TARGET_REF" \
-            '{templateParameters:{IssueNumber:$issue,CommentId:$comment,Platform:$platform,TargetRef:$target},
-              resources:{repositories:{self:{refName:"refs/heads/main"}}}}')
-          response=$(curl --fail-with-body --silent --show-error --max-time 45 -X POST \
-            "https://dev.azure.com/dnceng-public/public/_apis/pipelines/${PIPELINE_ID}/runs?api-version=7.1" \
-            -H "Authorization: Bearer ${token}" -H 'Content-Type: application/json' -d "$payload")
-          unset token
-          run_id=$(printf '%s' "$response" | jq -er '.id')
-          if ! [[ "$run_id" =~ ^[1-9][0-9]*$ ]]; then
-            echo "::error::Azure returned an invalid run ID."
-            exit 1
-          fi
-          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
-
-      - name: Acknowledge and post build link
-        if: steps.queue.outcome == 'success'
-        shell: bash
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
+            -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Checkout.ps1" `
+            -ManifestPath "$env:RUNNER_TEMP/IssueInput/manifest.json" -Destination "$env:RUNNER_TEMP/maui"
+      - name: Require Xcode matching the pinned iOS SDK
+        if: inputs.platform == 'ios'
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.SelectXcode.ps1" `
+            -RepoRoot "$env:RUNNER_TEMP/maui" -Provider GitHub
+      - name: Provision pinned native SDK and workloads
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/maui
+        run: |
+          & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
+          "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
+      - name: Install public author-sample workload
+        shell: pwsh
         env:
-          RUN_ID: ${{ steps.queue.outputs.run_id }}
-          ACK_ID: ${{ steps.reserve.outputs.ack_id }}
+          ISSUE_PLATFORM: ${{ inputs.platform }}
         run: |
-          set -euo pipefail
-          body=$(mktemp)
-          trap 'rm -f "$body"' EXIT
-          {
-            printf '<!-- issue-replicate-start:%s:%s -->\n' "$COMMENT" "$RUN_ID"
-            # shellcheck disable=SC2016
-            printf '> [!NOTE]\n> `/issue replicate` started on **%s** (%s).\n>\n' "$PLATFORM" "$TARGET_REF"
-            printf '> [Public reproduction build %s](https://dev.azure.com/dnceng-public/public/_build/results?buildId=%s) is running. The result will be posted here.\n' "$RUN_ID" "$RUN_ID"
-          } > "$body"
-          gh api "repos/${REPO}/issues/comments/${ACK_ID}" --method PATCH -F body=@"$body" --silent
-          gh api "repos/${REPO}/issues/comments/${COMMENT}/reactions" --method POST -f content=rocket --silent
+          $sdk = "$env:RUNNER_TEMP/author-dotnet"
+          & pwsh -NoProfile -File "$env:RUNNER_TEMP/IssueTools/IssueReplicate.ProvisionSample.ps1" `
+            -RepoRoot "$env:RUNNER_TEMP/maui" -InstallDirectory $sdk -Platform $env:ISSUE_PLATFORM
+          if ($LASTEXITCODE -ne 0) { throw 'Public author-sample workload installation failed.' }
+          $sdk >> $env:GITHUB_PATH
+      - name: Record iOS toolchain
+        if: inputs.platform == 'ios'
+        run: |
+          sudo xcode-select -s "$DEVELOPER_DIR"
+          xcrun --kill-cache
+          xcodebuild -version
+          xcrun --find actool
+          xcrun --sdk macosx --find actool
+      - name: Build the author sample without credentials
+        id: sample
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Run.ps1" -Mode Sample `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/SampleOutput" `
+            -NuGetConfigPath "$env:RUNNER_TEMP/maui/NuGet.config" -Provider GitHub
 
-      - name: Report queue failure
-        if: always() && steps.reserve.outcome == 'success' && steps.queue.outcome == 'failure'
-        shell: bash
+  generate:
+    needs: [intake, sample]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      candidate: ${{ steps.candidate.outputs.payload }}
+    steps:
+      - *tools
+      - name: Restore bounded generation input
+        shell: pwsh
         env:
-          ACK_ID: ${{ steps.reserve.outputs.ack_id }}
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
         run: |
-          gh api "repos/${REPO}/issues/comments/${ACK_ID}" --method PATCH \
-            -f body="<!-- issue-replicate-start:${COMMENT}:pending -->
-          > [!WARNING]
-          > \`/issue replicate\` could not confirm the public Azure queue outcome. Check the [trigger run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}). Recovery can reconcile the expired reservation against Azure before retrying; do not assume a build was not queued." --silent
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
+            -Directory "$env:RUNNER_TEMP/IssueInput"
+      - &node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+      - &copilot
+        name: Install Copilot CLI
+        run: npm install --global @github/copilot && copilot --version
+      - name: Generate a tool-free GPT candidate
+        shell: pwsh
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/Proposal"
+      - name: Transfer bounded candidate
+        id: candidate
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Export -Kind Candidate `
+            -Directory "$env:RUNNER_TEMP/Proposal" -Provider GitHub
+
+  verify:
+    needs: [intake, sample, generate]
+    permissions: {}
+    uses: ./.github/workflows/issue-replicate-canary-verify.yml
+    with:
+      platform: ${{ inputs.platform }}
+      snapshot: ${{ needs.intake.outputs.snapshot }}
+      sample: ${{ needs.sample.outputs.result }}
+      candidate: ${{ needs.generate.outputs.candidate }}
+
+  revise:
+    needs: [intake, verify]
+    if: needs.verify.result == 'success' && needs.verify.outputs.verdict == 'inconclusive'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      candidate: ${{ steps.candidate.outputs.payload }}
+    steps:
+      - *tools
+      - name: Restore bounded input and first-run feedback
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+          REPRO_FEEDBACK: ${{ needs.verify.outputs.result }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
+            -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Verified `
+            -Encoded $env:REPRO_FEEDBACK -Directory "$env:RUNNER_TEMP/Verified"
+      - *node
+      - *copilot
+      - name: Revise once from actual bounded feedback
+        shell: pwsh
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/Proposal" `
+            -FeedbackPath "$env:RUNNER_TEMP/Verified/feedback.txt"
+      - name: Transfer the revised candidate
+        id: candidate
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Export -Kind Candidate `
+            -Directory "$env:RUNNER_TEMP/Proposal" -Provider GitHub
+
+  verify-revised:
+    needs: [intake, sample, revise]
+    if: always() && needs.revise.result == 'success'
+    permissions: {}
+    uses: ./.github/workflows/issue-replicate-canary-verify.yml
+    with:
+      platform: ${{ inputs.platform }}
+      snapshot: ${{ needs.intake.outputs.snapshot }}
+      sample: ${{ needs.sample.outputs.result }}
+      candidate: ${{ needs.revise.outputs.candidate }}
+
+  post:
+    needs: [intake, sample, generate, verify, revise, verify-revised]
+    if: always() && github.repository == 'kubaflo/maui' && github.actor == 'kubaflo'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          clean: true
+      - name: Prepare a validated comment on a fresh agent
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+          REPRO_VERIFIED1: ${{ needs.verify.outputs.result }}
+          REPRO_VERIFIED2: ${{ needs.verify-revised.outputs.result }}
+          REPRO_SAMPLE: ${{ needs.sample.outputs.result }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          COMMENT_ID: ${{ inputs.source_comment_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $inputDirectory = "$env:RUNNER_TEMP/IssueInput"
+          $resultsDirectory = "$env:RUNNER_TEMP/Verified"
+          if ($env:REPRO_INPUT) {
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Input `
+              -Encoded $env:REPRO_INPUT -Directory $inputDirectory
+            Write-Host "REPRO_INPUT=$env:REPRO_INPUT"
+          }
+          if ($env:REPRO_SAMPLE) {
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Sample `
+              -Encoded $env:REPRO_SAMPLE -Directory "$env:RUNNER_TEMP/SampleOutput"
+            Write-Host "REPRO_SAMPLE=$env:REPRO_SAMPLE"
+          }
+          $verified = if ($env:REPRO_VERIFIED2) { $env:REPRO_VERIFIED2 } else { $env:REPRO_VERIFIED1 }
+          if ($verified) {
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Verified `
+              -Encoded $verified -Directory $resultsDirectory
+            Write-Host "REPRO_VERIFIED=$verified"
+          }
+          & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
+            -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
+            -InputDirectory $inputDirectory -ResultsDirectory $resultsDirectory `
+            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput" -OutputPath "$env:RUNNER_TEMP/comment-preview.md"
+      - name: Publish only issue comments
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.ISSUE_REPRO_COMMENT_TOKEN }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          COMMENT_ID: ${{ inputs.source_comment_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:GH_TOKEN) { throw 'The dedicated issue-comment publishing credential is not configured.' }
+          & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
+            -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -ResultsDirectory "$env:RUNNER_TEMP/Verified" `
+            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput"
