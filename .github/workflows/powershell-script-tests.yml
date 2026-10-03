@@ -143,6 +143,7 @@ jobs:
 
   generate:
     needs: [intake, sample]
+    if: ${{ !cancelled() && needs.intake.result == 'success' && needs.sample.outputs.result != '' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     outputs:
@@ -153,11 +154,14 @@ jobs:
         shell: pwsh
         env:
           REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+          REPRO_SAMPLE: ${{ needs.sample.outputs.result }}
         run: |
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
             -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
             -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Sample `
+            -Encoded $env:REPRO_SAMPLE -Directory "$env:RUNNER_TEMP/SampleOutput"
       - &node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
@@ -171,7 +175,8 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         run: |
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
-            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/Proposal"
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/Proposal" `
+            -SampleResultPath "$env:RUNNER_TEMP/SampleOutput/sample-result.json"
       - name: Transfer bounded candidate
         id: candidate
         shell: pwsh
@@ -181,6 +186,7 @@ jobs:
 
   verify:
     needs: [intake, sample, generate]
+    if: ${{ !cancelled() && needs.sample.result == 'success' && needs.generate.result == 'success' }}
     permissions: {}
     uses: ./.github/workflows/issue-replicate-canary-verify.yml
     with:
@@ -255,6 +261,8 @@ jobs:
           REPRO_VERIFIED1: ${{ needs.verify.outputs.result }}
           REPRO_VERIFIED2: ${{ needs.verify-revised.outputs.result }}
           REPRO_SAMPLE: ${{ needs.sample.outputs.result }}
+          REPRO_CANDIDATE1: ${{ needs.generate.outputs.candidate }}
+          REPRO_CANDIDATE2: ${{ needs.revise.outputs.candidate }}
           ISSUE_NUMBER: ${{ inputs.issue_number }}
           COMMENT_ID: ${{ inputs.source_comment_id }}
         run: |
@@ -271,16 +279,25 @@ jobs:
               -Encoded $env:REPRO_SAMPLE -Directory "$env:RUNNER_TEMP/SampleOutput"
             Write-Host "REPRO_SAMPLE=$env:REPRO_SAMPLE"
           }
-          $verified = if ($env:REPRO_VERIFIED2) { $env:REPRO_VERIFIED2 } else { $env:REPRO_VERIFIED1 }
+          $verified = if ($env:REPRO_VERIFIED2) { $env:REPRO_VERIFIED2 } elseif (-not $env:REPRO_CANDIDATE2) { $env:REPRO_VERIFIED1 }
           if ($verified) {
             & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Verified `
               -Encoded $verified -Directory $resultsDirectory
             Write-Host "REPRO_VERIFIED=$verified"
           }
+          $candidate = if ($env:REPRO_CANDIDATE2) { $env:REPRO_CANDIDATE2 } else { $env:REPRO_CANDIDATE1 }
+          $candidateDirectory = ''
+          if ($candidate) {
+            $candidateDirectory = "$env:RUNNER_TEMP/DraftCandidate"
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Candidate `
+              -Encoded $candidate -Directory $candidateDirectory
+            Write-Host "REPRO_CANDIDATE=$candidate"
+          }
           & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
             -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
             -InputDirectory $inputDirectory -ResultsDirectory $resultsDirectory `
-            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput" -OutputPath "$env:RUNNER_TEMP/comment-preview.md"
+            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput" -CandidateDirectory $candidateDirectory `
+            -OutputPath "$env:RUNNER_TEMP/comment-preview.md"
       - name: Publish only issue comments
         shell: pwsh
         env:
@@ -290,7 +307,10 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if (-not $env:GH_TOKEN) { throw 'The dedicated issue-comment publishing credential is not configured.' }
+          $candidateDirectory = if (Test-Path "$env:RUNNER_TEMP/DraftCandidate/candidate.json") {
+            "$env:RUNNER_TEMP/DraftCandidate"
+          } else { '' }
           & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
             -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
             -InputDirectory "$env:RUNNER_TEMP/IssueInput" -ResultsDirectory "$env:RUNNER_TEMP/Verified" `
-            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput"
+            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput" -CandidateDirectory $candidateDirectory
