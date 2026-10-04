@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"26ea2bd7679553ab0770878196fd8daec05dc91e92f9742ba1960fa742d04190","body_hash":"2ff4a01d4ffb53cd34748889083afb577db90f18e377e5aa22a91dde3ceebeac","compiler_version":"v0.86.2","strict":true,"agent_id":"copilot","agent_model":"gpt-6.1-sol","engine_versions":{"copilot":"1.0.79"}}
-# gh-aw-manifest: {"version":1,"secrets":["COPILOT_PAT_0","COPILOT_PAT_1","COPILOT_PAT_2","COPILOT_PAT_3","COPILOT_PAT_4","COPILOT_PAT_5","COPILOT_PAT_6","COPILOT_PAT_7","COPILOT_PAT_8","COPILOT_PAT_9","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/cache/save","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-node","sha":"820762786026740c76f36085b0efc47a31fe5020","version":"v7.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"6aab9e5b5c91c615506061f09bedd81a23babe3c","version":"v0.86.2"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.27.44","digest":"sha256:0d727725c737b58c7bdf51f640cffb928385ec46517e0917c7f1a02f1bada8b4","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.27.44@sha256:0d727725c737b58c7bdf51f640cffb928385ec46517e0917c7f1a02f1bada8b4"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.44","digest":"sha256:b50fbadba138f6e9aba94aca09711335c489bb3b15861220cb66f6092e042dc7","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.44@sha256:b50fbadba138f6e9aba94aca09711335c489bb3b15861220cb66f6092e042dc7"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.27.44","digest":"sha256:83e48bbe12c634be8c228a576832fe45f66c529ac3659db92bddbcf2eeb6d627","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.27.44@sha256:83e48bbe12c634be8c228a576832fe45f66c529ac3659db92bddbcf2eeb6d627"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.9","digest":"sha256:e5a1569aeaf41820fa7bdee3e94468cae448133cdbf00119ad24f5b74db1ab9f","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.9@sha256:e5a1569aeaf41820fa7bdee3e94468cae448133cdbf00119ad24f5b74db1ab9f"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:0d9f1fb5fd6610c0ac1f5194a38e45a8a1e81f8a390d5142d8e4e6f26a4b3196","pinned_image":"ghcr.io/github/gh-aw-node@sha256:0d9f1fb5fd6610c0ac1f5194a38e45a8a1e81f8a390d5142d8e4e6f26a4b3196"},{"image":"ghcr.io/github/github-mcp-server:v1.9.0","digest":"sha256:881b53d6f75f69bdbc1b5b10fc2f1361717c19054143b3a8529fb5c32061a50e","pinned_image":"ghcr.io/github/github-mcp-server:v1.9.0@sha256:881b53d6f75f69bdbc1b5b10fc2f1361717c19054143b3a8529fb5c32061a50e"}]}
+# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"04555f7892ad343c13a75cfc7518650be2fbd75c4afefc0ac13545df63f76267","body_hash":"d8a707f5aeea2800a5ec10bd5a327d4282119335e752cc1a097b95df32d55831","compiler_version":"v0.86.2","strict":true,"agent_id":"copilot","agent_model":"gpt-6.1-sol","engine_versions":{"copilot":"1.0.79"}}
+# gh-aw-manifest: {"version":1,"secrets":["COPILOT_GITHUB_TOKEN","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/cache/save","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-node","sha":"820762786026740c76f36085b0efc47a31fe5020","version":"v7.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"6aab9e5b5c91c615506061f09bedd81a23babe3c","version":"v0.86.2"}],"skills":[".github/skills/issue-triage-labels"],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.27.44","digest":"sha256:0d727725c737b58c7bdf51f640cffb928385ec46517e0917c7f1a02f1bada8b4","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.27.44@sha256:0d727725c737b58c7bdf51f640cffb928385ec46517e0917c7f1a02f1bada8b4"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.44","digest":"sha256:b50fbadba138f6e9aba94aca09711335c489bb3b15861220cb66f6092e042dc7","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.44@sha256:b50fbadba138f6e9aba94aca09711335c489bb3b15861220cb66f6092e042dc7"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.27.44","digest":"sha256:83e48bbe12c634be8c228a576832fe45f66c529ac3659db92bddbcf2eeb6d627","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.27.44@sha256:83e48bbe12c634be8c228a576832fe45f66c529ac3659db92bddbcf2eeb6d627"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.9","digest":"sha256:e5a1569aeaf41820fa7bdee3e94468cae448133cdbf00119ad24f5b74db1ab9f","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.9@sha256:e5a1569aeaf41820fa7bdee3e94468cae448133cdbf00119ad24f5b74db1ab9f"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:0d9f1fb5fd6610c0ac1f5194a38e45a8a1e81f8a390d5142d8e4e6f26a4b3196","pinned_image":"ghcr.io/github/gh-aw-node@sha256:0d9f1fb5fd6610c0ac1f5194a38e45a8a1e81f8a390d5142d8e4e6f26a4b3196"}]}
 # This file was automatically generated by gh-aw (v0.86.2). DO NOT EDIT. To debug this workflow, load the skill at https://github.com/github/gh-aw/blob/main/debug.md
 #
 #    ___                   _   _
@@ -17,35 +17,20 @@
 #  \/  \/ \___/|_| |_|\_\|_| |_|\___/ \_/\_/ |___/
 #
 #
-# To update this file, edit githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb and run:
+# To update this file, edit the corresponding .md file and run:
 #   gh aw compile
 # Not all edits will cause changes to this file.
 #
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
-# This workflow creates daily repo status reports. It gathers recent repository
-# activity (issues, PRs, discussions, releases, code changes) and generates
-# engaging GitHub issues with productivity insights, community highlights,
-# and project recommendations.
-#
-# Source: githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb
+# Fork-only staged GPT triage of real CLI-prepared evidence, with fresh local trusted validation.
 #
 # Resolved workflow manifest:
 #   Imports:
 #     - shared/gpt-6.1-sol.md
-#     - shared/pat_pool.md
 #
 # Secrets used:
-#   - COPILOT_PAT_0
-#   - COPILOT_PAT_1
-#   - COPILOT_PAT_2
-#   - COPILOT_PAT_3
-#   - COPILOT_PAT_4
-#   - COPILOT_PAT_5
-#   - COPILOT_PAT_6
-#   - COPILOT_PAT_7
-#   - COPILOT_PAT_8
-#   - COPILOT_PAT_9
+#   - COPILOT_GITHUB_TOKEN
 #   - GH_AW_GITHUB_MCP_SERVER_TOKEN
 #   - GH_AW_GITHUB_TOKEN
 #   - GITHUB_TOKEN
@@ -56,7 +41,6 @@
 #   - actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 #   - actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
 #   - actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-#   - actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0 (source v9)
 #   - actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
 #   - actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
 #   - github/gh-aw-actions/setup@6aab9e5b5c91c615506061f09bedd81a23babe3c # v0.86.2
@@ -67,13 +51,78 @@
 #   - ghcr.io/github/gh-aw-firewall/squid:0.27.44@sha256:83e48bbe12c634be8c228a576832fe45f66c529ac3659db92bddbcf2eeb6d627
 #   - ghcr.io/github/gh-aw-mcpg:v0.4.9@sha256:e5a1569aeaf41820fa7bdee3e94468cae448133cdbf00119ad24f5b74db1ab9f
 #   - ghcr.io/github/gh-aw-node@sha256:0d9f1fb5fd6610c0ac1f5194a38e45a8a1e81f8a390d5142d8e4e6f26a4b3196
-#   - ghcr.io/github/github-mcp-server:v1.9.0@sha256:881b53d6f75f69bdbc1b5b10fc2f1361717c19054143b3a8529fb5c32061a50e
 
-name: "Daily Repo Status"
+name: "Issue Triage Fork Canary"
 on:
-  # permissions: {} # Permissions applied to pre-activation job
-  schedule:
-    - cron: "20 2 * * *"  # Friendly format: daily (scattered)
+  # permissions: # Permissions applied to pre-activation job
+  # contents: read
+  # roles: # Roles processed as role check in pre-activation job
+  # - admin # Roles processed as role check in pre-activation job
+  # - maintain # Roles processed as role check in pre-activation job
+  # - write # Roles processed as role check in pre-activation job
+  # steps: # Steps injected into pre-activation job
+  # - env:
+  # ISSUE_NUMBER: ${{ inputs.issue_number }}
+  # id: command
+  # name: Authorize bounded fork-only canary
+  # uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+  # with:
+  # script: "core.setOutput('authorized', 'false');\nif (Number(process.env.GITHUB_RUN_ATTEMPT) !== 1 ||\n    (context.payload.inputs?.aw_context ?? '') !== '') {\n  throw new Error('Use a fresh canary dispatch without caller workspace context.');\n}\nif (context.payload.repository.full_name !== 'kubaflo/maui' ||\n    context.ref !== 'refs/heads/kubaflo-redesigned-garbanzo' ||\n    context.eventName !== 'workflow_dispatch' ||\n    context.actor !== 'kubaflo' ||\n    process.env.GITHUB_TRIGGERING_ACTOR !== 'kubaflo' ||\n    process.env.ISSUE_NUMBER !== '39084') {\n  throw new Error('This canary only accepts the designated staged fork dispatch.');\n}\nconst { data } = await github.rest.repos.getCollaboratorPermissionLevel({\n  ...context.repo, username: context.actor\n});\nif (!['admin', 'maintain', 'write'].includes(data.permission)) {\n  throw new Error('The canary requester is no longer authorized.');\n}\ncore.setOutput('authorized', 'true');\n"
+  # - env:
+  # ISSUE_NUMBER: ${{ inputs.issue_number }}
+  # PREPARED_CONTEXT: ${{ inputs.prepared_context }}
+  # PREPARED_SHA256: ${{ inputs.prepared_sha256 }}
+  # id: context
+  # if: steps.command.outputs.authorized == 'true'
+  # name: Check and retain the actual CLI-prepared evidence
+  # run: |
+  # $ErrorActionPreference = 'Stop'
+  # Set-StrictMode -Version Latest
+  # if ($env:PREPARED_CONTEXT.Length -gt 50000 -or
+  # $env:PREPARED_SHA256 -cne '0A67C923168A1C385FC9D0F226749C2840D9E11F4BBED41C652EE1B17D3906BA') {
+  # throw 'Prepared dispatch evidence exceeds its bound or has no valid digest.'
+  # }
+  # $inputStream = [IO.MemoryStream]::new([Convert]::FromBase64String($env:PREPARED_CONTEXT))
+  # $gzip = [IO.Compression.GZipStream]::new($inputStream, [IO.Compression.CompressionMode]::Decompress)
+  # $outputStream = [IO.MemoryStream]::new()
+  # $buffer = [byte[]]::new(8192)
+  # try {
+  # while (($count = $gzip.Read($buffer, 0, $buffer.Length)) -gt 0) {
+  # if ($outputStream.Length + $count -gt 1MB) {
+  # throw 'Uncompressed dispatch evidence exceeds 1 MiB.'
+  # }
+  # $outputStream.Write($buffer, 0, $count)
+  # }
+  # $bytes = $outputStream.ToArray()
+  # } finally {
+  # $gzip.Dispose()
+  # $inputStream.Dispose()
+  # $outputStream.Dispose()
+  # }
+  # if ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)) -cne $env:PREPARED_SHA256) {
+  # throw 'The context bytes do not match the independently prepared digest.'
+  # }
+  # $prepared = [Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json -AsHashtable
+  # if ($prepared.schemaVersion -ne 1 -or $prepared.repository -cne 'dotnet/maui' -or
+  # [string]$prepared.issueNumber -cne $env:ISSUE_NUMBER -or
+  # $prepared.actor -cne $env:GITHUB_ACTOR -or $prepared.commandCommentId -ne 0 -or
+  # $prepared.contextHash -cnotmatch '^[A-F0-9]{64}$') {
+  # throw 'Prepared evidence does not match this exact staged canary.'
+  # }
+  # $directory = Join-Path $env:RUNNER_TEMP 'issue-triage-context'
+  # $null = New-Item -ItemType Directory -Path $directory
+  # [IO.File]::WriteAllBytes((Join-Path $directory 'context.json'), $bytes)
+  # Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "context_hash=$($prepared.contextHash)"
+  # Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value 'ready=true'
+  # shell: pwsh
+  # - if: steps.context.outputs.ready == 'true'
+  # name: Retain trusted issue evidence
+  # uses: actions/upload-artifact@v7.0.1
+  # with:
+  # if-no-files-found: error
+  # name: issue-triage-context-${{ github.run_id }}
+  # path: ${{ runner.temp }}/issue-triage-context/context.json
+  # retention-days: 7
   workflow_dispatch:
     inputs:
       aw_context:
@@ -81,21 +130,36 @@ on:
         description: "Agent caller context (used internally by Agentic Workflows)."
         required: false
         type: string
+      issue_number:
+        description: Upstream issue number 39084; all outputs are staged
+        required: true
+        type: number
+      prepared_context:
+        description: Bounded gzip/base64 context from the unchanged trusted Gather stage
+        required: true
+        type: string
+      prepared_sha256:
+        description: Independent SHA256 of the original uncompressed context bytes
+        required: true
+        type: string
 
 permissions: {}
 
 concurrency:
-  group: "gh-aw-${{ github.workflow }}"
+  cancel-in-progress: false
+  group: fork-issue-triage-${{ inputs.issue_number || github.run_id }}
 
-run-name: "Daily Repo Status"
+run-name: "Staged upstream issue triage #${{ inputs.issue_number }}"
 
 jobs:
   activation:
     needs:
-      - pat_pool
+      - canary_context
       - pre_activation
-    if: needs.pre_activation.outputs.activated == 'true' && (github.repository == 'dotnet/maui')
-    runs-on: ubuntu-slim
+    if: >
+      needs.pre_activation.outputs.activated == 'true' && (needs.pre_activation.outputs.triage_ready == 'true' &&
+      github.run_attempt == 1)
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
@@ -113,9 +177,12 @@ jobs:
       lockdown_check_failed: ${{ steps.generate_aw_info.outputs.lockdown_check_failed == 'true' }}
       model: ${{ steps.generate_aw_info.outputs.model }}
       oauth_token_check_failed: ${{ steps.check-oauth-tokens.outputs.oauth_token_check_failed == 'true' }}
+      secret_verification_result: ${{ steps.validate-secret.outputs.verification_result }}
       setup-parent-span-id: ${{ steps.setup.outputs.parent-span-id || steps.setup.outputs.span-id }}
       setup-span-id: ${{ steps.setup.outputs.span-id }}
       setup-trace-id: ${{ steps.setup.outputs.trace-id }}
+      skill_install_errors: ${{ steps.collect-skill-install-failures.outputs.errors || '' }}
+      skill_install_failure_count: ${{ steps.collect-skill-install-failures.outputs.failure_count || '0' }}
       stale_lock_file_failed: ${{ steps.check-lock-file.outputs.stale_lock_file_failed == 'true' }}
     steps:
       - name: Setup Scripts
@@ -128,11 +195,10 @@ jobs:
           parent-span-id: ${{ needs.pre_activation.outputs.setup-parent-span-id || needs.pre_activation.outputs.setup-span-id }}
           safe-output-artifact-client: ${{ env.GH_AW_MAX_DAILY_AI_CREDITS != '' }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "Daily Repo Status"
+          GH_AW_SETUP_WORKFLOW_NAME: "Issue Triage Fork Canary"
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/daily-repo-status.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.79"
           GH_AW_INFO_AWF_VERSION: "v0.27.44"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Generate agentic run info
         id: generate_aw_info
@@ -143,20 +209,19 @@ jobs:
           GH_AW_INFO_VERSION: "1.0.79"
           GH_AW_INFO_AGENT_VERSION: "1.0.79"
           GH_AW_INFO_CLI_VERSION: "v0.86.2"
-          GH_AW_INFO_WORKFLOW_NAME: "Daily Repo Status"
+          GH_AW_INFO_WORKFLOW_NAME: "Issue Triage Fork Canary"
           GH_AW_INFO_EXPERIMENTAL: "false"
           GH_AW_INFO_SUPPORTS_TOOLS_ALLOWLIST: "true"
-          GH_AW_INFO_STAGED: "false"
+          GH_AW_INFO_STAGED: "true"
           GH_AW_INFO_ALLOWED_DOMAINS: '["defaults"]'
           GH_AW_INFO_FIREWALL_ENABLED: "true"
           GH_AW_INFO_AWF_VERSION: "v0.27.44"
           GH_AW_INFO_AWMG_VERSION: ""
           GH_AW_INFO_FIREWALL_TYPE: "squid"
           GH_AW_INFO_AGENT_RUNTIME: ""
-          GH_AW_INFO_FRONTMATTER_SOURCE: "githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_COMPILED_STRICT: "true"
           GH_AW_INFO_MODEL_COSTS: '{"providers":{"github-copilot":{"models":{"gpt-6.1-sol":{"cost":{"cache_read":"1e-07","cache_write":"2.5e-06","input":"2e-06","output":"1e-05"}}}}}}'
+          GH_AW_INFO_SKILLS: '[".github/skills/issue-triage-labels"]'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -193,7 +258,7 @@ jobs:
         if: ${{ env.GH_AW_MAX_DAILY_AI_CREDITS != '' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GH_AW_WORKFLOW_NAME: "Daily Repo Status"
+          GH_AW_WORKFLOW_NAME: "Issue Triage Fork Canary"
           GH_AW_WORKFLOW_ID: "daily-repo-status"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_WORKFLOW_DISPATCH_AW_CONTEXT: ${{ github.event.inputs.aw_context || '' }}
@@ -208,11 +273,16 @@ jobs:
             setupGlobals(core, github, context, exec, io, getOctokit);
             const { main } = require('${{ runner.temp }}/gh-aw/actions/check_daily_aic_workflow_guardrail.cjs');
             await main();
+      - name: Validate COPILOT_GITHUB_TOKEN secret
+        id: validate-secret
+        run: bash "${RUNNER_TEMP}/gh-aw/actions/validate_multi_secret.sh" COPILOT_GITHUB_TOKEN 'GitHub Copilot CLI' https://github.github.com/gh-aw/reference/engines/#github-copilot-default
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
       - name: Check for OAuth tokens
         id: check-oauth-tokens
         run: bash "${RUNNER_TEMP}/gh-aw/actions/check_oauth_tokens.sh"
         env:
-          COPILOT_GITHUB_TOKEN: ${{ case(needs.pat_pool.outputs.pat_number == '0', secrets.COPILOT_PAT_0, needs.pat_pool.outputs.pat_number == '1', secrets.COPILOT_PAT_1, needs.pat_pool.outputs.pat_number == '2', secrets.COPILOT_PAT_2, needs.pat_pool.outputs.pat_number == '3', secrets.COPILOT_PAT_3, needs.pat_pool.outputs.pat_number == '4', secrets.COPILOT_PAT_4, needs.pat_pool.outputs.pat_number == '5', secrets.COPILOT_PAT_5, needs.pat_pool.outputs.pat_number == '6', secrets.COPILOT_PAT_6, needs.pat_pool.outputs.pat_number == '7', secrets.COPILOT_PAT_7, needs.pat_pool.outputs.pat_number == '8', secrets.COPILOT_PAT_8, needs.pat_pool.outputs.pat_number == '9', secrets.COPILOT_PAT_9, 'NO COPILOT PAT AVAILABLE') }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
           GH_AW_GITHUB_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
           GH_AW_GITHUB_MCP_SERVER_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN }}
       - name: Checkout .github and .agents folders
@@ -256,6 +326,32 @@ jobs:
             setupGlobals(core, github, context, exec, io, getOctokit);
             const { main } = require('${{ runner.temp }}/gh-aw/actions/check_version_updates.cjs');
             await main();
+      - name: Upgrade gh CLI for frontmatter skills
+        run: bash "${RUNNER_TEMP}/gh-aw/actions/ensure_gh_cli_min_version.sh" "2.90.0"
+      - name: Install frontmatter skill 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_AW_INFO_ENGINE_ID: "copilot"
+          GH_AW_GH_SKILL_AGENT_NAME: "github-copilot"
+          GH_AW_SKILL_DIR: ".github/skills"
+          GH_AW_FRONTMATTER_SKILLS: ".github/skills/issue-triage-labels"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
+            setupGlobals(core, github, context, exec, io, getOctokit);
+            const { main } = require('${{ runner.temp }}/gh-aw/actions/install_frontmatter_skills.cjs');
+            await main();
+      - name: Collect skill install failures
+        id: collect-skill-install-failures
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
+            setupGlobals(core, github, context, exec, io, getOctokit);
+            const { main } = require('${{ runner.temp }}/gh-aw/actions/collect_skill_install_failures.cjs');
+            await main();
       - name: Log runtime features
         if: ${{ contains(toJSON(vars), '"GH_AW_RUNTIME_FEATURES":') }}
         run: bash "${RUNNER_TEMP}/gh-aw/actions/log_runtime_features_summary.sh"
@@ -265,22 +361,14 @@ jobs:
           GH_AW_ACTIONS_DIR: ${{ runner.temp }}/gh-aw/actions
           GH_AW_PROMPT: ${{ runner.temp }}/gh-aw/aw-prompts/prompt.txt
           GH_AW_SAFE_OUTPUTS: ${{ runner.temp }}/gh-aw/safeoutputs/outputs.jsonl
-          GH_AW_PROMPT_CONFIG: "{\"items\":[{\"content_env\":\"GH_AW_PROMPT_CONTENT_0000\"},{\"file\":\"xpia.md\"},{\"file\":\"temp_folder_prompt.md\"},{\"file\":\"markdown.md\"},{\"file\":\"safe_outputs_prompt.md\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0001\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0002\"},{\"file\":\"mcp_cli_tools_prompt.md\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0003\"},{\"file\":\"github_mcp_tools_with_safeoutputs_prompt.md\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0004\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0005\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0006\"}]}"
-          GH_AW_EXPR_1A3A194A: ${{ github.event.discussion.number || (fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_type == 'discussion' && fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_number) }}
-          GH_AW_EXPR_463A214A: ${{ github.event.pull_request.number || (fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_type == 'pull_request' && fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_number) }}
-          GH_AW_EXPR_802A9F6A: ${{ github.event.issue.number || (fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_type == 'issue' && fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_number) }}
-          GH_AW_EXPR_FF1D34CE: ${{ github.event.comment.id || fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').comment_id }}
-          GH_AW_GITHUB_ACTOR: ${{ github.actor }}
-          GH_AW_GITHUB_REPOSITORY: ${{ github.repository }}
-          GH_AW_GITHUB_RUN_ID: ${{ github.run_id }}
-          GH_AW_GITHUB_WORKSPACE: ${{ github.workspace }}
+          GH_AW_PROMPT_CONFIG: "{\"items\":[{\"content_env\":\"GH_AW_PROMPT_CONTENT_0000\"},{\"file\":\"xpia.md\"},{\"file\":\"temp_folder_prompt.md\"},{\"file\":\"markdown.md\"},{\"file\":\"safe_outputs_prompt.md\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0001\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0002\"},{\"file\":\"mcp_cli_tools_prompt.md\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0003\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0004\"},{\"content_env\":\"GH_AW_PROMPT_CONTENT_0005\"}]}"
+          GH_AW_INPUTS_ISSUE_NUMBER: ${{ inputs.issue_number }}
           GH_AW_PROMPT_CONTENT_0000: "<system>\n"
-          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: create_issue, missing_tool, missing_data, noop\n"
+          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: add_comment, add_labels(max:10), remove_labels(max:10), missing_tool, missing_data, noop\n"
           GH_AW_PROMPT_CONTENT_0002: "</safe-output-tools>\n"
-          GH_AW_PROMPT_CONTENT_0003: "<github-context>\nThe following GitHub context information is available for this workflow:\n{{#if github.actor}}\n- **actor**: __GH_AW_GITHUB_ACTOR__\n{{/if}}\n{{#if github.repository}}\n- **repository**: __GH_AW_GITHUB_REPOSITORY__\n{{/if}}\n{{#if github.workspace}}\n- **workspace**: __GH_AW_GITHUB_WORKSPACE__\n{{/if}}\n{{#if github.event.issue.number || (github.aw.context.item_type == 'issue' && github.aw.context.item_number)}}\n- **issue-number**: #__GH_AW_EXPR_802A9F6A__\n{{/if}}\n{{#if github.event.discussion.number || (github.aw.context.item_type == 'discussion' && github.aw.context.item_number)}}\n- **discussion-number**: #__GH_AW_EXPR_1A3A194A__\n{{/if}}\n{{#if github.event.pull_request.number || (github.aw.context.item_type == 'pull_request' && github.aw.context.item_number)}}\n- **pull-request-number**: #__GH_AW_EXPR_463A214A__\n{{/if}}\n{{#if github.event.comment.id || github.aw.context.comment_id}}\n- **comment-id**: __GH_AW_EXPR_FF1D34CE__\n{{/if}}\n{{#if github.run_id}}\n- **workflow-run-id**: __GH_AW_GITHUB_RUN_ID__\n{{/if}}\n</github-context>\n\n"
-          GH_AW_PROMPT_CONTENT_0004: "</system>\n"
-          GH_AW_PROMPT_CONTENT_0005: "{{#runtime-import .github/workflows/shared/gpt-6.1-sol.md}}\n"
-          GH_AW_PROMPT_CONTENT_0006: "{{#runtime-import .github/workflows/daily-repo-status.md}}\n"
+          GH_AW_PROMPT_CONTENT_0003: "</system>\n"
+          GH_AW_PROMPT_CONTENT_0004: "{{#runtime-import .github/workflows/shared/gpt-6.1-sol.md}}\n"
+          GH_AW_PROMPT_CONTENT_0005: "{{#runtime-import .github/workflows/daily-repo-status.md}}\n"
         with:
           script: |
             const { setupGlobals } = require(process.env.GH_AW_ACTIONS_DIR + '/setup_globals.cjs');
@@ -292,6 +380,7 @@ jobs:
         env:
           GH_AW_PROMPT: ${{ runner.temp }}/gh-aw/aw-prompts/prompt.txt
           GH_AW_ENGINE_ID: "copilot"
+          GH_AW_INPUTS_ISSUE_NUMBER: ${{ inputs.issue_number }}
         with:
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
@@ -302,15 +391,8 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_PROMPT: ${{ runner.temp }}/gh-aw/aw-prompts/prompt.txt
-          GH_AW_EXPR_1A3A194A: ${{ github.event.discussion.number || (fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_type == 'discussion' && fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_number) }}
-          GH_AW_EXPR_463A214A: ${{ github.event.pull_request.number || (fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_type == 'pull_request' && fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_number) }}
-          GH_AW_EXPR_802A9F6A: ${{ github.event.issue.number || (fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_type == 'issue' && fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').item_number) }}
-          GH_AW_EXPR_FF1D34CE: ${{ github.event.comment.id || fromJSON(github.event.inputs.aw_context || github.event.client_payload.aw_context || '{}').comment_id }}
-          GH_AW_GITHUB_ACTOR: ${{ github.actor }}
-          GH_AW_GITHUB_REPOSITORY: ${{ github.repository }}
-          GH_AW_GITHUB_RUN_ID: ${{ github.run_id }}
-          GH_AW_GITHUB_WORKSPACE: ${{ github.workspace }}
-          GH_AW_MCP_CLI_SERVERS_LIST: "- `github` — run `github --help` to see available tools\n- `safeoutputs` — run `safeoutputs --help` to see available tools"
+          GH_AW_INPUTS_ISSUE_NUMBER: ${{ inputs.issue_number }}
+          GH_AW_MCP_CLI_SERVERS_LIST: '- `safeoutputs` — run `safeoutputs --help` to see available tools'
           GH_AW_NEEDS_PRE_ACTIVATION_OUTPUTS_ACTIVATED: ${{ needs.pre_activation.outputs.activated }}
         with:
           script: |
@@ -323,14 +405,7 @@ jobs:
             return await substitutePlaceholders({
               file: process.env.GH_AW_PROMPT,
               substitutions: {
-                GH_AW_EXPR_1A3A194A: process.env.GH_AW_EXPR_1A3A194A,
-                GH_AW_EXPR_463A214A: process.env.GH_AW_EXPR_463A214A,
-                GH_AW_EXPR_802A9F6A: process.env.GH_AW_EXPR_802A9F6A,
-                GH_AW_EXPR_FF1D34CE: process.env.GH_AW_EXPR_FF1D34CE,
-                GH_AW_GITHUB_ACTOR: process.env.GH_AW_GITHUB_ACTOR,
-                GH_AW_GITHUB_REPOSITORY: process.env.GH_AW_GITHUB_REPOSITORY,
-                GH_AW_GITHUB_RUN_ID: process.env.GH_AW_GITHUB_RUN_ID,
-                GH_AW_GITHUB_WORKSPACE: process.env.GH_AW_GITHUB_WORKSPACE,
+                GH_AW_INPUTS_ISSUE_NUMBER: process.env.GH_AW_INPUTS_ISSUE_NUMBER,
                 GH_AW_MCP_CLI_SERVERS_LIST: process.env.GH_AW_MCP_CLI_SERVERS_LIST,
                 GH_AW_NEEDS_PRE_ACTIVATION_OUTPUTS_ACTIVATED: process.env.GH_AW_NEEDS_PRE_ACTIVATION_OUTPUTS_ACTIVATED
               }
@@ -369,19 +444,12 @@ jobs:
           retention-days: 1
 
   agent:
-    needs:
-      - activation
-      - pat_pool
-    if: needs.activation.outputs.daily_ai_credits_exceeded != 'true'
+    needs: activation
+    if: (needs.activation.outputs.daily_ai_credits_exceeded != 'true') && (github.run_attempt == 1)
     runs-on: ubuntu-latest
-    environment: copilot-pat-pool
     permissions:
       contents: read
       issues: read
-      pull-requests: read
-    concurrency:
-      group: "gh-aw-copilot-${{ github.workflow }}"
-      queue: max
     env:
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       GH_AW_ASSETS_ALLOWED_EXTS: ""
@@ -423,11 +491,10 @@ jobs:
           trace-id: ${{ needs.activation.outputs.setup-trace-id }}
           parent-span-id: ${{ needs.activation.outputs.setup-parent-span-id || needs.activation.outputs.setup-span-id }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "Daily Repo Status"
+          GH_AW_SETUP_WORKFLOW_NAME: "Issue Triage Fork Canary"
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/daily-repo-status.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.79"
           GH_AW_INFO_AWF_VERSION: "v0.27.44"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Set runtime paths
         id: set-runtime-paths
@@ -452,6 +519,12 @@ jobs:
         with:
           name: activation
           path: /tmp/gh-aw
+      - name: Download prepared issue evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: issue-triage-context-${{ github.run_id }}
+          path: /tmp/gh-aw/agent/issue-triage-context
+
       - name: Configure Git credentials
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -464,9 +537,9 @@ jobs:
           github.event.pull_request || github.event.issue.pull_request || github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.aw_context || '{}').item_type == 'pull_request'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
             setupGlobals(core, github, context, exec, io, getOctokit);
@@ -481,16 +554,6 @@ jobs:
           GH_AW_COMPILED_VERSION: v0.86.2
       - name: Install AWF binary
         run: bash "${RUNNER_TEMP}/gh-aw/actions/install_awf_binary.sh" v0.27.44 --rootless
-      - name: Determine automatic lockdown mode for GitHub MCP Server
-        id: determine-automatic-lockdown
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0 (source v9)
-        env:
-          GH_AW_GITHUB_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
-          GH_AW_GITHUB_MCP_SERVER_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN }}
-        with:
-          script: |
-            const determineAutomaticLockdown = require('${{ runner.temp }}/gh-aw/actions/determine_automatic_lockdown.cjs');
-            await determineAutomaticLockdown(github, context, core);
       - name: Restore agent config folders from base branch
         if: steps.checkout-pr.outcome == 'success'
         env:
@@ -507,61 +570,118 @@ jobs:
           GH_AW_SKILL_DIR: ".github/skills"
         run: bash "${RUNNER_TEMP}/gh-aw/actions/restore_inline_skills.sh"
       - name: Download container images
-        run: bash "${RUNNER_TEMP}/gh-aw/actions/download_docker_images.sh" ghcr.io/github/gh-aw-firewall/agent:0.27.44@sha256:0d727725c737b58c7bdf51f640cffb928385ec46517e0917c7f1a02f1bada8b4 ghcr.io/github/gh-aw-firewall/api-proxy:0.27.44@sha256:b50fbadba138f6e9aba94aca09711335c489bb3b15861220cb66f6092e042dc7 ghcr.io/github/gh-aw-firewall/squid:0.27.44@sha256:83e48bbe12c634be8c228a576832fe45f66c529ac3659db92bddbcf2eeb6d627 ghcr.io/github/gh-aw-mcpg:v0.4.9@sha256:e5a1569aeaf41820fa7bdee3e94468cae448133cdbf00119ad24f5b74db1ab9f ghcr.io/github/gh-aw-node@sha256:0d9f1fb5fd6610c0ac1f5194a38e45a8a1e81f8a390d5142d8e4e6f26a4b3196 ghcr.io/github/github-mcp-server:v1.9.0@sha256:881b53d6f75f69bdbc1b5b10fc2f1361717c19054143b3a8529fb5c32061a50e
+        run: bash "${RUNNER_TEMP}/gh-aw/actions/download_docker_images.sh" ghcr.io/github/gh-aw-firewall/agent:0.27.44@sha256:0d727725c737b58c7bdf51f640cffb928385ec46517e0917c7f1a02f1bada8b4 ghcr.io/github/gh-aw-firewall/api-proxy:0.27.44@sha256:b50fbadba138f6e9aba94aca09711335c489bb3b15861220cb66f6092e042dc7 ghcr.io/github/gh-aw-firewall/squid:0.27.44@sha256:83e48bbe12c634be8c228a576832fe45f66c529ac3659db92bddbcf2eeb6d627 ghcr.io/github/gh-aw-mcpg:v0.4.9@sha256:e5a1569aeaf41820fa7bdee3e94468cae448133cdbf00119ad24f5b74db1ab9f ghcr.io/github/gh-aw-node@sha256:0d9f1fb5fd6610c0ac1f5194a38e45a8a1e81f8a390d5142d8e4e6f26a4b3196
       - name: Generate Safe Outputs Config
+        env:
+          GH_AW_INPUT_ISSUE_NUMBER: ${{ inputs.issue_number }}
         run: |
           mkdir -p "${RUNNER_TEMP}/gh-aw/safeoutputs"
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
-          cat > "${RUNNER_TEMP}/gh-aw/safeoutputs/config.json" << 'GH_AW_SAFE_OUTPUTS_CONFIG_563c98a62c2313e8_EOF'
-          {"create_issue":{"close_older_issues":true,"labels":["report","daily-status","s/triaged"],"max":1,"title_prefix":"[repo-status] "},"create_report_incomplete_issue":{},"missing_data":{},"missing_tool":{},"noop":{"max":1,"report-as-issue":"false"},"report_incomplete":{}}
-          GH_AW_SAFE_OUTPUTS_CONFIG_563c98a62c2313e8_EOF
+          cat > "${RUNNER_TEMP}/gh-aw/safeoutputs/config.json" << 'GH_AW_SAFE_OUTPUTS_CONFIG_981e0e6e9512dfbf_EOF'
+          {"add_comment":{"data_enabled":true,"discussions":false,"footer":false,"max":1,"target":"${GH_AW_INPUT_ISSUE_NUMBER}"},"add_labels":{"allowed":["area-*","platform/*","version/*","layout-*","collectionview-*","feature-blazor-*","testing-*","regressed-in-*","p/*","backport/*","fixed-in-*","proposal/*","partner*","Cost:*","Status:*","a11y/*","t/*","s/*","perf/*","Task","*regression","migration-compatibility","custom-handler","material3","xsg","external*","build","test-failure","xharness","has-workaround","repro:device-only","shell-*","nuget","tutorials","i/*","investigate","block*","good first issue","help wanted","needs-*","labs-candidate","delighter*","csi-new","Epic","Theme","User Story","community ✨","discussed","a11y-resolved"],"blocked":["s/agent-*","s/ai-*","s/pr-*","s/no-recent-activity","s/triaged]","area-button","area-collectionview","area-shell","area-webview","area-label","area-picker","area-progressbar","area-refreshview","partner/syncfusion/review","t/enhancement"],"max":10,"target":"${GH_AW_INPUT_ISSUE_NUMBER}"},"missing_data":{},"missing_tool":{},"noop":{"max":1,"report-as-issue":"false"},"remove_labels":{"allowed":["area-*","platform/*","version/*","layout-*","collectionview-*","feature-blazor-*","testing-*","regressed-in-*","p/*","backport/*","fixed-in-*","proposal/*","partner*","Cost:*","Status:*","a11y/*","t/*","s/*","perf/*","Task","*regression","migration-compatibility","custom-handler","material3","xsg","external*","build","test-failure","xharness","has-workaround","repro:device-only","shell-*","nuget","tutorials","i/*","investigate","block*","good first issue","help wanted","needs-*","labs-candidate","delighter*","csi-new","Epic","Theme","User Story","community ✨","discussed","a11y-resolved"],"blocked":["s/agent-*","s/ai-*","s/pr-*","s/no-recent-activity","s/triaged]","area-button","area-collectionview","area-shell","area-webview","area-label","area-picker","area-progressbar","area-refreshview","partner/syncfusion/review","t/enhancement"],"max":10,"target":"${GH_AW_INPUT_ISSUE_NUMBER}"},"report_incomplete":{}}
+          GH_AW_SAFE_OUTPUTS_CONFIG_981e0e6e9512dfbf_EOF
       - name: Generate Safe Outputs Tools
         env:
           GH_AW_TOOLS_META_JSON: |
             {
               "description_suffixes": {
-                "create_issue": " CONSTRAINTS: Maximum 1 issue(s) can be created. Title will be prefixed with \"[repo-status] \". Labels [\"report\" \"daily-status\" \"s/triaged\"] will be automatically added."
+                "add_comment": " CONSTRAINTS: Maximum 1 comment(s) can be added. Target: ${{ inputs.issue_number }}. Supports reply_to_id for discussion threading.",
+                "add_labels": " CONSTRAINTS: Maximum 10 label(s) can be added. Only these labels are allowed: [\"area-*\" \"platform/*\" \"version/*\" \"layout-*\" \"collectionview-*\" \"feature-blazor-*\" \"testing-*\" \"regressed-in-*\" \"p/*\" \"backport/*\" \"fixed-in-*\" \"proposal/*\" \"partner*\" \"Cost:*\" \"Status:*\" \"a11y/*\" \"t/*\" \"s/*\" \"perf/*\" \"Task\" \"*regression\" \"migration-compatibility\" \"custom-handler\" \"material3\" \"xsg\" \"external*\" \"build\" \"test-failure\" \"xharness\" \"has-workaround\" \"repro:device-only\" \"shell-*\" \"nuget\" \"tutorials\" \"i/*\" \"investigate\" \"block*\" \"good first issue\" \"help wanted\" \"needs-*\" \"labs-candidate\" \"delighter*\" \"csi-new\" \"Epic\" \"Theme\" \"User Story\" \"community ✨\" \"discussed\" \"a11y-resolved\"]. Target: ${{ inputs.issue_number }}.",
+                "remove_labels": " CONSTRAINTS: Maximum 10 label(s) can be removed. Only these labels can be removed: [area-* platform/* version/* layout-* collectionview-* feature-blazor-* testing-* regressed-in-* p/* backport/* fixed-in-* proposal/* partner* Cost:* Status:* a11y/* t/* s/* perf/* Task *regression migration-compatibility custom-handler material3 xsg external* build test-failure xharness has-workaround repro:device-only shell-* nuget tutorials i/* investigate block* good first issue help wanted needs-* labs-candidate delighter* csi-new Epic Theme User Story community ✨ discussed a11y-resolved]. Target: ${{ inputs.issue_number }}."
               },
               "repo_params": {},
-              "dynamic_tools": []
+              "dynamic_tools": [],
+              "property_injections": {
+                "add_comment": {
+                  "data": {
+                    "$ref": "#/0/inputSchema/$defs/structured_data"
+                  }
+                },
+                "create_issue": {
+                  "data": {
+                    "$ref": "#/0/inputSchema/$defs/structured_data"
+                  }
+                },
+                "create_pull_request": {
+                  "data": {
+                    "$ref": "#/0/inputSchema/$defs/structured_data"
+                  }
+                },
+                "create_pull_request_review_comment": {
+                  "data": {
+                    "$ref": "#/0/inputSchema/$defs/structured_data"
+                  }
+                },
+                "reply_to_pull_request_review_comment": {
+                  "data": {
+                    "$ref": "#/0/inputSchema/$defs/structured_data"
+                  }
+                },
+                "submit_pull_request_review": {
+                  "data": {
+                    "$ref": "#/0/inputSchema/$defs/structured_data"
+                  }
+                }
+              }
             }
           GH_AW_VALIDATION_JSON: |
             {
-              "create_issue": {
+              "add_comment": {
                 "defaultMax": 1,
                 "fields": {
                   "body": {
                     "required": true,
                     "type": "string",
                     "sanitize": true,
-                    "maxLength": 65000,
-                    "minLength": 20
+                    "maxLength": 65000
                   },
-                  "fields": {
-                    "type": "array"
+                  "comment_id": {
+                    "optionalPositiveInteger": true
                   },
-                  "labels": {
-                    "type": "array",
-                    "itemType": "string",
-                    "itemSanitize": true,
-                    "itemMaxLength": 128
-                  },
-                  "parent": {
+                  "item_number": {
                     "issueOrPRNumber": true
+                  },
+                  "pr": {
+                    "issueOrPRNumber": true
+                  },
+                  "pr_number": {
+                    "issueOrPRNumber": true
+                  },
+                  "reply_to_id": {
+                    "type": "string",
+                    "maxLength": 256
                   },
                   "repo": {
                     "type": "string",
                     "maxLength": 256
                   },
-                  "temporary_id": {
-                    "type": "string"
-                  },
-                  "title": {
-                    "required": true,
+                  "target": {
                     "type": "string",
-                    "sanitize": true,
-                    "maxLength": 128
+                    "enum": [
+                      "status"
+                    ]
+                  },
+                  "temporary_id": {
+                    "type": "string",
+                    "pattern": "^#?aw_[A-Za-z0-9_]{3,12}$"
+                  }
+                },
+                "dataEnabled": true
+              },
+              "add_labels": {
+                "defaultMax": 5,
+                "fields": {
+                  "item_number": {
+                    "issueNumberOrTemporaryId": true
+                  },
+                  "labels": {
+                    "required": true,
+                    "type": "array"
+                  },
+                  "repo": {
+                    "type": "string",
+                    "maxLength": 256
                   }
                 }
               },
@@ -622,6 +742,22 @@ jobs:
                   }
                 }
               },
+              "remove_labels": {
+                "defaultMax": 5,
+                "fields": {
+                  "item_number": {
+                    "issueNumberOrTemporaryId": true
+                  },
+                  "labels": {
+                    "required": true,
+                    "type": "array"
+                  },
+                  "repo": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                }
+              },
               "report_incomplete": {
                 "defaultMax": 5,
                 "fields": {
@@ -653,11 +789,8 @@ jobs:
           GH_AW_SAFE_OUTPUTS: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS }}
           GH_AW_SAFE_OUTPUTS_CONFIG_PATH: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS_CONFIG_PATH }}
           GH_AW_SAFE_OUTPUTS_TOOLS_PATH: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS_TOOLS_PATH }}
-          GH_AW_SINK_VISIBILITY: ${{ steps.determine-automatic-lockdown.outputs.visibility }}
-          GITHUB_MCP_GUARD_MIN_INTEGRITY: ${{ steps.determine-automatic-lockdown.outputs.min_integrity }}
-          GITHUB_MCP_GUARD_REPOS: ${{ steps.determine-automatic-lockdown.outputs.repos }}
-          GITHUB_MCP_SERVER_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_AW_INPUT_ISSUE_NUMBER: ${{ inputs.issue_number }}
         run: |
           set -eo pipefail
           mkdir -p "${RUNNER_TEMP}/gh-aw/mcp-config"
@@ -679,30 +812,13 @@ jobs:
           MCP_GATEWAY_UID=$(id -u 2>/dev/null || echo '0')
           MCP_GATEWAY_GID=$(id -g 2>/dev/null || echo '0')
           source "${RUNNER_TEMP}/gh-aw/actions/resolve_docker_socket_gid.sh"
-          export MCP_GATEWAY_DOCKER_COMMAND='docker run -i --rm --network bridge -p 127.0.0.1:'"${MCP_GATEWAY_PORT}"':'"${MCP_GATEWAY_PORT}"' --name awmg-mcpg --add-host host.docker.internal:host-gateway --user '"${MCP_GATEWAY_UID}"':'"${MCP_GATEWAY_GID}"' --group-add '"${DOCKER_SOCK_GID}"' -v '"${DOCKER_SOCK_PATH}"':/var/run/docker.sock -e MCP_GATEWAY_PORT -e MCP_GATEWAY_DOMAIN -e MCP_GATEWAY_API_KEY -e MCP_GATEWAY_PAYLOAD_DIR -e MCP_GATEWAY_PAYLOAD_SIZE_THRESHOLD -e DOCKER_HOST=unix:///var/run/docker.sock -e DEBUG -e MCP_GATEWAY_LOG_DIR -e GH_AW_MCP_LOG_DIR -e GH_AW_SAFE_OUTPUTS -e GH_AW_SAFE_OUTPUTS_CONFIG_PATH -e GH_AW_SAFE_OUTPUTS_TOOLS_PATH -e GH_AW_POLICY_ALLOW_CREATE_PULL_REQUEST -e GH_AW_ASSETS_BRANCH -e GH_AW_ASSETS_MAX_SIZE_KB -e GH_AW_ASSETS_ALLOWED_EXTS -e DEFAULT_BRANCH -e GITHUB_MCP_SERVER_TOKEN -e GITHUB_MCP_GUARD_MIN_INTEGRITY -e GITHUB_MCP_GUARD_REPOS -e GH_AW_SINK_VISIBILITY -e GITHUB_REPOSITORY -e GITHUB_SERVER_URL -e GITHUB_SHA -e GITHUB_WORKSPACE -e GITHUB_TOKEN -e GITHUB_RUN_ID -e GITHUB_RUN_NUMBER -e GITHUB_RUN_ATTEMPT -e GITHUB_JOB -e GITHUB_ACTION -e GITHUB_EVENT_NAME -e GITHUB_EVENT_PATH -e GITHUB_ACTOR -e GITHUB_ACTOR_ID -e GITHUB_TRIGGERING_ACTOR -e GITHUB_WORKFLOW -e GITHUB_WORKFLOW_REF -e GITHUB_WORKFLOW_SHA -e GITHUB_REF -e GITHUB_REF_NAME -e GITHUB_REF_TYPE -e GITHUB_HEAD_REF -e GITHUB_BASE_REF -e RUNNER_TEMP -e MCP_GATEWAY_ALLOWED_MOUNT_ROOTS -v /tmp/gh-aw/mcp-payloads:/tmp/gh-aw/mcp-payloads:rw -v /opt:/opt:ro -v /tmp:/tmp:rw -v '"${GITHUB_WORKSPACE}"':'"${GITHUB_WORKSPACE}"':rw -v '"${RUNNER_TEMP}"'/gh-aw/safeoutputs:'"${RUNNER_TEMP}"'/gh-aw/safeoutputs:rw ghcr.io/github/gh-aw-mcpg:v0.4.9'
+          export MCP_GATEWAY_DOCKER_COMMAND='docker run -i --rm --network bridge -p 127.0.0.1:'"${MCP_GATEWAY_PORT}"':'"${MCP_GATEWAY_PORT}"' --name awmg-mcpg --add-host host.docker.internal:host-gateway --user '"${MCP_GATEWAY_UID}"':'"${MCP_GATEWAY_GID}"' --group-add '"${DOCKER_SOCK_GID}"' -v '"${DOCKER_SOCK_PATH}"':/var/run/docker.sock -e MCP_GATEWAY_PORT -e MCP_GATEWAY_DOMAIN -e MCP_GATEWAY_API_KEY -e MCP_GATEWAY_PAYLOAD_DIR -e MCP_GATEWAY_PAYLOAD_SIZE_THRESHOLD -e DOCKER_HOST=unix:///var/run/docker.sock -e DEBUG -e MCP_GATEWAY_LOG_DIR -e GH_AW_MCP_LOG_DIR -e GH_AW_SAFE_OUTPUTS -e GH_AW_SAFE_OUTPUTS_CONFIG_PATH -e GH_AW_SAFE_OUTPUTS_TOOLS_PATH -e GH_AW_POLICY_ALLOW_CREATE_PULL_REQUEST -e GH_AW_ASSETS_BRANCH -e GH_AW_ASSETS_MAX_SIZE_KB -e GH_AW_ASSETS_ALLOWED_EXTS -e DEFAULT_BRANCH -e GITHUB_MCP_SERVER_TOKEN -e GITHUB_MCP_GUARD_MIN_INTEGRITY -e GITHUB_MCP_GUARD_REPOS -e GH_AW_SINK_VISIBILITY -e GITHUB_REPOSITORY -e GITHUB_SERVER_URL -e GITHUB_SHA -e GITHUB_WORKSPACE -e GITHUB_TOKEN -e GITHUB_RUN_ID -e GITHUB_RUN_NUMBER -e GITHUB_RUN_ATTEMPT -e GITHUB_JOB -e GITHUB_ACTION -e GITHUB_EVENT_NAME -e GITHUB_EVENT_PATH -e GITHUB_ACTOR -e GITHUB_ACTOR_ID -e GITHUB_TRIGGERING_ACTOR -e GITHUB_WORKFLOW -e GITHUB_WORKFLOW_REF -e GITHUB_WORKFLOW_SHA -e GITHUB_REF -e GITHUB_REF_NAME -e GITHUB_REF_TYPE -e GITHUB_HEAD_REF -e GITHUB_BASE_REF -e RUNNER_TEMP -e MCP_GATEWAY_ALLOWED_MOUNT_ROOTS -e GH_AW_INPUT_ISSUE_NUMBER -v /tmp/gh-aw/mcp-payloads:/tmp/gh-aw/mcp-payloads:rw -v /opt:/opt:ro -v /tmp:/tmp:rw -v '"${GITHUB_WORKSPACE}"':'"${GITHUB_WORKSPACE}"':rw -v '"${RUNNER_TEMP}"'/gh-aw/safeoutputs:'"${RUNNER_TEMP}"'/gh-aw/safeoutputs:rw ghcr.io/github/gh-aw-mcpg:v0.4.9'
 
           mkdir -p "$HOME/.copilot"
           GH_AW_NODE=$(which node 2>/dev/null || command -v node 2>/dev/null || echo node)
-          cat << GH_AW_MCP_CONFIG_e26f23cc8d0ae67e_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
+          cat << GH_AW_MCP_CONFIG_b2376b151f600fc8_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
           {
             "mcpServers": {
-              "github": {
-                "type": "stdio",
-                "container": "ghcr.io/github/github-mcp-server:v1.9.0",
-                "env": {
-                  "GITHUB_FEATURES": "fields_param",
-                  "GITHUB_HOST": "${GITHUB_SERVER_URL}",
-                  "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_MCP_SERVER_TOKEN}",
-                  "GITHUB_READ_ONLY": "1",
-                  "GITHUB_TOOLSETS": "context,repos,issues,pull_requests"
-                },
-                "guard-policies": {
-                  "allow-only": {
-                    "min-integrity": "$GITHUB_MCP_GUARD_MIN_INTEGRITY",
-                    "repos": "$GITHUB_MCP_GUARD_REPOS"
-                  }
-                }
-              },
               "safeoutputs": {
                 "type": "stdio",
                 "container": "ghcr.io/github/gh-aw-node",
@@ -725,15 +841,8 @@ jobs:
                   "GITHUB_SHA": "\${GITHUB_SHA}",
                   "GITHUB_TOKEN": "\${GITHUB_TOKEN}",
                   "GITHUB_WORKSPACE": "\${GITHUB_WORKSPACE}",
-                  "RUNNER_TEMP": "\${RUNNER_TEMP}"
-                },
-                "guard-policies": {
-                  "write-sink": {
-                    "accept": [
-                      "*"
-                    ],
-                    "sink-visibility": "${GH_AW_SINK_VISIBILITY}"
-                  }
+                  "RUNNER_TEMP": "\${RUNNER_TEMP}",
+                  "GH_AW_INPUT_ISSUE_NUMBER": "\${GH_AW_INPUT_ISSUE_NUMBER}"
                 }
               }
             },
@@ -745,7 +854,7 @@ jobs:
               "startupTimeout": 120
             }
           }
-          GH_AW_MCP_CONFIG_e26f23cc8d0ae67e_EOF
+          GH_AW_MCP_CONFIG_b2376b151f600fc8_EOF
       - name: Mount MCP servers as CLIs
         id: mount-mcp-clis
         continue-on-error: true
@@ -770,6 +879,8 @@ jobs:
       - name: Execute GitHub Copilot CLI
         id: agentic_execution
         # Copilot CLI tool arguments (sorted):
+        # --allow-tool safeoutputs
+        # --allow-tool write
         timeout-minutes: 20
         run: |
           set -o pipefail
@@ -815,28 +926,29 @@ jobs:
             fi
           fi
           # shellcheck disable=SC1003,SC2016,SC2086
-          awf --config "${RUNNER_TEMP}/gh-aw/awf-config.json" --container-workdir "${GITHUB_WORKSPACE}" --mount "${RUNNER_TEMP}/gh-aw:${RUNNER_TEMP}/gh-aw:ro" --mount "${RUNNER_TEMP}/gh-aw:/host${RUNNER_TEMP}/gh-aw:ro" ${GH_AW_TOOL_CACHE_MOUNT:+--mount "$GH_AW_TOOL_CACHE_MOUNT"} ${GH_AW_DOCKER_HOST:+--docker-host "$GH_AW_DOCKER_HOST"} --env-all --exclude-env ACTIONS_ID_TOKEN_REQUEST_TOKEN --exclude-env ACTIONS_ID_TOKEN_REQUEST_URL --exclude-env COPILOT_GITHUB_TOKEN --exclude-env GITHUB_MCP_SERVER_TOKEN --exclude-env MCP_GATEWAY_API_KEY --mount /tmp/gh-aw:/tmp/gh-aw:rw --log-level info --skip-pull \
-            -- /bin/bash -c 'set +o histexpand; export PATH="${RUNNER_TEMP}/gh-aw/mcp-cli/bin:$PATH" && : "${RUNNER_TOOL_CACHE:?RUNNER_TOOL_CACHE must be set}"; GH_AW_TOOL_CACHE="$RUNNER_TOOL_CACHE"; export PATH="$(find "$GH_AW_TOOL_CACHE" -maxdepth 5 -type d -name bin 2>/dev/null | tr '\''\n'\'' '\'':'\'')$PATH"; [ -n "$GOROOT" ] && export PATH="$GOROOT/bin:$PATH" || true; [ -n "$ERLANG_HOME" ] && export PATH="$ERLANG_HOME/bin:$PATH" || true && GH_AW_NODE_EXEC="${GH_AW_NODE_BIN:-}"; if [ -z "$GH_AW_NODE_EXEC" ] || [ ! -x "$GH_AW_NODE_EXEC" ]; then GH_AW_NODE_EXEC="$(command -v node 2>/dev/null || true)"; fi; if [ -z "$GH_AW_NODE_EXEC" ]; then echo "node runtime missing on this runner — check runtimes.node in workflow YAML" >&2; exit 127; fi; GH_AW_NPM_GLOBAL_ROOT="$(npm root -g 2>/dev/null || true)"; if [ -n "$GH_AW_NPM_GLOBAL_ROOT" ]; then export NODE_PATH="${GH_AW_NPM_GLOBAL_ROOT}${NODE_PATH:+:${NODE_PATH}}"; fi; "$GH_AW_NODE_EXEC" "${RUNNER_TEMP}/gh-aw/actions/copilot_harness.cjs" "${RUNNER_TEMP}/gh-aw/bin/copilot" --add-dir /tmp/gh-aw/ --log-level all --log-dir /tmp/gh-aw/sandbox/agent/logs/ --disable-builtin-mcps --no-ask-user --allow-all-tools --allow-all-paths --add-dir "${GITHUB_WORKSPACE}" --prompt-file /tmp/gh-aw/aw-prompts/prompt.txt' 2>&1 | tee -a /tmp/gh-aw/agent-stdio.log
+          awf --config "${RUNNER_TEMP}/gh-aw/awf-config.json" --container-workdir "${GITHUB_WORKSPACE}" --mount "${RUNNER_TEMP}/gh-aw:${RUNNER_TEMP}/gh-aw:ro" --mount "${RUNNER_TEMP}/gh-aw:/host${RUNNER_TEMP}/gh-aw:ro" ${GH_AW_TOOL_CACHE_MOUNT:+--mount "$GH_AW_TOOL_CACHE_MOUNT"} ${GH_AW_DOCKER_HOST:+--docker-host "$GH_AW_DOCKER_HOST"} --env-all --exclude-env ACTIONS_ID_TOKEN_REQUEST_TOKEN --exclude-env ACTIONS_ID_TOKEN_REQUEST_URL --exclude-env COPILOT_GITHUB_TOKEN --exclude-env MCP_GATEWAY_API_KEY --mount /tmp/gh-aw:/tmp/gh-aw:rw --log-level info --skip-pull \
+            -- /bin/bash -c 'set +o histexpand; export PATH="${RUNNER_TEMP}/gh-aw/mcp-cli/bin:$PATH" && : "${RUNNER_TOOL_CACHE:?RUNNER_TOOL_CACHE must be set}"; GH_AW_TOOL_CACHE="$RUNNER_TOOL_CACHE"; export PATH="$(find "$GH_AW_TOOL_CACHE" -maxdepth 5 -type d -name bin 2>/dev/null | tr '\''\n'\'' '\'':'\'')$PATH"; [ -n "$GOROOT" ] && export PATH="$GOROOT/bin:$PATH" || true; [ -n "$ERLANG_HOME" ] && export PATH="$ERLANG_HOME/bin:$PATH" || true && GH_AW_NODE_EXEC="${GH_AW_NODE_BIN:-}"; if [ -z "$GH_AW_NODE_EXEC" ] || [ ! -x "$GH_AW_NODE_EXEC" ]; then GH_AW_NODE_EXEC="$(command -v node 2>/dev/null || true)"; fi; if [ -z "$GH_AW_NODE_EXEC" ]; then echo "node runtime missing on this runner — check runtimes.node in workflow YAML" >&2; exit 127; fi; GH_AW_NPM_GLOBAL_ROOT="$(npm root -g 2>/dev/null || true)"; if [ -n "$GH_AW_NPM_GLOBAL_ROOT" ]; then export NODE_PATH="${GH_AW_NPM_GLOBAL_ROOT}${NODE_PATH:+:${NODE_PATH}}"; fi; "$GH_AW_NODE_EXEC" "${RUNNER_TEMP}/gh-aw/actions/copilot_harness.cjs" "${RUNNER_TEMP}/gh-aw/bin/copilot" --add-dir /tmp/gh-aw/ --log-level all --log-dir /tmp/gh-aw/sandbox/agent/logs/ --disable-builtin-mcps --no-ask-user --allow-tool safeoutputs --allow-tool write --allow-all-paths --add-dir "${GITHUB_WORKSPACE}" --prompt-file /tmp/gh-aw/aw-prompts/prompt.txt' 2>&1 | tee -a /tmp/gh-aw/agent-stdio.log
         env:
           AWF_REFLECT_ENABLED: 1
           COPILOT_AGENT_RUNNER_TYPE: STANDALONE
           COPILOT_DUMMY_BYOK: dummy-byok-key-for-offline-mode
-          COPILOT_GITHUB_TOKEN: ${{ case(needs.pat_pool.outputs.pat_number == '0', secrets.COPILOT_PAT_0, needs.pat_pool.outputs.pat_number == '1', secrets.COPILOT_PAT_1, needs.pat_pool.outputs.pat_number == '2', secrets.COPILOT_PAT_2, needs.pat_pool.outputs.pat_number == '3', secrets.COPILOT_PAT_3, needs.pat_pool.outputs.pat_number == '4', secrets.COPILOT_PAT_4, needs.pat_pool.outputs.pat_number == '5', secrets.COPILOT_PAT_5, needs.pat_pool.outputs.pat_number == '6', secrets.COPILOT_PAT_6, needs.pat_pool.outputs.pat_number == '7', secrets.COPILOT_PAT_7, needs.pat_pool.outputs.pat_number == '8', secrets.COPILOT_PAT_8, needs.pat_pool.outputs.pat_number == '9', secrets.COPILOT_PAT_9, 'NO COPILOT PAT AVAILABLE') }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
           COPILOT_MODEL: gpt-6.1-sol
           COPILOT_PROVIDER_WIRE_API: responses
+          GH_AW_INPUT_ISSUE_NUMBER: ${{ inputs.issue_number }}
           GH_AW_LLM_PROVIDER: github
           GH_AW_MAX_AI_CREDITS: ${{ vars.GH_AW_DEFAULT_MAX_AI_CREDITS || '1000' }}
           GH_AW_MAX_TURNS: ${{ vars.GH_AW_DEFAULT_MAX_TURNS || '' }}
           GH_AW_PHASE: agent
           GH_AW_PROMPT: /tmp/gh-aw/aw-prompts/prompt.txt
           GH_AW_SAFE_OUTPUTS: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS }}
+          GH_AW_SAFE_OUTPUTS_STAGED: true
           GH_AW_TIMEOUT_MINUTES: 20
           GH_AW_VERSION: v0.86.2
           GITHUB_API_URL: ${{ github.api_url }}
           GITHUB_AW: true
           GITHUB_COPILOT_INTEGRATION_ID: agentic-workflows
           GITHUB_HEAD_REF: ${{ github.head_ref }}
-          GITHUB_MCP_SERVER_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_STEP_SUMMARY: /tmp/gh-aw/agent-step-summary.md
@@ -881,19 +993,8 @@ jobs:
             const { main } = require('${{ runner.temp }}/gh-aw/actions/redact_secrets.cjs');
             await main();
         env:
-          GH_AW_SECRET_NAMES: 'COPILOT_PAT_0,COPILOT_PAT_1,COPILOT_PAT_2,COPILOT_PAT_3,COPILOT_PAT_4,COPILOT_PAT_5,COPILOT_PAT_6,COPILOT_PAT_7,COPILOT_PAT_8,COPILOT_PAT_9,GH_AW_GITHUB_MCP_SERVER_TOKEN,GH_AW_GITHUB_TOKEN,GITHUB_TOKEN'
-          SECRET_COPILOT_PAT_0: ${{ secrets.COPILOT_PAT_0 }}
-          SECRET_COPILOT_PAT_1: ${{ secrets.COPILOT_PAT_1 }}
-          SECRET_COPILOT_PAT_2: ${{ secrets.COPILOT_PAT_2 }}
-          SECRET_COPILOT_PAT_3: ${{ secrets.COPILOT_PAT_3 }}
-          SECRET_COPILOT_PAT_4: ${{ secrets.COPILOT_PAT_4 }}
-          SECRET_COPILOT_PAT_5: ${{ secrets.COPILOT_PAT_5 }}
-          SECRET_COPILOT_PAT_6: ${{ secrets.COPILOT_PAT_6 }}
-          SECRET_COPILOT_PAT_7: ${{ secrets.COPILOT_PAT_7 }}
-          SECRET_COPILOT_PAT_8: ${{ secrets.COPILOT_PAT_8 }}
-          SECRET_COPILOT_PAT_9: ${{ secrets.COPILOT_PAT_9 }}
-          SECRET_GH_AW_GITHUB_MCP_SERVER_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN }}
-          SECRET_GH_AW_GITHUB_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          GH_AW_SECRET_NAMES: 'COPILOT_GITHUB_TOKEN,GITHUB_TOKEN'
+          SECRET_COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
           SECRET_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Append agent step summary
         if: always()
@@ -1000,21 +1101,42 @@ jobs:
             /tmp/gh-aw/sandbox/firewall/awf-reflect.json
           if-no-files-found: ignore
 
+  canary_context:
+    needs: pre_activation
+    if: needs.pre_activation.outputs.triage_ready == 'true' && github.run_attempt == 1
+    runs-on: ubuntu-slim
+    outputs:
+      context_hash: ${{ needs.pre_activation.outputs.context_hash }}
+    steps:
+      - name: Configure GH_HOST for enterprise compatibility
+        id: ghes-host-config
+        shell: bash
+        run: | # zizmor: ignore[github-env] - GITHUB_SERVER_URL is set by GitHub Actions, not user input.
+          # Derive GH_HOST from GITHUB_SERVER_URL so the gh CLI targets the correct
+          # GitHub instance (GHES/GHEC). On github.com this is a harmless no-op.
+          GH_HOST="${GITHUB_SERVER_URL#https://}"
+          GH_HOST="${GH_HOST#http://}"
+          echo "GH_HOST=${GH_HOST}" >> "$GITHUB_ENV"
+      - name: Bind independently prepared evidence hash
+        run: |
+          [[ "$CONTEXT_HASH" =~ ^[A-F0-9]{64}$ ]]
+        env:
+          CONTEXT_HASH: ${{ needs.pre_activation.outputs.context_hash }}
+
   conclusion:
     needs:
       - activation
       - agent
+      - canary_context
       - detection
-      - pat_pool
       - safe_outputs
     if: >
       always() && (needs.agent.result != 'skipped' || needs.activation.outputs.lockdown_check_failed == 'true' ||
       needs.activation.outputs.oauth_token_check_failed == 'true' || needs.activation.outputs.stale_lock_file_failed == 'true' ||
-      needs.activation.outputs.daily_ai_credits_exceeded == 'true')
-    runs-on: ubuntu-slim
-    environment: copilot-pat-pool
+      needs.activation.outputs.secret_verification_result == 'failed' || needs.activation.outputs.daily_ai_credits_exceeded == 'true')
+    runs-on: ubuntu-latest
     permissions:
-      actions: read
+      actions: write
       issues: write
     concurrency:
       group: "gh-aw-conclusion-daily-repo-status"
@@ -1037,11 +1159,10 @@ jobs:
           trace-id: ${{ needs.activation.outputs.setup-trace-id }}
           parent-span-id: ${{ needs.activation.outputs.setup-parent-span-id || needs.activation.outputs.setup-span-id }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "Daily Repo Status"
+          GH_AW_SETUP_WORKFLOW_NAME: "Issue Triage Fork Canary"
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/daily-repo-status.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.79"
           GH_AW_INFO_AWF_VERSION: "v0.27.44"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Download agent output artifact
         id: download-agent-output
@@ -1132,9 +1253,8 @@ jobs:
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_NOOP_MAX: "1"
-          GH_AW_WORKFLOW_NAME: "Daily Repo Status"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/githubnext/agentics/blob/69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb/workflows/daily-repo-status.md"
+          GH_AW_WORKFLOW_NAME: "Issue Triage Fork Canary"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/daily-repo-status.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
           GH_AW_NOOP_REPORT_AS_ISSUE: "false"
@@ -1143,7 +1263,7 @@ jobs:
           GH_AW_AMBIENT_CONTEXT: ${{ needs.agent.outputs.ambient_context }}
           GH_AW_WORKFLOW_ID: "daily-repo-status"
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
             setupGlobals(core, github, context, exec, io, getOctokit);
@@ -1154,14 +1274,13 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_WORKFLOW_NAME: "Daily Repo Status"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/githubnext/agentics/blob/69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb/workflows/daily-repo-status.md"
+          GH_AW_WORKFLOW_NAME: "Issue Triage Fork Canary"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/daily-repo-status.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_DETECTION_CONCLUSION: ${{ needs.detection.outputs.detection_conclusion }}
           GH_AW_DETECTION_REASON: ${{ needs.detection.outputs.detection_reason }}
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
             setupGlobals(core, github, context, exec, io, getOctokit);
@@ -1172,12 +1291,12 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_MISSING_TOOL_CREATE_ISSUE: "true"
-          GH_AW_WORKFLOW_NAME: "Daily Repo Status"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/githubnext/agentics/blob/69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb/workflows/daily-repo-status.md"
+          GH_AW_MISSING_TOOL_CREATE_ISSUE: "false"
+          GH_AW_MISSING_TOOL_TITLE_PREFIX: "[missing tool]"
+          GH_AW_WORKFLOW_NAME: "Issue Triage Fork Canary"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/daily-repo-status.md"
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
             setupGlobals(core, github, context, exec, io, getOctokit);
@@ -1188,12 +1307,12 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_REPORT_INCOMPLETE_CREATE_ISSUE: "true"
-          GH_AW_WORKFLOW_NAME: "Daily Repo Status"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/githubnext/agentics/blob/69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb/workflows/daily-repo-status.md"
+          GH_AW_REPORT_INCOMPLETE_CREATE_ISSUE: "false"
+          GH_AW_REPORT_INCOMPLETE_TITLE_PREFIX: "[incomplete]"
+          GH_AW_WORKFLOW_NAME: "Issue Triage Fork Canary"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/daily-repo-status.md"
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
             setupGlobals(core, github, context, exec, io, getOctokit);
@@ -1205,14 +1324,15 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_WORKFLOW_NAME: "Daily Repo Status"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/githubnext/agentics/blob/69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb/workflows/daily-repo-status.md"
+          GH_AW_WORKFLOW_NAME: "Issue Triage Fork Canary"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/daily-repo-status.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
           GH_AW_WORKFLOW_ID: "daily-repo-status"
           GH_AW_ACTION_FAILURE_ISSUE_EXPIRES_HOURS: "168"
           GH_AW_ENGINE_ID: "copilot"
+          GH_AW_SECRET_VERIFICATION_RESULT: ${{ needs.activation.outputs.secret_verification_result }}
+          GH_AW_ENGINE_SECRET_FAILURE_MESSAGE: "**Alternative**: If your organization has a Copilot subscription, you can avoid the need for a personal access token by adding a top-level `permissions` block to your workflow file. This enables Copilot inference through the org using the built-in GitHub Actions token.\n\n```yaml\npermissions:\n  copilot-requests: write\n```\n\nSee: https://github.github.com/gh-aw/reference/engines/#github-copilot-default"
           GH_AW_CHECKOUT_PR_SUCCESS: ${{ needs.agent.outputs.checkout_pr_success }}
           GH_AW_EFFECTIVE_TOKENS: ${{ needs.agent.outputs.effective_tokens || '' }}
           GH_AW_AI_CREDITS_RATE_LIMIT_ERROR: ${{ needs.agent.outputs.ai_credits_rate_limit_error || 'false' }}
@@ -1232,16 +1352,19 @@ jobs:
           GH_AW_LOCKDOWN_CHECK_FAILED: ${{ needs.activation.outputs.lockdown_check_failed }}
           GH_AW_OAUTH_TOKEN_CHECK_FAILED: ${{ needs.activation.outputs.oauth_token_check_failed }}
           GH_AW_STALE_LOCK_FILE_FAILED: ${{ needs.activation.outputs.stale_lock_file_failed }}
+          GH_AW_SKILL_INSTALL_FAILURE_COUNT: ${{ needs.activation.outputs.skill_install_failure_count || '0' }}
+          GH_AW_SKILL_INSTALL_ERRORS: ${{ needs.activation.outputs.skill_install_errors || '' }}
           GH_AW_DAILY_AI_CREDITS_EXCEEDED: ${{ needs.activation.outputs.daily_ai_credits_exceeded }}
           GH_AW_DAILY_AI_CREDITS_TOTAL_EFFECTIVE_TOKENS: ${{ needs.activation.outputs.daily_ai_credits_total_effective_tokens }}
           GH_AW_DAILY_AI_CREDITS_THRESHOLD: ${{ needs.activation.outputs.daily_ai_credits_threshold }}
+          GH_AW_SAFE_OUTPUT_MESSAGES: "{\"bodyHeader\":\"\\u003c!-- Issue Triage --\\u003e\"}"
           GH_AW_GROUP_REPORTS: "false"
-          GH_AW_FAILURE_REPORT_AS_ISSUE: "true"
+          GH_AW_FAILURE_REPORT_AS_ISSUE: "false"
           GH_AW_MISSING_TOOL_REPORT_AS_FAILURE: "true"
           GH_AW_MISSING_DATA_REPORT_AS_FAILURE: "true"
           GH_AW_TIMEOUT_MINUTES: "20"
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
             setupGlobals(core, github, context, exec, io, getOctokit);
@@ -1253,13 +1376,12 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_WORKFLOW_NAME: "Daily Repo Status"
-          GH_AW_WORKFLOW_SOURCE: "githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/githubnext/agentics/blob/69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb/workflows/daily-repo-status.md"
+          GH_AW_WORKFLOW_NAME: "Issue Triage Fork Canary"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/daily-repo-status.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_REPORT_FAILED_JOBS: "true"
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
             setupGlobals(core, github, context, exec, io, getOctokit);
@@ -1270,10 +1392,8 @@ jobs:
     needs:
       - activation
       - agent
-      - pat_pool
-    if: always() && needs.agent.result != 'skipped'
+    if: (always() && needs.agent.result != 'skipped') && (github.run_attempt == 1)
     runs-on: ubuntu-latest
-    environment: copilot-pat-pool
     permissions:
       contents: read
     env:
@@ -1293,11 +1413,10 @@ jobs:
           trace-id: ${{ needs.activation.outputs.setup-trace-id }}
           parent-span-id: ${{ needs.activation.outputs.setup-parent-span-id || needs.activation.outputs.setup-span-id }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "Daily Repo Status"
+          GH_AW_SETUP_WORKFLOW_NAME: "Issue Triage Fork Canary"
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/daily-repo-status.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.79"
           GH_AW_INFO_AWF_VERSION: "v0.27.44"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Download agent output artifact
         id: download-agent-output
@@ -1353,8 +1472,8 @@ jobs:
         if: always() && steps.detection_guard.outputs.run_detection == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          WORKFLOW_NAME: "Daily Repo Status"
-          WORKFLOW_DESCRIPTION: "This workflow creates daily repo status reports. It gathers recent repository\nactivity (issues, PRs, discussions, releases, code changes) and generates\nengaging GitHub issues with productivity insights, community highlights,\nand project recommendations."
+          WORKFLOW_NAME: "Issue Triage Fork Canary"
+          WORKFLOW_DESCRIPTION: "Fork-only staged GPT triage of real CLI-prepared evidence, with fresh local trusted validation."
           HAS_PATCH: ${{ needs.agent.outputs.has_patch }}
           GH_AW_DETECTION_CONTINUE_ON_ERROR: "true"
         with:
@@ -1442,7 +1561,7 @@ jobs:
           AWF_REFLECT_ENABLED: 1
           COPILOT_AGENT_RUNNER_TYPE: STANDALONE
           COPILOT_DUMMY_BYOK: dummy-byok-key-for-offline-mode
-          COPILOT_GITHUB_TOKEN: ${{ case(needs.pat_pool.outputs.pat_number == '0', secrets.COPILOT_PAT_0, needs.pat_pool.outputs.pat_number == '1', secrets.COPILOT_PAT_1, needs.pat_pool.outputs.pat_number == '2', secrets.COPILOT_PAT_2, needs.pat_pool.outputs.pat_number == '3', secrets.COPILOT_PAT_3, needs.pat_pool.outputs.pat_number == '4', secrets.COPILOT_PAT_4, needs.pat_pool.outputs.pat_number == '5', secrets.COPILOT_PAT_5, needs.pat_pool.outputs.pat_number == '6', secrets.COPILOT_PAT_6, needs.pat_pool.outputs.pat_number == '7', secrets.COPILOT_PAT_7, needs.pat_pool.outputs.pat_number == '8', secrets.COPILOT_PAT_8, needs.pat_pool.outputs.pat_number == '9', secrets.COPILOT_PAT_9, 'NO COPILOT PAT AVAILABLE') }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
           COPILOT_MODEL: gpt-6.1-sol
           COPILOT_PROVIDER_WIRE_API: responses
           GH_AW_LLM_PROVIDER: github
@@ -1535,91 +1654,22 @@ jobs:
               }
             }
 
-  pat_pool:
-    needs: pre_activation
-    runs-on: ubuntu-slim
-    environment: copilot-pat-pool
-    outputs:
-      pat_number: ${{ steps.select-pat-number.outputs.copilot_pat_number }}
-    steps:
-      - name: Configure GH_HOST for enterprise compatibility
-        id: ghes-host-config
-        shell: bash
-        run: | # zizmor: ignore[github-env] - GITHUB_SERVER_URL is set by GitHub Actions, not user input.
-          # Derive GH_HOST from GITHUB_SERVER_URL so the gh CLI targets the correct
-          # GitHub instance (GHES/GHEC). On github.com this is a harmless no-op.
-          GH_HOST="${GITHUB_SERVER_URL#https://}"
-          GH_HOST="${GH_HOST#http://}"
-          echo "GH_HOST=${GH_HOST}" >> "$GITHUB_ENV"
-      - name: Select Copilot token from pool
-        id: select-pat-number
-        run: |
-          # Collect pool entries with non-empty secrets from COPILOT_PAT_0..COPILOT_PAT_9.
-          PAT_NUMBERS=()
-          POOL_INDICATORS=(➖ ➖ ➖ ➖ ➖ ➖ ➖ ➖ ➖ ➖)
-
-          for i in $(seq 0 9); do
-            var="COPILOT_PAT_${i}"
-            val="${!var}"
-            if [ -n "$val" ]; then
-              PAT_NUMBERS+=("$i")
-              POOL_INDICATORS[i]="🟪"
-            fi
-          done
-
-          # If none of the entries in the pool have values, emit a warning
-          # and do not set an output value. The consumer can fall back to
-          # using COPILOT_GITHUB_TOKEN.
-          if [ ${#PAT_NUMBERS[@]} -eq 0 ]; then
-            warning_message="::warning::None of the PAT pool entries had values "
-            warning_message+="(checked COPILOT_PAT_0 through COPILOT_PAT_9)"
-            echo "$warning_message"
-            exit 0
-          fi
-
-          # Select a random index using the seed if specified.
-          if [ -n "$RANDOM_SEED" ]; then
-            RANDOM=$RANDOM_SEED
-          fi
-
-          PAT_INDEX=$(( RANDOM % ${#PAT_NUMBERS[@]} ))
-          PAT_NUMBER="${PAT_NUMBERS[$PAT_INDEX]}"
-          POOL_INDICATORS[PAT_NUMBER]="✅"
-
-          echo "Pool size: ${#PAT_NUMBERS[@]}"
-          echo "Selected PAT number ${PAT_NUMBER} (index: ${PAT_INDEX})"
-
-          echo "|0|1|2|3|4|5|6|7|8|9|" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-|-|-|-|-|-|-|-|-|-|" >> "$GITHUB_STEP_SUMMARY"
-          (IFS='|'; printf '|%s' "${POOL_INDICATORS[@]}"; printf '|\n') >> "$GITHUB_STEP_SUMMARY"
-
-          echo "copilot_pat_number=${PAT_NUMBER}" >> "$GITHUB_OUTPUT"
-        env:
-          COPILOT_PAT_0: ${{ secrets.COPILOT_PAT_0 }}
-          COPILOT_PAT_1: ${{ secrets.COPILOT_PAT_1 }}
-          COPILOT_PAT_2: ${{ secrets.COPILOT_PAT_2 }}
-          COPILOT_PAT_3: ${{ secrets.COPILOT_PAT_3 }}
-          COPILOT_PAT_4: ${{ secrets.COPILOT_PAT_4 }}
-          COPILOT_PAT_5: ${{ secrets.COPILOT_PAT_5 }}
-          COPILOT_PAT_6: ${{ secrets.COPILOT_PAT_6 }}
-          COPILOT_PAT_7: ${{ secrets.COPILOT_PAT_7 }}
-          COPILOT_PAT_8: ${{ secrets.COPILOT_PAT_8 }}
-          COPILOT_PAT_9: ${{ secrets.COPILOT_PAT_9 }}
-          RANDOM_SEED: ${{ github.aw.import-inputs.random_seed }}
-        shell: bash
-
   pre_activation:
-    if: github.repository == 'dotnet/maui'
-    runs-on: ubuntu-slim
-    environment: copilot-pat-pool
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       GH_AW_RUNTIME_FEATURES: ${{ vars.GH_AW_RUNTIME_FEATURES }}
     outputs:
       activated: ${{ steps.check_membership.outputs.is_team_member == 'true' }}
+      command_result: ${{ steps.command.outcome }}
+      context_hash: ${{ steps.context.outputs.context_hash }}
+      context_result: ${{ steps.context.outcome }}
       matched_command: ''
       setup-parent-span-id: ${{ steps.setup.outputs.parent-span-id || steps.setup.outputs.span-id }}
       setup-span-id: ${{ steps.setup.outputs.span-id }}
       setup-trace-id: ${{ steps.setup.outputs.trace-id }}
+      triage_ready: ${{ steps.context.outputs.ready }}
     steps:
       - name: Setup Scripts
         id: setup
@@ -1628,17 +1678,16 @@ jobs:
           destination: ${{ runner.temp }}/gh-aw/actions
           job-name: ${{ github.job }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "Daily Repo Status"
+          GH_AW_SETUP_WORKFLOW_NAME: "Issue Triage Fork Canary"
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/daily-repo-status.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.79"
           GH_AW_INFO_AWF_VERSION: "v0.27.44"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Check team membership for workflow
         id: check_membership
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GH_AW_REQUIRED_ROLES: "admin,maintainer,write"
+          GH_AW_REQUIRED_ROLES: "admin,maintain,write"
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -1646,17 +1695,98 @@ jobs:
             setupGlobals(core, github, context, exec, io, getOctokit);
             const { main } = require('${{ runner.temp }}/gh-aw/actions/check_membership.cjs');
             await main();
+      - name: Authorize bounded fork-only canary
+        id: command
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        with:
+          script: |
+            core.setOutput('authorized', 'false');
+            if (Number(process.env.GITHUB_RUN_ATTEMPT) !== 1 ||
+                (context.payload.inputs?.aw_context ?? '') !== '') {
+              throw new Error('Use a fresh canary dispatch without caller workspace context.');
+            }
+            if (context.payload.repository.full_name !== 'kubaflo/maui' ||
+                context.ref !== 'refs/heads/kubaflo-redesigned-garbanzo' ||
+                context.eventName !== 'workflow_dispatch' ||
+                context.actor !== 'kubaflo' ||
+                process.env.GITHUB_TRIGGERING_ACTOR !== 'kubaflo' ||
+                process.env.ISSUE_NUMBER !== '39084') {
+              throw new Error('This canary only accepts the designated staged fork dispatch.');
+            }
+            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+              ...context.repo, username: context.actor
+            });
+            if (!['admin', 'maintain', 'write'].includes(data.permission)) {
+              throw new Error('The canary requester is no longer authorized.');
+            }
+            core.setOutput('authorized', 'true');
+      - name: Check and retain the actual CLI-prepared evidence
+        id: context
+        if: steps.command.outputs.authorized == 'true'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+          if ($env:PREPARED_CONTEXT.Length -gt 50000 -or
+              $env:PREPARED_SHA256 -cne '0A67C923168A1C385FC9D0F226749C2840D9E11F4BBED41C652EE1B17D3906BA') {
+              throw 'Prepared dispatch evidence exceeds its bound or has no valid digest.'
+          }
+          $inputStream = [IO.MemoryStream]::new([Convert]::FromBase64String($env:PREPARED_CONTEXT))
+          $gzip = [IO.Compression.GZipStream]::new($inputStream, [IO.Compression.CompressionMode]::Decompress)
+          $outputStream = [IO.MemoryStream]::new()
+          $buffer = [byte[]]::new(8192)
+          try {
+              while (($count = $gzip.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                  if ($outputStream.Length + $count -gt 1MB) {
+                      throw 'Uncompressed dispatch evidence exceeds 1 MiB.'
+                  }
+                  $outputStream.Write($buffer, 0, $count)
+              }
+              $bytes = $outputStream.ToArray()
+          } finally {
+              $gzip.Dispose()
+              $inputStream.Dispose()
+              $outputStream.Dispose()
+          }
+          if ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)) -cne $env:PREPARED_SHA256) {
+              throw 'The context bytes do not match the independently prepared digest.'
+          }
+          $prepared = [Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json -AsHashtable
+          if ($prepared.schemaVersion -ne 1 -or $prepared.repository -cne 'dotnet/maui' -or
+              [string]$prepared.issueNumber -cne $env:ISSUE_NUMBER -or
+              $prepared.actor -cne $env:GITHUB_ACTOR -or $prepared.commandCommentId -ne 0 -or
+              $prepared.contextHash -cnotmatch '^[A-F0-9]{64}$') {
+              throw 'Prepared evidence does not match this exact staged canary.'
+          }
+          $directory = Join-Path $env:RUNNER_TEMP 'issue-triage-context'
+          $null = New-Item -ItemType Directory -Path $directory
+          [IO.File]::WriteAllBytes((Join-Path $directory 'context.json'), $bytes)
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "context_hash=$($prepared.contextHash)"
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value 'ready=true'
+        env:
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          PREPARED_CONTEXT: ${{ inputs.prepared_context }}
+          PREPARED_SHA256: ${{ inputs.prepared_sha256 }}
+        shell: pwsh
+      - name: Retain trusted issue evidence
+        if: steps.context.outputs.ready == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          if-no-files-found: error
+          name: issue-triage-context-${{ github.run_id }}
+          path: ${{ runner.temp }}/issue-triage-context/context.json
+          retention-days: 7
 
   safe_outputs:
     needs:
       - activation
       - agent
+      - canary_context
       - detection
-    if: (!cancelled()) && needs.agent.result != 'skipped' && needs.detection.result == 'success'
-    runs-on: ubuntu-slim
-    environment: copilot-pat-pool
-    permissions:
-      issues: write
+    if: ((!cancelled()) && needs.agent.result != 'skipped' && needs.detection.result == 'success') && (github.run_attempt == 1)
+    runs-on: ubuntu-latest
+    permissions: {}
     timeout-minutes: 45
     env:
       GH_AW_AGENT_AIC: ${{ needs.agent.outputs.aic }}
@@ -1669,18 +1799,19 @@ jobs:
       GH_AW_ENGINE_ID: "copilot"
       GH_AW_ENGINE_MODEL: "gpt-6.1-sol"
       GH_AW_RUNTIME_FEATURES: ${{ vars.GH_AW_RUNTIME_FEATURES }}
+      GH_AW_SAFE_OUTPUTS_STAGED: "true"
+      GH_AW_SAFE_OUTPUT_MESSAGES: "{\"bodyHeader\":\"\\u003c!-- Issue Triage --\\u003e\"}"
       GH_AW_THREAT_DETECTION_AIC: ${{ needs.detection.outputs.aic }}
       GH_AW_WORKFLOW_ID: "daily-repo-status"
-      GH_AW_WORKFLOW_NAME: "Daily Repo Status"
-      GH_AW_WORKFLOW_SOURCE: "githubnext/agentics/workflows/daily-repo-status.md@69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb"
-      GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/githubnext/agentics/blob/69b5e3ae5fa7f35fa555b0a22aee14c36ab57ebb/workflows/daily-repo-status.md"
+      GH_AW_WORKFLOW_NAME: "Issue Triage Fork Canary"
+      GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/daily-repo-status.md"
     outputs:
       code_push_failure_count: ${{ steps.process_safe_outputs.outputs.code_push_failure_count }}
       code_push_failure_errors: ${{ steps.process_safe_outputs.outputs.code_push_failure_errors }}
+      comment_id: ${{ steps.process_safe_outputs.outputs.comment_id }}
+      comment_url: ${{ steps.process_safe_outputs.outputs.comment_url }}
       create_discussion_error_count: ${{ steps.process_safe_outputs.outputs.create_discussion_error_count }}
       create_discussion_errors: ${{ steps.process_safe_outputs.outputs.create_discussion_errors }}
-      created_issue_number: ${{ steps.process_safe_outputs.outputs.created_issue_number }}
-      created_issue_url: ${{ steps.process_safe_outputs.outputs.created_issue_url }}
       process_safe_outputs_items_applied: ${{ steps.process_safe_outputs.outputs.items_applied }}
       process_safe_outputs_items_cancelled: ${{ steps.process_safe_outputs.outputs.items_cancelled }}
       process_safe_outputs_items_deferred: ${{ steps.process_safe_outputs.outputs.items_deferred }}
@@ -1701,11 +1832,10 @@ jobs:
           trace-id: ${{ needs.activation.outputs.setup-trace-id }}
           parent-span-id: ${{ needs.activation.outputs.setup-parent-span-id || needs.activation.outputs.setup-span-id }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "Daily Repo Status"
+          GH_AW_SETUP_WORKFLOW_NAME: "Issue Triage Fork Canary"
           GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/daily-repo-status.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "1.0.79"
           GH_AW_INFO_AWF_VERSION: "v0.27.44"
-          GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_ENGINE_ID: "copilot"
       - name: Download agent output artifact
         id: download-agent-output
@@ -1730,6 +1860,13 @@ jobs:
           GH_HOST="${GITHUB_SERVER_URL#https://}"
           GH_HOST="${GH_HOST#http://}"
           echo "GH_HOST=${GH_HOST}" >> "$GITHUB_ENV"
+      - name: Retain raw proposal for fresh local trusted validation
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          if-no-files-found: error
+          name: issue-triage-raw-proposal-${{ github.run_id }}
+          path: /tmp/gh-aw/agent_output.json
+          retention-days: 7
       - name: Process Safe Outputs
         id: process_safe_outputs
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -1739,20 +1876,12 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,github.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,ppa.launchpad.net,raw.githubusercontent.com,registry.npmjs.org,s.symcb.com,s.symcd.com,security.ubuntu.com,telemetry.enterprise.githubcopilot.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_issue\":{\"close_older_issues\":true,\"labels\":[\"report\",\"daily-status\",\"s/triaged\"],\"max\":1,\"title_prefix\":\"[repo-status] \"},\"create_report_incomplete_issue\":{},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"discussions\":false,\"footer\":false,\"max\":1,\"target\":\"${{ inputs.issue_number }}\"},\"add_labels\":{\"allowed\":[\"area-*\",\"platform/*\",\"version/*\",\"layout-*\",\"collectionview-*\",\"feature-blazor-*\",\"testing-*\",\"regressed-in-*\",\"p/*\",\"backport/*\",\"fixed-in-*\",\"proposal/*\",\"partner*\",\"Cost:*\",\"Status:*\",\"a11y/*\",\"t/*\",\"s/*\",\"perf/*\",\"Task\",\"*regression\",\"migration-compatibility\",\"custom-handler\",\"material3\",\"xsg\",\"external*\",\"build\",\"test-failure\",\"xharness\",\"has-workaround\",\"repro:device-only\",\"shell-*\",\"nuget\",\"tutorials\",\"i/*\",\"investigate\",\"block*\",\"good first issue\",\"help wanted\",\"needs-*\",\"labs-candidate\",\"delighter*\",\"csi-new\",\"Epic\",\"Theme\",\"User Story\",\"community ✨\",\"discussed\",\"a11y-resolved\"],\"blocked\":[\"s/agent-*\",\"s/ai-*\",\"s/pr-*\",\"s/no-recent-activity\",\"s/triaged]\",\"area-button\",\"area-collectionview\",\"area-shell\",\"area-webview\",\"area-label\",\"area-picker\",\"area-progressbar\",\"area-refreshview\",\"partner/syncfusion/review\",\"t/enhancement\"],\"max\":10,\"target\":\"${{ inputs.issue_number }}\"},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"remove_labels\":{\"allowed\":[\"area-*\",\"platform/*\",\"version/*\",\"layout-*\",\"collectionview-*\",\"feature-blazor-*\",\"testing-*\",\"regressed-in-*\",\"p/*\",\"backport/*\",\"fixed-in-*\",\"proposal/*\",\"partner*\",\"Cost:*\",\"Status:*\",\"a11y/*\",\"t/*\",\"s/*\",\"perf/*\",\"Task\",\"*regression\",\"migration-compatibility\",\"custom-handler\",\"material3\",\"xsg\",\"external*\",\"build\",\"test-failure\",\"xharness\",\"has-workaround\",\"repro:device-only\",\"shell-*\",\"nuget\",\"tutorials\",\"i/*\",\"investigate\",\"block*\",\"good first issue\",\"help wanted\",\"needs-*\",\"labs-candidate\",\"delighter*\",\"csi-new\",\"Epic\",\"Theme\",\"User Story\",\"community ✨\",\"discussed\",\"a11y-resolved\"],\"blocked\":[\"s/agent-*\",\"s/ai-*\",\"s/pr-*\",\"s/no-recent-activity\",\"s/triaged]\",\"area-button\",\"area-collectionview\",\"area-shell\",\"area-webview\",\"area-label\",\"area-picker\",\"area-progressbar\",\"area-refreshview\",\"partner/syncfusion/review\",\"t/enhancement\"],\"max\":10,\"target\":\"${{ inputs.issue_number }}\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_STAGED: "true"
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
             setupGlobals(core, github, context, exec, io, getOctokit);
             const { main } = require('${{ runner.temp }}/gh-aw/actions/process_safe_outputs.cjs');
             await main();
-      - name: Upload Safe Outputs Items
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: safe-outputs-items
-          path: |
-            /tmp/gh-aw/safe-output-items.jsonl
-            /tmp/gh-aw/temporary-id-map.json
-          if-no-files-found: ignore
