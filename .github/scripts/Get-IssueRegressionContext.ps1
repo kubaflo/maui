@@ -328,7 +328,6 @@ function Invoke-IssueRegressionTrigger {
     New-Item -ItemType Directory -Path (Split-Path -Parent $OutputPath) -Force | Out-Null
     $context | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $OutputPath -Encoding utf8
     "issue_number=$($request.issueNumber)" >> $env:GITHUB_OUTPUT
-    "preflight_mode=$($context.preflight.mode)" >> $env:GITHUB_OUTPUT
     'should_run=true' >> $env:GITHUB_OUTPUT
 }
 

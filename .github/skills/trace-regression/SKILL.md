@@ -62,7 +62,7 @@ diagnosis, but distinguish it from an introducing change. With `source-leads`
 and no forward range, bounded static inspection can refute a hypothesis; it
 cannot establish a regression.
 Read the preflight and relevant frozen evidence in one bounded selection rather
-than repeatedly dumping the context or probing tool help. Prior AI report bodies
+than repeatedly dumping the context. Prior AI report bodies
 are not diagnostic evidence; prioritize the issue author's corrections and
 human diagnostic comments. For `boundary-only`, proceed directly to the single
 report after that read.
@@ -74,8 +74,9 @@ jq '{issue: (.issue | {number,url,author,title,body,fields}),preflight,boundarie
 ```
 
 Substitute the supplied run directory, not an issue-controlled path. For
-`boundary-only`, use the already available `add_comment` tool directly after
-this read; do not make extra author/schema/help reads. For other modes, select
+`boundary-only`, proceed to `add_comment` after this read; do not make extra
+author/context-schema reads. If native CLI tooling requires signature discovery,
+follow its runtime contract rather than guessing arguments. For other modes, select
 only needed `sourceEvidence` records next, not the full artifact.
 
 `metadata-resolution` preserves recoverable Preview/RC shorthand. Use at most

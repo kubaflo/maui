@@ -137,7 +137,10 @@ on:
         New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
         $context | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $path -Encoding utf8
         "issue_number=$number" >> $env:GITHUB_OUTPUT
-        "preflight_mode=$($context.preflight.mode)" >> $env:GITHUB_OUTPUT
+        $context = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+        [ValidateSet('boundary-only', 'metadata-resolution', 'source-leads')]
+        [string]$mode = $context.preflight.mode
+        "preflight_mode=$mode" >> $env:GITHUB_OUTPUT
         'should_run=true' >> $env:GITHUB_OUTPUT
     - name: Upload frozen issue-regression context
       if: steps.context.outputs.should_run == 'true'
