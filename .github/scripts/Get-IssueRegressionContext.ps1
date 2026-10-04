@@ -2,6 +2,7 @@
 
 . "$PSScriptRoot/shared/Invoke-GhCommandWithRetry.ps1"
 . "$PSScriptRoot/shared/Get-RegressionSourceEvidence.ps1"
+. "$PSScriptRoot/shared/Get-RegressionDiagnosticImages.ps1"
 
 function Get-IssueRegressionRequest {
     param([Parameter(Mandatory)]$Event)
@@ -107,7 +108,10 @@ function Resolve-RegressionVersion {
 }
 
 function Get-IssueRegressionContext {
-    param([Parameter(Mandatory)]$Issue)
+    param(
+        [Parameter(Mandatory)]$Issue,
+        [string]$DiagnosticDirectory
+    )
 
     if ($null -ne $Issue.pull_request -or [int]$Issue.number -le 0) {
         throw 'Regression tracing requires an issue, not a pull request.'
@@ -269,6 +273,10 @@ function Get-IssueRegressionContext {
             } else { 'Exact release source range available; runtime causality remains unverified.' }
     }
     $context.diagnostics = Get-RegressionDiagnosticInventory -Context $context
+    if (-not [string]::IsNullOrWhiteSpace($DiagnosticDirectory)) {
+        $images = Get-RegressionDiagnosticImages -Inventory $context.diagnostics -Directory $DiagnosticDirectory
+        $context.diagnostics | Add-Member -NotePropertyName staticImages -NotePropertyValue $images
+    }
     $context.sourceEvidence = Get-RegressionSourceEvidence -Context $context
     return [pscustomobject]$context
 }
@@ -312,7 +320,8 @@ function Invoke-IssueRegressionTrigger {
         throw 'The target did not resolve to the requested issue.'
     }
 
-    $context = Get-IssueRegressionContext -Issue $issue
+    $context = Get-IssueRegressionContext -Issue $issue `
+        -DiagnosticDirectory (Join-Path (Split-Path -Parent $OutputPath) 'diagnostics')
     if (-not (Test-IssueRegressionPermission -Requester $request.requester)) {
         return
     }

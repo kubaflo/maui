@@ -125,7 +125,14 @@ on:
         if ($env:SIMULATE_COMMENT_RACE -eq 'true') {
           $issue.updated_at = ([DateTimeOffset]$issue.updated_at).AddSeconds(-1).ToString('o')
         }
-        $context = Get-IssueRegressionContext -Issue $issue
+        $context = Get-IssueRegressionContext -Issue $issue `
+          -DiagnosticDirectory 'CustomAgentLogsTmp/IssueRegression/diagnostics'
+        $permissionJson = Invoke-GhCommandWithRetry -Arguments @(
+          'api', "repos/kubaflo/maui/collaborators/$env:GITHUB_ACTOR/permission"
+        ) -Description 'revalidate fork dispatcher after collection' -RequireOutput
+        if (($permissionJson | ConvertFrom-Json).permission -notin @('admin', 'maintain', 'write')) {
+          throw 'The dispatcher is no longer authorized.'
+        }
         $path = 'CustomAgentLogsTmp/IssueRegression/context.json'
         New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
         $context | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $path -Encoding utf8
@@ -136,7 +143,7 @@ on:
       uses: actions/upload-artifact@v7.0.1
       with:
         name: issue-regression-context-${{ github.run_id }}
-        path: CustomAgentLogsTmp/IssueRegression/context.json
+        path: CustomAgentLogsTmp/IssueRegression/
         if-no-files-found: error
         retention-days: 1
 
