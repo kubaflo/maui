@@ -137,6 +137,7 @@ on:
         New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
         $context | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $path -Encoding utf8
         "issue_number=$number" >> $env:GITHUB_OUTPUT
+        "preflight_mode=$($context.preflight.mode)" >> $env:GITHUB_OUTPUT
         'should_run=true' >> $env:GITHUB_OUTPUT
     - name: Upload frozen issue-regression context
       if: steps.context.outputs.should_run == 'true'
@@ -157,6 +158,7 @@ jobs:
     outputs:
       should_run: ${{ steps.context.outputs.should_run }}
       issue_number: ${{ steps.context.outputs.issue_number }}
+      preflight_mode: ${{ steps.context.outputs.preflight_mode }}
   activation:
     if: needs.pre_activation.outputs.should_run == 'true'
   minimize_command:
@@ -354,10 +356,27 @@ post-steps:
 
 # Trace an Issue Regression
 
-Invoke **trace-regression** and follow
-`.github/skills/trace-regression/SKILL.md`. It owns the investigation and the
-single expandable report. Do not substitute PR regression-risk analysis or run
-other review/fix skills.
+First select the task from the trusted frozen preflight mode:
+`${{ needs.pre_activation.outputs.preflight_mode }}`.
+
+For `boundary-only`, this is **preflight reporting, not a regression
+investigation**. Do not load the investigation skill or search source/history.
+Read the frozen issue identity (`issue.author`), body/form fields, preflight,
+boundaries, gaps, diagnostics and human comments together with one `jq` selection.
+Summarize existing inline diagnosis/corrections conservatively; no static claim
+establishes an introducing change. Do not request a version or diagnostic already
+supplied as though it were absent. Clarify the role of supplemental versions
+without replacing ambiguous form fields. Publish **Insufficient evidence** with
+the exact missing boundary and a discriminating next action, near 200 words.
+Use an author/issue header, two blue flat-square Scope/Range badges (unknown
+range), visible **Verdict** and investigation-access **Evidence** lines, then
+closed sibling Regression Analysis and Follow-up accordions. Nest Version
+boundary and Candidate changes inside Regression Analysis. Do not infer overall
+tooling health; the native later detection caution remains authoritative.
+
+For all other modes, invoke **trace-regression** and follow
+`.github/skills/trace-regression/SKILL.md` for the investigation and single report.
+Do not substitute PR regression-risk analysis or run other review/fix skills.
 
 - Repository: `dotnet/maui`
 - Issue: `${{ inputs.source_issue_number }}`
