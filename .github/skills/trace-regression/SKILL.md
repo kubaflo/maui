@@ -66,6 +66,17 @@ than repeatedly dumping the context or probing tool help. Prior AI report bodies
 are not diagnostic evidence; prioritize the issue author's corrections and
 human diagnostic comments. For `boundary-only`, proceed directly to the single
 report after that read.
+For that first read, use the known schema (the author is `issue.author`, not
+`issue.user`) and include identity, human corrections and supplied diagnosis:
+
+```bash
+jq '{issue: (.issue | {number,url,author,title,body,fields}),preflight,boundaries,gaps,commentsTruncated,diagnostics,comments:[.comments[]|select(.authorType=="User")]}' "$RUNNER_TEMP/gh-aw/issue-regression-RUN_ID/context.json"
+```
+
+Substitute the supplied run directory, not an issue-controlled path. For
+`boundary-only`, use the already available `add_comment` tool directly after
+this read; do not make extra author/schema/help reads. For other modes, select
+only needed `sourceEvidence` records next, not the full artifact.
 
 `metadata-resolution` preserves recoverable Preview/RC shorthand. Use at most
 one release-list page (30 releases) and two matching published release reads to

@@ -10,7 +10,7 @@ function Get-RegressionDiagnosticImages {
         limits = @{ images = 2; bytesPerImage = 512KB; pixels = 4000000; redirects = 2 }
     }
     $eligible = @($Inventory.attachments | Where-Object {
-        $_.url -cmatch '\Ahttps://github\.com/user-attachments/assets/[0-9a-f-]{36}\z'
+        $_.url -cmatch '\Ahttps://github\.com/user-attachments/assets/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z'
     } | Sort-Object url -Unique)
     # Keep an early diagnostic and the latest correction, not every attachment.
     $ordered = @($Inventory.attachments | Where-Object { $_.url -cin $eligible.url })
