@@ -1,6 +1,7 @@
 #!/usr/bin/env pwsh
 
 . "$PSScriptRoot/shared/Invoke-GhCommandWithRetry.ps1"
+. "$PSScriptRoot/shared/Get-RegressionSourceEvidence.ps1"
 
 function Get-IssueRegressionRequest {
     param([Parameter(Mandatory)]$Event)
@@ -130,6 +131,9 @@ function Get-IssueRegressionContext {
         commentsTruncated = [int]$Issue.comments -gt 100
         boundaries = [ordered]@{}
         comparison = $null
+        preflight = $null
+        diagnostics = $null
+        sourceEvidence = $null
         gaps = [System.Collections.Generic.List[string]]::new()
     }
 
@@ -242,6 +246,30 @@ function Get-IssueRegressionContext {
             Write-Warning 'The release comparison failed; the context records this gap.'
         }
     }
+    $ambiguous = $good.status -eq 'ambiguous' -or $bad.status -eq 'ambiguous'
+    $metadataEligible = [string]$good.reported -match '\Av?\d+\.\d+\.\d+-(?:preview|rc)\.\d+\z' -or
+        [string]$bad.reported -match '\Av?\d+\.\d+\.\d+-(?:preview|rc)\.\d+\z'
+    $context.preflight = [ordered]@{
+        mode = if ($ambiguous) {
+            'boundary-only'
+        } elseif ($metadataEligible -and ($good.status -ne 'resolved' -or $bad.status -ne 'resolved')) {
+            'metadata-resolution'
+        } elseif ($good.status -ne 'resolved' -and $bad.status -ne 'resolved') {
+            'boundary-only'
+        } else { 'source-leads' }
+        usableForwardRange = $null -ne $context.comparison -and $context.comparison.isForwardRange
+        reason = if ($ambiguous) { 'Ambiguous reported boundary; do not select a replacement from prose.' }
+            elseif ($metadataEligible -and ($good.status -ne 'resolved' -or $bad.status -ne 'resolved')) {
+                'Preview/RC shorthand is eligible for bounded published release mapping, not proof of installed packages.'
+            }
+            elseif ($good.status -ne 'resolved' -and $bad.status -ne 'resolved') {
+                'Neither reported boundary maps to an exact release tag; request exact installed MAUI versions.'
+            } elseif ($null -eq $context.comparison -or -not $context.comparison.isForwardRange) {
+                'No verified forward range; static source leads are not regression attribution.'
+            } else { 'Exact release source range available; runtime causality remains unverified.' }
+    }
+    $context.diagnostics = Get-RegressionDiagnosticInventory -Context $context
+    $context.sourceEvidence = Get-RegressionSourceEvidence -Context $context
     return [pscustomobject]$context
 }
 

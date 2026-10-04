@@ -240,6 +240,13 @@ network:
     - img.shields.io
 
 safe-outputs:
+  threat-detection:
+    prompt: |
+      Perform the full security analysis without delegating to subagents.
+      Emit exactly one final THREAT_DETECTION_RESULT object, never an intermediate
+      or example result. Include all three boolean fields (prompt_injection,
+      secret_leak, malicious_patch) and reasons as an array, including [] when empty.
+      Do not repeat the result in a second format or omit reasons.
   steps:
     - name: Checkout trusted report-scope validation
       uses: actions/checkout@v7.0.1
@@ -350,6 +357,13 @@ other review/fix skills.
 - Frozen context: `$RUNNER_TEMP/gh-aw/issue-regression-${{ github.run_id }}/context.json`
 
 Expand `RUNNER_TEMP` from the environment when reading the frozen context.
+
+Read `preflight`, `diagnostics` and `sourceEvidence` first. For `boundary-only`,
+write the short insufficient-evidence report without searching source/history.
+Otherwise use the bounded frozen source/history before requesting more tools.
+Keep the verdict and evidence/degraded state visible outside the accordions.
+Optimize for a supported lead, refuted hypothesis or discriminating next action,
+not for a speculative culprit or merely publishing a comment.
 
 This is a fork-only dispatch test of PR 38710. Investigate the original upstream
 issue and source history, not the fork fixture. Safe outputs enforce publication
