@@ -137,6 +137,28 @@ jobs:
           xcodebuild -version
           xcrun --find actool
           xcrun --sdk macosx --find actool
+      - name: Install and require the exact pinned iOS simulator runtime
+        if: inputs.platform == 'ios'
+        timeout-minutes: 30
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Core.ps1"
+          $sdk = Get-IssueReplicateIOSSdkVersion -RepoRoot "$env:RUNNER_TEMP/maui"
+          & sudo -n env "DEVELOPER_DIR=$env:DEVELOPER_DIR" xcodebuild `
+            -downloadPlatform iOS -buildVersion $sdk -architectureVariant arm64
+          if ($LASTEXITCODE -ne 0) { throw "Could not install the exact pinned iOS $sdk runtime." }
+          $json = & xcrun simctl list runtimes available --json
+          if ($LASTEXITCODE -ne 0) { throw 'Could not enumerate available simulator runtimes after provisioning.' }
+          $inventory = ($json -join "`n") | ConvertFrom-Json
+          $runtimeId = "com.apple.CoreSimulator.SimRuntime.iOS-$($sdk.Replace('.', '-'))"
+          $matching = @($inventory.runtimes | Where-Object {
+            $_.identifier -ceq $runtimeId -and $_.version -ceq $sdk -and $_.isAvailable -eq $true
+          })
+          if ($matching.Count -ne 1) {
+            throw "The exact available iOS $sdk runtime is still missing; refusing a newer runtime."
+          }
+          Write-Host "Required exact iOS $sdk runtime is available: $runtimeId."
       - name: Build the author sample without credentials
         id: sample
         shell: pwsh
