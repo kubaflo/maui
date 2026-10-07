@@ -1,119 +1,327 @@
-# Pester regression gate for reviewer scripts, release-critical helpers, and
-# their coupled pipeline assets.
-#
-# Why this exists: repository automation ships Pester suites for transport
-# gating, release publishing, safe-output expectation reconciliation, milestone
-# drift, and review triggers. A regression in that logic should be caught before
-# the workflow that consumes it runs in production.
-#
-# Security model:
-#   - `pull_request` (NOT `pull_request_target`): this job EXECUTES PowerShell
-#     authored by the PR, so it must never run with base-repo secrets or a
-#     writable token. Fork PRs get a read-only `GITHUB_TOKEN` and no secrets.
-#   - `permissions: contents: read` — the suite needs nothing else.
-#   - The suite is hermetic: every test stubs `gh`/network access and builds its
-#     own temp Git repositories, so no token or live API access is required.
-name: PowerShell Script Tests
+name: Fork Issue Replicate Canary
+run-name: "Five-issue trial: #${{ inputs.issue_number }} (${{ inputs.platform }})"
 
 on:
-  pull_request:
-    paths:
-      - '.github/scripts/**'
-      - '.github/patches/**'
-      - '.github/skills/run-device-tests/scripts/*.ps1'
-      - '.github/skills/verify-tests-fail-without-fix/scripts/*.ps1'
-      - '.github/skills/trace-regression/**'
-      - '.github/workflows/**'
-      - 'eng/scripts/**'
-      - 'eng/pipelines/ci-copilot.yml'
-      - 'eng/pipelines/ci-issue-replicate.yml'
-      - 'eng/pipelines/common/issue-replicate*.yml'
-      - 'eng/pipelines/ci-official.yml'
-      - 'eng/pipelines/ci-official.Tests.ps1'
-      - 'eng/pipelines/ci-official-release.yml'
-      - 'eng/pipelines/ci-official-release.Tests.ps1'
-      - 'eng/pipelines/common/provision.yml'
-      - 'eng/pipelines/common/ui-tests-steps.yml'
-      - 'eng/scripts/nuget_release_packages.ps1'
-      - 'eng/scripts/nuget_release_packages.Tests.ps1'
-      - 'eng/pipelines/common/non-workload-publish.yml'
-      - '.github/workflows/powershell-script-tests.yml'
-      - 'src/Controls/tests/TestCases.Shared.Tests/UITest.cs'
   workflow_dispatch:
-
-concurrency:
-  group: powershell-script-tests-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    inputs:
+      issue_number:
+        description: Public dotnet/maui issue
+        default: '38909'
+        required: true
+      source_comment_id:
+        description: Existing comment on that issue
+        default: '5868610701'
+        required: true
+      platform:
+        description: Native platform (iOS uses a simulator)
+        type: choice
+        options: [android, ios]
+        default: ios
+        required: true
 
 permissions:
   contents: read
 
 jobs:
-  pester:
-    name: Pester scripts
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  intake:
+    if: github.repository == 'kubaflo/maui' && github.actor == 'kubaflo'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      snapshot: ${{ steps.snapshot.outputs.payload }}
     steps:
-      - name: Checkout PR
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
-      # Pinned so a new Pester release cannot change discovery/assertion
-      # behavior underneath the suite without an explicit bump here.
-      - name: Install Pester
+      - name: Pin bounded public intake
         shell: pwsh
-        run: |
-          Set-StrictMode -Version Latest
-          $ErrorActionPreference = 'Stop'
-          Install-Module -Name Pester -RequiredVersion 5.9.0 -Force -Scope CurrentUser -SkipPublisherCheck
-          Import-Module Pester -RequiredVersion 5.9.0
-          "Pester $((Get-Module Pester).Version)"
-
-      # Deliberately NO `Set-StrictMode` here. StrictMode set in the host session
-      # leaks into every test body Pester dot-sources, and 16 tests in this suite
-      # legitimately read not-yet-assigned members. Enabling it turns a green
-      # suite red for reasons unrelated to the code under test.
-      - name: Run Pester
-        shell: pwsh
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          COMMENT_ID: ${{ inputs.source_comment_id }}
+          ISSUE_PLATFORM: ${{ inputs.platform }}
         run: |
           $ErrorActionPreference = 'Stop'
-          Import-Module Pester -RequiredVersion 5.9.0
+          & .github/scripts/IssueReplicate.Intake.ps1 `
+            -IssueNumber ([int]$env:ISSUE_NUMBER) -CommentId ([long]$env:COMMENT_ID) `
+            -Platform $env:ISSUE_PLATFORM -TargetRef main -OutputDirectory "$env:RUNNER_TEMP/IssueInput"
+      - name: Transfer snapshot through job outputs
+        id: snapshot
+        shell: pwsh
+        run: |
+          & .github/scripts/IssueReplicate.Transport.ps1 -Mode Export -Kind Input `
+            -Directory "$env:RUNNER_TEMP/IssueInput" -Provider GitHub
 
-          $config = New-PesterConfiguration
-          $config.Run.Path = @(
-            '.github/scripts'
-            '.github/skills/run-device-tests/scripts'
-            '.github/skills/verify-tests-fail-without-fix/scripts'
-            'eng/pipelines/ci-official.Tests.ps1'
-            'eng/pipelines/ci-official-release.Tests.ps1'
-            'eng/scripts/nuget_release_packages.Tests.ps1'
-          )
-          $config.Run.PassThru = $true
-          $config.Output.Verbosity = 'Detailed'
-          $config.TestResult.Enabled = $true
-          $config.TestResult.OutputPath = 'pester-results.xml'
-          $config.TestResult.OutputFormat = 'NUnitXml'
-
-          $result = Invoke-Pester -Configuration $config
-
-          "::notice::Pester total=$($result.TotalCount) passed=$($result.PassedCount) failed=$($result.FailedCount) skipped=$($result.SkippedCount)"
-
-          if ($result.FailedCount -gt 0) {
-            foreach ($test in $result.Failed) {
-              "::error::Failed: $($test.ExpandedPath)"
-            }
-            throw "Pester reported $($result.FailedCount) failing test(s)."
+  sample:
+    needs: intake
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-26' || 'ubuntu-22.04' }}
+    timeout-minutes: 80
+    permissions: {}
+    outputs:
+      result: ${{ steps.sample.outputs.payload }}
+    steps:
+      - &tools
+        name: Fetch immutable public tools without credentials
+        shell: pwsh
+        env:
+          TOOLS_SHA: ${{ github.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:TOOLS_SHA -cnotmatch '^[0-9a-f]{40}$') { throw 'Tools revision is not pinned.' }
+          $source = "$env:RUNNER_TEMP/issue-tools-source"
+          git init --quiet $source
+          if ($LASTEXITCODE -ne 0) { throw 'Could not prepare trusted tools checkout.' }
+          git -c credential.helper= -c http.extraheader= -C $source fetch --quiet --no-tags --depth=1 `
+            https://github.com/kubaflo/maui.git $env:TOOLS_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch trusted public tools.' }
+          git -C $source checkout --quiet --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0 -or (git -C $source rev-parse HEAD).Trim() -cne $env:TOOLS_SHA) {
+            throw 'Tools checkout differs from the workflow revision.'
           }
+          New-Item -ItemType Directory "$env:RUNNER_TEMP/IssueTools" | Out-Null
+          Copy-Item "$source/.github/scripts/IssueReplicate*.ps1" "$env:RUNNER_TEMP/IssueTools"
+          Copy-Item "$source/.github/issue-replicate-cli" "$env:RUNNER_TEMP/IssueTools/Cli" -Recurse
+      - name: Restore and re-fetch the immutable author sample
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
+            -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Checkout.ps1" `
+            -ManifestPath "$env:RUNNER_TEMP/IssueInput/manifest.json" -Destination "$env:RUNNER_TEMP/maui"
+      - name: Require Xcode matching the pinned iOS SDK
+        if: inputs.platform == 'ios'
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.SelectXcode.ps1" `
+            -RepoRoot "$env:RUNNER_TEMP/maui" -Provider GitHub
+      - name: Bootstrap the exact source-pinned SDK before restoring tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          export use_installed_dotnet_cli=false
+          source "$RUNNER_TEMP/maui/eng/common/tools.sh"
+          ReadGlobalVersion dotnet
+          if [[ "$_ReadGlobalVersion" == *-* ]]; then
+            export runtime_source_feed=https://ci.dot.net/public
+          fi
+          bootstrap="$RUNNER_TEMP/issue-bootstrap-dotnet"
+          InstallDotNetSdk "$bootstrap" "$_ReadGlobalVersion"
+          printf '%s\n' "$bootstrap" >> "$GITHUB_PATH"
+          printf '%s\n' 'DOTNET_MULTILEVEL_LOOKUP=0' 'DOTNET_NOLOGO=1' >> "$GITHUB_ENV"
+      - name: Provision pinned native SDK and workloads
+        shell: pwsh
+        working-directory: ${{ runner.temp }}/maui
+        run: |
+          & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
+          "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
+      - name: Install public author-sample workload
+        shell: pwsh
+        env:
+          ISSUE_PLATFORM: ${{ inputs.platform }}
+        run: |
+          $sdk = "$env:RUNNER_TEMP/author-dotnet"
+          & pwsh -NoProfile -File "$env:RUNNER_TEMP/IssueTools/IssueReplicate.ProvisionSample.ps1" `
+            -RepoRoot "$env:RUNNER_TEMP/maui" -InstallDirectory $sdk -Platform $env:ISSUE_PLATFORM
+          if ($LASTEXITCODE -ne 0) { throw 'Public author-sample workload installation failed.' }
+          $sdk >> $env:GITHUB_PATH
+      - name: Record iOS toolchain
+        if: inputs.platform == 'ios'
+        run: |
+          sudo xcode-select -s "$DEVELOPER_DIR"
+          xcrun --kill-cache
+          xcodebuild -version
+          xcrun --find actool
+          xcrun --sdk macosx --find actool
+      - name: Build the author sample without credentials
+        id: sample
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Run.ps1" -Mode Sample `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/SampleOutput" `
+            -NuGetConfigPath "$env:RUNNER_TEMP/maui/NuGet.config" -Provider GitHub
 
-          if ($result.TotalCount -lt 1) {
-            throw 'Pester discovered no script tests; the gate would pass vacuously.'
-          }
-
-      - name: Upload Pester results
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  generate:
+    needs: [intake, sample]
+    if: ${{ !cancelled() && needs.intake.result == 'success' && needs.sample.outputs.result != '' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      candidate: ${{ steps.candidate.outputs.payload }}
+    steps:
+      - *tools
+      - name: Restore bounded generation input
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+          REPRO_SAMPLE: ${{ needs.sample.outputs.result }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
+            -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Sample `
+            -Encoded $env:REPRO_SAMPLE -Directory "$env:RUNNER_TEMP/SampleOutput"
+      - &node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          name: pester-results
-          path: pester-results.xml
-          if-no-files-found: warn
+          node-version: '24'
+      - &copilot
+        name: Install lockfile-pinned Copilot CLI
+        run: |
+          set -euo pipefail
+          cli="$RUNNER_TEMP/IssueTools/Cli"
+          npm ci --prefix "$cli" --ignore-scripts --no-audit --no-fund
+          "$cli/node_modules/.bin/copilot" --version
+          printf '%s\n' "$cli/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Generate a tool-free GPT candidate
+        shell: pwsh
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/Proposal" `
+            -SampleResultPath "$env:RUNNER_TEMP/SampleOutput/sample-result.json"
+      - name: Transfer bounded candidate
+        id: candidate
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Export -Kind Candidate `
+            -Directory "$env:RUNNER_TEMP/Proposal" -Provider GitHub
+
+  verify:
+    needs: [intake, sample, generate]
+    if: ${{ !cancelled() && needs.sample.result == 'success' && needs.generate.result == 'success' }}
+    permissions: {}
+    uses: ./.github/workflows/issue-replicate-canary-verify.yml
+    with:
+      platform: ${{ inputs.platform }}
+      snapshot: ${{ needs.intake.outputs.snapshot }}
+      sample: ${{ needs.sample.outputs.result }}
+      candidate: ${{ needs.generate.outputs.candidate }}
+
+  revise:
+    needs: [intake, verify]
+    if: needs.verify.result == 'success' && needs.verify.outputs.verdict == 'inconclusive'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      candidate: ${{ steps.candidate.outputs.payload }}
+    steps:
+      - *tools
+      - name: Restore bounded input and first-run feedback
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+          REPRO_FEEDBACK: ${{ needs.verify.outputs.result }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode FetchSample `
+            -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Verified `
+            -Encoded $env:REPRO_FEEDBACK -Directory "$env:RUNNER_TEMP/Verified"
+      - *node
+      - *copilot
+      - name: Revise once from actual bounded feedback
+        shell: pwsh
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/Proposal" `
+            -FeedbackPath "$env:RUNNER_TEMP/Verified/feedback.txt"
+      - name: Transfer the revised candidate
+        id: candidate
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Export -Kind Candidate `
+            -Directory "$env:RUNNER_TEMP/Proposal" -Provider GitHub
+
+  verify-revised:
+    needs: [intake, sample, revise]
+    if: always() && needs.revise.result == 'success'
+    permissions: {}
+    uses: ./.github/workflows/issue-replicate-canary-verify.yml
+    with:
+      platform: ${{ inputs.platform }}
+      snapshot: ${{ needs.intake.outputs.snapshot }}
+      sample: ${{ needs.sample.outputs.result }}
+      candidate: ${{ needs.revise.outputs.candidate }}
+
+  post:
+    needs: [intake, sample, generate, verify, revise, verify-revised]
+    if: always() && github.repository == 'kubaflo/maui' && github.actor == 'kubaflo'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          clean: true
+      - name: Prepare a validated comment on a fresh agent
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
+          REPRO_VERIFIED1: ${{ needs.verify.outputs.result }}
+          REPRO_VERIFIED2: ${{ needs.verify-revised.outputs.result }}
+          REPRO_SAMPLE: ${{ needs.sample.outputs.result }}
+          REPRO_CANDIDATE1: ${{ needs.generate.outputs.candidate }}
+          REPRO_CANDIDATE2: ${{ needs.revise.outputs.candidate }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          COMMENT_ID: ${{ inputs.source_comment_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $inputDirectory = "$env:RUNNER_TEMP/IssueInput"
+          $resultsDirectory = "$env:RUNNER_TEMP/Verified"
+          if ($env:REPRO_INPUT) {
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Input `
+              -Encoded $env:REPRO_INPUT -Directory $inputDirectory
+            Write-Host "REPRO_INPUT=$env:REPRO_INPUT"
+          }
+          if ($env:REPRO_SAMPLE) {
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Sample `
+              -Encoded $env:REPRO_SAMPLE -Directory "$env:RUNNER_TEMP/SampleOutput"
+            Write-Host "REPRO_SAMPLE=$env:REPRO_SAMPLE"
+          }
+          $verified = if ($env:REPRO_VERIFIED2) { $env:REPRO_VERIFIED2 } elseif (-not $env:REPRO_CANDIDATE2) { $env:REPRO_VERIFIED1 }
+          if ($verified) {
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Verified `
+              -Encoded $verified -Directory $resultsDirectory
+            Write-Host "REPRO_VERIFIED=$verified"
+          }
+          $candidate = if ($env:REPRO_CANDIDATE2) { $env:REPRO_CANDIDATE2 } else { $env:REPRO_CANDIDATE1 }
+          $candidateDirectory = ''
+          if ($candidate) {
+            $candidateDirectory = "$env:RUNNER_TEMP/DraftCandidate"
+            & .github/scripts/IssueReplicate.Transport.ps1 -Mode Import -Kind Candidate `
+              -Encoded $candidate -Directory $candidateDirectory
+            Write-Host "REPRO_CANDIDATE=$candidate"
+          }
+          & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
+            -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
+            -GitHubRepository $env:GITHUB_REPOSITORY `
+            -InputDirectory $inputDirectory -ResultsDirectory $resultsDirectory `
+            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput" -CandidateDirectory $candidateDirectory `
+            -OutputPath "$env:RUNNER_TEMP/comment-preview.md"
+      - name: Publish only issue comments
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.ISSUE_REPRO_COMMENT_TOKEN }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          COMMENT_ID: ${{ inputs.source_comment_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:GH_TOKEN) { throw 'The dedicated issue-comment publishing credential is not configured.' }
+          $candidateDirectory = if (Test-Path "$env:RUNNER_TEMP/DraftCandidate/candidate.json") {
+            "$env:RUNNER_TEMP/DraftCandidate"
+          } else { '' }
+          & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
+            -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
+            -GitHubRepository $env:GITHUB_REPOSITORY `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" -ResultsDirectory "$env:RUNNER_TEMP/Verified" `
+            -SampleDirectory "$env:RUNNER_TEMP/SampleOutput" -CandidateDirectory $candidateDirectory

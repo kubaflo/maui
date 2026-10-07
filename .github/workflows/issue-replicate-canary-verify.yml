@@ -1,0 +1,109 @@
+name: Credential-free canary verification
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        type: string
+        required: true
+      snapshot:
+        type: string
+        required: true
+      sample:
+        type: string
+        required: true
+      candidate:
+        type: string
+        required: true
+    outputs:
+      result:
+        value: ${{ jobs.verify.outputs.result }}
+      verdict:
+        value: ${{ jobs.verify.outputs.verdict }}
+
+permissions: {}
+
+jobs:
+  first:
+    uses: ./.github/workflows/issue-replicate-canary-attempt.yml
+    with:
+      platform: ${{ inputs.platform }}
+      snapshot: ${{ inputs.snapshot }}
+      sample: ${{ inputs.sample }}
+      candidate: ${{ inputs.candidate }}
+      attempt: 1
+  confirm:
+    needs: first
+    if: needs.first.outputs.observed_assertion == 'true'
+    uses: ./.github/workflows/issue-replicate-canary-attempt.yml
+    with:
+      platform: ${{ inputs.platform }}
+      snapshot: ${{ inputs.snapshot }}
+      sample: ${{ inputs.sample }}
+      candidate: ${{ inputs.candidate }}
+      attempt: 2
+      previous: ${{ needs.first.outputs.result }}
+  verify:
+    needs: [first, confirm]
+    if: ${{ always() && !cancelled() && needs.first.result == 'success' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    outputs:
+      result: ${{ steps.transfer.outputs.payload }}
+      verdict: ${{ steps.transfer.outputs.verdict }}
+    steps:
+      - name: Fetch immutable forwarding tools without credentials
+        shell: pwsh
+        env:
+          TOOLS_SHA: ${{ github.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:TOOLS_SHA -cnotmatch '^[0-9a-f]{40}$') { throw 'Tools revision is not pinned.' }
+          $source = "$env:RUNNER_TEMP/issue-tools-source"
+          git init --quiet $source
+          if ($LASTEXITCODE -ne 0) { throw 'Could not prepare trusted tools checkout.' }
+          git -c credential.helper= -c http.extraheader= -C $source fetch --quiet --no-tags --depth=1 `
+            https://github.com/kubaflo/maui.git $env:TOOLS_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch public trusted tools.' }
+          git -C $source checkout --quiet --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0 -or (git -C $source rev-parse HEAD).Trim() -cne $env:TOOLS_SHA) {
+            throw 'Tools checkout differs from the workflow revision.'
+          }
+          New-Item -ItemType Directory "$env:RUNNER_TEMP/IssueTools" | Out-Null
+          Copy-Item "$source/.github/scripts/IssueReplicate*.ps1" "$env:RUNNER_TEMP/IssueTools"
+      - name: Forward only bound completed evidence without native provisioning
+        id: transfer
+        shell: pwsh
+        env:
+          REPRO_INPUT: ${{ inputs.snapshot }}
+          REPRO_SAMPLE: ${{ inputs.sample }}
+          REPRO_CANDIDATE: ${{ inputs.candidate }}
+          REPRO_FIRST: ${{ needs.first.outputs.result }}
+          OBSERVED_ASSERTION: ${{ needs.first.outputs.observed_assertion }}
+          REPRO_CONFIRMED: ${{ needs.confirm.outputs.result }}
+          CONFIRM_STATUS: ${{ needs.confirm.result }}
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
+            -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Sample `
+            -Encoded $env:REPRO_SAMPLE -Directory "$env:RUNNER_TEMP/SampleOutput"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Candidate `
+            -Encoded $env:REPRO_CANDIDATE -Directory "$env:RUNNER_TEMP/Proposal"
+          if ($env:OBSERVED_ASSERTION -ceq 'false') {
+            $attempt = 1
+            $encoded = $env:REPRO_FIRST
+          } elseif ($env:OBSERVED_ASSERTION -ceq 'true') {
+            if ($env:CONFIRM_STATUS -cne 'success') { throw 'Required fresh native confirmation did not complete.' }
+            $attempt = 2
+            $encoded = $env:REPRO_CONFIRMED
+          } else {
+            throw 'First attempt did not export a valid assertion routing state.'
+          }
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Verified `
+            -Encoded $encoded -Directory "$env:RUNNER_TEMP/CompletedAttempt"
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Run.ps1" -Mode Forward `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput" `
+            -SampleResultPath "$env:RUNNER_TEMP/SampleOutput/sample-result.json" `
+            -CandidatePath "$env:RUNNER_TEMP/Proposal/candidate.json" `
+            -OutputDirectory "$env:RUNNER_TEMP/Verified" -Attempt $attempt `
+            -PreviousResultPath "$env:RUNNER_TEMP/CompletedAttempt/result.json" -Provider GitHub
