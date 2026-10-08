@@ -209,6 +209,7 @@ async function validate({
     github,
     core,
     context,
+    reportRepository = context.repo,
     issueNumber,
     staged,
     contextDirectory,
@@ -362,7 +363,7 @@ async function validate({
         item.body = [
             reportBody,
             '',
-            `[Workflow result](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`,
+            `[Workflow result](https://github.com/${reportRepository.owner}/${reportRepository.repo}/actions/runs/${context.runId}).`,
             '',
             marker,
         ].join('\n');
