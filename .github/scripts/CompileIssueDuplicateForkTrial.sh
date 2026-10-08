@@ -9,15 +9,6 @@ cache_directory="${XDG_CACHE_HOME:-$HOME/.cache}/maui/gh-aw/$compiler_commit-$pa
 source_directory="$cache_directory/source"
 compiler_binary="$cache_directory/gh-aw"
 
-run_without_tokens() {
-  env -u GH_TOKEN -u GITHUB_TOKEN -u COPILOT_GITHUB_TOKEN -u GH_COMMENT_TOKEN \
-    -u GH_AW_GITHUB_TOKEN -u GH_AW_GITHUB_MCP_SERVER_TOKEN \
-    -u COPILOT_PAT_0 -u COPILOT_PAT_1 -u COPILOT_PAT_2 -u COPILOT_PAT_3 \
-    -u COPILOT_PAT_4 -u COPILOT_PAT_5 -u COPILOT_PAT_6 -u COPILOT_PAT_7 \
-    -u COPILOT_PAT_8 -u COPILOT_PAT_9 \
-    "$@"
-}
-
 if [[ $# != 0 ]]; then
   echo "This helper only compiles the fixed, strict, staged fork trial." >&2
   exit 2
@@ -28,6 +19,7 @@ if ! command -v go >/dev/null 2>&1; then
 fi
 
 cd "$(git rev-parse --show-toplevel)"
+source .github/scripts/IssueDuplicateBuildEnvironment.sh
 compiler_patch="$PWD/.github/scripts/gh-aw-0.89.21-fork-trial.patch"
 if [[ ! -f "$compiler_patch" || -L "$compiler_patch" ||
       "$(shasum -a 256 "$compiler_patch" | cut -d ' ' -f 1)" != "$patch_sha256" ]]; then

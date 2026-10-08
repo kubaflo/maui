@@ -3,7 +3,8 @@ description: Two staged duplicate-detector trials on the authorized public fork.
 
 # Reuse this registered dispatch path only on the isolated fork trial branch.
 # Regenerate with bash .github/scripts/CompileIssueDuplicateForkTrial.sh.
-# Fork-only v0.89.21 auth with gateway v0.4.30 preserves scoped tool and sink guards.
+# Fork-only v0.89.21 auth and pinned v0.4.30 gateway transport repair.
+# The gateway patch omits budgets only from copied WASM payloads, not session enforcement.
 imports:
   - shared/gpt-6.1-sol.md
 
@@ -106,6 +107,12 @@ sandbox:
   mcp:
     env:
       MCP_GATEWAY_FORCE_PUBLIC_REPOS: "false"
+    mounts:
+      - "/opt:/opt:ro"
+      - "/tmp:/tmp:rw"
+      - "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}:rw"
+      - "${RUNNER_TEMP}/gh-aw/safeoutputs:${RUNNER_TEMP}/gh-aw/safeoutputs:rw"
+      - "${RUNNER_TEMP}/issue-duplicate-gateway/awmg:/app/awmg:ro"
 
 tools:
   bash: false
@@ -223,6 +230,23 @@ safe-outputs:
           });
 
 steps:
+  - name: Checkout reviewed gateway repair
+    uses: actions/checkout@v7.0.1
+    with:
+      ref: ${{ github.sha }}
+      persist-credentials: false
+      sparse-checkout: |
+        .github/scripts/BuildIssueDuplicateGateway.sh
+        .github/scripts/IssueDuplicateBuildEnvironment.sh
+        .github/scripts/gh-aw-mcpg-0.4.30-fork-trial.patch
+      sparse-checkout-cone-mode: false
+  - name: Set up pinned gateway build toolchain
+    uses: actions/setup-go@v7.0.0
+    with:
+      go-version: "1.26.5"
+      cache: false
+  - name: Build pinned gateway transport repair
+    run: bash .github/scripts/BuildIssueDuplicateGateway.sh
   - name: Check official compiler base compatibility
     uses: actions/github-script@v9.0.0
     env:

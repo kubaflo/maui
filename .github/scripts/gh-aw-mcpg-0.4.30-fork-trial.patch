@@ -1,0 +1,8 @@
+diff --git a/internal/guard/wasm_payload.go b/internal/guard/wasm_payload.go
+index a4e62248b1664958858916f5254b28d2ef36738a..d06def00a5f533bc28cf4bb26736367a133255d3 100644
+--- a/internal/guard/wasm_payload.go
++++ b/internal/guard/wasm_payload.go
+@@ -95,0 +96,3 @@ func buildStrictLabelAgentPayload(policy interface{}) (map[string]interface{}, e
++	// Budgets remain in gateway session state, not the deep-copied WASM policy.
++	delete(allowOnly, "tool-call-limits")
++

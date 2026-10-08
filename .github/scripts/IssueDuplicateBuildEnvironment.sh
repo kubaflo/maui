@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+run_without_tokens() {
+  env -u GH_TOKEN -u GITHUB_TOKEN -u COPILOT_GITHUB_TOKEN -u GH_COMMENT_TOKEN \
+    -u GH_AW_GITHUB_TOKEN -u GH_AW_GITHUB_MCP_SERVER_TOKEN \
+    -u COPILOT_PAT_0 -u COPILOT_PAT_1 -u COPILOT_PAT_2 -u COPILOT_PAT_3 \
+    -u COPILOT_PAT_4 -u COPILOT_PAT_5 -u COPILOT_PAT_6 -u COPILOT_PAT_7 \
+    -u COPILOT_PAT_8 -u COPILOT_PAT_9 \
+    "$@"
+}
