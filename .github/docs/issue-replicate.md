@@ -15,10 +15,19 @@ Repository writers, maintainers, and administrators can comment on an **open iss
 
 ```text
 /issue replicate --platform android --branch main
+/issue replicate --platform android --branch main --android-api 35
 ```
 
 `--platform android|ios` is optional only when exactly one supported `platform/android`
 or `platform/ios` issue label exists. `--branch main|netN.0` defaults to `main`.
+`--android-api 30|35|36` selects the hosted Android runtime and defaults to 30
+only for Android. It is rejected for iOS and does not change the author's target
+framework, packages or MAUI revision. GitHub dispatch, Azure intake and publication
+bind that selection to the current authorized command and immutable snapshot.
+The owned emulator must report the same API before a UI test can execute;
+independent confirmation compares the observed API again. Reports distinguish
+requested and observed runtimes. Historical snapshots without this field remain
+readable but do not acquire retroactive runtime evidence.
 `--source <supported-GitHub-URL>` may explicitly select one of multiple links in
 the latest author repro text. Intake rejects a selection absent from that text;
 without a selection, ambiguity still fails closed. The immutable snapshot keeps
@@ -87,6 +96,12 @@ different framework is not silently substituted.
 Author provisioning selects that Xcode and clears the command cache before the
 first CoreSimulator query. Runtime inventory has a two-minute cold-start
 deadline; failures retain bounded output plus exit/timeout/capture status.
+Author and framework provisioning reuse a uniquely available exact runtime
+instead of downloading another build of the same version. Missing runtimes may
+be installed once, followed by at most three minutes of fresh registration
+checks. Bounded inventory summaries retain the exact match count, build,
+availability and architectures; multiple exact available matches are an
+explicit blocker, not a reason to download or select an arbitrary copy.
 
 The sample is *built*, not driven through the reported interaction. A generated
 unit/XAML/UI test runs against the pinned MAUI commit in a separate credential-free

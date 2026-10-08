@@ -69,11 +69,14 @@ jobs:
           ISSUE_PLATFORM: ${{ inputs.platform }}
           TARGET_REF: ${{ inputs.target_ref }}
           SOURCE_URL: ${{ inputs.source_url }}
+          ANDROID_API: ${{ inputs.android_api }}
         run: |
           $ErrorActionPreference = 'Stop'
+          $androidApi = if ($env:ISSUE_PLATFORM -ceq 'android') { $env:ANDROID_API } else { '' }
           & .github/scripts/IssueReplicate.Intake.ps1 `
             -IssueNumber ([int]$env:ISSUE_NUMBER) -CommentId ([long]$env:COMMENT_ID) `
             -Platform $env:ISSUE_PLATFORM -TargetRef $env:TARGET_REF -SourceUrl $env:SOURCE_URL `
+            -AndroidApi $androidApi `
             -OutputDirectory "$env:RUNNER_TEMP/IssueInput"
       - name: Transfer snapshot through job outputs
         id: snapshot
@@ -326,6 +329,8 @@ jobs:
       - name: Prepare a validated comment on a fresh agent
         shell: pwsh
         env:
+          ISSUE_PLATFORM: ${{ inputs.platform }}
+          ANDROID_API: ${{ inputs.android_api }}
           REPRO_INPUT: ${{ needs.intake.outputs.snapshot }}
           REPRO_VERIFIED1: ${{ needs.verify.outputs.result }}
           REPRO_VERIFIED2: ${{ needs.verify-revised.outputs.result }}
@@ -382,6 +387,7 @@ jobs:
           }
           & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
             -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
+            -AndroidApi $(if ($env:ISSUE_PLATFORM -ceq 'android') { $env:ANDROID_API } else { '' }) `
             -GitHubRepository $env:GITHUB_REPOSITORY `
             -InputDirectory $inputDirectory -ResultsDirectory $resultsDirectory `
             -SampleDirectory "$env:RUNNER_TEMP/SampleOutput" -CandidateDirectory $candidateDirectory `
@@ -392,6 +398,8 @@ jobs:
           GH_TOKEN: ${{ secrets.ISSUE_REPRO_COMMENT_TOKEN }}
           ISSUE_NUMBER: ${{ inputs.issue_number }}
           COMMENT_ID: ${{ inputs.source_comment_id }}
+          ISSUE_PLATFORM: ${{ inputs.platform }}
+          ANDROID_API: ${{ inputs.android_api }}
         run: |
           $ErrorActionPreference = 'Stop'
           if (-not $env:GH_TOKEN) { throw 'The dedicated issue-comment publishing credential is not configured.' }
@@ -400,6 +408,7 @@ jobs:
           } else { '' }
           & .github/scripts/IssueReplicate.Post.ps1 -IssueNumber ([int]$env:ISSUE_NUMBER) `
             -CommentId ([long]$env:COMMENT_ID) -GitHubRunId ([long]$env:GITHUB_RUN_ID) `
+            -AndroidApi $(if ($env:ISSUE_PLATFORM -ceq 'android') { $env:ANDROID_API } else { '' }) `
             -GitHubRepository $env:GITHUB_REPOSITORY `
             -InputDirectory "$env:RUNNER_TEMP/IssueInput" -ResultsDirectory "$env:RUNNER_TEMP/Verified" `
             -SampleDirectory "$env:RUNNER_TEMP/SampleOutput" -CandidateDirectory $candidateDirectory

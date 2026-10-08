@@ -11,20 +11,94 @@ function Get-IssueReplicateIOSSdkVersion {
     return $versions[0].ToString()
 }
 
+function Get-IssueReplicateIOSRuntimeMatches {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][ValidatePattern('^[0-9]+\.[0-9]+$')][string]$SdkVersion,
+        [ValidateRange(1, 120)][int]$TimeoutSeconds = 120
+    )
+
+    if (-not $IsMacOS) { throw 'iOS runtime inspection requires a hosted macOS runner.' }
+    . (Join-Path $RepoRoot '.github/scripts/shared/shared-utils.ps1')
+    $inventory = Invoke-ProcessWithTimeout -FilePath 'xcrun' -TimeoutSeconds $TimeoutSeconds `
+        -ArgumentList @('simctl', 'list', 'runtimes', '--json')
+    if ($inventory.TimedOut -or $inventory.OutputDrainTimedOut -or $inventory.ExitCode -ne 0) {
+        foreach ($row in @($inventory.Output | Select-Object -Last 10)) {
+            $line = $row.ToString() -replace '##vso\[[^]]*\]', '' -replace '[\x00-\x1f\x7f]', ' '
+            Write-Warning ($line.Substring(0, [Math]::Min(1024, $line.Length)))
+        }
+        throw "Could not inspect the hosted iOS runtime inventory: exit=$($inventory.ExitCode), timeout=$($inventory.TimedOut), drainTimeout=$($inventory.OutputDrainTimedOut)."
+    }
+    $text = $inventory.Output -join "`n"
+    if ([Text.Encoding]::UTF8.GetByteCount($text) -gt 64KB) { throw 'The hosted iOS runtime inventory exceeds its bound.' }
+    $runtimes = $text | ConvertFrom-Json -Depth 8
+    $runtimeId = "com.apple.CoreSimulator.SimRuntime.iOS-$($SdkVersion.Replace('.', '-'))"
+    $related = @($runtimes.runtimes | Where-Object { $_.identifier -ceq $runtimeId })
+    $matching = @($runtimes.runtimes | Where-Object {
+            $_.identifier -ceq $runtimeId -and $_.version -ceq $SdkVersion -and $_.isAvailable -eq $true
+        })
+    Write-Host "Exact iOS $SdkVersion runtime inventory: identifier=$runtimeId, related=$($related.Count), availableExact=$($matching.Count)."
+    foreach ($runtime in @($related | Select-Object -First 10)) {
+        $line = ($runtime | Select-Object identifier, version, buildversion, isAvailable, supportedArchitectures, availabilityError |
+            ConvertTo-Json -Depth 4 -Compress) -replace '##vso\[[^]]*\]', '' -replace '[\x00-\x1f\x7f]', ' '
+        Write-Host ($line.Substring(0, [Math]::Min(2048, $line.Length)))
+    }
+    return $matching
+}
+
+function Initialize-IssueReplicateIOSRuntime {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [ValidatePattern('^[0-9]+\.[0-9]+$')][string]$SdkVersion = ''
+    )
+
+    if (-not $SdkVersion) { $SdkVersion = Get-IssueReplicateIOSSdkVersion -RepoRoot $RepoRoot }
+    $matching = @(Get-IssueReplicateIOSRuntimeMatches -RepoRoot $RepoRoot -SdkVersion $SdkVersion)
+    if ($matching.Count -eq 1) {
+        Write-Host "Reusing the uniquely available exact iOS $SdkVersion runtime; no platform download is needed."
+        return
+    }
+    if ($matching.Count -gt 1) {
+        throw "Multiple exact available iOS $SdkVersion runtimes are registered; refusing to add another runtime."
+    }
+    . (Join-Path $RepoRoot '.github/scripts/shared/shared-utils.ps1')
+    $download = Invoke-ProcessWithTimeout -FilePath 'xcodebuild' -TimeoutSeconds 1200 `
+        -ArgumentList @('-downloadPlatform', 'iOS', '-buildVersion', $SdkVersion, '-architectureVariant', 'arm64')
+    foreach ($row in @($download.Output | Select-Object -Last 60)) {
+        $line = $row.ToString() -replace '##vso\[[^]]*\]', '' -replace '[\x00-\x1f\x7f]', ' '
+        Write-Host ($line.Substring(0, [Math]::Min(2048, $line.Length)))
+    }
+    if ($download.TimedOut -or $download.OutputDrainTimedOut -or $download.ExitCode -ne 0) {
+        throw "Could not provision the exact iOS $SdkVersion runtime within its twenty-minute deadline."
+    }
+    $registration = [Diagnostics.Stopwatch]::StartNew()
+    while ($registration.Elapsed.TotalSeconds -lt 180) {
+        $remaining = [Math]::Max(1, [Math]::Floor(180 - $registration.Elapsed.TotalSeconds))
+        $matching = @(Get-IssueReplicateIOSRuntimeMatches -RepoRoot $RepoRoot -SdkVersion $SdkVersion `
+            -TimeoutSeconds ([Math]::Min(20, $remaining)))
+        if ($matching.Count -eq 1) {
+            Write-Host "The uniquely available exact iOS $SdkVersion runtime registered after installation."
+            return
+        }
+        if ($matching.Count -gt 1) {
+            throw "Multiple exact available iOS $SdkVersion runtimes registered after installation; refusing ambiguous admission."
+        }
+        if ($registration.Elapsed.TotalSeconds -lt 180) {
+            Start-Sleep -Seconds ([Math]::Min(5, [Math]::Max(1, [Math]::Floor(180 - $registration.Elapsed.TotalSeconds))))
+        }
+    }
+    throw "The exact available iOS $SdkVersion runtime did not register within three minutes; refusing a substitution."
+}
+
 function New-IssueReplicateIOSSimulator {
     param([Parameter(Mandatory)][string]$RepoRoot)
 
     if (-not $IsMacOS) { throw 'Native iOS verification requires a macOS simulator host.' }
     $sdk = Get-IssueReplicateIOSSdkVersion -RepoRoot $RepoRoot
     $runtimeId = "com.apple.CoreSimulator.SimRuntime.iOS-$($sdk.Replace('.', '-'))"
-    $json = & xcrun simctl list runtimes available --json
-    if ($LASTEXITCODE -ne 0) { throw 'Could not enumerate installed iOS simulator runtimes.' }
-    $runtimes = ($json -join "`n") | ConvertFrom-Json
-    $matching = @($runtimes.runtimes | Where-Object {
-            $_.identifier -ceq $runtimeId -and $_.version -ceq $sdk -and $_.isAvailable -eq $true
-        })
+    $matching = @(Get-IssueReplicateIOSRuntimeMatches -RepoRoot $RepoRoot -SdkVersion $sdk)
     if ($matching.Count -ne 1) {
-        throw "The fresh runner lacks the exact available iOS $sdk runtime required by the pinned SDK; refusing a newer runtime."
+        throw "Native simulator admission requires one exact available iOS $sdk runtime; observed $($matching.Count), refusing a substitution."
     }
     $name = "issue-replicate-$([guid]::NewGuid().ToString('N'))"
     $created = & xcrun simctl create $name 'com.apple.CoreSimulator.SimDeviceType.iPhone-11-Pro' $runtimeId
@@ -202,6 +276,7 @@ function Parse-IssueReplicateCommand {
     $platform = ''
     $branch = 'main'
     $sourceUrl = ''
+    $androidApi = ''
     $branchSpecified = $false
     for ($i = 2; $i -lt $parts.Count; $i += 2) {
         if ($i + 1 -ge $parts.Count) { throw 'A command option is missing its value.' }
@@ -223,11 +298,16 @@ function Parse-IssueReplicateCommand {
                 $source = Get-IssueReplicateSource -AuthorTexts @("[repro.zip]($sourceUrl)")
                 if ($source.Url -cne $sourceUrl) { throw 'The selected source must be one supported GitHub URL.' }
             }
+            '--android-api' {
+                if ($androidApi) { throw 'The Android API was specified more than once.' }
+                $androidApi = $parts[$i + 1]
+                if ($androidApi -cnotin @('30', '35', '36')) { throw 'Supported Android APIs: 30, 35, 36.' }
+            }
             default { throw 'Unsupported /issue replicate option.' }
         }
     }
 
-    return [pscustomobject]@{ Platform = $platform; Branch = $branch; SourceUrl = $sourceUrl }
+    return [pscustomobject]@{ Platform = $platform; Branch = $branch; SourceUrl = $sourceUrl; AndroidApi = $androidApi }
 }
 
 function Resolve-IssueReplicatePlatform {
@@ -243,6 +323,50 @@ function Resolve-IssueReplicatePlatform {
         throw 'Specify --platform android or --platform ios when the issue has no single supported platform label.'
     }
     return $supported[0]
+}
+
+function Resolve-IssueReplicateAndroidApi {
+    param([Parameter(Mandatory)][ValidateSet('android', 'ios')][string]$Platform,
+        [string]$Requested = '')
+
+    if ($Platform -cnotin @('android', 'ios')) { throw 'Supported platforms: android, ios.' }
+    if ($Platform -ceq 'ios') {
+        if ($Requested) { throw '--android-api is supported only for Android.' }
+        return ''
+    }
+    if (-not $Requested) { return '30' }
+    if ($Requested -cnotin @('30', '35', '36')) { throw 'Supported Android APIs: 30, 35, 36.' }
+    return $Requested
+}
+
+function Get-IssueReplicateSnapshotAndroidApi {
+    param([Parameter(Mandatory)]$Snapshot)
+
+    if ($Snapshot.platform -cnotin @('android', 'ios')) { throw 'The snapshot platform is unsupported.' }
+    if (-not $Snapshot.PSObject.Properties['androidApi']) { return '' }
+    if ($Snapshot.androidApi -isnot [string] -or
+        ($Snapshot.platform -ceq 'android' -and $Snapshot.androidApi -cnotin @('30', '35', '36')) -or
+        ($Snapshot.platform -ceq 'ios' -and $Snapshot.androidApi -cne '')) {
+        throw 'The snapshot contains an invalid or platform-incompatible Android API.'
+    }
+    return [string]$Snapshot.androidApi
+}
+
+function Get-IssueReplicateNativeAndroidApi {
+    param([Parameter(Mandatory)][string]$RepoRoot)
+
+    if ($env:DEVICE_UDID -cnotmatch '^emulator-[0-9]+$') {
+        throw 'Android runtime verification requires the explicitly owned emulator serial.'
+    }
+    . (Join-Path $RepoRoot '.github/scripts/shared/shared-utils.ps1')
+    $api = Invoke-ProcessWithTimeout -FilePath 'adb' -TimeoutSeconds 20 `
+        -ArgumentList @('-s', $env:DEVICE_UDID, 'shell', 'getprop', 'ro.build.version.sdk')
+    $value = ($api.Output -join "`n").Trim()
+    if ($api.TimedOut -or $api.OutputDrainTimedOut -or $api.ExitCode -ne 0 -or
+        $value -cnotmatch '^[1-9][0-9]{0,2}$') {
+        throw 'The owned Android emulator did not report one API level within its deadline.'
+    }
+    return $value
 }
 
 function Get-IssueReplicateSource {
@@ -849,6 +973,20 @@ function Assert-IssueReplicateResult {
         $Result.sampleSha256 -cnotmatch '^[a-fA-F0-9]{64}$' -or
         $Result.status -cnotin @('candidate-failed', 'not-reproduced-on-tested-revision', 'inconclusive', 'unsupported')) {
         throw 'The issue reproduction result does not match the requested issue, revision, or status.'
+    }
+    if ($Result.PSObject.Properties['androidApi'] -or $Result.PSObject.Properties['nativeAndroidApi']) {
+        if ($Result.androidApi -isnot [string] -or
+            $Result.androidApi -cnotin @('', '30', '35', '36') -or
+            $Result.nativeAndroidApi -isnot [string] -or
+            ($Result.nativeAndroidApi -and $Result.nativeAndroidApi -cnotmatch '^[1-9][0-9]{0,2}$') -or
+            ($Result.platform -ceq 'ios' -and ($Result.androidApi -or $Result.nativeAndroidApi))) {
+            throw 'The result contains invalid or platform-incompatible Android runtime evidence.'
+        }
+        if ($Result.platform -ceq 'android' -and $Result.androidApi -and $Result.testKind -ceq 'ui' -and
+            $Result.status -cin @('candidate-failed', 'not-reproduced-on-tested-revision') -and
+            $Result.nativeAndroidApi -cne $Result.androidApi) {
+            throw 'A qualified Android UI outcome must execute on the requested API level.'
+        }
     }
     if ($Result.status -eq 'candidate-failed' -and
         ($Result.testExecuted -ne $true -or $Result.assertionFailed -ne $true -or

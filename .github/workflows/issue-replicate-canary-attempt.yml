@@ -149,23 +149,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           . "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Core.ps1"
-          $sdk = Get-IssueReplicateIOSSdkVersion -RepoRoot "$env:RUNNER_TEMP/maui"
-          & xcrun simctl list runtimes available --json
-          if ($LASTEXITCODE -ne 0) { throw 'Could not connect to the runner-owned CoreSimulator session.' }
-          & xcodebuild `
-            -downloadPlatform iOS -buildVersion $sdk -architectureVariant arm64
-          if ($LASTEXITCODE -ne 0) { throw "Could not install the exact pinned iOS $sdk runtime." }
-          $json = & xcrun simctl list runtimes available --json
-          if ($LASTEXITCODE -ne 0) { throw 'Could not enumerate available simulator runtimes after provisioning.' }
-          $inventory = ($json -join "`n") | ConvertFrom-Json
-          $runtimeId = "com.apple.CoreSimulator.SimRuntime.iOS-$($sdk.Replace('.', '-'))"
-          $matching = @($inventory.runtimes | Where-Object {
-            $_.identifier -ceq $runtimeId -and $_.version -ceq $sdk -and $_.isAvailable -eq $true
-          })
-          if ($matching.Count -ne 1) {
-            throw "The exact available iOS $sdk runtime is still missing; refusing a newer runtime."
-          }
-          Write-Host "Required exact iOS $sdk runtime is available: $runtimeId."
+          Initialize-IssueReplicateIOSRuntime -RepoRoot "$env:RUNNER_TEMP/maui"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
