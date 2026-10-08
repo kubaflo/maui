@@ -1,5 +1,5 @@
 name: Fork Issue Replicate Canary
-run-name: "Five-issue trial: #${{ inputs.issue_number }} (${{ inputs.platform }})"
+run-name: "Two-issue trial: #${{ inputs.issue_number }} (${{ inputs.platform }})"
 
 on:
   workflow_dispatch:
