@@ -315,6 +315,10 @@ try {
                         finally {
                             [IO.File]::WriteAllText($recordingAcknowledgement, "${operation}:$acknowledgement")
                         }
+                        if ($RetainNativeDiagnostics -and $acknowledgement -ceq 'started') {
+                            Write-IssueReplicateNativeSnapshot -SessionId $recordingSession -Phase START `
+                                -Observations $testLines -GalleryOnly
+                        }
                     }
                     if ($RecordVideo -and $line -match '^>>>>> .+ (?<method>\S+) Start$') {
                         $recordingStarts = [Math]::Min(2, $recordingStarts + 1)
@@ -370,7 +374,8 @@ try {
                                 catch {
                                     Write-Warning "Unqualified diagnostic footage unavailable: $($_.Exception.Message)"
                                 }
-                                Write-IssueReplicateNativeSnapshot -SessionId $recordingSession -Phase STOP
+                                Write-IssueReplicateNativeSnapshot -SessionId $recordingSession -Phase STOP `
+                                    -Observations $testLines
                             }
                             if (-not $finishedWithinWindow) {
                                 throw 'The named test did not finish inside its acknowledged 30-second recording window.'
