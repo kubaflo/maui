@@ -2,6 +2,8 @@
 description: Two staged duplicate-detector trials on the authorized public fork.
 
 # Reuse this registered dispatch path only on the isolated fork trial branch.
+# Regenerate with bash .github/scripts/CompileIssueDuplicateForkTrial.sh.
+# Fork-only v0.89.21 auth with gateway v0.4.30 preserves scoped tool and sink guards.
 imports:
   - shared/gpt-6.1-sol.md
 
@@ -93,6 +95,7 @@ permissions:
 model: gpt-6.1-sol
 engine:
   id: copilot
+  version: "1.0.87"
   env:
     COPILOT_PROVIDER_WIRE_API: responses
     COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
@@ -106,6 +109,7 @@ sandbox:
 
 tools:
   bash: false
+  cli-proxy: false
   edit: false
   github:
     toolsets: [issues]
@@ -122,6 +126,9 @@ safe-outputs:
   runs-on: ubuntu-latest
   github-token: ${{ secrets.GITHUB_TOKEN }}
   staged: true
+  threat-detection:
+    continue-on-error: false
+    report-as-issue: false
   allowed-github-references: [repo, dotnet/maui]
   data:
     type: object
@@ -219,7 +226,7 @@ steps:
   - name: Check official compiler base compatibility
     uses: actions/github-script@v9.0.0
     env:
-      GH_AW_COMPILED_VERSION: v0.86.2
+      GH_AW_COMPILED_VERSION: v0.89.21
     with:
       script: |
         const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
@@ -235,6 +242,7 @@ steps:
 concurrency:
   group: issue-duplicate-fork-trial-${{ inputs.issue_number || github.run_id }}
   cancel-in-progress: false
+  job-discriminator: ${{ github.run_id }}
 
 timeout-minutes: 15
 source: dotnet/maui/.github/workflows/issue-duplicate-detector.md@96dea970651359926d34b8ba50271a071e27d243
