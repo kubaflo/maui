@@ -101,12 +101,6 @@ jobs:
           }
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Checkout.ps1" `
             -ManifestPath "$env:RUNNER_TEMP/IssueInput/manifest.json" -Destination "$env:RUNNER_TEMP/maui"
-      - name: Require Xcode matching the pinned iOS SDK
-        if: inputs.platform == 'ios'
-        shell: pwsh
-        run: |
-          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.SelectXcode.ps1" `
-            -RepoRoot "$env:RUNNER_TEMP/maui" -Provider GitHub
       - name: Bootstrap the exact source-pinned SDK before restoring tools
         shell: bash
         run: |
@@ -128,6 +122,12 @@ jobs:
           & ./build.ps1 --target=dotnet --configuration=Release --verbosity=minimal
           if ($LASTEXITCODE -ne 0) { throw 'Pinned SDK/workload provisioning failed.' }
           "$env:RUNNER_TEMP/maui/.dotnet" >> $env:GITHUB_PATH
+      - name: Require Xcode declared by the installed pinned iOS SDK pack
+        if: inputs.platform == 'ios'
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.SelectXcode.ps1" `
+            -RepoRoot "$env:RUNNER_TEMP/maui" -Provider GitHub
       - name: Build pinned MAUI tasks
         shell: pwsh
         working-directory: ${{ runner.temp }}/maui
@@ -169,6 +169,26 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
+      - name: Require FFmpeg with libx264 for native iOS video
+        if: inputs.platform == 'ios' && inputs.record_video
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $candidate = Get-Content "$env:RUNNER_TEMP/Proposal/candidate.json" -Raw | ConvertFrom-Json
+          if ($candidate.kind -cne 'ui') { exit 0 }
+          if (-not (Get-Command ffmpeg -CommandType Application -ErrorAction SilentlyContinue)) {
+            & brew install ffmpeg
+            if ($LASTEXITCODE -ne 0) { throw 'Could not install FFmpeg for native iOS recording.' }
+          }
+          $ffmpeg = Get-Command ffmpeg -CommandType Application -ErrorAction Stop | Select-Object -First 1
+          $version = @(& $ffmpeg.Source -hide_banner -version)
+          if ($LASTEXITCODE -ne 0) { throw 'FFmpeg could not report its version.' }
+          $version | Select-Object -First 1 | ForEach-Object { Write-Host $_ }
+          $encoders = @(& $ffmpeg.Source -hide_banner -encoders 2>&1)
+          if ($LASTEXITCODE -ne 0 -or -not ($encoders -match '\blibx264\b')) {
+            throw 'Native iOS recording requires the FFmpeg libx264 encoder.'
+          }
       - name: Provision UI dependencies
         shell: bash
         env:
