@@ -1,5 +1,5 @@
 name: Fork Issue Replicate Canary
-run-name: "Two-issue trial: #${{ inputs.issue_number }} (${{ inputs.platform }})"
+run-name: "Six-issue recovery: #${{ inputs.issue_number }} (${{ inputs.platform }}, ${{ inputs.target_ref }})"
 
 on:
   workflow_dispatch:
@@ -17,6 +17,33 @@ on:
         type: choice
         options: [android, ios]
         default: ios
+        required: true
+      target_ref:
+        description: Explicit framework target; do not retarget the author sample
+        type: choice
+        options: [main, net11.0]
+        default: main
+        required: true
+      source_url:
+        description: Exact supported link in latest author repro text; empty keeps ambiguity rejection
+        default: ''
+        required: false
+      android_api:
+        description: Hosted emulator API, recorded separately from framework target
+        type: choice
+        options: ['30', '35', '36']
+        default: '35'
+        required: true
+      candidate_profile:
+        description: Generated draft or unchanged reviewed WebView controls
+        type: choice
+        options: [generated, android-webview-scroll]
+        default: generated
+        required: true
+      record_video:
+        description: Bounded named-body native recording
+        type: boolean
+        default: true
         required: true
 
 permissions:
@@ -40,11 +67,14 @@ jobs:
           ISSUE_NUMBER: ${{ inputs.issue_number }}
           COMMENT_ID: ${{ inputs.source_comment_id }}
           ISSUE_PLATFORM: ${{ inputs.platform }}
+          TARGET_REF: ${{ inputs.target_ref }}
+          SOURCE_URL: ${{ inputs.source_url }}
         run: |
           $ErrorActionPreference = 'Stop'
           & .github/scripts/IssueReplicate.Intake.ps1 `
             -IssueNumber ([int]$env:ISSUE_NUMBER) -CommentId ([long]$env:COMMENT_ID) `
-            -Platform $env:ISSUE_PLATFORM -TargetRef main -OutputDirectory "$env:RUNNER_TEMP/IssueInput"
+            -Platform $env:ISSUE_PLATFORM -TargetRef $env:TARGET_REF -SourceUrl $env:SOURCE_URL `
+            -OutputDirectory "$env:RUNNER_TEMP/IssueInput"
       - name: Transfer snapshot through job outputs
         id: snapshot
         shell: pwsh
@@ -92,12 +122,6 @@ jobs:
             -Directory "$env:RUNNER_TEMP/IssueInput"
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Checkout.ps1" `
             -ManifestPath "$env:RUNNER_TEMP/IssueInput/manifest.json" -Destination "$env:RUNNER_TEMP/maui"
-      - name: Require Xcode matching the pinned iOS SDK
-        if: inputs.platform == 'ios'
-        shell: pwsh
-        run: |
-          & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.SelectXcode.ps1" `
-            -RepoRoot "$env:RUNNER_TEMP/maui" -Provider GitHub
       - name: Bootstrap the exact source-pinned SDK before restoring tools
         shell: bash
         run: |
@@ -126,7 +150,8 @@ jobs:
         run: |
           $sdk = "$env:RUNNER_TEMP/author-dotnet"
           & pwsh -NoProfile -File "$env:RUNNER_TEMP/IssueTools/IssueReplicate.ProvisionSample.ps1" `
-            -RepoRoot "$env:RUNNER_TEMP/maui" -InstallDirectory $sdk -Platform $env:ISSUE_PLATFORM
+            -RepoRoot "$env:RUNNER_TEMP/maui" -InstallDirectory $sdk -Platform $env:ISSUE_PLATFORM `
+            -InputDirectory "$env:RUNNER_TEMP/IssueInput"
           if ($LASTEXITCODE -ne 0) { throw 'Public author-sample workload installation failed.' }
           $sdk >> $env:GITHUB_PATH
       - name: Record iOS toolchain
@@ -137,30 +162,6 @@ jobs:
           xcodebuild -version
           xcrun --find actool
           xcrun --sdk macosx --find actool
-      - name: Install and require the exact pinned iOS simulator runtime
-        if: inputs.platform == 'ios'
-        timeout-minutes: 30
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          . "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Core.ps1"
-          $sdk = Get-IssueReplicateIOSSdkVersion -RepoRoot "$env:RUNNER_TEMP/maui"
-          & xcrun simctl list runtimes available --json
-          if ($LASTEXITCODE -ne 0) { throw 'Could not connect to the runner-owned CoreSimulator session.' }
-          & xcodebuild `
-            -downloadPlatform iOS -buildVersion $sdk -architectureVariant arm64
-          if ($LASTEXITCODE -ne 0) { throw "Could not install the exact pinned iOS $sdk runtime." }
-          $json = & xcrun simctl list runtimes available --json
-          if ($LASTEXITCODE -ne 0) { throw 'Could not enumerate available simulator runtimes after provisioning.' }
-          $inventory = ($json -join "`n") | ConvertFrom-Json
-          $runtimeId = "com.apple.CoreSimulator.SimRuntime.iOS-$($sdk.Replace('.', '-'))"
-          $matching = @($inventory.runtimes | Where-Object {
-            $_.identifier -ceq $runtimeId -and $_.version -ceq $sdk -and $_.isAvailable -eq $true
-          })
-          if ($matching.Count -ne 1) {
-            throw "The exact available iOS $sdk runtime is still missing; refusing a newer runtime."
-          }
-          Write-Host "Required exact iOS $sdk runtime is available: $runtimeId."
       - name: Build the author sample without credentials
         id: sample
         shell: pwsh
@@ -192,10 +193,12 @@ jobs:
             -Encoded $env:REPRO_SAMPLE -Directory "$env:RUNNER_TEMP/SampleOutput"
       - &node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        if: inputs.candidate_profile == 'generated'
         with:
           node-version: '24'
       - &copilot
         name: Install lockfile-pinned Copilot CLI
+        if: inputs.candidate_profile == 'generated'
         run: |
           set -euo pipefail
           cli="$RUNNER_TEMP/IssueTools/Cli"
@@ -203,6 +206,7 @@ jobs:
           "$cli/node_modules/.bin/copilot" --version
           printf '%s\n' "$cli/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Generate a tool-free GPT candidate
+        if: inputs.candidate_profile == 'generated'
         shell: pwsh
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
@@ -210,6 +214,30 @@ jobs:
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Generate.ps1" `
             -InputDirectory "$env:RUNNER_TEMP/IssueInput" -OutputDirectory "$env:RUNNER_TEMP/Proposal" `
             -SampleResultPath "$env:RUNNER_TEMP/SampleOutput/sample-result.json"
+      - name: Replay the unchanged reviewed WebView controls
+        if: inputs.candidate_profile == 'android-webview-scroll'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Core.ps1"
+          $manifest = Get-Content -Raw "$env:RUNNER_TEMP/IssueInput/manifest.json" | ConvertFrom-Json
+          if ($manifest.issueNumber -ne 38452 -or $manifest.platform -cne 'android' -or
+              $manifest.sourceUrl -cne 'https://github.com/kklose23/android-webview-scroll' -or
+              $manifest.sourceCommit -cne '28af4be272d1537091efa3f63301665fe4b895c9') {
+            throw 'The reviewed profile does not match the unchanged author source.'
+          }
+          $profile = "$env:RUNNER_TEMP/issue-tools-source/.github/issue-replicate-canary/android-webview-scroll"
+          $candidate = @{
+            kind = 'ui'
+            files = @(
+              @{ path = 'src/Controls/tests/TestCases.HostApp/Issues/Issue38452.cs'; content = [IO.File]::ReadAllText("$profile/HostApp.cs") },
+              @{ path = 'src/Controls/tests/TestCases.Shared.Tests/Tests/Issues/Issue38452.cs'; content = [IO.File]::ReadAllText("$profile/Tests.cs") }
+            )
+          }
+          Assert-IssueReplicateCandidate -Candidate ([pscustomobject]$candidate) -IssueNumber 38452 -Platform android | Out-Null
+          New-Item -ItemType Directory "$env:RUNNER_TEMP/Proposal" | Out-Null
+          $candidate | ConvertTo-Json -Depth 6 -Compress |
+            Set-Content -LiteralPath "$env:RUNNER_TEMP/Proposal/candidate.json" -Encoding utf8
       - name: Transfer bounded candidate
         id: candidate
         shell: pwsh
@@ -227,10 +255,12 @@ jobs:
       snapshot: ${{ needs.intake.outputs.snapshot }}
       sample: ${{ needs.sample.outputs.result }}
       candidate: ${{ needs.generate.outputs.candidate }}
+      android_api: ${{ inputs.android_api }}
+      record_video: ${{ inputs.record_video }}
 
   revise:
     needs: [intake, sample, verify]
-    if: needs.verify.result == 'success' && needs.verify.outputs.verdict == 'inconclusive'
+    if: needs.verify.result == 'success' && needs.verify.outputs.verdict == 'inconclusive' && inputs.candidate_profile == 'generated'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     outputs:
@@ -280,6 +310,8 @@ jobs:
       snapshot: ${{ needs.intake.outputs.snapshot }}
       sample: ${{ needs.sample.outputs.result }}
       candidate: ${{ needs.revise.outputs.candidate }}
+      android_api: ${{ inputs.android_api }}
+      record_video: ${{ inputs.record_video }}
 
   post:
     needs: [intake, sample, generate, verify, revise, verify-revised]
@@ -300,6 +332,14 @@ jobs:
           REPRO_SAMPLE: ${{ needs.sample.outputs.result }}
           REPRO_CANDIDATE1: ${{ needs.generate.outputs.candidate }}
           REPRO_CANDIDATE2: ${{ needs.revise.outputs.candidate }}
+          REPRO_FIRST_VIDEO_0: ${{ needs.verify.outputs.recording0 }}
+          REPRO_FIRST_VIDEO_1: ${{ needs.verify.outputs.recording1 }}
+          REPRO_FIRST_VIDEO_2: ${{ needs.verify.outputs.recording2 }}
+          REPRO_FIRST_VIDEO_3: ${{ needs.verify.outputs.recording3 }}
+          REPRO_SECOND_VIDEO_0: ${{ needs.verify-revised.outputs.recording0 }}
+          REPRO_SECOND_VIDEO_1: ${{ needs.verify-revised.outputs.recording1 }}
+          REPRO_SECOND_VIDEO_2: ${{ needs.verify-revised.outputs.recording2 }}
+          REPRO_SECOND_VIDEO_3: ${{ needs.verify-revised.outputs.recording3 }}
           ISSUE_NUMBER: ${{ inputs.issue_number }}
           COMMENT_ID: ${{ inputs.source_comment_id }}
         run: |
@@ -323,6 +363,16 @@ jobs:
             Write-Host "REPRO_VERIFIED=$verified"
           }
           $candidate = if ($env:REPRO_CANDIDATE2) { $env:REPRO_CANDIDATE2 } else { $env:REPRO_CANDIDATE1 }
+          $videoPrefix = if ($env:REPRO_CANDIDATE2) { 'REPRO_SECOND_VIDEO_' } else { 'REPRO_FIRST_VIDEO_' }
+          foreach ($index in 0..3) {
+            $chunk = [Environment]::GetEnvironmentVariable("$videoPrefix$index")
+            if ($chunk -and ($chunk.Length -gt 88000 -or $chunk -cnotmatch '^[A-Za-z0-9+/]+={0,2}$')) {
+              throw 'A recording chunk exceeds the existing bounded transport contract.'
+            }
+            [Environment]::SetEnvironmentVariable("REPRO_VIDEO_$index", $chunk)
+            [IO.File]::AppendAllText($env:GITHUB_ENV, "REPRO_VIDEO_$index=$chunk`n")
+            if ($chunk) { Write-Host "REPRO_VIDEO_$index=$chunk" }
+          }
           $candidateDirectory = ''
           if ($candidate) {
             $candidateDirectory = "$env:RUNNER_TEMP/DraftCandidate"

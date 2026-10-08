@@ -21,6 +21,12 @@ on:
       previous:
         type: string
         default: ''
+      android_api:
+        type: string
+        required: true
+      record_video:
+        type: boolean
+        required: true
     outputs:
       result:
         value: ${{ jobs.verify.outputs.result }}
@@ -28,6 +34,14 @@ on:
         value: ${{ jobs.verify.outputs.verdict }}
       observed_assertion:
         value: ${{ jobs.verify.outputs.observed_assertion }}
+      recording0:
+        value: ${{ jobs.verify.outputs.recording0 }}
+      recording1:
+        value: ${{ jobs.verify.outputs.recording1 }}
+      recording2:
+        value: ${{ jobs.verify.outputs.recording2 }}
+      recording3:
+        value: ${{ jobs.verify.outputs.recording3 }}
 
 permissions: {}
 
@@ -39,6 +53,10 @@ jobs:
       result: ${{ steps.transfer.outputs.payload }}
       verdict: ${{ steps.transfer.outputs.verdict }}
       observed_assertion: ${{ steps.transfer.outputs.observedAssertion }}
+      recording0: ${{ steps.transfer.outputs.recording0 }}
+      recording1: ${{ steps.transfer.outputs.recording1 }}
+      recording2: ${{ steps.transfer.outputs.recording2 }}
+      recording3: ${{ steps.transfer.outputs.recording3 }}
     env:
       APPIUM_HOME: ${{ inputs.platform == 'ios' && '/Users/runner/.appium' || '/home/runner/.appium' }}
     steps:
@@ -61,6 +79,8 @@ jobs:
           }
           New-Item -ItemType Directory "$env:RUNNER_TEMP/IssueTools" | Out-Null
           Copy-Item "$source/.github/scripts/IssueReplicate*.ps1" "$env:RUNNER_TEMP/IssueTools"
+          Copy-Item "$source/.github/scripts/IssueReplicate.RecordingAction.cs" "$env:RUNNER_TEMP/IssueTools"
+          Copy-Item "$source/.github/scripts/IssueReplicate.RecordingAction.targets" "$env:RUNNER_TEMP/IssueTools"
       - name: Restore only validated job data
         shell: pwsh
         env:
@@ -153,6 +173,7 @@ jobs:
         shell: bash
         env:
           ISSUE_PLATFORM: ${{ inputs.platform }}
+          ANDROID_API: ${{ inputs.android_api }}
         run: |
           set -euo pipefail
           if [ "$(jq -r .kind "$RUNNER_TEMP/Proposal/candidate.json")" != ui ]; then exit 0; fi
@@ -164,8 +185,9 @@ jobs:
             if [ -x "$tool_dir/sdkmanager" ]; then break; fi
           done
           test -x "$tool_dir/sdkmanager"
-          "$tool_dir/sdkmanager" --install "system-images;android-30;google_apis;x86_64" "platforms;android-30"
-          echo no | "$tool_dir/avdmanager" create avd --force --name IssueRepro --package "system-images;android-30;google_apis;x86_64"
+          case "$ANDROID_API" in 30|35|36) ;; *) echo 'Unsupported emulator API' >&2; exit 1;; esac
+          "$tool_dir/sdkmanager" --install "system-images;android-${ANDROID_API};google_apis;x86_64" "platforms;android-${ANDROID_API}"
+          echo no | "$tool_dir/avdmanager" create avd --force --name IssueRepro --device pixel_5 --package "system-images;android-${ANDROID_API};google_apis;x86_64"
           "$ANDROID_SDK_ROOT/emulator/emulator" -avd IssueRepro -no-window -no-audio -no-snapshot -gpu swiftshader_indirect \
             > "$RUNNER_TEMP/issue-emulator.log" 2>&1 &
           adb="$ANDROID_SDK_ROOT/platform-tools/adb"
@@ -174,6 +196,11 @@ jobs:
             if [ "$("$adb" shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; then
               echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
               echo "$ANDROID_SDK_ROOT/emulator" >> "$GITHUB_PATH"
+              serial="$("$adb" get-serialno)"
+              if ! [[ "$serial" =~ ^emulator-[0-9]+$ ]]; then echo 'Owned emulator serial is ambiguous' >&2; exit 1; fi
+              echo "DEVICE_UDID=$serial" >> "$GITHUB_ENV"
+              echo "Hosted Pixel 5 emulator serial $serial, API $ANDROID_API, GPU swiftshader_indirect (not an author GPU attestation)."
+              "$adb" -s "$serial" shell getprop ro.build.version.sdk
               exit 0
             fi
             sleep 5
@@ -185,6 +212,7 @@ jobs:
         shell: pwsh
         env:
           ISSUE_ATTEMPT: ${{ inputs.attempt }}
+          RECORD_VIDEO: ${{ inputs.record_video }}
         run: |
           $previous = if ($env:ISSUE_ATTEMPT -eq '2') { "$env:RUNNER_TEMP/FirstAttempt/result.json" } else { '' }
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Run.ps1" -Mode Verify `
@@ -192,4 +220,5 @@ jobs:
             -SampleResultPath "$env:RUNNER_TEMP/SampleOutput/sample-result.json" `
             -CandidatePath "$env:RUNNER_TEMP/Proposal/candidate.json" `
             -RepoRoot "$env:RUNNER_TEMP/maui" -OutputDirectory "$env:RUNNER_TEMP/Verified" `
-            -Attempt ([int]$env:ISSUE_ATTEMPT) -PreviousResultPath $previous -Provider GitHub
+            -Attempt ([int]$env:ISSUE_ATTEMPT) -PreviousResultPath $previous -Provider GitHub `
+            -RecordVideo:([bool]::Parse($env:RECORD_VIDEO))

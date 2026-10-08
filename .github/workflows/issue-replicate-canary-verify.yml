@@ -15,11 +15,25 @@ on:
       candidate:
         type: string
         required: true
+      android_api:
+        type: string
+        required: true
+      record_video:
+        type: boolean
+        required: true
     outputs:
       result:
         value: ${{ jobs.verify.outputs.result }}
       verdict:
         value: ${{ jobs.verify.outputs.verdict }}
+      recording0:
+        value: ${{ jobs.verify.outputs.recording0 }}
+      recording1:
+        value: ${{ jobs.verify.outputs.recording1 }}
+      recording2:
+        value: ${{ jobs.verify.outputs.recording2 }}
+      recording3:
+        value: ${{ jobs.verify.outputs.recording3 }}
 
 permissions: {}
 
@@ -32,6 +46,8 @@ jobs:
       sample: ${{ inputs.sample }}
       candidate: ${{ inputs.candidate }}
       attempt: 1
+      android_api: ${{ inputs.android_api }}
+      record_video: ${{ inputs.record_video }}
   confirm:
     needs: first
     if: needs.first.outputs.observed_assertion == 'true'
@@ -43,6 +59,8 @@ jobs:
       candidate: ${{ inputs.candidate }}
       attempt: 2
       previous: ${{ needs.first.outputs.result }}
+      android_api: ${{ inputs.android_api }}
+      record_video: ${{ inputs.record_video }}
   verify:
     needs: [first, confirm]
     if: ${{ always() && !cancelled() && needs.first.result == 'success' }}
@@ -51,6 +69,10 @@ jobs:
     outputs:
       result: ${{ steps.transfer.outputs.payload }}
       verdict: ${{ steps.transfer.outputs.verdict }}
+      recording0: ${{ steps.transfer.outputs.recording0 }}
+      recording1: ${{ steps.transfer.outputs.recording1 }}
+      recording2: ${{ steps.transfer.outputs.recording2 }}
+      recording3: ${{ steps.transfer.outputs.recording3 }}
     steps:
       - name: Fetch immutable forwarding tools without credentials
         shell: pwsh
@@ -82,6 +104,14 @@ jobs:
           OBSERVED_ASSERTION: ${{ needs.first.outputs.observed_assertion }}
           REPRO_CONFIRMED: ${{ needs.confirm.outputs.result }}
           CONFIRM_STATUS: ${{ needs.confirm.result }}
+          FIRST_VIDEO_0: ${{ needs.first.outputs.recording0 }}
+          FIRST_VIDEO_1: ${{ needs.first.outputs.recording1 }}
+          FIRST_VIDEO_2: ${{ needs.first.outputs.recording2 }}
+          FIRST_VIDEO_3: ${{ needs.first.outputs.recording3 }}
+          CONFIRM_VIDEO_0: ${{ needs.confirm.outputs.recording0 }}
+          CONFIRM_VIDEO_1: ${{ needs.confirm.outputs.recording1 }}
+          CONFIRM_VIDEO_2: ${{ needs.confirm.outputs.recording2 }}
+          CONFIRM_VIDEO_3: ${{ needs.confirm.outputs.recording3 }}
         run: |
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Input `
             -Encoded $env:REPRO_INPUT -Directory "$env:RUNNER_TEMP/IssueInput"
@@ -98,6 +128,11 @@ jobs:
             $encoded = $env:REPRO_CONFIRMED
           } else {
             throw 'First attempt did not export a valid assertion routing state.'
+          }
+          $prefix = if ($attempt -eq 2) { 'CONFIRM_VIDEO_' } else { 'FIRST_VIDEO_' }
+          foreach ($index in 0..3) {
+            [Environment]::SetEnvironmentVariable("REPRO_VIDEO_$index",
+              [Environment]::GetEnvironmentVariable("$prefix$index"))
           }
           & "$env:RUNNER_TEMP/IssueTools/IssueReplicate.Transport.ps1" -Mode Import -Kind Verified `
             -Encoded $encoded -Directory "$env:RUNNER_TEMP/CompletedAttempt"
