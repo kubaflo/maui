@@ -944,6 +944,14 @@ namespace Microsoft.Maui.Controls.Platform
 					return true;
 				}
 
+				// A touch that lands on a selectable cell belongs to that cell. If a gesture recognizer on an
+				// ancestor view receives it, recognition cancels the touches UIKit is tracking for the cell
+				// (UIGestureRecognizer.CancelsTouchesInView defaults to true), so the cell never gets selected.
+				if (IsTouchInsideSelectableCell(touch.View, platformView))
+				{
+					return false;
+				}
+
 				// If the touch is coming from the UIView our handler is wrapping (e.g., if it's  
 				// wrapping a UIView which already has a gesture recognizer), then we should let it through
 				// (This goes for children of that control as well)
@@ -952,6 +960,32 @@ namespace Microsoft.Maui.Controls.Platform
 					(touch.View.GestureRecognizers?.Length > 0 || platformView.GestureRecognizers?.Length > 0))
 				{
 					return true;
+				}
+
+				return false;
+			}
+
+			static bool IsTouchInsideSelectableCell(UIView? touchView, UIView platformView)
+			{
+				bool insideCell = false;
+
+				for (var view = touchView; view is not null && view != platformView; view = view.Superview)
+				{
+					if (!insideCell)
+					{
+						insideCell = view is UICollectionViewCell || view is UITableViewCell;
+						continue;
+					}
+
+					if (view is UICollectionView collectionView)
+					{
+						return collectionView.AllowsSelection;
+					}
+
+					if (view is UITableView tableView)
+					{
+						return tableView.AllowsSelection;
+					}
 				}
 
 				return false;
