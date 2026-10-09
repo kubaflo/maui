@@ -226,6 +226,8 @@ namespace Microsoft.Maui.Controls.Platform
 				Content = new ContentLayoutPanel(_handler.VirtualView);
 			}
 
+			UpdateContentMargin();
+
 			if (itemsView is SelectableItemsView selectableItemsView && selectableItemsView.SelectionMode is not SelectionMode.None)
 			{
 				bool isSelected = false;
@@ -236,6 +238,33 @@ namespace Microsoft.Maui.Controls.Platform
 
 				if (isSelected)
 					UpdateIsSelected(isSelected);
+			}
+		}
+
+		// When the template root is an ICrossPlatformLayout, its platform view is hosted directly by the
+		// ContentPresenter. CrossPlatformMeasure/CrossPlatformArrange only account for the layout's children
+		// and its own Padding, so the root's Margin would otherwise be dropped entirely (on Windows, MAUI
+		// margins are normally consumed by the parent MAUI layout, and here the parent is a WinUI element).
+		// Projecting it onto FrameworkElement.Margin lets the ContentPresenter reserve and inset that space.
+		// The ContentLayoutPanel path already applies the margin itself via IView.Measure/IView.Arrange, so
+		// it must stay at zero there - including when a recycled control switches between the two paths.
+		void UpdateContentMargin()
+		{
+			if (Content is not FrameworkElement contentElement)
+			{
+				return;
+			}
+
+			var margin = contentElement is ContentLayoutPanel || _handler?.VirtualView is null
+				? default
+				: _handler.VirtualView.Margin;
+
+			if (contentElement.Margin.Left != margin.Left
+				|| contentElement.Margin.Top != margin.Top
+				|| contentElement.Margin.Right != margin.Right
+				|| contentElement.Margin.Bottom != margin.Bottom)
+			{
+				contentElement.Margin = new WThickness(margin.Left, margin.Top, margin.Right, margin.Bottom);
 			}
 		}
 
@@ -299,6 +328,11 @@ namespace Microsoft.Maui.Controls.Platform
 
 		void OnViewPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
 		{
+			if (e.PropertyName == View.MarginProperty.PropertyName)
+			{
+				UpdateContentMargin();
+			}
+
 			if (e.IsOneOf(
 				SemanticProperties.HeadingLevelProperty,
 				SemanticProperties.HintProperty,
