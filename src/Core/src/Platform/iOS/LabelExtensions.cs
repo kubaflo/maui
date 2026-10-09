@@ -1,3 +1,4 @@
+using System;
 using Foundation;
 using Microsoft.Maui.Graphics;
 using ObjCRuntime;
@@ -96,9 +97,92 @@ namespace Microsoft.Maui.Platform
 			// will be just disappear once we switch.
 #pragma warning disable CS8601
 #pragma warning disable CS0618
-			platformLabel.AttributedText = new NSAttributedString(text, attr, ref nsError);
+			var attributedText = new NSAttributedString(text, attr, ref nsError);
 #pragma warning restore CS0618
 #pragma warning restore CS8601
+
+			platformLabel.AttributedText = AddMissingListMarkers(attributedText);
+		}
+
+		// The HTML importer describes <ul>/<ol> items with NSTextList metadata on the paragraph style
+		// instead of always writing the marker glyphs into the string. UILabel draws the string only,
+		// so those lists render without any bullets or numbers. Materialize the markers as real text.
+		static NSAttributedString AddMissingListMarkers(NSAttributedString source)
+		{
+			var text = source?.Value;
+
+			if (source is null || string.IsNullOrEmpty(text))
+				return source!;
+
+			NSMutableAttributedString? result = null;
+			NativeHandle currentList = NativeHandle.Zero;
+			nint itemNumber = 0;
+			int insertedLength = 0;
+			int paragraphStart = 0;
+
+			for (int i = 0; i <= text.Length; i++)
+			{
+				if (i < text.Length && text[i] != '\n' && text[i] != '\r' && text[i] != '\u2028' && text[i] != '\u2029')
+					continue;
+
+				var paragraphLength = i - paragraphStart;
+
+				if (paragraphLength > 0)
+				{
+					var list = GetInnermostTextList(source, paragraphStart);
+
+					if (list is null)
+					{
+						currentList = NativeHandle.Zero;
+					}
+					else
+					{
+						if (list.Handle == currentList)
+						{
+							itemNumber++;
+						}
+						else
+						{
+							currentList = list.Handle;
+							itemNumber = list.StartingItemNumber;
+						}
+
+						var marker = list.GetMarker(itemNumber);
+
+						if (!string.IsNullOrEmpty(marker) &&
+							!text.AsSpan(paragraphStart, paragraphLength).TrimStart(" \t\u00a0").StartsWith(marker, StringComparison.Ordinal))
+						{
+							result ??= new NSMutableAttributedString(source);
+
+							var attributes = source.GetAttributes(paragraphStart, out _);
+							var markerText = marker + "\t";
+							var markerString = attributes is null
+								? new NSAttributedString(markerText)
+								: new NSAttributedString(markerText, attributes);
+
+							result.Insert(markerString, paragraphStart + insertedLength);
+							insertedLength += markerText.Length;
+						}
+					}
+				}
+
+				paragraphStart = i + 1;
+			}
+
+			return result ?? source;
+		}
+
+		static NSTextList? GetInnermostTextList(NSAttributedString source, int location)
+		{
+			if (source.GetAttribute(UIStringAttributeKey.ParagraphStyle, location, out _) is not NSParagraphStyle paragraphStyle)
+				return null;
+
+			var lists = paragraphStyle.TextLists;
+
+			if (lists is null || lists.Length == 0)
+				return null;
+
+			return lists[lists.Length - 1];
 		}
 
 		internal static void UpdateTextPlainText(this UILabel platformLabel, IText label)
