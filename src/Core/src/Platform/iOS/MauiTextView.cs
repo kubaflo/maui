@@ -160,7 +160,14 @@ namespace Microsoft.Maui.Platform
 				BackgroundColor = UIColor.Clear,
 				TextColor = ColorExtensions.PlaceholderColor,
 				Lines = 0,
-				VerticalAlignment = UIControlContentVerticalAlignment.Top
+				VerticalAlignment = UIControlContentVerticalAlignment.Top,
+
+				// The placeholder is a purely visual affordance drawn on top of the text view.
+				// UITextField folds its placeholder into the field's own accessibility information,
+				// so leaving this label visible to VoiceOver would make the Editor announce the
+				// placeholder as a separate element that the Entry never produces.
+				IsAccessibilityElement = false,
+				AccessibilityElementsHidden = true
 			};
 
 			AddSubview(placeholderLabel);
