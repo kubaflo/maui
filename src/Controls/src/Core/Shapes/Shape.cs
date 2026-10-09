@@ -309,6 +309,12 @@ namespace Microsoft.Maui.Controls.Shapes
 			return path;
 		}
 
+		// The outline is only painted when a Stroke brush is set and the thickness is positive
+		// (see ShapeDrawable.DrawStrokePath). When nothing is stroked, reserving room for the
+		// stroke shrinks the fill for no reason, which is very visible on shapes that are only
+		// a couple of device-independent units tall.
+		internal double RenderedStrokeThickness => Stroke is null || StrokeThickness <= 0 ? 0 : StrokeThickness;
+
 		internal void TransformPathForBounds(PathF path, Graphics.Rect viewBounds)
 		{
 #if !(NETSTANDARD || !PLATFORM)
@@ -317,10 +323,12 @@ namespace Microsoft.Maui.Controls.Shapes
 			//       since default GetBoundsByFlattening(0.001) returns incorrect results for curves
 			RectF pathBounds = path.GetBoundsByFlattening(1);
 
-			viewBounds.X += StrokeThickness / 2;
-			viewBounds.Y += StrokeThickness / 2;
-			viewBounds.Width -= StrokeThickness;
-			viewBounds.Height -= StrokeThickness;
+			double strokeInset = RenderedStrokeThickness;
+
+			viewBounds.X += strokeInset / 2;
+			viewBounds.Y += strokeInset / 2;
+			viewBounds.Width -= strokeInset;
+			viewBounds.Height -= strokeInset;
 
 			Matrix3x2 transform;
 
