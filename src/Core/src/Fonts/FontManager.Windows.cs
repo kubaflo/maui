@@ -146,14 +146,33 @@ namespace Microsoft.Maui
 			// Always send the base back
 			yield return fontFamily;
 
-			// And then just wing it with each extension
+			// And then just wing it with each extension, but only for assets the app actually ships.
+			// Probing a font file that was never bundled cannot resolve, it just logs a font loading
+			// error and adds a dead path to the composite font family.
 			foreach (var ext in TypicalFontFileExtensions)
 			{
 				var fileName = $"{TypicalFontAssetsPath}{fontFile.FileNameWithExtension(ext)}";
+
+				if (!AppPackageFontFileExists(fileName))
+					continue;
+
 				var familyName = FindFontFamilyName(fileName);
 				var formatted = $"{fileName}#{familyName ?? fontFile.GetPostScriptNameWithSpaces()}";
 
 				yield return formatted;
+			}
+		}
+
+		static bool AppPackageFontFileExists(string fileName)
+		{
+			try
+			{
+				return FileSystemUtils.AppPackageFileExists(fileName);
+			}
+			catch (Exception)
+			{
+				// Never let a probe for an optional font asset break font resolution.
+				return false;
 			}
 		}
 
