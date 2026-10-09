@@ -100,6 +100,10 @@ namespace Microsoft.Maui.Handlers
 		public static void MapHorizontalTextAlignment(ISearchBarHandler handler, ISearchBar searchBar)
 		{
 			handler.QueryEditor?.UpdateHorizontalTextAlignment(searchBar);
+
+			// The placeholder is drawn from AttributedPlaceholder, which is not affected by
+			// UITextField.TextAlignment, so rebuild it with the new alignment.
+			handler.PlatformView?.UpdatePlaceholder(searchBar, handler.QueryEditor);
 		}
 
 		public static void MapVerticalTextAlignment(ISearchBarHandler handler, ISearchBar searchBar)
