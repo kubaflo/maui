@@ -1112,8 +1112,16 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		{
 			if (ItemsView.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepLastItemInView)
 			{
-				ScrollTo(new ScrollToRequestEventArgs(GetLayoutManager().ItemCount, 0,
-					Microsoft.Maui.Controls.ScrollToPosition.MakeVisible, true));
+				// The target here is already an adapter position, so it must not be routed through
+				// ScrollTo/DetermineTargetPosition: those translate a cross-platform data index into an
+				// adapter position, and for a grouped source they would resolve it against group 0.
+				var itemCount = GetLayoutManager()?.ItemCount ?? 0;
+
+				if (itemCount > 0)
+				{
+					ScrollHelper.AnimateScrollToPosition(itemCount - 1,
+						Microsoft.Maui.Controls.ScrollToPosition.MakeVisible);
+				}
 			}
 			else if (ItemsView.ItemsUpdatingScrollMode == ItemsUpdatingScrollMode.KeepScrollOffset)
 			{
