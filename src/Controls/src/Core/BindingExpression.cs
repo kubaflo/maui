@@ -1,6 +1,7 @@
 #nullable disable
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -30,6 +31,8 @@ namespace Microsoft.Maui.Controls
 		List<WeakReference<Element>> _ancestryChain;
 		bool _isBindingContextRelativeSource;
 		SetterSpecificity _specificity;
+		WeakNotifyCollectionChangedProxy _collectionListener;
+		NotifyCollectionChangedEventHandler _collectionChangedHandler;
 
 		internal BindingExpression(BindingBase binding, string path)
 		{
@@ -116,6 +119,7 @@ namespace Microsoft.Maui.Controls
 			_weakSource = null;
 			_weakTarget = null;
 
+			UnsubscribeFromSourceCollection();
 			ClearAncestryChangeSubscriptions();
 		}
 
@@ -169,10 +173,14 @@ namespace Microsoft.Maui.Controls
 			{
 				if (part.TryGetValue(current, out object value) || part.IsSelf)
 				{
+					UpdateSourceCollectionSubscription(mode, value);
 					value = Binding.GetSourceValue(value, property.ReturnType);
 				}
 				else
+				{
+					UnsubscribeFromSourceCollection();
 					value = Binding.FallbackValue ?? property.GetDefaultValue(target);
+				}
 
 				if (!BindingExpressionHelper.TryConvert(ref value, property, property.ReturnType, true))
 				{
@@ -210,6 +218,58 @@ namespace Microsoft.Maui.Controls
 
 				part.LastSetter.Invoke(current, args);
 			}
+		}
+
+		// A binding that derives its target value from the bound object - through a converter or a string
+		// format - can depend on the *contents* of a collection and not just on the collection instance.
+		// Mutating an observable collection only raises CollectionChanged, never PropertyChanged, so without
+		// this subscription the converted value would stay stale until the property itself is replaced.
+		// Bindings that hand the collection straight through (e.g. ItemsSource) are deliberately skipped:
+		// re-applying them would push the very same instance back into the target for no benefit.
+		bool ProducesValueDerivedFromSource
+			=> Binding.StringFormat is not null || (Binding is Binding { Converter: not null });
+
+		void UpdateSourceCollectionSubscription(BindingMode mode, object value)
+		{
+			if ((mode == BindingMode.OneWay || mode == BindingMode.TwoWay)
+				&& ProducesValueDerivedFromSource
+				&& value is INotifyCollectionChanged collection)
+			{
+				var listener = _collectionListener;
+				if (listener is not null && listener.TryGetSource(out var currentSource) && ReferenceEquals(currentSource, collection))
+				{
+					// Already subscribed to this collection
+					return;
+				}
+
+				UnsubscribeFromSourceCollection();
+
+				// The proxy holds the handler weakly, so the delegate has to be rooted by this expression.
+				_collectionChangedHandler ??= OnSourceCollectionChanged;
+				_collectionListener = new WeakNotifyCollectionChangedProxy(collection, _collectionChangedHandler);
+			}
+			else
+			{
+				UnsubscribeFromSourceCollection();
+			}
+		}
+
+		void UnsubscribeFromSourceCollection()
+		{
+			var listener = _collectionListener;
+			if (listener is not null)
+			{
+				listener.Unsubscribe();
+				_collectionListener = null;
+			}
+		}
+
+		void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+		{
+			if (_weakTarget is not null && _weakTarget.TryGetTarget(out BindableObject target))
+				target.Dispatcher.DispatchIfRequired(() => Apply());
+			else
+				Apply();
 		}
 
 		void ParsePath()
