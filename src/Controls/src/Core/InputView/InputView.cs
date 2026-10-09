@@ -312,7 +312,24 @@ namespace Microsoft.Maui.Controls
 		string ITextInput.Text
 		{
 			get => Text;
-			set => SetValue(TextProperty, value, SetterSpecificity.FromHandler);
+			set => SetValue(TextProperty, TransformHandlerText(value), SetterSpecificity.FromHandler);
+		}
+
+		// Handlers push the raw platform text back to us, but the platform control is updated with the
+		// transformed text. Without normalizing here, a single typed character changes Text twice
+		// (raw, then transformed) and raises TextChanged twice.
+		string TransformHandlerText(string value)
+		{
+			var transform = TextTransform;
+
+			if (string.IsNullOrEmpty(value) || transform == TextTransform.None || transform == TextTransform.Default)
+				return value;
+
+			// Secure entries intentionally render their text untransformed, so the value must stay as typed.
+			if (this is IEntry { IsPassword: true })
+				return value;
+
+			return TextTransformUtilities.GetTransformedText(value, transform);
 		}
 
 		private protected override void OnBindablePropertySet(BindableProperty property, object original, object value, bool changed, bool willFirePropertyChanged)
