@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue28893">
+    <Grid Padding="24"
+          RowDefinitions="Auto,Auto,*"
+          RowSpacing="16"
+          AutomationId="Issue28893Root">
+        <Label FontAttributes="Bold"
+               Text="Bindable gradient CarouselView" />
+
+        <Button Grid.Row="1"
+                AutomationId="UpdateItemsButton"
+                Text="Update carousel items"
+                Clicked="OnUpdateItemsClicked" />
+
+        <CarouselView x:Name="GradientCarousel"
+                      Grid.Row="2"
+                      AutomationId="GradientCarousel">
+            <CarouselView.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="12"
+                            Padding="24"
+                            StrokeThickness="12">
+                        <Border.Stroke>
+                            <LinearGradientBrush StartPoint="0,0"
+                                                 EndPoint="1,1">
+                                <GradientStop Offset="0"
+                                              Color="{Binding StartColor}" />
+                                <GradientStop Offset="1"
+                                              Color="{Binding EndColor}" />
+                            </LinearGradientBrush>
+                        </Border.Stroke>
+                        <Label HorizontalOptions="Center"
+                               VerticalOptions="Center"
+                               FontSize="28"
+                               Text="{Binding Title}" />
+                    </Border>
+                </DataTemplate>
+            </CarouselView.ItemTemplate>
+        </CarouselView>
+    </Grid>
+</ContentPage>
+
