@@ -103,18 +103,26 @@ full reruns do not collide with immutable uploads. Failed-job-only reruns can
 still download the completed collector's artifact; final freshness checks remain
 required before publication.
 
-## Fork-only publication trial
+## Fork-only five-issue publication trial
 
 The isolated `duplicate-detector-fork-trial-20261008` branch in `kubaflo/maui`
 reuses the registered `daily-repo-status` dispatch path. This is not an upstream
-deployment or proof of production readiness. It reads only the current public
-`dotnet/maui` evidence for issue 39220 and publishes, if qualified, only to
-owner-created [fork issue 945](https://github.com/kubaflo/maui/issues/945), a
-summary of the real source report rather than invented issue evidence.
+deployment or proof of production readiness. The previous single-source trial
+published to [fork issue 945](https://github.com/kubaflo/maui/issues/945); that
+destination is consumed and is not reused. The new five-run batch reads only
+current public `dotnet/maui` evidence for issues 39280, 39270, 39263, 39169 and 39132. Qualifying reports go only to owner-created
+[fork issue 946](https://github.com/kubaflo/maui/issues/946), an attributed summary
+of those real reports rather than invented issue evidence.
 
 The fork adapter binds that destination's issue ID, title, author and body hash,
-requires it to remain open/unlocked with no comments, and checks it again after
-source validation. A posted comment therefore prevents another publishing run.
+requires it to remain open/unlocked, and checks it again after source validation.
+Only prior `github-actions[bot]` reports for different authorized sources are
+accepted, with native provenance and matching workflow run metadata from the
+same fork commit. This public metadata is read without credentials or additional
+publisher permissions; HTTP failures reject the run. Unexpected comments or an already-reported source reject the
+run. The destination admits fewer than five existing comments before publication.
+These checks and publication are not atomic; the owner-directed batch consists
+of five distinct dispatches, not an authorization for extra retries.
 The native `add-comment` target and repository are fixed independently of agent
 output; the publisher uses only the fork's built-in `GITHUB_TOKEN`.
 All source, cardinality, score, excerpt, freshness and provenance checks remain.
@@ -123,9 +131,22 @@ detector-job conclusion to be `success` or intentional `warning`; failed, missin
 or unexpected states are rejected. Native warning cautions remain intact.
 The fork retains its stricter `continue-on-error: false` detection policy.
 
-Manual dispatch still defaults to a staged preview. The newly requested actual
-publication check explicitly uses `issue_number=39220` and `staged=false`.
-It authorizes one new dispatch, not retries or publication to upstream.
+The fork adapter selects a compact presentation matching the owner's edited
+comment: visible estimated probabilities, closed **Duplicate Analysis** and
+candidate sections, linked candidate headers, and distinct likely/possible
+icons. It omits Follow-up, the intro quote, visible disclaimer, workflow-result
+link and fingerprint. Scores remain uncalibrated estimates; candidate evidence
+and uncertainty are unchanged. Trusted native workflow provenance is retained.
+Because native publication strips content-supplied HTML comments, the compact
+report's fingerprint is retained in the trusted validation artifact and logs,
+not a purported hidden report marker. Per-source suppression on the fixed batch
+destination uses native provenance and the trusted source badge. The standard
+renderer and its visible-fingerprint suppression contract remain available;
+the upstream production branch has not been changed by these trials.
+
+Manual dispatch still defaults to a staged preview. The owner requested five
+actual tests, each with a different authorized `issue_number` and `staged=false`.
+No upstream writes, extra accepted retries or default-branch changes are authorized.
 Compile it with `bash .github/scripts/CompileIssueDuplicateForkTrial.sh`; this
 preserves the existing immutable v0.89.21 compiler, action and patched gateway
 pins and does not force staging over the trusted dispatch flag.

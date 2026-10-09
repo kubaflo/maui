@@ -1,5 +1,5 @@
 ---
-description: One bounded duplicate-report publication trial on the authorized public fork.
+description: Five bounded duplicate-report publication trials on the authorized public fork.
 
 # Reuse this registered dispatch path only on the isolated fork trial branch.
 # Regenerate with bash .github/scripts/CompileIssueDuplicateForkTrial.sh.
@@ -14,11 +14,11 @@ on:
   workflow_dispatch:
     inputs:
       issue_number:
-        description: Upstream issue number, restricted to 39220
+        description: Upstream issue number, restricted to 39280, 39270, 39263, 39169 or 39132
         required: true
         type: number
       staged:
-        description: Preview by default; false may publish once to the fixed fork issue 945
+        description: Preview by default; false may publish one report per source to fixed fork issue 946
         required: true
         type: boolean
         default: true
@@ -42,7 +42,7 @@ on:
             context.ref === 'refs/heads/duplicate-detector-fork-trial-20261008' &&
             context.eventName === 'workflow_dispatch' &&
             ['true', 'false', true, false].includes(context.payload.inputs?.staged) &&
-            Number(process.env.ISSUE_NUMBER) === 39220 &&
+            [39280, 39270, 39263, 39169, 39132].includes(Number(process.env.ISSUE_NUMBER)) &&
             (context.payload.inputs?.aw_context ?? '') === '';
           core.setOutput('allowed', String(allowed));
           if (!allowed) throw new Error('This fork trial is restricted to the fixed source and fork publication target.');
@@ -190,9 +190,9 @@ safe-outputs:
     body-header: "<!-- Issue Duplicate Detector -->"
   add-comment:
     max: 1
-    target: "945"
+    target: "946"
     target-repo: kubaflo/maui
-    required-title-prefix: "[Duplicate detector publication trial]"
+    required-title-prefix: "[Duplicate detector five-issue trial]"
     discussions: false
     pull-requests: false
     footer: false
@@ -236,6 +236,13 @@ safe-outputs:
             contextDirectory: `${process.env.RUNNER_TEMP}/issue-duplicate-context`,
             agentOutputPath: '/tmp/gh-aw/agent_output.json'
           });
+    - name: Retain trusted compact-report identity
+      uses: actions/upload-artifact@v7.0.1
+      with:
+        name: issue-duplicate-validation-${{ github.run_id }}
+        path: ${{ runner.temp }}/issue-duplicate-context/validated-report.json
+        retention-days: 7
+        if-no-files-found: ignore
 
 steps:
   - name: Checkout reviewed gateway repair
@@ -290,9 +297,10 @@ problem**, not merely similar titles. Produce advisory suggestions only.
 Execution repository: `kubaflo/maui`, isolated authorized trial branch.
 Issue evidence repository: `dotnet/maui`.
 Target issue: `${{ inputs.issue_number }}`.
-Publication destination: fixed fork issue `kubaflo/maui#945`.
+Authorized source issues: `39280`, `39270`, `39263`, `39169`, and `39132`.
+Publication destination: fixed fork batch issue `kubaflo/maui#946`.
 Staged previews post nothing. Only an explicit `staged=false` dispatch may post
-one validated report to that fork issue; upstream issues are never modified.
+one validated report per source to that fork issue; upstream issues are never modified.
 Read `/tmp/gh-aw/agent/issue-duplicate-context/context.json`; its `target.issueNumber`
 and `contextHash` identify the prepared report. Read the entire target body and
 comment chronology before searching.
@@ -356,9 +364,9 @@ only. Never use boilerplate as evidence. Do not claim to have reproduced a bug.
 
 ## Structured safe output
 
-Call `add_comment` exactly once, with numeric `item_number` equal to `945`, a
+Call `add_comment` exactly once, with numeric `item_number` equal to `946`, a
 placeholder `body`, and this `data` structure. `duplicates.issueNumber` must equal
-the upstream source issue `39220`, not the fork publication destination:
+the prepared upstream source issue `${{ inputs.issue_number }}`, not the fork destination:
 
 ```json
 {
@@ -383,9 +391,11 @@ the upstream source issue `39220`, not the fork publication destination:
 Use actual fetched issue numbers and timestamps, not the example values. Never
 include a candidate without its probability or substitute a similarity score.
 The separate trusted validator validates all scores and excerpts, re-fetches
-upstream issue evidence, constructs the expandable report itself, and suppresses
-identical reports. It also requires an acceptable trusted detector conclusion
-and rechecks the fixed fork destination. Do not change the configured destination.
+upstream issue evidence and constructs the cleaned-up expandable report itself.
+It also requires an acceptable trusted detector conclusion and rechecks the fixed
+fork destination, rejecting a source already reported there. Prior batch comments
+must be native bot reports from this exact workflow commit for different authorized
+sources. Do not change the configured destination.
 
 If a completed bounded investigation finds no qualifying pair, call `noop`
 with a short explanation. If necessary tools/data fail or the evidence budget

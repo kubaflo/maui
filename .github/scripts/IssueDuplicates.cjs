@@ -63,16 +63,20 @@ function plainText(value) {
         .trim();
 }
 
-function renderReport(target, matches, workflowUrl) {
+function renderReport(target, matches, workflowUrl, compact = false) {
     const probabilities = matches
         .map((match) => `[#${match.issueNumber}](${match.url}) **${match.probability}%**`)
         .join('; ');
     const sections = matches.flatMap((match, index) => {
         const assessment = match.probability >= 85 ? 'Likely duplicate' : 'Possible duplicate';
+        const icon = match.probability >= 85 ? '&#x1F501;' : '&#x1F50E;';
+        const summary = compact
+            ? `${icon} <a href="${match.url}">dotnet/maui#${match.issueNumber}</a>`
+            : `&#x1F4C4; #${match.issueNumber}`;
         return [
             ...(index ? ['---', ''] : []),
             '<details>',
-            `<summary><strong>&#x1F4C4; #${match.issueNumber} &#x2014; ${match.probability}% ${assessment.toLowerCase()}</strong></summary>`,
+            `<summary><strong>${summary} &#x2014; ${match.probability}% ${assessment.toLowerCase()}</strong></summary>`,
             '<br/>',
             '',
             `**Issue:** [${plainText(match.title)}](${match.url}) &#x2014; ${match.state}.`,
@@ -96,8 +100,9 @@ function renderReport(target, matches, workflowUrl) {
     return [
         '## Possible duplicate issues',
         '',
-        `> Duplicate analysis for [#${target.issueNumber}](${target.url}).`,
-        '',
+        ...(compact
+            ? []
+            : [`> Duplicate analysis for [#${target.issueNumber}](${target.url}).`, '']),
         '<p align="left">',
         '  <img alt="Scope Issue duplicates" src="https://img.shields.io/badge/Scope-Issue%20duplicates-1f6feb?labelColor=30363d&amp;style=flat-square">',
         `  <img alt="Issue ${target.issueNumber}" src="https://img.shields.io/badge/Issue-${target.issueNumber}-1f6feb?labelColor=30363d&amp;style=flat-square">`,
@@ -105,31 +110,39 @@ function renderReport(target, matches, workflowUrl) {
         '',
         `**Estimated duplicate probabilities:** ${probabilities}.`,
         '',
-        'These probabilities are uncalibrated AI estimates of the same underlying issue, not title-similarity scores or confirmed duplicate decisions.',
-        '',
+        ...(compact
+            ? []
+            : [
+                  'These probabilities are uncalibrated AI estimates of the same underlying issue, not title-similarity scores or confirmed duplicate decisions.',
+                  '',
+              ]),
         '---',
         '',
         '<details>',
-        '<summary><strong>&#x1F50D; Duplicate Analysis</strong> &#x2014; click to expand</summary>',
+        `<summary><strong>&#x1F50D; Duplicate Analysis</strong>${compact ? '' : ' &#x2014; click to expand'}</summary>`,
         '<br/>',
         '',
         ...sections,
         '</details>',
-        '',
-        '---',
-        '',
-        '<details>',
-        '<summary><strong>&#x1F9ED; Follow-up</strong> &#x2014; actions and refresh</summary>',
-        '<br/>',
-        '',
-        '**Next action:** Compare reproductions and version boundaries before deciding whether to consolidate reports. This workflow never labels or closes issues; maintainers make that decision.',
-        '',
-        'Closed candidates are historical context. A recurrence after a fix can be a new regression, not a duplicate.',
-        '',
-        '> Maintainers: manually run `issue-duplicate-detector` for this issue to refresh this report. Manual runs default to a staged preview without posting.',
-        ...(workflowUrl ? ['', `[Workflow result](${workflowUrl}).`] : []),
-        '',
-        '</details>',
+        ...(compact
+            ? []
+            : [
+                  '',
+                  '---',
+                  '',
+                  '<details>',
+                  '<summary><strong>&#x1F9ED; Follow-up</strong> &#x2014; actions and refresh</summary>',
+                  '<br/>',
+                  '',
+                  '**Next action:** Compare reproductions and version boundaries before deciding whether to consolidate reports. This workflow never labels or closes issues; maintainers make that decision.',
+                  '',
+                  'Closed candidates are historical context. A recurrence after a fix can be a new regression, not a duplicate.',
+                  '',
+                  '> Maintainers: manually run `issue-duplicate-detector` for this issue to refresh this report. Manual runs default to a staged preview without posting.',
+                  ...(workflowUrl ? ['', `[Workflow result](${workflowUrl}).`] : []),
+                  '',
+                  '</details>',
+              ]),
     ].join('\n');
 }
 
@@ -283,6 +296,7 @@ async function validate({
     issueNumber,
     commentIssueNumber = issueNumber,
     staged,
+    compactReport = false,
     detectionConclusion = process.env.GH_AW_DETECTION_CONCLUSION,
     contextDirectory,
     agentOutputPath,
@@ -293,6 +307,7 @@ async function validate({
         'Invalid comment destination.',
     );
     assert(typeof staged === 'boolean', 'A boolean staging flag is required.');
+    assert(typeof compactReport === 'boolean', 'A boolean compact-report flag is required.');
     assert(
         context.payload.repository.full_name === 'dotnet/maui' &&
             context.ref === `refs/heads/${context.payload.repository.default_branch}`,
@@ -408,7 +423,7 @@ async function validate({
         (left, right) =>
             right.probability - left.probability || left.issueNumber - right.issueNumber,
     );
-    const reportHash = hash(renderReport(current.target, matches));
+    const reportHash = hash(renderReport(current.target, matches, undefined, compactReport));
     const marker = `${reportPrefix}${reportHash}`;
     const existing = current.comments.some((comment) => getReportHash(comment) === reportHash);
     if (existing) {
@@ -424,9 +439,9 @@ async function validate({
                 current.target,
                 matches,
                 `https://github.com/${reportRepository.owner}/${reportRepository.repo}/actions/runs/${context.runId}`,
+                compactReport,
             ),
-            '',
-            marker,
+            ...(compactReport ? [] : ['', marker]),
         ].join('\n');
         delete item.data;
         delete item.temporary_id;
@@ -453,6 +468,23 @@ async function validate({
         );
     }
     await fs.writeFile(agentOutputPath, JSON.stringify(payload));
+    if (compactReport) {
+        await fs.writeFile(
+            path.join(contextDirectory, 'validated-report.json'),
+            JSON.stringify({
+                sourceIssueNumber: issueNumber,
+                publicationRepository: `${reportRepository.owner}/${reportRepository.repo}`,
+                publicationIssueNumber: commentIssueNumber,
+                contextHash: expectedHash,
+                reportHash,
+                detectionConclusion,
+                staged,
+                outcome: payload.items[0].type,
+                matches,
+            }),
+        );
+        core.info(`Validated source #${issueNumber}; report fingerprint: ${reportHash}.`);
+    }
     if (staged && payload.items[0].type === 'add_comment') {
         await core.summary
             .addHeading('Validated duplicate report preview')
