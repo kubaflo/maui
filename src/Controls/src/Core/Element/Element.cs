@@ -645,7 +645,32 @@ namespace Microsoft.Maui.Controls
 				}
 			}
 
+			PropagateBindingContextToNestedBindableObjects();
+
 			base.OnBindingContextChanged();
+		}
+
+		// A value assigned to a BindableProperty can itself be a BindableObject that is not part of the logical
+		// tree (a plain BindableObject used as a style-like property value, for example). Such a value can carry
+		// bindings of its own, and without an inherited BindingContext those bindings never resolve.
+		void PropagateBindingContextToNestedBindableObjects()
+		{
+			var bindingContext = BindingContext;
+
+			using var localValues = GetLocalValueEnumerator();
+			while (localValues.MoveNext())
+			{
+				var entry = localValues.Current;
+
+				// The BindingContext itself may be a BindableObject; it must never be given itself as a context.
+				if (entry.Property == BindingContextProperty)
+					continue;
+
+				// Elements inherit through the Parent/logical tree, and DynamicResource values are handled
+				// by _bindableResources above, so only plain BindableObjects are propagated to here.
+				if (entry.Value is BindableObject nested && nested is not Element && !ReferenceEquals(nested, this))
+					SetInheritedBindingContext(nested, bindingContext);
+			}
 		}
 
 		void SetLogicalChildBindingContext(BindableObject child, object bc)
