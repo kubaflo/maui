@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using CoreGraphics;
@@ -11,6 +12,18 @@ namespace Microsoft.Maui.Platform
 {
 	public static partial class WindowExtensions
 	{
+		// The Title mapping is the last one that runs before IWindow.Content is attached. Attaching the
+		// content changes the native UIWindow frame, and the handler's frame observer feeds that native
+		// frame straight back into IWindow via FrameChanged, destroying the X/Y/Width/Height the
+		// application requested before the coordinate mappings ever get to read them.
+		static readonly ConditionalWeakTable<UIWindow, RequestedGeometry> s_requestedGeometry = new();
+
+		sealed class RequestedGeometry
+		{
+			public CGRect SystemFrame;
+			public bool IsActive;
+		}
+
 		internal static void UpdateTitle(this UIWindow platformWindow, IWindow window)
 		{
 			// If you set the title to null the app will crash
@@ -20,6 +33,39 @@ namespace Microsoft.Maui.Platform
 			{
 				platformWindow.WindowScene.Title = window.Title ?? String.Empty;
 			}
+
+			platformWindow.LatchRequestedGeometry(window);
+		}
+
+		static void LatchRequestedGeometry(this UIWindow platformWindow, IWindow window)
+		{
+			if (!OperatingSystem.IsMacCatalyst() || !OperatingSystem.IsIOSVersionAtLeast(16))
+			{
+				return;
+			}
+
+			// Only the very first mapping pass for a given window can observe the application-authored
+			// values; afterwards IWindow tracks the platform geometry and there is nothing to preserve.
+			if (s_requestedGeometry.TryGetValue(platformWindow, out _))
+			{
+				return;
+			}
+
+			var requested = new RequestedGeometry();
+			s_requestedGeometry.Add(platformWindow, requested);
+
+			if (double.IsNaN(window.X) || double.IsNaN(window.Y) || double.IsNaN(window.Width) || double.IsNaN(window.Height))
+			{
+				return;
+			}
+
+			requested.SystemFrame = new CGRect(window.X, window.Y, window.Width, window.Height);
+			requested.IsActive = true;
+
+			// The latch only covers the synchronous mapping pass that follows. Releasing it on the next
+			// main loop turn keeps every later, genuinely application-authored coordinate change on the
+			// normal path.
+			platformWindow.BeginInvokeOnMainThread(() => requested.IsActive = false);
 		}
 
 		internal static void UpdateX(this UIWindow platformWindow, IWindow window) =>
@@ -38,14 +84,27 @@ namespace Microsoft.Maui.Platform
 		{
 			if (OperatingSystem.IsMacCatalyst() && OperatingSystem.IsIOSVersionAtLeast(16) && platformWindow.WindowScene is { } windowScene)
 			{
-				if (double.IsNaN(window.X) || double.IsNaN(window.Y) || double.IsNaN(window.Width) || double.IsNaN(window.Height))
+				CGRect systemFrame;
+
+				if (s_requestedGeometry.TryGetValue(platformWindow, out var requested) && requested.IsActive)
 				{
-					return;
+					// Use what the application asked for, not the native frame that was echoed back into
+					// IWindow while the content was being attached.
+					systemFrame = requested.SystemFrame;
+				}
+				else
+				{
+					if (double.IsNaN(window.X) || double.IsNaN(window.Y) || double.IsNaN(window.Width) || double.IsNaN(window.Height))
+					{
+						return;
+					}
+
+					systemFrame = new CGRect(window.X, window.Y, window.Width, window.Height);
 				}
 
 				var preferences = new UIWindowSceneGeometryPreferencesMac()
 				{
-					SystemFrame = new CGRect(window.X, window.Y, window.Width, window.Height)
+					SystemFrame = systemFrame
 				};
 
 				windowScene.RequestGeometryUpdate(preferences, (error) =>
