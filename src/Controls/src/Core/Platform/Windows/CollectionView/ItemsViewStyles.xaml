@@ -68,7 +68,11 @@
             <Grid>
                 <ContentControl x:Name="EmptyViewContentControl" 
                                 HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                <!-- Top aligned so the ScrollViewer is arranged at its content height rather than the
+                full viewport height. Otherwise the surplus height is handed to the items panel inside
+                the ItemsPresenter and the Footer is pushed to the bottom of an empty collection. -->
                 <ScrollViewer x:Name="ScrollViewer" 
+                                VerticalAlignment="Top"
                                 TabNavigation="{TemplateBinding TabNavigation}"
                                 HorizontalScrollMode="{TemplateBinding ScrollViewer.HorizontalScrollMode}"
                                 HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
@@ -137,7 +141,11 @@
                     <Border BorderBrush="{TemplateBinding BorderBrush}" Background="{TemplateBinding Background}" BorderThickness="{TemplateBinding BorderThickness}">
                         <Grid>
                           
+                            <!-- Top aligned so the ScrollViewer is arranged at its content height rather than the
+                            full viewport height. Otherwise the surplus height is handed to the items panel inside
+                            the ItemsPresenter and the Footer is pushed to the bottom of an empty collection. -->
                             <ScrollViewer x:Name="ScrollViewer"
+                            VerticalAlignment="Top"
                             TabNavigation="{TemplateBinding TabNavigation}"
                             HorizontalScrollMode="{TemplateBinding ScrollViewer.HorizontalScrollMode}"
                             HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
