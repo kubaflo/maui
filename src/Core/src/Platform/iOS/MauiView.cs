@@ -239,6 +239,15 @@ namespace Microsoft.Maui.Platform
 			if (safeAreaRegion == SafeAreaRegions.None)
 				return 0;
 
+			// A view that was never given an explicit safe area configuration must not re-introduce
+			// padding for an edge that an ancestor - typically the page - has opted out of. Layouts
+			// default to SafeAreaRegions.Container, so without this check the content of an
+			// edge-to-edge page is still inset by that page's safe area. That goes unnoticed in
+			// portrait, where a navigation bar already consumes the top inset, but leaves a visible
+			// gap on both sides once the window is landscape (#27741).
+			if (!HasExplicitSafeAreaConfiguration && AncestorOptsOutOfSafeAreaEdge(edge))
+				return 0;
+
 			// Handle SoftInput specifically - only apply padding when keyboard is actually showing
 			if (edge == 3 && SafeAreaEdges.IsOnlySoftInput(safeAreaRegion))
 			{
@@ -258,6 +267,24 @@ namespace Microsoft.Maui.Platform
 			return originalSafeArea;
 		}
 
+
+		/// <summary>
+		/// Whether the cross-platform view was explicitly configured with safe area edges, as opposed
+		/// to relying on the default (<see cref="SafeAreaRegions.Container"/> for layouts). Explicit
+		/// configuration always wins over an ancestor's opt-out.
+		/// </summary>
+		bool HasExplicitSafeAreaConfiguration => View is ISafeAreaView2 { HasExplicitSafeAreaEdges: true };
+
+		/// <summary>
+		/// Checks whether an ancestor view declared <see cref="SafeAreaRegions.None"/> for the given
+		/// edge, i.e. asked for its content to run edge-to-edge on that edge.
+		/// </summary>
+		bool AncestorOptsOutOfSafeAreaEdge(int edge)
+		{
+			return this.FindParent(x => x is MauiView mv
+				&& mv.View is ISafeAreaView2 or ISafeAreaView
+				&& mv.GetSafeAreaRegionForEdge(edge) == SafeAreaRegions.None) is not null;
+		}
 
 		/// <summary>
 		/// Adjusts the given bounds rectangle to account for safe area insets.
