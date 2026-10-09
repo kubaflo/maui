@@ -25,7 +25,12 @@ namespace Microsoft.Maui.Handlers
 			[nameof(IIndicatorView.IndicatorSize)] = MapIndicatorSize,
 			[nameof(IIndicatorView.IndicatorColor)] = MapIndicatorColor,
 			[nameof(IIndicatorView.SelectedIndicatorColor)] = MapSelectedIndicatorColor,
-			[nameof(IIndicatorView.IndicatorsShape)] = MapIndicatorShape
+			[nameof(IIndicatorView.IndicatorsShape)] = MapIndicatorShape,
+#if ANDROID
+			// The template lives on the Controls-level IndicatorView, so the key is the
+			// Controls property name rather than something on IIndicatorView.
+			["IndicatorTemplate"] = MapIndicatorTemplate,
+#endif
 		};
 
 		public static CommandMapper<IIndicatorView, IIndicatorViewHandler> CommandMapper = new(ViewCommandMapper)
