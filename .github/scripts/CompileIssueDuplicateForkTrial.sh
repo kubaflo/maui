@@ -10,7 +10,7 @@ source_directory="$cache_directory/source"
 compiler_binary="$cache_directory/gh-aw"
 
 if [[ $# != 0 ]]; then
-  echo "This helper only compiles the fixed, strict, staged fork trial." >&2
+  echo "This helper only compiles the fixed, strict fork trial." >&2
   exit 2
 fi
 if ! command -v go >/dev/null 2>&1; then
@@ -75,5 +75,5 @@ fi
 )
 
 run_without_tokens "$compiler_binary" compile daily-repo-status \
-  --strict --validate --staged --no-check-update \
+  --strict --validate --no-check-update \
   --action-mode action --action-tag "$runtime_commit"

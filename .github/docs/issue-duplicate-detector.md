@@ -43,8 +43,12 @@ statistical probabilities or confirmed duplicate decisions.
 The schema and trusted publisher reject missing, fractional, out-of-range, or
 below-threshold scores; self-matches, repeated candidates, pull requests,
 unverified source excerpts, and stale evidence also fail validation.
-The publisher renders the table and GitHub links itself, so free-form agent
-prose cannot bypass the probability requirement.
+The publisher renders the report and GitHub links itself, so free-form agent
+prose cannot bypass the probability requirement. Reports use closed
+**Duplicate Analysis** and **Follow-up** sections with nested candidate details.
+Every probability remains visible above the expandable sections. Two blue badges
+identify the scope and source issue; `img.shields.io` is allowed so publication
+sanitization preserves them without disabling URL filtering.
 
 The GitHub gateway enforces eight `search_issues` calls and 30 `issue_read`
 calls per MCP session. These counters do not cover the trusted collector's or
@@ -56,8 +60,8 @@ files. The agent job also has a 15-minute timeout. Missing required evidence
 is an incomplete run, not proof that there are no duplicates.
 An unchanged report is suppressed. Changed reports are posted as new comments;
 existing bot and human comments are never edited, deleted, or minimized.
-The fingerprint covers the trusted rendered table, assessments, and excerpts,
-not the evidence-freshness hash or per-run workflow link. An unrelated target
+The fingerprint covers the trusted rendered summary, assessments, excerpts,
+and static follow-up, not the evidence-freshness hash or per-run workflow link. An unrelated target
 comment therefore cannot defeat suppression when the rendered report is unchanged;
 the separate evidence hashes still require fresh target and candidate snapshots.
 The visible report fingerprint survives gh-aw's content sanitization. Reports
@@ -86,10 +90,10 @@ gh aw run issue-duplicate-detector --ref main --raw-field issue_number=12345 --r
 
 Replace `12345` with the real issue number. Manual runs default to `staged=true`:
 the same analysis and validation run, but the trusted validator writes the
-constructed probability table and evidence excerpts to the safe-output job's
+constructed expandable report and visible probabilities to the safe-output job's
 **Validated duplicate report preview** summary rather than posting them.
 This preview appears only after all validation and final freshness checks,
-and excludes the publisher's later cautions and provenance wrappers. Invalid,
+and precedes publication sanitization, cautions and provenance wrappers. Invalid,
 stale, no-match, and identical-report-suppressed outputs produce no report preview.
 To publish, explicitly pass
 `--raw-field staged=false`. New/reopened issue events publish qualifying reports.
@@ -98,6 +102,33 @@ The run-scoped evidence artifact is overwritten when the collector reruns, so
 full reruns do not collide with immutable uploads. Failed-job-only reruns can
 still download the completed collector's artifact; final freshness checks remain
 required before publication.
+
+## Fork-only publication trial
+
+The isolated `duplicate-detector-fork-trial-20261008` branch in `kubaflo/maui`
+reuses the registered `daily-repo-status` dispatch path. This is not an upstream
+deployment or proof of production readiness. It reads only the current public
+`dotnet/maui` evidence for issue 39220 and publishes, if qualified, only to
+owner-created [fork issue 945](https://github.com/kubaflo/maui/issues/945), a
+summary of the real source report rather than invented issue evidence.
+
+The fork adapter binds that destination's issue ID, title, author and body hash,
+requires it to remain open/unlocked with no comments, and checks it again after
+source validation. A posted comment therefore prevents another publishing run.
+The native `add-comment` target and repository are fixed independently of agent
+output; the publisher uses only the fork's built-in `GITHUB_TOKEN`.
+All source, cardinality, score, excerpt, freshness and provenance checks remain.
+Before any comment is accepted, the validator requires the authoritative
+detector-job conclusion to be `success` or intentional `warning`; failed, missing
+or unexpected states are rejected. Native warning cautions remain intact.
+The fork retains its stricter `continue-on-error: false` detection policy.
+
+Manual dispatch still defaults to a staged preview. The newly requested actual
+publication check explicitly uses `issue_number=39220` and `staged=false`.
+It authorizes one new dispatch, not retries or publication to upstream.
+Compile it with `bash .github/scripts/CompileIssueDuplicateForkTrial.sh`; this
+preserves the existing immutable v0.89.21 compiler, action and patched gateway
+pins and does not force staging over the trusted dispatch flag.
 
 The workflow uses the existing `copilot-pat-pool` environment and GPT-6.1 Sol
 configuration. No additional service, model provider, token, or secret is needed.
