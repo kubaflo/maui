@@ -82,27 +82,8 @@ public static class DatePickerExtensions
 		}
 		else if (string.IsNullOrWhiteSpace(format) || format.Equals("d", StringComparison.OrdinalIgnoreCase))
 		{
-			NSDateFormatter dateFormatter = new NSDateFormatter
-			{
-				TimeZone = NSTimeZone.FromGMT(0)
-			};
-
-			// Use datePicker.Date (the source date) for formatting
-			// This ensures consistent formatting whether picker is initialized or not
-			var nsDate = datePicker.Date.Value.ToNSDate();
-
-			if (format.Equals("D", StringComparison.Ordinal) == true)
-			{
-				dateFormatter.DateStyle = NSDateFormatterStyle.Full;
-				var strDate = dateFormatter.StringFor(nsDate);
-				platformDatePicker.Text = strDate;
-			}
-			else
-			{
-				dateFormatter.SetLocalizedDateFormatFromTemplate("yMd"); // Forces 4-digit year
-				var strDate = dateFormatter.StringFor(nsDate);
-				platformDatePicker.Text = strDate;
-			}
+			var standardFormat = format.Equals("D", StringComparison.Ordinal) ? "D" : "d";
+			platformDatePicker.Text = datePicker.Date.Value.ToString(standardFormat, CultureInfo.CurrentCulture);
 		}
 		else if (format.Contains('/', StringComparison.Ordinal))
 		{
