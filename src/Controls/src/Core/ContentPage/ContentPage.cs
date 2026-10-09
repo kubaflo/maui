@@ -105,8 +105,22 @@ namespace Microsoft.Maui.Controls
 				base.LayoutChildren(x, y, width, height);
 		}
 
+		// A ContentPage is the root of its own platform view tree, so no cross-platform parent ever
+		// calls IView.Arrange on it; the only arrange that happens is the platform-driven one. This
+		// flag lets that platform pass run through ArrangeOverride (so subclasses can observe it)
+		// while ArrangeOverride still keeps its parent-driven behavior for every other caller.
+		bool _isArrangingFromPlatform;
+
 		protected override Size ArrangeOverride(Rect bounds)
 		{
+			if (_isArrangingFromPlatform)
+			{
+				// The platform already owns this page view's frame; arrange the content only.
+				Frame = bounds;
+				this.ArrangeContent(bounds);
+				return bounds.Size;
+			}
+
 			Frame = this.ComputeFrame(bounds);
 			Handler?.PlatformArrange(Frame);
 			return Frame.Size;
@@ -120,8 +134,18 @@ namespace Microsoft.Maui.Controls
 
 		Size ICrossPlatformLayout.CrossPlatformArrange(Rect bounds)
 		{
-			Frame = bounds;
-			this.ArrangeContent(bounds);
+			var wasArrangingFromPlatform = _isArrangingFromPlatform;
+			_isArrangingFromPlatform = true;
+
+			try
+			{
+				ArrangeOverride(bounds);
+			}
+			finally
+			{
+				_isArrangingFromPlatform = wasArrangingFromPlatform;
+			}
+
 			return bounds.Size;
 		}
 
