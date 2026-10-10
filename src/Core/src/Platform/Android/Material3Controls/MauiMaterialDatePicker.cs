@@ -54,6 +54,12 @@ internal class MauiMaterialDatePicker : TextInputEditText, IOnClickListener
 
         PickerManager.Init(this);
 
+        SetCompoundDrawablesRelativeWithIntrinsicBounds(
+            0,
+            0,
+            Resource.Drawable.material_ic_calendar_black_24dp,
+            0);
+
         SetOnClickListener(this);
     }
 }
