@@ -168,11 +168,20 @@ namespace Microsoft.Maui.Maps.Platform
 
 		internal void AddElements(IList elements)
 		{
-			_trackedMapElements = new List<IMapElement>();
+			// Only the full re-sync path (the MapElements mapper) calls ClearMapElements() first,
+			// which nulls the tracking list; a null list therefore means "this call owns tracking".
+			// MapHandler.UpdateMapElement instead passes a single-element delta, and that delta must
+			// not redefine what this view tracks. The list holds IMapElement references, so the
+			// element's refreshed MapElementId is picked up by reference and needs no re-recording.
+			bool isFullSync = _trackedMapElements is null;
+
+			if (isFullSync)
+				_trackedMapElements = new List<IMapElement>();
 
 			foreach (IMapElement element in elements)
 			{
-				_trackedMapElements.Add(element);
+				if (isFullSync)
+					_trackedMapElements!.Add(element);
 
 				IMKOverlay? overlay = null;
 				switch (element)
