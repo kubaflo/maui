@@ -454,8 +454,9 @@ include a candidate without its probability or substitute a similarity score.
 The separate trusted validator requires successful run-bound discovery,
 validates all scores and excerpts, re-fetches
 upstream issue evidence and constructs the cleaned-up expandable report itself.
-It also requires an acceptable trusted detector conclusion and rechecks the fixed
-fork destination, rejecting a source already reported there. Prior batch comments
+It also requires an acceptable trusted detector conclusion for every completed
+outcome, including `noop`, and rechecks the fixed fork destination, rejecting a
+source already reported there. Prior batch comments
 must be native bot reports from this exact workflow commit for different authorized
 sources. Do not change the configured destination.
 

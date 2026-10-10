@@ -176,9 +176,10 @@ of five distinct dispatches, not an authorization for extra retries.
 The native `add-comment` target and repository are fixed independently of agent
 output; the publisher uses only the fork's built-in `GITHUB_TOKEN`.
 All source, cardinality, score, excerpt, freshness and provenance checks remain.
-Before any comment is accepted, the validator requires the authoritative
-detector-job conclusion to be `success` or intentional `warning`; failed, missing
-or unexpected states are rejected. Native warning cautions remain intact.
+Before any comment or completed no-match outcome is accepted, the validator
+requires the authoritative detector-job conclusion to be `success` or intentional
+`warning`, before branching on the output type. Failed, missing or unexpected
+states are rejected. Native warning cautions remain intact.
 The fork retains its stricter `continue-on-error: false` detection policy.
 
 The fork adapter selects a compact presentation matching the owner's edited
