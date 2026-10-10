@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using AVFoundation;
+using Foundation;
 
 namespace Microsoft.Maui.Media
 {
@@ -12,9 +13,50 @@ namespace Microsoft.Maui.Media
 #pragma warning disable CA1416 // https://github.com/xamarin/xamarin-macios/issues/14619
 		readonly Lazy<AVSpeechSynthesizer> speechSynthesizer = new(() => new AVSpeechSynthesizer());
 
-		Task<IEnumerable<Locale>> PlatformGetLocalesAsync() =>
-			Task.FromResult(AVSpeechSynthesisVoice.GetSpeechVoices()
-				.Select(v => new Locale(v.Language, null, v.Name, v.Identifier)));
+		Task<IEnumerable<Locale>> PlatformGetLocalesAsync()
+		{
+			var locales = new List<Locale>();
+			var languages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+			foreach (var voice in AVSpeechSynthesisVoice.GetSpeechVoices())
+			{
+				locales.Add(new Locale(voice.Language, null, voice.Name, voice.Identifier));
+
+				var language = GetLanguageSubtag(voice.Language);
+				if (language.Length > 0)
+					languages.Add(language);
+			}
+
+			// GetSpeechVoices() only enumerates voices whose assets are installed on the device, so a
+			// language the user never downloaded is invisible even though it can still be requested.
+			// Report the languages that the managed culture data and the platform both recognize.
+			var platformLanguages = new HashSet<string>(NSLocale.ISOLanguageCodes ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+
+			foreach (var culture in CultureInfo.GetCultures(CultureTypes.NeutralCultures))
+			{
+				var language = culture.Name;
+				if (language.Length == 0 || language.IndexOfAny(LanguageSubtagSeparators) >= 0)
+					continue;
+
+				if (!platformLanguages.Contains(language) || !languages.Add(language))
+					continue;
+
+				locales.Add(new Locale(language, null, culture.DisplayName, null));
+			}
+
+			return Task.FromResult<IEnumerable<Locale>>(locales);
+		}
+
+		static readonly char[] LanguageSubtagSeparators = new[] { '-', '_' };
+
+		static string GetLanguageSubtag(string languageTag)
+		{
+			if (string.IsNullOrWhiteSpace(languageTag))
+				return string.Empty;
+
+			var separator = languageTag.IndexOfAny(LanguageSubtagSeparators);
+			return separator < 0 ? languageTag : languageTag.Substring(0, separator);
+		}
 
 		async Task PlatformSpeakAsync(string text, SpeechOptions options, CancellationToken cancelToken)
 		{
