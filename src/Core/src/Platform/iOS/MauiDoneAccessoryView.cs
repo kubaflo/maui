@@ -20,6 +20,30 @@ namespace Microsoft.Maui.Platform
 			SetItems(new[] { spacer, doneButton }, false);
 		}
 
+		// The accessory spans the full width of the keyboard but is transparent, so any
+		// content it overlaps (typically the text field sitting just above the keyboard)
+		// stays visible. Swallowing touches over that empty area would make the visible
+		// content untappable, so only real controls (the Done button) accept touches and
+		// everything else falls through to whatever is rendered behind the accessory.
+		public override UIView? HitTest(CGPoint point, UIEvent? uievent)
+		{
+			var hit = base.HitTest(point, uievent);
+
+			if (hit is null)
+				return null;
+
+			for (UIView? view = hit; view is not null; view = view.Superview)
+			{
+				if (view is UIControl)
+					return hit;
+
+				if (view == this)
+					break;
+			}
+
+			return null;
+		}
+
 		internal void SetDoneClicked(Action<object>? value) => _proxy.SetDoneClicked(value);
 
 
