@@ -92,12 +92,20 @@ namespace Microsoft.Maui.Platform
 			// Remove previous background gradient layer if any
 			platformView.RemoveBackgroundLayer();
 
+			// Capture the background the platform view shipped with, before MAUI ever
+			// overwrites it, so clearing the Background/BackgroundColor can put it back
+			// instead of leaving the last applied color stranded on the view.
+			platformView.TrackOriginalBackgroundColor();
+
 			if (paint.IsNullOrEmpty())
 			{
 				if (platformView is LayoutView or ContentView)
 					platformView.BackgroundColor = null;
 				else
+				{
+					platformView.RestoreOriginalBackgroundColor();
 					return;
+				}
 			}
 
 			if (paint is SolidPaint solidPaint)
@@ -125,6 +133,28 @@ namespace Microsoft.Maui.Platform
 					platformView.InsertBackgroundLayer(backgroundLayer, 0);
 				}
 			}
+		}
+
+		// Weak keys: the entry disappears with the platform view, so no teardown hook is needed.
+		static readonly System.Runtime.CompilerServices.ConditionalWeakTable<UIView, OriginalBackgroundColor> s_originalBackgroundColors = new();
+
+		sealed class OriginalBackgroundColor
+		{
+			public OriginalBackgroundColor(UIColor? color) => Color = color;
+
+			public UIColor? Color { get; }
+		}
+
+		static void TrackOriginalBackgroundColor(this UIView platformView)
+		{
+			if (!s_originalBackgroundColors.TryGetValue(platformView, out _))
+				s_originalBackgroundColors.Add(platformView, new OriginalBackgroundColor(platformView.BackgroundColor));
+		}
+
+		static void RestoreOriginalBackgroundColor(this UIView platformView)
+		{
+			if (s_originalBackgroundColors.TryGetValue(platformView, out var original))
+				platformView.BackgroundColor = original.Color;
 		}
 
 		public static void UpdateFlowDirection(this UIView platformView, IView view)
