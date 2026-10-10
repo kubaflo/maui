@@ -29,6 +29,33 @@ be a new regression.
 
 ## Report contract
 
+### Rate-aware discovery repair
+
+The five accepted trials at `81d416ab1c34b64bbbaf2974815d31f25e7eab95`
+all emitted `report_incomplete` after installation semantic-search HTTP403 errors;
+they posted nothing and produced no validated probabilities. Those five dispatches
+remain spent. This repair does not authorize reruns or modify the fixed sink.
+
+The fork now uses the same `IssueDuplicateSearch.cjs` read-only discovery service
+as the production PR repair: literal keyword/phrase REST searches restricted to
+public `dotnet/maui`, eight queries, 20 results per query, one page, and at most
+16 search HTTP attempts including retries. Requests are serial and at least seven
+seconds apart, with bounded waits for `Retry-After`/`x-ratelimit-reset` and
+secondary-limit exponential backoff. Whole workflows queue under one group with
+`queue: max`, not separate per-source groups. This is ordinary lexical discovery;
+the native semantic-search tool is no longer available to the agent.
+
+A trusted post-agent step retains run/source/context-hash-bound discovery status
+and stops the exact service process. Both publication and completed no-match
+outcomes require successful, nonempty, finished discovery; errors cannot be
+turned into empty results. The existing authoritative detector gate, compact
+report, fixed fork destination, mandatory probabilities and full-evidence/freshness
+validation remain unchanged. No new dependencies or repository secrets are needed.
+The service uses only the agent job's existing read-only `GITHUB_TOKEN`, not a
+rotated credential to evade quotas. The two narrow DIFC exemptions are now
+`safeoutputs` and this fixed public-repository `duplicate-search` service; their
+acceptance remains `private:dotnet/maui`, not a wildcard.
+
 Every suggested match contains an **integer duplicate-probability estimate**,
 shown as a percentage, supporting evidence, differences/uncertainty, and linked
 excerpts from both reports. These are **uncalibrated AI estimates**, not measured
@@ -50,11 +77,14 @@ Every probability remains visible above the expandable sections. Two blue badges
 identify the scope and source issue; `img.shields.io` is allowed so publication
 sanitization preserves them without disabling URL filtering.
 
-The GitHub gateway enforces eight `search_issues` calls and 30 `issue_read`
-calls per MCP session. These counters do not cover the trusted collector's or
-publisher's separate API reads. The 20 results per query, one page per query,
-and ten investigated candidates are **agent instructions**, not gateway
-parameter validators or investigation counters. The trusted collector/publisher
+The trusted search service enforces eight logical queries, 20 results per query,
+one page, at most three attempts per query and 16 search HTTP attempts across
+the whole agent job. Each HTTP request has a 15-second timeout; waits are capped
+at 120 seconds individually and 180 seconds cumulatively. The GitHub gateway
+separately enforces 30 `issue_read` calls per MCP session. These limits do not
+cover public repository checks or the trusted collector/publisher's API reads.
+Ten investigated candidates remain an **agent instruction**, not an investigation counter.
+The trusted collector/publisher
 enforces five published matches, 300 comments per issue, and 1 MiB regular JSON
 files. The agent job also has a 15-minute timeout. Missing required evidence
 is an incomplete run, not proof that there are no duplicates.
@@ -152,20 +182,22 @@ preserves the existing immutable v0.89.21 compiler, action and patched gateway
 pins and does not force staging over the trusted dispatch flag.
 
 The workflow uses the existing `copilot-pat-pool` environment and GPT-6.1 Sol
-configuration. No additional service, model provider, token, or secret is needed.
+configuration. No additional external service, model provider or repository secret is needed.
 The workflow-local PAT selector follows `issue-triage`'s existing pattern to
 keep the activation guard explicit with the pinned gh-aw v0.86.2 compiler.
 Prepared evidence and validator code come from trusted default-branch
 infrastructure; issue/reproduction content is never executed.
-The GitHub MCP's repository guard restricts both searches and issue reads to
-`dotnet/maui`; repository scope is enforced rather than left to the prompt.
+The GitHub MCP's repository guard restricts issue reads to `dotnet/maui`;
+the trusted discovery service separately enforces that same public repository.
+Repository scope is enforced rather than left to the prompt.
 The gateway's public-repository scope override is disabled so it cannot broaden
 that explicit scope to all public repositories.
 Exact repository scope conservatively carries the `private:dotnet/maui` secrecy
 label even for public reports. The workflow declares
-`private-to-public-flows: [safeoutputs]` for that built-in server only; its
-write-sink still accepts only `private:dotnet/maui`. The compiler omits sink
-visibility only for this exempted safe-output server, not for unrelated sinks,
+`private-to-public-flows: [safeoutputs, duplicate-search]` for publication and
+the fixed public-repository read-only search service only; their write-sinks
+still accept only `private:dotnet/maui`. The compiler omits sink visibility only
+for these two named servers, not for unrelated sinks,
 and does not emit a blanket `allow` or wildcard exemption.
 The trusted collector and validator check live repository metadata and reject
 anything other than public `dotnet/maui`, including a final check before a report
@@ -211,6 +243,7 @@ Commit the source, compilation helper, trusted publisher and compiled lock file 
 
 ```bash
 node --check .github/scripts/IssueDuplicates.cjs
+node --check .github/scripts/IssueDuplicateSearch.cjs
 bash .github/scripts/CompileIssueDuplicateDetector.sh
 shellcheck .github/scripts/CompileIssueDuplicateDetector.sh
 actionlint -oneline -ignore 'unexpected key "queue" for "concurrency" section' .github/workflows/issue-duplicate-detector.lock.yml
