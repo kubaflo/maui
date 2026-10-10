@@ -105,6 +105,8 @@ namespace Microsoft.Maui.Controls
 
 		public static bool TryGetResource(this IElementDefinition element, string key, out object value)
 		{
+			var isParented = element?.Parent != null;
+
 			while (element != null)
 			{
 				if (element is IResourcesProvider ve && ve.IsResourcesCreated && ve.Resources.TryGetValue(key, out value))
@@ -115,7 +117,7 @@ namespace Microsoft.Maui.Controls
 			}
 
 			//Fallback for the XF previewer
-			if (Application.Current != null && ((IResourcesProvider)Application.Current).IsResourcesCreated && Application.Current.Resources.TryGetValue(key, out value))
+			if (isParented && Application.Current != null && ((IResourcesProvider)Application.Current).IsResourcesCreated && Application.Current.Resources.TryGetValue(key, out value))
 				return true;
 
 			value = null;
