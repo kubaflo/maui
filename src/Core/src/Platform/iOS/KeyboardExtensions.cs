@@ -30,7 +30,11 @@ namespace Microsoft.Maui.Platform
 			else if (keyboard == Keyboard.Email)
 				textInput.SetKeyboardType(UIKeyboardType.EmailAddress);
 			else if (keyboard == Keyboard.Numeric)
+#if IOS
+				textInput.SetKeyboardType(UIKeyboardType.NumbersAndPunctuation);
+#else
 				textInput.SetKeyboardType(UIKeyboardType.DecimalPad);
+#endif
 			else if (keyboard == Keyboard.Telephone)
 				textInput.SetKeyboardType(UIKeyboardType.PhonePad);
 			else if (keyboard == Keyboard.Url)
