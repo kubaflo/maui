@@ -84,7 +84,31 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateBackground(this UIView platformView, IView view)
 		{
+			if (platformView is UIButton button && view is IImageButton)
+			{
+				button.UpdateBackground(view.Background);
+				return;
+			}
+
+			if (platformView is UIImageView imageView && view is IImage)
+			{
+				imageView.UpdateImageBackground(view.Background, view as IButtonStroke);
+				return;
+			}
+
 			platformView.UpdateBackground(view.Background, view as IButtonStroke);
+		}
+
+		static void UpdateImageBackground(this UIImageView imageView, Paint? paint, IButtonStroke? stroke)
+		{
+			if (paint.IsNullOrEmpty())
+			{
+				imageView.RemoveBackgroundLayer();
+				imageView.BackgroundColor = UIColor.Clear;
+				return;
+			}
+
+			imageView.UpdateBackground(paint, stroke);
 		}
 
 		public static void UpdateBackground(this UIView platformView, Paint? paint, IButtonStroke? stroke = null)
