@@ -591,6 +591,14 @@ namespace Microsoft.Maui.Controls.Platform
 				return false;
 			}
 
+			// A nested UICollectionView (CollectionView/CarouselView) does its own selection tracking.
+			// Forcing that tracking to fail because our ancestor tap won the gesture arbitration would
+			// silently swallow item selection, so let the two run together.
+			if (IsInsideNestedCollectionView(other.View, tap.View))
+			{
+				return true;
+			}
+
 			var otherTap = other as UITapGestureRecognizer;
 			if (otherTap == null)
 			{
@@ -613,6 +621,31 @@ namespace Microsoft.Maui.Controls.Platform
 			}
 
 			return true;
+		}
+
+		// Walks up from <paramref name="view"/> towards <paramref name="ancestor"/> looking for a
+		// UICollectionView. Returns false when the two views are unrelated or when the only
+		// UICollectionView found is at or above <paramref name="ancestor"/>.
+		static bool IsInsideNestedCollectionView(UIView? view, UIView? ancestor)
+		{
+			if (view is null || ancestor is null)
+			{
+				return false;
+			}
+
+			var current = view;
+
+			while (current is not null && !Equals(current, ancestor))
+			{
+				if (current is UICollectionView)
+				{
+					return true;
+				}
+
+				current = current.Superview;
+			}
+
+			return false;
 		}
 
 		bool TryGetTapGestureRecognizer(IGestureRecognizer? recognizer, out TapGestureRecognizer? tapGestureRecognizer)
@@ -937,6 +970,16 @@ namespace Microsoft.Maui.Controls.Platform
 				if (!virtualView.IsEnabled)
 				{
 					return false;
+				}
+
+				// UICollectionView (CollectionView/CarouselView) tracks item selection through its own
+				// touch handling rather than through a gesture recognizer. If this tap recognizer, which
+				// lives on an ancestor view, cancels touches when it recognizes, the nested collection view
+				// receives touchesCancelled instead of touchesEnded and never reports the selection.
+				// Cancellation stays enabled for every other touch so existing behavior is unchanged.
+				if (recognizer is UITapGestureRecognizer tapRecognizer)
+				{
+					tapRecognizer.CancelsTouchesInView = !IsInsideNestedCollectionView(touch.View, platformView);
 				}
 
 				if (touch.View == platformView)
