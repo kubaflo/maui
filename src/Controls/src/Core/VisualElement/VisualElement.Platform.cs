@@ -16,15 +16,29 @@ namespace Microsoft.Maui.Controls
 	public partial class VisualElement
 	{
 		IDisposable? _loadedUnloadedToken;
+#if IOS || MACCATALYST
+		WeakReference<PlatformView>? _loadedUnloadedFallbackView;
+#endif
+
 		partial void HandlePlatformUnloadedLoaded()
 		{
 			_loadedUnloadedToken?.Dispose();
 			_loadedUnloadedToken = null;
 
+#if IOS || MACCATALYST
+			if (Window is null)
+				_loadedUnloadedFallbackView = null;
+#endif
+
 			// Window and this VisualElement both have a handler to work with
 			if (Window?.Handler?.PlatformView is not null &&
 				Handler?.PlatformView is PlatformView view)
 			{
+#if IOS || MACCATALYST
+				if (view.Superview is PlatformView superview)
+					_loadedUnloadedFallbackView = new(superview);
+#endif
+
 				if (view.IsLoaded())
 				{
 					SendLoaded(false);
@@ -47,6 +61,24 @@ namespace Microsoft.Maui.Controls
 					}
 				}
 			}
+#if IOS || MACCATALYST
+			else if (Window?.Handler?.PlatformView is not null &&
+				Handler is null &&
+				_loadedUnloadedFallbackView is not null &&
+				_loadedUnloadedFallbackView.TryGetTarget(out var fallbackView))
+			{
+				if (fallbackView.IsLoaded())
+				{
+					_loadedUnloadedToken = fallbackView.OnUnloaded(
+						_isLoadedFired ? SendUnloaded : HandlePlatformUnloadedLoaded);
+				}
+				else
+				{
+					SendUnloaded(false);
+					_loadedUnloadedToken = fallbackView.OnLoaded(SendLoaded);
+				}
+			}
+#endif
 			// This VisualElement has a handler with MauiContext but no MAUI Window.
 			// This happens when the view is hosted inside a native container via ToPlatform().
 			// We still need to fire Loaded/Unloaded based on the platform view's attach state.
