@@ -42,6 +42,12 @@ namespace Microsoft.Maui
 
 				var name = cgFont.PostScriptName;
 
+				// Bundled MauiFonts are already registered by the system at launch through UIAppFonts.
+				// Registering the same PostScript name again is rejected by CoreText and logs
+				// "already exists" / "GSFontRegisterCGFont failed 305" diagnostics, so skip it.
+				if (IsAlreadyRegistered(name))
+					return name;
+
 #pragma warning disable CA1416  // TODO:  'RegisterGraphicsFont' is obsolete on: 'ios' 15.0 and later
 #pragma warning disable CA1422
 				if (CTFontManager.RegisterGraphicsFont(cgFont, out var error))
@@ -64,6 +70,18 @@ namespace Microsoft.Maui
 			}
 
 			return null;
+		}
+
+		static bool IsAlreadyRegistered(string? postScriptName)
+		{
+			if (string.IsNullOrEmpty(postScriptName))
+				return false;
+
+			// UIFont.FromName can substitute a system font for an unknown name, so only treat the
+			// font as registered when the resolved font actually carries the requested name.
+			var existing = UIFont.FromName(postScriptName, 10);
+			return existing is not null &&
+				string.Equals(existing.Name, postScriptName, StringComparison.OrdinalIgnoreCase);
 		}
 	}
 }
