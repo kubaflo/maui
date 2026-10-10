@@ -68,16 +68,17 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 				ScrollDirection = compositionalLayout.Configuration.ScrollDirection;
 			}
 
+			if (_initialized)
+			{
+				// Refresh cells before replacing the layout so the new layout does not immediately
+				// trigger a second self-sizing pass which can adjust the content offset.
+				ReloadData();
+			}
+
 			ItemsViewLayout = newLayout;
 			_initialized = false;
 
 			EnsureLayoutInitialized();
-
-			if (_initialized)
-			{
-				// Reload the data so the currently visible cells get laid out according to the new layout
-				ReloadData();
-			}
 		}
 
 		protected override void Dispose(bool disposing)
