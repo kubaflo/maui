@@ -32,6 +32,8 @@ namespace Microsoft.Maui.Controls.Platform
 		bool? _defaultShouldGroupAccessibilityChildren;
 		bool _setShouldGroupAccessibilityChildren;
 		bool _setAccessibilityActivateCallback;
+		bool _setIsAccessibilityElement;
+		bool _setSynthesizeAccessibilityLabel;
 
 		double _previousScale = 1.0;
 		ShouldReceiveTouchProxy? _proxy;
@@ -672,15 +674,6 @@ namespace Microsoft.Maui.Controls.Platform
 				// Skip if IsAccessibilityElement is already true (e.g. set by SemanticExtensions for a
 				// Hint/Description on this layout) — when the container is already a leaf accessibility
 				// element, ShouldGroupAccessibilityChildren is ignored by UIKit and would be redundant.
-				//
-				// LIMITATION (Path A — gesture-only, no Hint/Description): Setting
-				// ShouldGroupAccessibilityChildren = true alone does NOT make the layout focusable to
-				// VoiceOver; UIKit only focuses views whose IsAccessibilityElement is true. So for a
-				// tappable layout without any Semantics set, VoiceOver still navigates directly to the
-				// individual children, the Button trait above is silenced, and the
-				// AccessibilityActivateCallback registered below is never reached via VoiceOver.
-				// This is a pre-existing UIKit constraint, intentionally not addressed by this fix
-				// (which targets the Hint scenario from issue #34380).
 				if (!PlatformView.ShouldGroupAccessibilityChildren
 					&& !PlatformView.IsAccessibilityElement
 					&& _handler.VirtualView is global::Microsoft.Maui.ILayout)
@@ -691,6 +684,23 @@ namespace Microsoft.Maui.Controls.Platform
 					PlatformView.ShouldGroupAccessibilityChildren = true;
 					_setShouldGroupAccessibilityChildren = true;
 				}
+
+				PromoteContainerToAccessibilityElement();
+
+				// The handler's ContainerView mapper (which is what constructs this manager) runs
+				// before the Semantics mapper. For a layout with no SemanticProperties at all,
+				// SemanticExtensions.UpdateSemantics takes its "null semantics" branch and undoes the
+				// promotion above (it clears IsAccessibilityElement, AccessibilityLabel and the
+				// synthesis flag on any layout that is currently an accessibility element). Re-apply
+				// once the synchronous connect-time mapper pass has drained so the promotion sticks.
+				var weakForPromotion = new WeakReference<GesturePlatformManager>(this);
+				NSRunLoop.Main.BeginInvokeOnMainThread(() =>
+				{
+					if (weakForPromotion.TryGetTarget(out var manager))
+					{
+						manager.PromoteContainerToAccessibilityElement();
+					}
+				});
 
 				// UIKit's default accessibilityActivate() simulates touch events which are intermittently
 				// unreliable for UITapGestureRecognizer (especially on macOS Catalyst Ctrl+Option+Space).
@@ -978,6 +988,43 @@ namespace Microsoft.Maui.Controls.Platform
 			LoadRecognizers();
 		}
 
+		// Makes a tappable layout container focusable to VoiceOver. ShouldGroupAccessibilityChildren
+		// alone does NOT make the layout focusable — UIKit only focuses views whose
+		// IsAccessibilityElement is true. Without this promotion a tappable layout with no Semantics
+		// set is skipped by VoiceOver, the Button trait is silenced and AccessibilityActivateCallback
+		// is never reached, which is the gesture-only half of issue #34380. Promoting the container to
+		// a leaf element mirrors what SemanticExtensions already does for the Hint path and what
+		// Android does for a clickable ViewGroup; the synthesized label keeps the child text audible.
+		void PromoteContainerToAccessibilityElement()
+		{
+			var platformView = PlatformView;
+
+			if (_disposed
+				|| platformView is null
+				|| _handler.VirtualView is not global::Microsoft.Maui.ILayout
+				|| _handler.VirtualView is not View view
+				|| !view.HasAccessibleTapGesture()
+				|| platformView.IsAccessibilityElement)
+			{
+				return;
+			}
+
+			// Only synthesize when nothing has supplied a label: an explicit
+			// SemanticProperties.Description (legacy path) must win over child text.
+			if (platformView is Microsoft.Maui.Platform.MauiView labelSource
+				&& !labelSource.SynthesizeAccessibilityLabelFromChildren
+				&& string.IsNullOrWhiteSpace(platformView.AccessibilityLabel))
+			{
+				// Deferred synthesis (evaluated in MauiView.AccessibilityLabel's getter) so later
+				// child text changes are picked up instead of a stale snapshot.
+				labelSource.SynthesizeAccessibilityLabelFromChildren = true;
+				_setSynthesizeAccessibilityLabel = true;
+			}
+
+			platformView.IsAccessibilityElement = true;
+			_setIsAccessibilityElement = true;
+		}
+
 		// Reverts any accessibility-related state this manager set on the platform view when a
 		// tap gesture was wired up. Called from both Disconnect() and the gesture-collection-changed
 		// path so the two stay in sync.
@@ -993,13 +1040,29 @@ namespace Microsoft.Maui.Controls.Platform
 				PlatformView.ShouldGroupAccessibilityChildren = _defaultShouldGroupAccessibilityChildren ?? false;
 			}
 
-			if (_setAccessibilityActivateCallback && PlatformView is Microsoft.Maui.Platform.MauiView mv)
+			if (PlatformView is Microsoft.Maui.Platform.MauiView mv)
 			{
-				mv.AccessibilityActivateCallback = null;
+				if (_setAccessibilityActivateCallback)
+				{
+					mv.AccessibilityActivateCallback = null;
+				}
+
+				if (_setSynthesizeAccessibilityLabel)
+				{
+					mv.SynthesizeAccessibilityLabelFromChildren = false;
+				}
+			}
+
+			if (_setIsAccessibilityElement)
+			{
+				// Layouts default to false; this manager is the only thing that flipped it here.
+				PlatformView.IsAccessibilityElement = false;
 			}
 
 			_setShouldGroupAccessibilityChildren = false;
 			_setAccessibilityActivateCallback = false;
+			_setIsAccessibilityElement = false;
+			_setSynthesizeAccessibilityLabel = false;
 			_defaultShouldGroupAccessibilityChildren = null;
 		}
 
