@@ -863,8 +863,39 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 						value.Height = Superview.Bounds.Height;
 					}
 
-					base.Frame = value;
+					base.Frame = SpanNavigationBarWidth(value);
 				}
+			}
+
+			// UIKit positions the title view inside the navigation bar's title region, which is
+			// horizontally inset from the bar itself. UIContainerView arranges the MAUI view at
+			// x = 0 within this container, so that inset is inherited by the TitleView and cannot
+			// be removed from managed code. Rewrite the horizontal geometry as it is assigned so
+			// the container really does span the navigation bar.
+			CGRect SpanNavigationBarWidth(CGRect frame)
+			{
+				var superview = Superview;
+
+				if (superview is null)
+					return frame;
+
+				UIView? navigationBar = superview;
+
+				while (navigationBar is not null && navigationBar is not UINavigationBar)
+					navigationBar = navigationBar.Superview;
+
+				if (navigationBar is null)
+					return frame;
+
+				var barBounds = navigationBar.ConvertRectToView(navigationBar.Bounds, superview);
+
+				if (barBounds.Width <= 0)
+					return frame;
+
+				frame.X = barBounds.X;
+				frame.Width = barBounds.Width;
+
+				return frame;
 			}
 
 			public override void LayoutSubviews()
