@@ -137,6 +137,12 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				var oldRenderer = (IPlatformViewHandler)_footer.Handler;
 				var oldFooterView = _footerView;
+
+				// The subscription added below when the footer was installed must be removed here,
+				// otherwise the removed footer keeps the renderer alive and a later InvalidateMeasure()
+				// on it re-measures whichever footer is current at that point.
+				_footer.MeasureInvalidated -= OnFooterMeasureInvalidated;
+
 				_tableViewController.FooterView = null;
 				_footerView?.Disconnect();
 				_footerView = null;
