@@ -233,6 +233,34 @@ internal static class LayoutFactory2
 				section.InterGroupSpacing = new NFloat(horizontalItemSpacing);
 			}
 
+			// InterItemSpacing/InterGroupSpacing only space the items of a section apart; they do not
+			// affect the distance between a group header/footer (a boundary supplementary item) and the
+			// first/last row of items. For grouped collections translate the item spacing into section
+			// content insets so the header/footer gap matches the spacing between rows, the same way
+			// CreateListLayout does for grouped lists.
+			if (groupingInfo.IsGrouped)
+			{
+				if (scrollDirection == UICollectionViewScrollDirection.Vertical)
+				{
+					var topInset = groupingInfo.HasHeader ? new NFloat(verticalItemSpacing) : new NFloat(0);
+					var bottomInset = groupingInfo.HasFooter ? new NFloat(verticalItemSpacing) : new NFloat(0);
+
+					if (topInset > 0 || bottomInset > 0)
+					{
+						section.ContentInsets = new NSDirectionalEdgeInsets(topInset, 0, bottomInset, 0);
+					}
+				}
+				else
+				{
+					var leadingInset = groupingInfo.HasHeader ? new NFloat(horizontalItemSpacing) : new NFloat(0);
+					var trailingInset = groupingInfo.HasFooter ? new NFloat(horizontalItemSpacing) : new NFloat(0);
+
+					if (leadingInset > 0 || trailingInset > 0)
+					{
+						section.ContentInsets = new NSDirectionalEdgeInsets(0, leadingInset, 0, trailingInset);
+					}
+				}
+			}
 
 			section.BoundarySupplementaryItems = CreateSupplementaryItems(
 				groupingInfo,
