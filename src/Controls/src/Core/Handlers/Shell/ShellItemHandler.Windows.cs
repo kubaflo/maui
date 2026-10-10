@@ -735,6 +735,30 @@ namespace Microsoft.Maui.Controls.Handlers
 			mauiNavView.UpdateTopNavigationViewItemTextSelectedColor(titleColor ?? foregroundColor);
 			mauiNavView.UpdateTopNavigationViewItemTextColor(unselectedColor);
 			mauiNavView.UpdateTopNavigationViewItemSelectedColor(foregroundColor ?? titleColor);
+
+			// The calls above reset the disabled foreground resources from the unselected/selected
+			// colors, so TabBarDisabledColor has to be applied last in order to win.
+			UpdateTabBarDisabledColor(mauiNavView);
+		}
+
+		void UpdateTabBarDisabledColor(MauiNavigationView mauiNavView)
+		{
+			var topNavArea = mauiNavView.TopNavArea;
+
+			if (topNavArea is null)
+				return;
+
+			// When TabBarDisabledColor is unset the disabled resources are intentionally left alone
+			// so the unselected/selected colors keep driving the disabled appearance as before.
+			if (_shellAppearanceElement?.EffectiveTabBarDisabledColor is not Graphics.Color disabledColor)
+				return;
+
+			var disabledBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(disabledColor.ToWindowsColor());
+
+			topNavArea.Resources["TopNavigationViewItemForegroundDisabled"] = disabledBrush;
+			topNavArea.Resources["TopNavigationViewItemForegroundSelectedDisabled"] = disabledBrush;
+
+			topNavArea.RefreshThemeResources();
 		}
 
 		void OnApplyTemplateFinished(object? sender, EventArgs e)
