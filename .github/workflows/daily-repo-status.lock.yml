@@ -1325,7 +1325,7 @@ jobs:
 
           mkdir -p "$HOME/.copilot"
           GH_AW_NODE=$(which node 2>/dev/null || command -v node 2>/dev/null || echo node)
-          cat << GH_AW_MCP_CONFIG_93a1316e2e142e1c_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
+          cat << GH_AW_MCP_CONFIG_88742a70b3b67b31_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
           {
             "mcpServers": {
               "duplicate-search": {
@@ -1341,8 +1341,7 @@ jobs:
                   "write-sink": {
                     "accept": [
                       "private:dotnet/maui"
-                    ],
-                    "sink-visibility": "${GH_AW_SINK_VISIBILITY}"
+                    ]
                   }
                 }
               },
@@ -1426,7 +1425,7 @@ jobs:
               }
             }
           }
-          GH_AW_MCP_CONFIG_93a1316e2e142e1c_EOF
+          GH_AW_MCP_CONFIG_88742a70b3b67b31_EOF
       - name: Mount MCP servers as CLIs
         id: mount-mcp-clis
         continue-on-error: true

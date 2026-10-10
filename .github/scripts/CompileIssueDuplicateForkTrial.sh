@@ -3,7 +3,7 @@ set -euo pipefail
 
 compiler_commit=c35393777e5604a63721d09512263b1383301d4f
 compiler_version=v0.89.21+maui-duplicate-fork-trial
-patch_sha256=4a9eed5b4fe472cb0150b0af7778c9195ea04ca757196945470643c5d6c4d265
+patch_sha256=8fbe948b2ad189da0c6d57272ea0d3408296c19336fe0d3bd4067d882df4111c
 runtime_commit=924af5fdc64061cfbf66fb584c8b07e2ac230c60
 cache_directory="${XDG_CACHE_HOME:-$HOME/.cache}/maui/gh-aw/$compiler_commit-$patch_sha256"
 source_directory="$cache_directory/source"

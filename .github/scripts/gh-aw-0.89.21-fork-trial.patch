@@ -15,6 +15,29 @@ index 297021e0dca8f8e515e1c6be2ba0b66d1c71528d..013fba4d04619618cede956d8cebd98d
 @@ -226 +226 @@ const CopilotNoAskUserMinVersion Version = "1.0.19"
 -const DefaultMCPGatewayVersion Version = "v0.4.25"
 +const DefaultMCPGatewayVersion Version = "v0.4.30"
+diff --git a/pkg/workflow/codex_mcp.go b/pkg/workflow/codex_mcp.go
+index e9e0f4b4d28a927de7f5b7af830e5fbd462c9fd0..93fb6fb8e8e7123b429538d6fe672433253f8bae 100644
+--- a/pkg/workflow/codex_mcp.go
++++ b/pkg/workflow/codex_mcp.go
+@@ -73 +73 @@ func (e *CodexEngine) RenderMCPConfig(yaml *strings.Builder, tools map[string]an
+-	createRenderer := func(isLast bool) *MCPConfigRendererUnified {
++	createRenderer := func(isLast bool, serverID string) *MCPConfigRendererUnified {
+@@ -80 +80 @@ func (e *CodexEngine) RenderMCPConfig(yaml *strings.Builder, tools map[string]an
+-			WriteSinkGuardPolicies: deriveWriteSinkGuardPolicyFromWorkflow(workflowData),
++			WriteSinkGuardPolicies: deriveWriteSinkGuardPolicyForServer(workflowData, serverID),
+@@ -111 +111 @@ func (e *CodexEngine) RenderMCPConfig(yaml *strings.Builder, tools map[string]an
+-		renderer := createRenderer(false) // isLast is always false in TOML format
++		renderer := createRenderer(false, toolName) // isLast is always false in TOML format
+@@ -120,0 +121 @@ func (e *CodexEngine) RenderMCPConfig(yaml *strings.Builder, tools map[string]an
++			renderer = createRenderer(false, constants.AgenticWorkflowsMCPServerID.String())
+@@ -131,0 +133 @@ func (e *CodexEngine) RenderMCPConfig(yaml *strings.Builder, tools map[string]an
++				renderer = createRenderer(false, constants.MCPScriptsMCPServerID.String())
+@@ -281 +283 @@ func (e *CodexEngine) renderCodexMCPConfigWithContext(yaml *strings.Builder, too
+-		GuardPolicies:            deriveWriteSinkGuardPolicyFromWorkflow(workflowData),
++		GuardPolicies:            deriveWriteSinkGuardPolicyForServer(workflowData, toolName),
+@@ -306 +308 @@ func (e *CodexEngine) renderCodexJSONMCPConfigWithContext(yaml *strings.Builder,
+-		GuardPolicies:            deriveWriteSinkGuardPolicyFromWorkflow(workflowData),
++		GuardPolicies:            deriveWriteSinkGuardPolicyForServer(workflowData, toolName),
 diff --git a/pkg/workflow/copilot_engine_tools.go b/pkg/workflow/copilot_engine_tools.go
 index d1e4c0ad74f82056f589e0f32e202b7458144770..9a942835f1d50dc2bc313e87adc45b9dc851d60f 100644
 --- a/pkg/workflow/copilot_engine_tools.go
@@ -50,6 +73,13 @@ index d1e4c0ad74f82056f589e0f32e202b7458144770..9a942835f1d50dc2bc313e87adc45b9d
 +					if hasWildcard {
 +						args = append(args, "--allow-tool", "github")
 +					}
+diff --git a/pkg/workflow/copilot_mcp.go b/pkg/workflow/copilot_mcp.go
+index 50dfbfcd472a5b35472d8ab0adf03625d48501e1..9b42f92880d5f52974d5907786223734fdd9fcdb 100644
+--- a/pkg/workflow/copilot_mcp.go
++++ b/pkg/workflow/copilot_mcp.go
+@@ -78 +78 @@ func (e *CopilotEngine) renderCopilotMCPConfigWithContext(yaml *strings.Builder,
+-		GuardPolicies:            deriveWriteSinkGuardPolicyFromWorkflow(workflowData),
++		GuardPolicies:            deriveWriteSinkGuardPolicyForServer(workflowData, toolName),
 diff --git a/pkg/workflow/data/action_pins.json b/pkg/workflow/data/action_pins.json
 index da01d8cd8cf98d37d8d537024f68b6c8c82ad312..3638a48bf13746ade1af2a54ab844dd0398cd07a 100644
 --- a/pkg/workflow/data/action_pins.json
@@ -60,25 +90,36 @@ index da01d8cd8cf98d37d8d537024f68b6c8c82ad312..3638a48bf13746ade1af2a54ab844dd0
 +      "digest": "sha256:ab5a436a1490438db473e4e3d4c973cb1d75e3cb233fb08b73d31b42d7d18fba",
 +      "pinned_image": "ghcr.io/github/gh-aw-mcpg:v0.4.30@sha256:ab5a436a1490438db473e4e3d4c973cb1d75e3cb233fb08b73d31b42d7d18fba"
 +    },
+diff --git a/pkg/workflow/mcp_config_custom.go b/pkg/workflow/mcp_config_custom.go
+index 24cab9883188e5f016861751536e7c4fe1e7c7b4..7e80aad734571e94a4fed2baa4193187321a192e 100644
+--- a/pkg/workflow/mcp_config_custom.go
++++ b/pkg/workflow/mcp_config_custom.go
+@@ -34 +34 @@ func renderCustomMCPConfigWrapperWithContext(yaml *strings.Builder, toolName str
+-		GuardPolicies:            deriveWriteSinkGuardPolicyFromWorkflow(workflowData),
++		GuardPolicies:            deriveWriteSinkGuardPolicyForServer(workflowData, toolName),
 diff --git a/pkg/workflow/mcp_github_config.go b/pkg/workflow/mcp_github_config.go
-index 4520eb1b247595d38e336db29adee03b35c4cd3a..cf737b0b5e1b02e9883d6d5ef28da7d16405f99a 100644
+index 4520eb1b247595d38e336db29adee03b35c4cd3a..c74d7e5f9f254873e90ea3da1a93a9f5f8b9f120 100644
 --- a/pkg/workflow/mcp_github_config.go
 +++ b/pkg/workflow/mcp_github_config.go
 @@ -66,0 +67 @@ import (
 +	"slices"
-@@ -758,0 +760,14 @@ func deriveWriteSinkGuardPolicyFromWorkflow(workflowData *WorkflowData) map[stri
-+func deriveSafeOutputsGuardPolicyFromWorkflow(workflowData *WorkflowData) map[string]any {
+@@ -758,0 +760,18 @@ func deriveWriteSinkGuardPolicyFromWorkflow(workflowData *WorkflowData) map[stri
++func deriveWriteSinkGuardPolicyForServer(workflowData *WorkflowData, serverID string) map[string]any {
 +	policy := deriveWriteSinkGuardPolicyFromWorkflow(workflowData)
 +	if policy == nil || workflowData.ParsedTools == nil || workflowData.ParsedTools.GitHub == nil {
 +		return policy
 +	}
 +	exemptServers, ok := workflowData.ParsedTools.GitHub.PrivateToPublicFlows.([]string)
-+	if ok && slices.Contains(exemptServers, constants.SafeOutputsMCPServerID.String()) {
++	if ok && slices.Contains(exemptServers, serverID) {
 +		if writeSink, ok := policy["write-sink"].(map[string]any); ok {
 +			delete(writeSink, "sink-visibility")
 +		}
 +	}
 +	return policy
++}
++
++func deriveSafeOutputsGuardPolicyFromWorkflow(workflowData *WorkflowData) map[string]any {
++	return deriveWriteSinkGuardPolicyForServer(workflowData, constants.SafeOutputsMCPServerID.String())
 +}
 +
 diff --git a/pkg/workflow/mcp_renderer_builtin.go b/pkg/workflow/mcp_renderer_builtin.go
@@ -91,6 +132,39 @@ index 64c8c5c43fa5d04e28f18ff01a3e4712ebd4eeed..8e631fad74eeceb87156ca02de80ed2c
 @@ -275 +275 @@ func renderSafeOutputsMCPConfigWithOptions(yaml *strings.Builder, isLast bool, i
 -	guardPolicies := deriveWriteSinkGuardPolicyFromWorkflow(workflowData)
 +	guardPolicies := deriveSafeOutputsGuardPolicyFromWorkflow(workflowData)
+diff --git a/pkg/workflow/mcp_renderer_factory.go b/pkg/workflow/mcp_renderer_factory.go
+index 228c0dbc1e10b560586e57d16317d380df2bb8cf..c56eceb26ed15f08de023a3693673d3522370ba7 100644
+--- a/pkg/workflow/mcp_renderer_factory.go
++++ b/pkg/workflow/mcp_renderer_factory.go
+@@ -30,0 +31 @@ import (
++	"github.com/github/gh-aw/pkg/constants"
+@@ -147 +148 @@ func renderStandardJSONMCPConfig(
+-// The returned function accepts isLast as a parameter and creates a renderer with engine-specific
++// The returned function accepts isLast and serverID and creates a renderer with engine-specific
+@@ -149 +150 @@ func renderStandardJSONMCPConfig(
+-func buildMCPRendererFactory(workflowData *WorkflowData, format string, includeCopilotFields, inlineArgs bool) func(bool) *MCPConfigRendererUnified {
++func buildMCPRendererFactory(workflowData *WorkflowData, format string, includeCopilotFields, inlineArgs bool) func(bool, string) *MCPConfigRendererUnified {
+@@ -151 +152 @@ func buildMCPRendererFactory(workflowData *WorkflowData, format string, includeC
+-	return func(isLast bool) *MCPConfigRendererUnified {
++	return func(isLast bool, serverID string) *MCPConfigRendererUnified {
+@@ -158 +159 @@ func buildMCPRendererFactory(workflowData *WorkflowData, format string, includeC
+-			WriteSinkGuardPolicies: deriveWriteSinkGuardPolicyFromWorkflow(workflowData),
++			WriteSinkGuardPolicies: deriveWriteSinkGuardPolicyForServer(workflowData, serverID),
+@@ -174 +175 @@ func buildStandardJSONMCPRenderers(
+-	createRenderer func(bool) *MCPConfigRendererUnified,
++	createRenderer func(bool, string) *MCPConfigRendererUnified,
+@@ -180 +181 @@ func buildStandardJSONMCPRenderers(
+-			createRenderer(isLast).RenderGitHubMCP(yaml, githubTool, workflowData)
++			createRenderer(isLast, constants.GitHubMCPServerID.String()).RenderGitHubMCP(yaml, githubTool, workflowData)
+@@ -184 +185 @@ func buildStandardJSONMCPRenderers(
+-			createRenderer(isLast).RenderAgenticWorkflowsMCP(yaml)
++			createRenderer(isLast, constants.AgenticWorkflowsMCPServerID.String()).RenderAgenticWorkflowsMCP(yaml)
+@@ -187 +188 @@ func buildStandardJSONMCPRenderers(
+-			createRenderer(isLast).RenderSafeOutputsMCP(yaml, workflowData)
++			createRenderer(isLast, constants.SafeOutputsMCPServerID.String()).RenderSafeOutputsMCP(yaml, workflowData)
+@@ -190 +191 @@ func buildStandardJSONMCPRenderers(
+-			createRenderer(isLast).RenderMCPScriptsMCP(yaml, mcpScripts, workflowData)
++			createRenderer(isLast, constants.MCPScriptsMCPServerID.String()).RenderMCPScriptsMCP(yaml, mcpScripts, workflowData)
 diff --git a/pkg/workflow/strict_mode_network_validation.go b/pkg/workflow/strict_mode_network_validation.go
 index 6fc05b543bf878f69cb57913664ce33bbdc7923a..a2d5d850fdd76c1f2c0b156e8b3e964b1b2d207b 100644
 --- a/pkg/workflow/strict_mode_network_validation.go

@@ -56,6 +56,26 @@ rotated credential to evade quotas. The two narrow DIFC exemptions are now
 `safeoutputs` and this fixed public-repository `duplicate-search` service; their
 acceptance remains `private:dotnet/maui`, not a wildcard.
 
+### Scoped search-sink rendering repair
+
+The previous compiler patch removed sink visibility only for `safeoutputs`.
+It still explicitly emitted public visibility for `duplicate-search`, which
+overrode its accept patterns after scoped GitHub reads. Gateway exemptions stop
+default visibility injection; they do not remove an explicitly emitted value.
+
+The fork compiler's cumulative reviewed patch now derives an independent policy
+for each exact gateway server ID in custom JSON/TOML and built-in renderers.
+It omits visibility only for the workflow's two named exemptions, preserves
+`private:dotnet/maui` acceptance, and leaves unlisted sinks restricted. The
+official source remains `c35393777e5604a63721d09512263b1383301d4f`; the new
+patch SHA-256 is
+`8fbe948b2ad189da0c6d57272ea0d3408296c19336fe0d3bd4067d882df4111c`.
+The production compiler received the same isolated rendering correction in
+[`86885522c56a777b4734e6b5d81b41ce244a513f`](https://github.com/kubaflo/gh-aw/commit/86885522c56a777b4734e6b5d81b41ce244a513f).
+Neither compiler correction changes the fork's action, engine or gateway pins,
+compact report, fixed destination, source whitelist, or spent dispatch approvals.
+No hosted run is authorized by this repair.
+
 Every suggested match contains an **integer duplicate-probability estimate**,
 shown as a percentage, supporting evidence, differences/uncertainty, and linked
 excerpts from both reports. These are **uncalibrated AI estimates**, not measured
