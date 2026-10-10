@@ -1,4 +1,5 @@
 ﻿using System;
+using CoreGraphics;
 using UIKit;
 
 namespace Microsoft.Maui.Platform
@@ -15,7 +16,7 @@ namespace Microsoft.Maui.Platform
 
 		protected override UIView CreatePlatformView(IElement view)
 		{
-			return new ContentView
+			return new PageContentView
 			{
 				CrossPlatformLayout = (IContentView)view
 			};
@@ -120,6 +121,86 @@ namespace Microsoft.Maui.Platform
 						InvalidateFontsOnContentSizeChanged(childView);
 					}
 				}
+			}
+		}
+
+		// Starting with iOS 26 the tab bar floats over the page instead of sitting below it: the page
+		// keeps the full window height and the strip the bar occludes is reported as a bottom safe area
+		// inset. The page content is arranged inside the page bounds, so by default it stops at the top
+		// of that strip and the bar's glass material samples the empty window background behind it,
+		// which reads as an opaque bar. Stretching the arranged content down across the occluded strip
+		// puts real page content behind the bar. Content that already reaches that far - for example a
+		// layout that opts in manually with a negative bottom margin - is left exactly where it is, so
+		// the adjustment never stacks on top of an explicit extension.
+		sealed class PageContentView : ContentView
+		{
+			public override void LayoutSubviews()
+			{
+				base.LayoutSubviews();
+
+				ExtendContentBehindBottomBar();
+			}
+
+			void ExtendContentBehindBottomBar()
+			{
+				if (!OperatingSystem.IsIOSVersionAtLeast(26))
+				{
+					return;
+				}
+
+				var overlap = GetBottomBarOverlap();
+				if (overlap <= 0)
+				{
+					return;
+				}
+
+				var targetBottom = Bounds.Bottom + overlap;
+
+				foreach (var subview in Subviews)
+				{
+					var frame = subview.Frame;
+
+					if (frame.IsEmpty || frame.Bottom >= targetBottom - 0.5)
+					{
+						continue;
+					}
+
+					subview.Frame = new CGRect(frame.X, frame.Y, frame.Width, targetBottom - frame.Y);
+				}
+			}
+
+			// The height of the strip at the bottom of this page that a floating tab bar covers, or zero
+			// when the page isn't hosted in a tab bar.
+			nfloat GetBottomBarOverlap()
+			{
+				UITabBar? tabBar = null;
+
+				for (UIResponder? responder = this; responder is not null; responder = responder.NextResponder)
+				{
+					if (responder is UITabBarController tabBarController)
+					{
+						tabBar = tabBarController.TabBar;
+						break;
+					}
+				}
+
+				if (tabBar is null || tabBar.Hidden || tabBar.Superview is null)
+				{
+					return 0;
+				}
+
+				var inset = SafeAreaInsets.Bottom;
+				if (inset > 0)
+				{
+					return inset;
+				}
+
+				// The bar isn't part of the safe area (it can be laid out by a custom container), so fall
+				// back to how far it reaches into this view.
+				var barTop = ConvertRectFromView(tabBar.Frame, tabBar.Superview).Top;
+				var geometricOverlap = Bounds.Bottom - barTop;
+
+				return geometricOverlap > 0 ? geometricOverlap : 0;
 			}
 		}
 	}
