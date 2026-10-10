@@ -14,8 +14,11 @@ namespace Microsoft.Maui.Controls
 		static IEnumerable<KeyValuePair<string, object>> GetMergedResources(this IElementDefinition element, HashSet<string> requestedKeys)
 		{
 			Dictionary<string, object> resources = null;
+			var current = Application.Current;
+			bool visitedCurrentApplication = false;
 			while (element != null)
 			{
+				visitedCurrentApplication |= ReferenceEquals(element, current);
 				var ve = element as IResourcesProvider;
 				if (ve != null && ve.IsResourcesCreated)
 				{
@@ -71,6 +74,43 @@ namespace Microsoft.Maui.Controls
 
 				element = element.Parent;
 			}
+
+			if (!visitedCurrentApplication &&
+				current is IResourcesProvider application &&
+				application.IsResourcesCreated)
+			{
+				if (requestedKeys != null)
+				{
+					foreach (var key in requestedKeys)
+					{
+						if ((resources == null || !resources.ContainsKey(key)) &&
+							current.TryGetResource(key, out var value))
+						{
+							resources ??= new(StringComparer.Ordinal);
+							resources.Add(key, value);
+						}
+					}
+				}
+				else
+				{
+					foreach (var resource in application.Resources.MergedResources)
+					{
+						resources ??= new(StringComparer.Ordinal);
+						if (!resources.ContainsKey(resource.Key) &&
+							application.Resources.TryGetValue(resource.Key, out var value))
+						{
+							resources.Add(resource.Key, value);
+						}
+						else if (resource.Key.StartsWith(Style.StyleClassPrefix, StringComparison.Ordinal))
+						{
+							var mergedClassStyles = new List<Style>(resources[resource.Key] as List<Style>);
+							mergedClassStyles.AddRange(resource.Value as List<Style>);
+							resources[resource.Key] = mergedClassStyles;
+						}
+					}
+				}
+			}
+
 			return resources;
 		}
 
@@ -105,6 +145,7 @@ namespace Microsoft.Maui.Controls
 
 		public static bool TryGetResource(this IElementDefinition element, string key, out object value)
 		{
+			var resourceTarget = element;
 			while (element != null)
 			{
 				if (element is IResourcesProvider ve && ve.IsResourcesCreated && ve.Resources.TryGetValue(key, out value))
@@ -115,10 +156,24 @@ namespace Microsoft.Maui.Controls
 			}
 
 			//Fallback for the XF previewer
-			if (Application.Current != null && ((IResourcesProvider)Application.Current).IsResourcesCreated && Application.Current.Resources.TryGetValue(key, out value))
+			if (!IsImplicitStyleKey(resourceTarget, key) &&
+				Application.Current != null &&
+				((IResourcesProvider)Application.Current).IsResourcesCreated &&
+				Application.Current.Resources.TryGetValue(key, out value))
 				return true;
 
 			value = null;
+			return false;
+		}
+
+		static bool IsImplicitStyleKey(IElementDefinition element, string key)
+		{
+			for (var type = element?.GetType(); type != null && typeof(Element).IsAssignableFrom(type); type = type.BaseType)
+			{
+				if (string.Equals(type.FullName, key, StringComparison.Ordinal))
+					return true;
+			}
+
 			return false;
 		}
 	}
