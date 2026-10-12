@@ -30,7 +30,7 @@ on:
       if: github.event_name == 'workflow_dispatch'
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       with:
-        github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        github-token: ${{ github.token }}
         script: |
           core.setOutput('authorized', 'false');
           if (process.env.GITHUB_RUN_ATTEMPT !== '1') {
@@ -65,13 +65,21 @@ on:
           }
           const reviewRepo = { owner: 'dotnet', repo: 'maui' };
           const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
-            ...reviewRepo, username: actor
+            ...context.repo, username: actor
           });
           if (!['admin', 'maintain', 'write'].includes(permission.permission)) return;
-          const { data: pr } = await github.rest.pulls.get({
-            ...reviewRepo, pull_number: number
+          const response = await fetch(`https://api.github.com/repos/${reviewRepo.owner}/${reviewRepo.repo}/pulls/${number}`, {
+            headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'maui-expert-readonly-canary' },
+            redirect: 'error',
+            signal: AbortSignal.timeout(60000)
           });
+          if (!response.ok) throw new Error(`Public upstream PR lookup failed: HTTP ${response.status}.`);
+          const pr = await response.json();
+          if (pr.base?.repo?.full_name !== 'dotnet/maui' || pr.base.repo.private !== false) {
+            throw new Error('The fork canary may only read the fixed public upstream repository.');
+          }
           if (pr.state !== 'open') return;
+          core.info('Read-only fork-owner authorization only; upstream write authorization and public mutation are not exercised.');
           core.setOutput('actor', actor);
           core.setOutput('pr_number', String(number));
           core.setOutput('authorized', 'true');
@@ -89,7 +97,7 @@ on:
       id: context
       if: steps.command.outputs.authorized == 'true'
       env:
-        GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ steps.command.outputs.pr_number }}
         REVIEW_ACTOR: ${{ steps.command.outputs.actor }}
       run: |
@@ -276,7 +284,7 @@ safe-outputs:
     - name: Validate results, reauthorize, check freshness, and render native review
       shell: pwsh
       env:
-        GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ needs.publication_context.outputs.pr_number }}
         AGENT_OUTPUT_PATH: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
         SUPPRESS_OUTPUT: 'true'

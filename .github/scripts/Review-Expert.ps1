@@ -60,6 +60,24 @@ function Copy-ExpertInput {
 function Invoke-ExpertGh {
     param([string[]]$Arguments, [AllowNull()][object]$Body)
 
+    if ($Arguments.Count -ne 1 -or $null -ne $Body) {
+        throw 'The fork canary permits only public upstream reads and fork-owner permission checks.'
+    }
+    if ($Arguments[0].StartsWith('repos/dotnet/maui/', [StringComparison]::Ordinal)) {
+        $response = Invoke-WebRequest -Uri "https://api.github.com/$($Arguments[0])" `
+            -Method Get -TimeoutSec 60 -MaximumRedirection 0 -Headers @{
+                Accept = 'application/vnd.github+json'
+                'User-Agent' = 'maui-expert-readonly-canary'
+                'X-GitHub-Api-Version' = '2022-11-28'
+            }
+        if ([string]::IsNullOrWhiteSpace($response.Content)) {
+            throw 'Public upstream collection returned no JSON evidence.'
+        }
+        return ,(ConvertFrom-Json -InputObject $response.Content -AsHashtable -NoEnumerate)
+    }
+    if ($Arguments[0] -cne 'repos/kubaflo/maui/collaborators/kubaflo/permission') {
+        throw 'Unexpected credentialed API request in the read-only fork canary.'
+    }
     $stderr = [IO.Path]::GetTempFileName()
     try {
         $raw = if ($null -ne $Body) {
@@ -100,7 +118,7 @@ function Assert-ExpertPermission {
     param([string]$Login)
 
     if ($Login -notmatch '^[A-Za-z0-9][A-Za-z0-9-]*$') { throw 'A human review requester is required.' }
-    $permission = Invoke-ExpertGh -Arguments @("repos/$Repository/collaborators/$Login/permission")
+    $permission = Invoke-ExpertGh -Arguments @("repos/kubaflo/maui/collaborators/$Login/permission")
     if ($permission.permission -notin @('admin', 'maintain', 'write')) {
         throw 'The expert-review requester does not have current repository write access.'
     }
@@ -336,6 +354,7 @@ function Invoke-ExpertGather {
         schema_version = 1; repository = $Repository; pr_number = $PRNumber
         actor = $Actor; head_sha = $head; base_sha = $base; merge_base_sha = $mergeBase
         infrastructure_sha = $infrastructure; paths = $paths; gaps = $gaps.ToArray()
+        authorization_repository = 'kubaflo/maui'; publication_suppressed = $true
     }
     Write-ExpertJson (Join-Path $OutputDirectory 'context.json') $context
     foreach ($file in Get-ChildItem -LiteralPath $OutputDirectory -File) {
@@ -631,6 +650,19 @@ function Invoke-ExpertNotify {
             "[View the workflow run]($runUrl). This is an automation failure, not a code or test verdict. " +
             'Request a fresh expert review after the failure is resolved.'
     })
+}
+
+if ($Repository -cne 'dotnet/maui' -or $PRNumber -ne 39332 -or $Actor -cne 'kubaflo' -or
+    $env:GITHUB_REPOSITORY -cne 'kubaflo/maui' -or $env:GITHUB_ACTOR -cne 'kubaflo' -or
+    $env:GITHUB_REF -cne 'refs/heads/kubaflo-expert-review-canary-39332' -or
+    $env:GITHUB_EVENT_NAME -cne 'workflow_dispatch' -or $env:GITHUB_RUN_ATTEMPT -cne '1' -or
+    $Stage -notin @('Gather', 'Snapshot', 'Prepare') -or ($Stage -eq 'Prepare' -and -not $SuppressOutput)) {
+    throw 'Only the fixed, first-attempt, read-only fork canary may execute this script.'
+}
+$canaryEvent = Read-ExpertJson -Path $env:GITHUB_EVENT_PATH
+if ([string]$canaryEvent.inputs.pr_number -cne '39332' -or
+    [string]$canaryEvent.inputs.suppress_output -cne 'true') {
+    throw 'The fork canary requires the fixed upstream PR and suppressed publication.'
 }
 
 switch ($Stage) {
