@@ -175,7 +175,7 @@ function Get-ExpertRunUrl {
     if (-not $env:GITHUB_RUN_ID -or $env:GITHUB_RUN_ID -notmatch '^[1-9][0-9]*$') {
         throw 'A trusted GitHub run identity is required.'
     }
-    return "$env:GITHUB_SERVER_URL/$Repository/actions/runs/$env:GITHUB_RUN_ID"
+    return "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
 }
 
 function Get-ExpertFindings {
