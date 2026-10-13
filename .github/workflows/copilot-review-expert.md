@@ -60,7 +60,8 @@ on:
           if (!Number.isSafeInteger(number) || number < 1 || number > 2147483647) {
             throw new Error('Expert review requires a positive integer PR number.');
           }
-          if (![39332, 39345].includes(number) || String(context.payload.inputs.suppress_output) !== 'true') {
+          const approved = [39361, 39360, 39359, 39357, 39353, 39346, 39345, 39344, 39343, 39342];
+          if (!approved.includes(number) || String(context.payload.inputs.suppress_output) !== 'true') {
             throw new Error('The fork producer requires an approved PR and separate upstream publication.');
           }
           const reviewRepo = { owner: 'dotnet', repo: 'maui' };
