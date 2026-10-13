@@ -1,5 +1,5 @@
 ---
-description: Fork-only staged canary of the MAUI expert reviewer against dotnet/maui PR 39332.
+description: Fork-only expert inference for approved upstream publication canaries.
 
 runs-on-slim: ubuntu-latest
 
@@ -60,8 +60,8 @@ on:
           if (!Number.isSafeInteger(number) || number < 1 || number > 2147483647) {
             throw new Error('Expert review requires a positive integer PR number.');
           }
-          if (number !== 39332 || String(context.payload.inputs.suppress_output) !== 'true') {
-            throw new Error('The fork canary requires PR 39332 and suppressed output.');
+          if (![39332, 39345].includes(number) || String(context.payload.inputs.suppress_output) !== 'true') {
+            throw new Error('The fork producer requires an approved PR and separate upstream publication.');
           }
           const reviewRepo = { owner: 'dotnet', repo: 'maui' };
           const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({

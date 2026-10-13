@@ -655,7 +655,7 @@ function Invoke-ExpertNotify {
     })
 }
 
-if ($Repository -cne 'dotnet/maui' -or $PRNumber -ne 39332 -or $Actor -cne 'kubaflo' -or
+if ($Repository -cne 'dotnet/maui' -or $PRNumber -notin @(39332, 39345) -or $Actor -cne 'kubaflo' -or
     $env:GITHUB_REPOSITORY -cne 'kubaflo/maui' -or $env:GITHUB_ACTOR -cne 'kubaflo' -or
     $env:GITHUB_REF -cne 'refs/heads/kubaflo-expert-review-canary-39332' -or
     $env:GITHUB_EVENT_NAME -cne 'workflow_dispatch' -or $env:GITHUB_RUN_ATTEMPT -cne '1' -or
@@ -663,7 +663,7 @@ if ($Repository -cne 'dotnet/maui' -or $PRNumber -ne 39332 -or $Actor -cne 'kuba
     throw 'Only the fixed, first-attempt, read-only fork canary may execute this script.'
 }
 $canaryEvent = Read-ExpertJson -Path $env:GITHUB_EVENT_PATH
-if ([string]$canaryEvent.inputs.pr_number -cne '39332' -or
+if ([string]$canaryEvent.inputs.pr_number -cne [string]$PRNumber -or
     [string]$canaryEvent.inputs.suppress_output -cne 'true') {
     throw 'The fork canary requires the fixed upstream PR and suppressed publication.'
 }
