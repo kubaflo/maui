@@ -640,7 +640,7 @@ function Invoke-ExpertNotify {
 }
 
 if ($Repository -cne 'dotnet/maui' -or
-    $PRNumber -notin @(39361, 39360, 39359, 39357, 39353, 39346, 39345, 39344, 39343, 39342) -or
+    $PRNumber -notin @(39361, 39360, 39359, 39357, 39353, 39346, 39345, 39344, 39343, 39342, 37137) -or
     $Actor -cne 'kubaflo' -or
     $env:GITHUB_REPOSITORY -cne 'kubaflo/maui' -or $env:GITHUB_ACTOR -cne 'kubaflo' -or
     $env:GITHUB_REF -cne 'refs/heads/kubaflo-expert-review-canary-39332' -or
