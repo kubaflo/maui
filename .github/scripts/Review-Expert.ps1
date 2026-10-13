@@ -63,29 +63,13 @@ function Invoke-ExpertGh {
     if ($Arguments.Count -ne 1 -or $null -ne $Body) {
         throw 'The fork canary permits only public upstream reads and fork-owner permission checks.'
     }
-    if ($Arguments[0].StartsWith('repos/dotnet/maui/', [StringComparison]::Ordinal)) {
-        $response = Invoke-WebRequest -Uri "https://api.github.com/$($Arguments[0])" `
-            -Method Get -TimeoutSec 60 -MaximumRedirection 0 -Headers @{
-                Accept = 'application/vnd.github+json'
-                'User-Agent' = 'maui-expert-readonly-canary'
-                'X-GitHub-Api-Version' = '2022-11-28'
-            }
-        if ([string]::IsNullOrWhiteSpace($response.Content)) {
-            throw 'Public upstream collection returned no JSON evidence.'
-        }
-        return ,(ConvertFrom-Json -InputObject $response.Content -AsHashtable -NoEnumerate)
-    }
-    if ($Arguments[0] -cne 'repos/kubaflo/maui/collaborators/kubaflo/permission') {
-        throw 'Unexpected credentialed API request in the read-only fork canary.'
+    if (-not $Arguments[0].StartsWith('repos/dotnet/maui/', [StringComparison]::Ordinal) -and
+        $Arguments[0] -cne 'repos/kubaflo/maui/collaborators/kubaflo/permission') {
+        throw 'Unexpected API request in the read-only fork canary.'
     }
     $stderr = [IO.Path]::GetTempFileName()
     try {
-        $raw = if ($null -ne $Body) {
-            (ConvertTo-Json -InputObject $Body -Depth 50 -Compress) |
-                & gh api @Arguments --input - 2>$stderr
-        } else {
-            & gh api @Arguments 2>$stderr
-        }
+        $raw = & gh api --method GET @Arguments 2>$stderr
         if ($LASTEXITCODE -ne 0) {
             throw "GitHub API collection/publication failed for $($Arguments[0])."
         }

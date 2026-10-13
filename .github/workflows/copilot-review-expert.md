@@ -69,13 +69,9 @@ on:
             ...context.repo, username: actor
           });
           if (!['admin', 'maintain', 'write'].includes(permission.permission)) return;
-          const response = await fetch(`https://api.github.com/repos/${reviewRepo.owner}/${reviewRepo.repo}/pulls/${number}`, {
-            headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'maui-expert-readonly-canary' },
-            redirect: 'error',
-            signal: AbortSignal.timeout(60000)
+          const { data: pr } = await github.rest.pulls.get({
+            ...reviewRepo, pull_number: number
           });
-          if (!response.ok) throw new Error(`Public upstream PR lookup failed: HTTP ${response.status}.`);
-          const pr = await response.json();
           if (pr.base?.repo?.full_name !== 'dotnet/maui' || pr.base.repo.private !== false) {
             throw new Error('The fork canary may only read the fixed public upstream repository.');
           }
