@@ -1,6 +1,9 @@
 ---
 description: Fork-only expert inference for approved upstream publication canaries.
 
+imports:
+  - shared/gpt-6.1-sol.md
+
 runs-on-slim: ubuntu-latest
 
 on:
@@ -117,9 +120,9 @@ permissions:
   issues: read
   pull-requests: read
 
-model: gpt-5.3-codex
+model: gpt-6.1-sol
 models:
-  allowed: ["gpt-*", "copilot/gpt-*", "openai/gpt-*", "github-copilot/gpt-*"]
+  allowed: ["gpt-6.1-sol", "copilot/gpt-6.1-sol", "openai/gpt-6.1-sol", "github-copilot/gpt-6.1-sol"]
 engine:
   id: copilot
   agent: ghaw-expert-reviewer
@@ -214,7 +217,7 @@ safe-outputs:
     engine:
       id: copilot
       # v0.86.2 exposes detector-specific model selection through this field.
-      model: gpt-5.3-codex
+      model: gpt-6.1-sol
       bare: true
       env:
         COPILOT_PROVIDER_WIRE_API: responses
@@ -422,7 +425,7 @@ Run a fresh `maui-expert-dimension` worker per routed dimension in parallel
 batches of at most six. Give it the concrete dimension ID/name, applicable
 CHECK rules, relevant changed paths/hunks, platform and trusted instructions,
 pinned source/history, prior feedback, and its unique output path. Pin every
-worker to `gpt-5.3-codex`. Workers may not delegate or publish. Do not replace
+worker to `gpt-6.1-sol`. Workers may not delegate or publish. Do not replace
 independent passes with a single omnibus worker or report absent workers as
 completed.
 
@@ -480,7 +483,7 @@ review, including a completed zero-findings summary.
 ## agent: `maui-expert-dimension`
 ---
 description: Independently inspect one routed MAUI expert dimension and persist its bounded findings.
-model: gpt-5.3-codex
+model: gpt-6.1-sol
 ---
 
 Perform exactly the assigned dimension pass. Read the trusted canonical expert
