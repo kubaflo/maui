@@ -60,7 +60,7 @@ on:
           if (!Number.isSafeInteger(number) || number < 1 || number > 2147483647) {
             throw new Error('Expert review requires a positive integer PR number.');
           }
-          const approved = [39361, 39360, 39359, 39357, 39353, 39346, 39345, 39344, 39343, 39342, 37137];
+          const approved = [39365, 39363, 39361, 39360, 39359, 39353, 39346, 39345, 39344, 39343, 39342, 39325, 39323, 39314, 39289, 39285, 39281, 39279, 39274, 39272, 39255, 39240, 39237, 39233, 39218];
           if (!approved.includes(number) || String(context.payload.inputs.suppress_output) !== 'true') {
             throw new Error('The fork producer requires an approved PR and separate upstream publication.');
           }
