@@ -63,7 +63,7 @@ on:
           if (!Number.isSafeInteger(number) || number < 1 || number > 2147483647) {
             throw new Error('Expert review requires a positive integer PR number.');
           }
-          const approved = [39375, 39373, 39368, 39366, 39365, 39363, 39361, 39360, 39359, 39353, 39346, 39345, 39344, 39343, 39342, 39325, 39323, 39314, 39289, 39285, 39281, 39279, 39274, 39272, 39255, 39240, 39237, 39233, 39218];
+          const approved = [39401, 39400, 39398, 39396, 39384, 39378, 39377, 39375, 39366, 39365, 39361, 39346, 39345, 39344, 39325, 39314, 39289, 39281, 39272, 39255, 39240, 39233, 39218, 39195, 39180, 39179, 39176, 39059, 39052, 39013, 38915, 38911, 38822, 38807, 38782, 38780, 38735, 38733, 38638, 38625, 38611, 38603, 38585, 38441, 38111, 38067, 37953, 37874, 37836, 37690, 37572, 37337, 37319, 37137, 37032, 36762, 36702, 36581, 36571, 36226, 35973, 35640, 34837, 34740, 34357, 33611, 33561, 32898, 32382, 29952, 29755];
           if (!approved.includes(number) || String(context.payload.inputs.suppress_output) !== 'true') {
             throw new Error('The fork producer requires an approved PR and separate upstream publication.');
           }
@@ -152,7 +152,7 @@ jobs:
     steps:
       - run: echo "Frozen expert-review publication target is ready."
   conclusion:
-    # This lane has its own scoped notifier, including complete dry-run suppression.
+    # Inline-only lane: failures belong in Actions, never in PR summary comments.
     if: 'false'
   complete_request:
     needs: [pre_activation, activation, safe_outputs]
@@ -184,32 +184,10 @@ jobs:
             -Stage Complete -PRNumber "$PR_NUMBER" -Repository "$GITHUB_REPOSITORY" \
             -ContextDirectory "$RUNNER_TEMP/expert-context" \
             -ResultDirectory "$RUNNER_TEMP/expert-publication"
-  notify_failure:
-    needs: [pre_activation, activation, publication_context, agent, detection, safe_outputs, complete_request]
-    if: github.event_name == 'workflow_dispatch' && inputs.suppress_output != true
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Report authorized automation failure unless this run already published
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ needs.pre_activation.outputs.review_pr }}
-        run: |
-          pwsh -NoProfile -File .github/scripts/Review-Expert.ps1 \
-            -Stage Notify -PRNumber "$PR_NUMBER" -Repository "$GITHUB_REPOSITORY"
-
 safe-outputs:
   runs-on: ubuntu-latest
   needs: [publication_context]
   github-token: ${{ secrets.GITHUB_TOKEN }}
-  allowed-domains: [img.shields.io]
   staged: true
   data: true
   threat-detection:
@@ -243,13 +221,6 @@ safe-outputs:
     target: ${{ needs.publication_context.outputs.pr_number }}
     commit-id: ${{ needs.publication_context.outputs.head_sha }}
     footer: false
-  add-comment:
-    max: 1
-    target-repo: dotnet/maui
-    target: ${{ needs.publication_context.outputs.pr_number }}
-    issues: false
-    discussions: false
-    footer: false
   noop:
     report-as-issue: false
   missing-tool:
@@ -282,7 +253,7 @@ safe-outputs:
       with:
         name: expert-results-${{ github.run_id }}
         path: ${{ runner.temp }}/expert-results
-    - name: Validate results, reauthorize, check freshness, and render native review
+    - name: Validate results, reauthorize, check freshness, and prepare inline findings only
       shell: pwsh
       env:
         GH_TOKEN: ${{ github.token }}
@@ -490,16 +461,21 @@ discussion added after the frozen briefing must not set `validation_complete`
 false. The publisher reports these limits separately; a finished source
 assessment receives YES/NO based on actionable findings, never on gh-aw limits.
 
-## Stage one result, never publish directly
+## Stage inline findings, never publish directly
 
 Use `safeoutputs` CLI discovery for `submit_pull_request_review`, then emit
 exactly one call with `event: "COMMENT"`, a placeholder body, and structured
 `data: {"findings": <exact findings array>, "review_state": <exact state>}`.
 Do not choose a target, commit, repo, marker, or summary. Do not call inline
 comment, add-comment, noop, label, approve, request-changes, or direct GitHub
-publication tools. The fresh trusted publication job validates persisted
-files, rechecks authorization and freshness, and renders one consolidated
-review, including a completed zero-findings summary.
+publication tools. This structured call is an internal transport envelope,
+not a public summary. The fresh trusted publication job validates persisted
+files and rechecks authorization and freshness. It publishes only actionable
+inline comments and submits their COMMENT review with an empty body.
+Zero new inline findings produce a silent noop, never an empty public review.
+No summary, recommendation, badge, author ping or status comment is published.
+Findings without a valid inline anchor and execution failures remain in Actions
+logs/artifacts, never in a top-level comment.
 
 ## agent: `maui-expert-dimension`
 ---

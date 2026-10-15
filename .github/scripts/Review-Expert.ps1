@@ -8,7 +8,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Gather', 'Snapshot', 'Prepare', 'Complete', 'Notify')]
+    [ValidateSet('Gather', 'Snapshot', 'Prepare', 'Complete')]
     [string]$Stage,
 
     [Parameter(Mandatory = $true)]
@@ -306,14 +306,6 @@ function Get-ExpertDimensionNames {
     return $names
 }
 
-function Get-ExpertHash {
-    param([object]$Value)
-
-    $json = ConvertTo-Json -InputObject $Value -Depth 50 -Compress
-    return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData(
-        [Text.Encoding]::UTF8.GetBytes($json))).ToLowerInvariant()
-}
-
 function Invoke-ExpertGather {
     if (-not $OutputDirectory) { throw 'Gather requires an output directory.' }
     if ($env:GITHUB_OUTPUT) { 'ready=false' >> $env:GITHUB_OUTPUT }
@@ -475,17 +467,14 @@ function Invoke-ExpertPrepare {
     $findings = Get-ExpertFindings $rawFindings $paths
     $dimensions = Get-ExpertDimensions $state.activated_dimensions
     $dimensionNames = Get-ExpertDimensionNames
-    $dimensionDetails = [Collections.Generic.List[string]]::new()
     $gaps = [Collections.Generic.List[string]]::new()
     $limitations = [Collections.Generic.List[string]]::new()
     foreach ($gap in $context.gaps) { $limitations.Add([string]$gap) }
     $completed = 0
     foreach ($id in $dimensions | Sort-Object) {
-        $label = "$id. $([Net.WebUtility]::HtmlEncode($dimensionNames[$id]))"
         $source = Join-Path $ResultDirectory "dimensions/$id.json"
         if (-not (Test-Path -LiteralPath $source)) {
             $gaps.Add("The $($dimensionNames[$id]) check did not return a saved result.")
-            $dimensionDetails.Add("- &#x26A0;&#xFE0F; $label (no result)")
             continue
         }
         $worker = Read-ExpertJson (Copy-ExpertInput $source (Join-Path $imported "dimensions/$id.json") 1MB) 1MB
@@ -498,10 +487,8 @@ function Invoke-ExpertPrepare {
         [void](Get-ExpertFindings $worker.findings $paths)
         if ($worker.complete) {
             $completed++
-            $dimensionDetails.Add("- &#x2705; $label")
         } else {
             $gaps.Add("The $($dimensionNames[$id]) check did not finish.")
-            $dimensionDetails.Add("- &#x26A0;&#xFE0F; $label (incomplete)")
         }
     }
     if (-not $state.validation_complete) { $gaps.Add('The final check of potential findings did not finish.') }
@@ -535,31 +522,19 @@ function Invoke-ExpertPrepare {
     $receipt = [ordered]@{
         schema_version = 1; repository = $Repository; pr_number = $PRNumber
         run_id = $env:GITHUB_RUN_ID; run_url = $runUrl; head_sha = $context.head_sha
-        status = $status; result_marker = ''; existing_review_id = $null
+        status = $status; inline_comments = @(); withheld_findings = @()
     }
     if ($current.state -cne 'open') { throw 'The target PR closed before expert-review publication.' }
     if ($current.head.sha -cne $context.head_sha -or $current.base.sha -cne $context.base_sha) {
         $receipt.status = 'stale'
-        $analysis = "The PR head or base changed after this snapshot was frozen. " +
-            'No stale inline findings were posted. This is an automation status notice, not a code or test verdict.'
-        $body = "$runMarker`n`n" + (New-ExpertReviewComment -Status stale `
-            -HeadSha $context.head_sha -Author $current.user.login -Repository $Repository `
-            -ServerUrl $env:GITHUB_SERVER_URL -Summary 'No stale findings were published.' `
-            -Analysis $analysis)
-        $output.items = @(@{ type = 'add_comment'; body = $body })
+        Write-Warning 'The code snapshot changed; no stale inline findings will be posted.'
+        $output.items = @(@{ type = 'noop'; message = 'The PR snapshot changed; no comments were published.' })
     } else {
         $feedback = Get-ExpertFeedback
         $frozenFeedback = Read-ExpertJson (Join-Path $ContextDirectory 'prior-feedback.json')
         if (-not (Test-ExpertJsonEqual (Get-ExpertDiscussionContent $frozenFeedback) (Get-ExpertDiscussionContent $feedback))) {
-            $limitations.Add('Discussion changed during the review. This recommendation assesses the frozen code and discussion available at review start.')
+            $limitations.Add('Discussion changed during the review; findings assess the frozen code and discussion available at review start.')
         }
-        $resultHash = Get-ExpertHash ([ordered]@{
-            findings = $findings; unplaced = $unplaced.ToArray(); gaps = $gaps.ToArray()
-            limitations = $limitations.ToArray()
-            status = $status; completed = $completed; dimensions = @($dimensions | Sort-Object)
-        })
-        $resultMarker = "<!-- review-expert-result:$($context.head_sha):$resultHash -->"
-        $receipt.result_marker = $resultMarker
         $files = Read-ExpertJson (Join-Path $ContextDirectory 'files.json')
         $lineMap = @{}
         foreach ($file in $files) {
@@ -576,71 +551,46 @@ function Invoke-ExpertPrepare {
             $lineMap[$file.filename] = $lines
         }
         $inline = [Collections.Generic.List[object]]::new()
-        $alreadyPostedCount = 0
         foreach ($finding in $findings) {
             $alreadyPosted = @($feedback.inline | Where-Object {
                 $_.path -ceq $finding.path -and $_.line -eq $finding.line -and
                 $_.commit_id -ceq $context.head_sha -and
                 ([string]$_.body).Contains($finding.body, [StringComparison]::Ordinal)
-            }).Count -gt 0
-            if ($alreadyPosted) { $alreadyPostedCount++; continue }
+            })
+            if ($alreadyPosted.Count) {
+                continue
+            }
             if ($lineMap.ContainsKey($finding.path) -and $lineMap[$finding.path].Contains($finding.line)) {
-                $inline.Add($finding)
+                $inline.Add(@{
+                    path = $finding.path; line = $finding.line
+                    body = "$($finding.body)`n`n$runMarker"
+                })
             } else {
                 $unplaced.Add("``$($finding.path):$($finding.line)`` - $($finding.body)")
             }
         }
-        $existing = @($feedback.reviews | Where-Object {
-            $_.user.login -ceq 'github-actions[bot]' -and $_.state -ceq 'COMMENTED' -and
-            $_.commit_id -ceq $context.head_sha -and ([string]$_.body).Contains($resultMarker)
-        } | Select-Object -First 1)
-        if ($existing.Count) {
-            $receipt.existing_review_id = $existing[0].id
-            $output.items = @(@{ type = 'noop'; message = 'The same expert review is already published on this PR revision.' })
-        } else {
-            $summary = "**Coverage:** $completed/$($dimensions.Count) dimensions; " +
-                "finding validation $(if ($state.validation_complete) { 'complete' } else { 'incomplete' })."
-            $analysis = "**Dimensions:**`n" + ($dimensionDetails -join "`n") + "`n"
-            if ($gaps.Count) {
-                $analysis += "`n**Automation status:**`n"
-                foreach ($gap in $gaps) { $analysis += "- $([Net.WebUtility]::HtmlEncode($gap))`n" }
-                $analysis += "`nThe source assessment did not finish; no code recommendation was produced.`n"
-            }
-            if ($limitations.Count) {
-                $analysis += "`n**Context limitations (not code findings):**`n"
-                foreach ($limitation in $limitations) {
-                    $analysis += "- $([Net.WebUtility]::HtmlEncode($limitation))`n"
-                }
-            }
-            if ($findings.Count -or $unplaced.Count) {
-                $analysis += "`n**Findings:** $($inline.Count) new inline, $($unplaced.Count) in this comment, " +
-                    "$alreadyPostedCount already posted (not repeated).`n"
-            }
-            if ($unplaced.Count) {
-                $analysis += "`n### Findings without an inline anchor`n"
-                foreach ($text in $unplaced) { $analysis += "`n- $([Net.WebUtility]::HtmlEncode($text))`n" }
-            }
-            $analysis += "`nAI source/history review only; no builds or tests run. Required CI and human approval still apply.`n"
-            $mergeReady = $status -eq 'complete' -and $findings.Count -eq 0 -and $unplaced.Count -eq 0
-            $findingCount = $inline.Count + $alreadyPostedCount + $unplaced.Count
-            $decisionReason = if ($findings.Count -or $unplaced.Count) {
-                "$findingCount actionable $(if ($findingCount -eq 1) { 'finding' } else { 'findings' }); address before merging."
-            } else { 'No actionable findings.' }
-            $body = "$runMarker`n$resultMarker`n`n" + (New-ExpertReviewComment -Status $status `
-                -HeadSha $context.head_sha -Author $current.user.login -Repository $Repository `
-                -ServerUrl $env:GITHUB_SERVER_URL -Summary $summary -Analysis $analysis `
-                -MergeReady $mergeReady -DecisionReason $decisionReason)
-            if ($body.Length -gt 60000) { throw 'The expert summary exceeds its publication limit.' }
-            $items = [Collections.Generic.List[object]]::new()
-            foreach ($finding in $inline) {
-                $items.Add(@{
-                    type = 'create_pull_request_review_comment'
-                    path = $finding.path; line = $finding.line; body = $finding.body; side = 'RIGHT'
-                })
-            }
-            $items.Add(@{ type = 'submit_pull_request_review'; event = 'COMMENT'; body = $body })
-            $output.items = $items.ToArray()
+        $receipt.inline_comments = $inline.ToArray()
+        $receipt.withheld_findings = $unplaced.ToArray()
+        $receipt.coverage = "$completed/$($dimensions.Count)"
+        $receipt.gaps = $gaps.ToArray()
+        $receipt.limitations = $limitations.ToArray()
+        if ($unplaced.Count) {
+            Write-Warning "$($unplaced.Count) findings have no valid inline anchor; retained in the publication artifact, not posted elsewhere."
         }
+        foreach ($gap in $gaps) { Write-Warning $gap }
+        $items = [Collections.Generic.List[object]]::new()
+        foreach ($finding in $inline) {
+            $items.Add(@{
+                type = 'create_pull_request_review_comment'
+                path = $finding.path; line = $finding.line; body = $finding.body; side = 'RIGHT'
+            })
+        }
+        if ($inline.Count) {
+            $items.Add(@{ type = 'submit_pull_request_review'; event = 'COMMENT'; body = '' })
+        } else {
+            $items.Add(@{ type = 'noop'; message = 'No new inline findings to publish.' })
+        }
+        $output.items = $items.ToArray()
     }
     Assert-ExpertPermission -Login $context.actor
     $latest = Invoke-ExpertGh -Arguments @("repos/$Repository/pulls/$PRNumber")
@@ -736,7 +686,7 @@ function Invoke-ExpertNotify {
 }
 
 if ($Repository -cne 'dotnet/maui' -or
-    $PRNumber -notin @(39375, 39373, 39368, 39366, 39365, 39363, 39361, 39360, 39359, 39353, 39346, 39345, 39344, 39343, 39342, 39325, 39323, 39314, 39289, 39285, 39281, 39279, 39274, 39272, 39255, 39240, 39237, 39233, 39218) -or
+    $PRNumber -notin @(39401, 39400, 39398, 39396, 39384, 39378, 39377, 39375, 39366, 39365, 39361, 39346, 39345, 39344, 39325, 39314, 39289, 39281, 39272, 39255, 39240, 39233, 39218, 39195, 39180, 39179, 39176, 39059, 39052, 39013, 38915, 38911, 38822, 38807, 38782, 38780, 38735, 38733, 38638, 38625, 38611, 38603, 38585, 38441, 38111, 38067, 37953, 37874, 37836, 37690, 37572, 37337, 37319, 37137, 37032, 36762, 36702, 36581, 36571, 36226, 35973, 35640, 34837, 34740, 34357, 33611, 33561, 32898, 32382, 29952, 29755) -or
     $Actor -cne 'kubaflo' -or
     $env:GITHUB_REPOSITORY -cne 'kubaflo/maui' -or $env:GITHUB_ACTOR -cne 'kubaflo' -or
     $env:GITHUB_REF -cne 'refs/heads/kubaflo-expert-review-canary-39332' -or
