@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	x:Class="Maui.Controls.Sample.Issues.Issue17525"
+	Title="Border resize Content">
+	<ContentPage.Resources>
+		<Style x:Key="CircleBorderStyle" TargetType="Border">
+			<Setter Property="StrokeShape">
+				<Setter.Value>
+					<Ellipse />
+				</Setter.Value>
+			</Setter>
+			<Setter Property="WidthRequest" Value="101" />
+			<Setter Property="HeightRequest" Value="101" />
+			<Setter Property="BackgroundColor" Value="LightBlue" />
+			<Setter Property="StrokeThickness" Value="8" />
+			<Setter Property="Stroke" Value="LightGreen" />
+		</Style>
+
+		<Style x:Key="RoundRectangleBorderStyle" TargetType="Border">
+			<Setter Property="StrokeShape">
+				<Setter.Value>
+					<RoundRectangle />
+				</Setter.Value>
+			</Setter>
+			<Setter Property="WidthRequest" Value="101" />
+			<Setter Property="HeightRequest" Value="101" />
+			<Setter Property="BackgroundColor" Value="LightBlue" />
+			<Setter Property="StrokeThickness" Value="8" />
+			<Setter Property="Stroke" Value="LightGreen" />
+		</Style>
+
+		<Style x:Key="TriangleBorderStyle" TargetType="Border">
+			<Setter Property="StrokeShape">
+				<Setter.Value>
+					<Polygon Points="40,10 70,80 10,50" StrokeThickness="3" />
+				</Setter.Value>
+			</Setter>
+			<Setter Property="WidthRequest" Value="101" />
+			<Setter Property="HeightRequest" Value="101" />
+			<Setter Property="BackgroundColor" Value="LightBlue" />
+			<Setter Property="StrokeThickness" Value="8" />
+			<Setter Property="Stroke" Value="LightGreen" />
+		</Style>
+
+		<Style x:Key="LabelContentStyle" TargetType="Label">
+			<Setter Property="BackgroundColor" Value="#99FF0000" />
+			<Setter Property="FontSize" Value="40" />
+			<Setter Property="HorizontalTextAlignment" Value="Center" />
+			<Setter Property="VerticalTextAlignment" Value="Center" />
+			<Setter Property="HorizontalOptions" Value="Center" />
+			<Setter Property="VerticalOptions" Value="Center" />
+		</Style>
+	</ContentPage.Resources>
+
+	<VerticalStackLayout Spacing="10" VerticalOptions="Center">
+		<Grid
+			ColumnDefinitions="*,*"
+			RowDefinitions="*,*,*"
+			ColumnSpacing="10"
+			RowSpacing="10"
+			VerticalOptions="Center">
+			<Border
+				Grid.Row="0"
+				Grid.Column="0"
+				AutomationId="CircleLabelBorder"
+				Style="{StaticResource CircleBorderStyle}">
+				<Label Style="{StaticResource LabelContentStyle}" Text="+" TextColor="#0088ee" />
+			</Border>
+
+			<Border
+				Grid.Row="1"
+				Grid.Column="0"
+				AutomationId="RoundRectangleLabelBorder"
+				Style="{StaticResource RoundRectangleBorderStyle}">
+				<Label Style="{StaticResource LabelContentStyle}" Text="+" TextColor="#0088ee" />
+			</Border>
+
+			<Border
+				Grid.Row="2"
+				Grid.Column="0"
+				AutomationId="TriangleLabelBorder"
+				Style="{StaticResource TriangleBorderStyle}">
+				<Label Style="{StaticResource LabelContentStyle}" Text="+" TextColor="#0088ee" />
+			</Border>
+
+			<Border
+				Grid.Row="0"
+				Grid.Column="1"
+				AutomationId="CircleImageBorder"
+				Style="{StaticResource CircleBorderStyle}">
+				<Image AutomationId="CircleImage" Scale="1" Source="oasis.jpg" />
+			</Border>
+
+			<Border
+				Grid.Row="1"
+				Grid.Column="1"
+				AutomationId="RoundRectangleImageBorder"
+				Style="{StaticResource RoundRectangleBorderStyle}">
+				<Image AutomationId="RoundRectangleImage" Scale="1" Source="oasis.jpg" />
+			</Border>
+
+			<Border
+				Grid.Row="2"
+				Grid.Column="1"
+				AutomationId="TriangleImageBorder"
+				Style="{StaticResource TriangleBorderStyle}">
+				<Image AutomationId="TriangleImage" Scale="1" Source="oasis.jpg" />
+			</Border>
+		</Grid>
+
+		<Label Text="Content Text" />
+		<Entry Text="+" />
+		<Label Text="Content Text FontSize" />
+		<Slider Minimum="20" Maximum="200" Value="40" />
+		<Label Text="Image Scale" />
+		<Slider Minimum="1" Maximum="20" Value="1" />
+	</VerticalStackLayout>
+</ContentPage>
+
