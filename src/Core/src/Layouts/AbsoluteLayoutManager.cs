@@ -38,13 +38,34 @@ namespace Microsoft.Maui.Layouts
 				bool isWidthProportional = HasFlag(flags, AbsoluteLayoutFlags.WidthProportional);
 				bool isHeightProportional = HasFlag(flags, AbsoluteLayoutFlags.HeightProportional);
 
+				// A proportional child takes its size from the layout, so when the layout itself is unconstrained
+				// in that dimension there is no space to apportion; the only thing which can tell us how much room
+				// the layout needs is the size the child takes when nothing constrains it.
+				bool isWidthUnbounded = isWidthProportional && double.IsInfinity(widthConstraint);
+				bool isHeightUnbounded = isHeightProportional && double.IsInfinity(heightConstraint);
+
+				double naturalWidth = 0;
+				double naturalHeight = 0;
+
+				if (isWidthUnbounded || isHeightUnbounded)
+				{
+					// Measured first so that the constrained measurement below is the one the child keeps as its
+					// DesiredSize; ArrangeChildren relies on that for the dimensions which aren't proportional.
+					var natural = child.Measure(double.PositiveInfinity, double.PositiveInfinity);
+					naturalWidth = natural.Width;
+					naturalHeight = natural.Height;
+				}
+
 				var measureWidth = ResolveChildMeasureConstraint(bounds.Width, isWidthProportional, widthConstraint);
 				var measureHeight = ResolveChildMeasureConstraint(bounds.Height, isHeightProportional, heightConstraint);
 
 				var measure = child.Measure(measureWidth, measureHeight);
 
-				var width = ResolveDimension(isWidthProportional, bounds.Width, availableWidth, measure.Width);
-				var height = ResolveDimension(isHeightProportional, bounds.Height, availableHeight, measure.Height);
+				var measuredChildWidth = isWidthUnbounded ? Math.Max(measure.Width, naturalWidth) : measure.Width;
+				var measuredChildHeight = isHeightUnbounded ? Math.Max(measure.Height, naturalHeight) : measure.Height;
+
+				var width = ResolveDimension(isWidthProportional, bounds.Width, availableWidth, measuredChildWidth);
+				var height = ResolveDimension(isHeightProportional, bounds.Height, availableHeight, measuredChildHeight);
 
 				measuredHeight = Math.Max(measuredHeight, bounds.Top + height);
 				measuredWidth = Math.Max(measuredWidth, bounds.Left + width);
@@ -113,8 +134,17 @@ namespace Microsoft.Maui.Layouts
 			// By default, we use the absolute value from LayoutBounds
 			var value = fromBounds;
 
-			if (isProportional && !double.IsInfinity(available))
+			if (isProportional)
 			{
+				if (double.IsInfinity(available))
+				{
+					// There's no meaningful percentage of an infinite space, so instead we determine how much
+					// space the layout would need for this child to fit at the requested proportion; a child
+					// which occupies `fromBounds` of the layout and needs `measured` requires `measured / fromBounds`.
+					// A zero (or negative/unset) proportion asks for no space at all.
+					return fromBounds > 0 ? measured / fromBounds : 0;
+				}
+
 				// If this dimension is marked proportional, then the value is a percentage of the available space
 				// Multiple it by the available space to figure out the final value
 				value *= available;
