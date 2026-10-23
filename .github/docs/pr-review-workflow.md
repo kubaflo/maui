@@ -94,6 +94,11 @@ verifies existing PR tests without starting the full review, try-fix, or a
 second expert reviewer. Each lane retains its own report and failure handling.
 This combined spelling accepts no extra arguments. Existing standalone commands
 and `/review gate` options remain unchanged.
+`/review expert-reviewer-with-gate` is an equivalent combined-command alias;
+`/review expert-reviewer` is an equivalent expert-only alias.
+The expert lane uses the trusted exact-command matcher on newly created PR
+comments, rather than the native slash-command prefilter. This preserves the
+Gate lane's acceptance of leading whitespace and case-insensitive commands.
 
 Use `/review tests` when the question is specifically about CI/test failures, for example:
 
@@ -328,8 +333,9 @@ changes select the corresponding existing UI fixture by class name. Selection re
 the prepared review checkout, not the live PR head. Unmapped baselines/pages produce
 an explicit coverage warning rather than implying that they were exercised.
 
-A request blocked by `s/agent-review-in-progress` posts a visible explanation.
-It is not queued automatically; submit the command again after the current run finishes.
+A request blocked by `s/agent-review-in-progress` records the skip only in the
+Actions step summary, without posting a PR reply. It is not queued automatically;
+submit the command again after the current run finishes.
 
 ### Trigger
 
@@ -570,10 +576,15 @@ dimension table, follow-up or separate automation-status comment. Failures and
 context limitations stay in Actions logs and artifacts. This lane
 does not edit, collapse or replace existing summary comments from earlier runs
 or other review lanes.
-A separate silent job retains native usage artifacts and updates the pinned
-daily AI-credit cache even when review or detection fails. It has no PR-write
-permission or public reporting steps; missing usage evidence is an explicit
-accounting failure, never a cached measured zero.
+Per-run AI-credit budgets are disabled for both the expert and independent
+detector, and the daily AI-credit guard is disabled. Cost accounting is not a
+prerequisite for starting or publishing a review; there is no custom accounting
+job or required daily usage cache. Native usage reporting remains diagnostic.
+The expert's configurable turn and consecutive-cache-miss caps use
+`2147483647` because pinned gh-aw v0.86.2 does not support disabling them.
+The generated detector retains the runtime's built-in turn/cache-miss caps;
+its engine-level turn setting is not propagated by this compiler.
+Provider-enforced quotas, runtime hard caps and job timeouts still apply.
 The review always covers the entire merge-base-to-head PR diff across all
 commits and changed files, not only the latest commit or changes since a prior
 review. The pinned SHA identifies the frozen snapshot and inline anchors,
