@@ -1,22 +1,14 @@
 ---
-description: Run the read-only MAUI expert reviewer with independent GPT dimension passes on an authorized PR.
+description: Artifact-only GPT expert validation for the fixes on upstream PR 39325.
 
 imports:
   - shared/gpt-6.1-sol.md
-  - uses: shared/pat_pool.md
-    with:
-      environment: copilot-pat-pool
-      condition: ${{ needs.pre_activation.outputs.review_ready == 'true' }}
-      random_seed: 0
-
-environment: copilot-pat-pool
 runs-on-slim: ubuntu-latest
 checkout: false
 
 on:
-  slash_command:
-    name: review
-    events: [pull_request_comment]
+  push:
+    branches: [kubaflo-expert-feedback-canary-39325]
   roles: [admin, maintain, write]
   reaction: none
   status-comment: false
@@ -30,6 +22,10 @@ on:
         # Slash-command dispatch cannot require a manual input; intake enforces it.
         required: false
         type: number
+      suppress_output:
+        description: Required artifact-only fork validation
+        type: boolean
+        default: true
   steps:
     - name: Authorize exact expert-review command
       id: command
@@ -41,8 +37,10 @@ on:
             core.info('Request a fresh expert review instead of rerunning earlier-attempt artifacts.');
             return;
           }
-          if (context.ref !== `refs/heads/${context.payload.repository.default_branch}`) {
-            core.info('Expert-review infrastructure must run from the default branch.');
+          if (context.repo.owner !== 'kubaflo' || context.repo.repo !== 'maui' ||
+              context.ref !== 'refs/heads/kubaflo-expert-feedback-canary-39325' ||
+              context.actor !== 'kubaflo' || context.eventName !== 'workflow_dispatch') {
+            core.info('Only the fixed fork validation dispatch may activate this canary.');
             return;
           }
           let number, actor;
@@ -62,13 +60,19 @@ on:
           if (!Number.isSafeInteger(number) || number < 1 || number > 2147483647) {
             throw new Error('Expert review requires a positive integer PR number.');
           }
+          if (number !== 39325 || String(context.payload.inputs.suppress_output) !== 'true') {
+            throw new Error('This canary only analyzes public upstream PR 39325 without publication.');
+          }
           const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
             ...context.repo, username: actor
           });
           if (!['admin', 'maintain', 'write'].includes(permission.permission)) return;
           const { data: pr } = await github.rest.pulls.get({
-            ...context.repo, pull_number: number
+            owner: 'dotnet', repo: 'maui', pull_number: number
           });
+          if (pr.base?.repo?.full_name !== 'dotnet/maui' || pr.base.repo.private !== false) {
+            throw new Error('Only the fixed public upstream repository may be analyzed.');
+          }
           if (pr.state !== 'open') return;
           core.setOutput('actor', actor);
           core.setOutput('pr_number', String(number));
@@ -88,8 +92,9 @@ on:
         PR_NUMBER: ${{ steps.command.outputs.pr_number }}
         REVIEW_ACTOR: ${{ steps.command.outputs.actor }}
       run: |
+        git remote set-url origin https://github.com/dotnet/maui.git
         timeout -k 30s 10m pwsh -NoProfile -File .github/scripts/Review-Expert.ps1 \
-          -Stage Gather -PRNumber "$PR_NUMBER" -Repository "$GITHUB_REPOSITORY" \
+          -Stage Gather -PRNumber "$PR_NUMBER" -Repository dotnet/maui \
           -Actor "$REVIEW_ACTOR" -OutputDirectory "$RUNNER_TEMP/expert-context"
     - name: Upload frozen expert-review context
       if: steps.context.outputs.ready == 'true'
@@ -116,7 +121,7 @@ engine:
   bare: true
   env:
     COPILOT_PROVIDER_WIRE_API: responses
-    COPILOT_GITHUB_TOKEN: ${{ case(needs.pat_pool.outputs.pat_number == '0', secrets.COPILOT_PAT_0, needs.pat_pool.outputs.pat_number == '1', secrets.COPILOT_PAT_1, needs.pat_pool.outputs.pat_number == '2', secrets.COPILOT_PAT_2, needs.pat_pool.outputs.pat_number == '3', secrets.COPILOT_PAT_3, needs.pat_pool.outputs.pat_number == '4', secrets.COPILOT_PAT_4, needs.pat_pool.outputs.pat_number == '5', secrets.COPILOT_PAT_5, needs.pat_pool.outputs.pat_number == '6', secrets.COPILOT_PAT_6, needs.pat_pool.outputs.pat_number == '7', secrets.COPILOT_PAT_7, needs.pat_pool.outputs.pat_number == '8', secrets.COPILOT_PAT_8, needs.pat_pool.outputs.pat_number == '9', secrets.COPILOT_PAT_9, 'NO COPILOT PAT AVAILABLE') }}
+    COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
 jobs:
   pre-activation:
@@ -127,7 +132,7 @@ jobs:
       review_head: ${{ steps.context.outputs.head_sha }}
       review_base: ${{ steps.context.outputs.base_sha }}
   agent:
-    needs: [pre_activation, activation, pat_pool, publication_context]
+    needs: [pre_activation, activation, publication_context]
   publication_context:
     needs: [pre_activation, activation]
     runs-on: ubuntu-slim
@@ -254,10 +259,7 @@ jobs:
           retention-days: 7
   complete_request:
     needs: [pre_activation, activation, safe_outputs]
-    if: >-
-      needs.safe_outputs.result == 'success' &&
-      github.run_attempt == 1 &&
-      !cancelled()
+    if: github.repository == 'dotnet/maui' && needs.safe_outputs.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -300,7 +302,7 @@ safe-outputs:
       bare: true
       env:
         COPILOT_PROVIDER_WIRE_API: responses
-        COPILOT_GITHUB_TOKEN: ${{ case(needs.pat_pool.outputs.pat_number == '0', secrets.COPILOT_PAT_0, needs.pat_pool.outputs.pat_number == '1', secrets.COPILOT_PAT_1, needs.pat_pool.outputs.pat_number == '2', secrets.COPILOT_PAT_2, needs.pat_pool.outputs.pat_number == '3', secrets.COPILOT_PAT_3, needs.pat_pool.outputs.pat_number == '4', secrets.COPILOT_PAT_4, needs.pat_pool.outputs.pat_number == '5', secrets.COPILOT_PAT_5, needs.pat_pool.outputs.pat_number == '6', secrets.COPILOT_PAT_6, needs.pat_pool.outputs.pat_number == '7', secrets.COPILOT_PAT_7, needs.pat_pool.outputs.pat_number == '8', secrets.COPILOT_PAT_8, needs.pat_pool.outputs.pat_number == '9', secrets.COPILOT_PAT_9, 'NO COPILOT PAT AVAILABLE') }}
+        COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
     prompt: |
       Analyze the full output without delegation. This is not an expert-review
       execution; do not load the expert adapter or run dimension workers.
@@ -361,23 +363,21 @@ safe-outputs:
         GH_AW_ALLOWED_DOMAINS: github.com,api.github.com
       run: |
         .github/scripts/Review-Expert.ps1 -Stage Prepare `
-          -PRNumber ([int]$env:PR_NUMBER) -Repository $env:GITHUB_REPOSITORY `
+          -PRNumber ([int]$env:PR_NUMBER) -Repository dotnet/maui `
           -ContextDirectory "$env:RUNNER_TEMP/expert-context" `
           -ResultDirectory "$env:RUNNER_TEMP/expert-results" `
           -OutputDirectory "$env:RUNNER_TEMP/expert-publication" `
           -AgentOutputPath $env:AGENT_OUTPUT_PATH
-    - name: Submit the validated review atomically without anchor fallback
+    - name: Keep the validated fork result artifact-only
       shell: pwsh
       env:
         GH_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ needs.publication_context.outputs.pr_number }}
         AGENT_OUTPUT_PATH: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
       run: |
-        .github/scripts/Review-Expert.ps1 -Stage Publish `
-          -PRNumber ([int]$env:PR_NUMBER) -Repository $env:GITHUB_REPOSITORY `
-          -ContextDirectory "$env:RUNNER_TEMP/expert-context" `
-          -ResultDirectory "$env:RUNNER_TEMP/expert-publication" `
-          -AgentOutputPath $env:AGENT_OUTPUT_PATH
+        $output = ConvertFrom-Json ([IO.File]::ReadAllText($env:AGENT_OUTPUT_PATH)) -AsHashtable
+        $output.items = @(@{ type = 'noop'; message = 'Artifact-only fork validation; no PR was mutated.' })
+        [IO.File]::WriteAllText($env:AGENT_OUTPUT_PATH, (ConvertTo-Json $output -Depth 50))
     - name: Retain validated publication plan and receipt
       if: always()
       uses: actions/upload-artifact@v7.0.1
@@ -421,8 +421,9 @@ steps:
     env:
       PR_NUMBER: ${{ needs.pre_activation.outputs.review_pr }}
     run: |
+      git remote set-url origin https://github.com/dotnet/maui.git
       .github/scripts/Review-Expert.ps1 -Stage Snapshot `
-        -PRNumber ([int]$env:PR_NUMBER) -Repository $env:GITHUB_REPOSITORY `
+        -PRNumber ([int]$env:PR_NUMBER) -Repository dotnet/maui `
         -ContextDirectory "$env:RUNNER_TEMP/gh-aw/agent/expert-context" `
         -OutputDirectory "$env:RUNNER_TEMP/gh-aw/pr-source"
       $result = "CustomAgentLogsTmp/PRState/$env:PR_NUMBER/PRAgent"

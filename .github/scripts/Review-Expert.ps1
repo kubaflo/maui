@@ -136,7 +136,7 @@ function Assert-ExpertPermission {
     param([string]$Login)
 
     if ($Login -notmatch '^[A-Za-z0-9][A-Za-z0-9-]*$') { throw 'A human review requester is required.' }
-    $permission = Invoke-ExpertGh -Arguments @("repos/$Repository/collaborators/$Login/permission")
+    $permission = Invoke-ExpertGh -Arguments @("repos/kubaflo/maui/collaborators/$Login/permission")
     if ($permission.permission -notin @('admin', 'maintain', 'write')) {
         throw 'The expert-review requester does not have current repository write access.'
     }
@@ -236,7 +236,7 @@ function Get-ExpertRunUrl {
     if (-not $env:GITHUB_RUN_ID -or $env:GITHUB_RUN_ID -notmatch '^[1-9][0-9]*$') {
         throw 'A trusted GitHub run identity is required.'
     }
-    return "$env:GITHUB_SERVER_URL/$Repository/actions/runs/$env:GITHUB_RUN_ID"
+    return "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
 }
 
 function Get-ExpertFindings {
@@ -495,6 +495,7 @@ function Invoke-ExpertGather {
         actor = $Actor; head_sha = $head; base_sha = $base; merge_base_sha = $mergeBase
         infrastructure_sha = $infrastructure; paths = $paths; gaps = $gaps.ToArray()
         expected_dimensions = $expectedDimensions
+        authorization_repository = 'kubaflo/maui'; publication_suppressed = $true
     }
     Write-ExpertJson (Join-Path $OutputDirectory 'context.json') $context
     foreach ($file in Get-ChildItem -LiteralPath $OutputDirectory -File) {
@@ -555,7 +556,8 @@ function Invoke-ExpertPrepare {
         }
     }
     foreach ($key in @('target_repo', 'target-repo', 'repo', 'repository')) {
-        if ($message.Contains($key) -and $message[$key] -cne $Repository) {
+        if ($message.Contains($key) -and $message[$key] -cne $Repository -and
+            $message[$key] -cne 'kubaflo/maui') {
             throw 'Expert output selected an unexpected publication repository.'
         }
     }
@@ -859,6 +861,19 @@ function Invoke-ExpertComplete {
         throw 'GitHub did not confirm command minimization.'
     }
     Write-Host 'Verified the expert-review receipt and inline publication, then minimized its command.'
+}
+
+if ($Repository -cne 'dotnet/maui' -or $PRNumber -ne 39325 -or $Actor -cne 'kubaflo' -or
+    $env:GITHUB_REPOSITORY -cne 'kubaflo/maui' -or $env:GITHUB_ACTOR -cne 'kubaflo' -or
+    $env:GITHUB_REF -cne 'refs/heads/kubaflo-expert-feedback-canary-39325' -or
+    $env:GITHUB_EVENT_NAME -cne 'workflow_dispatch' -or $env:GITHUB_RUN_ATTEMPT -cne '1' -or
+    $Stage -cnotin @('Gather', 'Snapshot', 'Prepare')) {
+    throw 'Only fixed, first-attempt, read-only fork validation may execute this script.'
+}
+$canaryEvent = Read-ExpertJson $env:GITHUB_EVENT_PATH
+if ([string]$canaryEvent.inputs.pr_number -cne '39325' -or
+    [string]$canaryEvent.inputs.suppress_output -cne 'true') {
+    throw 'This fork validation cannot publish or analyze another PR.'
 }
 
 switch ($Stage) {
