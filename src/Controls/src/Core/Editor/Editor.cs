@@ -151,6 +151,22 @@ namespace Microsoft.Maui.Controls
 
 		protected override Size ArrangeOverride(Rect bounds)
 		{
+			// An auto-sizing Editor is meant to start at its measured (text driven) height and grow as
+			// text is added. Because an Editor defaults to VerticalOptions="Fill", the arrange logic in
+			// LayoutExtensions.ComputeFrame would otherwise discard the desired height and stretch the
+			// control to min(bounds.Height, MaximumHeight), which makes it jump straight to
+			// MaximumHeightRequest. Capping the bounds leaves nothing to stretch into, so the frame keeps
+			// the measured height, which is already clamped to Minimum/MaximumHeightRequest.
+			IView view = this;
+			if (AutoSize == EditorAutoSizeOption.TextChanges && !IsExplicitSet(view.Height))
+			{
+				var desiredHeight = DesiredSize.Height;
+				if (desiredHeight > 0 && desiredHeight < bounds.Height)
+				{
+					bounds = new Rect(bounds.X, bounds.Y, bounds.Width, desiredHeight);
+				}
+			}
+
 			_previousBounds = bounds;
 			return base.ArrangeOverride(bounds);
 		}
