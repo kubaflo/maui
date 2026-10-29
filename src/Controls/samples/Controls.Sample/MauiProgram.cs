@@ -58,6 +58,12 @@ namespace Maui.Controls.Sample
 			appBuilder.UseMauiMaps();
 #endif
 			appBuilder.UseMauiApp<XamlApp>();
+#if ANDROID
+			appBuilder.ConfigureMauiHandlers(handlers =>
+			{
+				handlers.AddHandler<SpinnerTimePicker, Platform.SpinnerTimePickerHandler>();
+			});
+#endif
 			var services = appBuilder.Services;
 
 			if (UseCollectionView2)
