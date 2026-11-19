@@ -3,12 +3,8 @@ description: "/review run-tests, second model: Claude Opus 5.5 picks UI tests fr
 
 imports:
   - shared/threat-detection.md
-  - uses: shared/pat_pool.md
-    with:
-      environment: copilot-pat-pool
   - shared/run-tests-selection.md
 
-environment: copilot-pat-pool
 
 # The agent works from the collected context and GitHub read tools; it never needs PR code on disk.
 checkout: false
@@ -81,7 +77,7 @@ model: claude-opus-5.5
 engine:
   id: copilot
   env:
-    COPILOT_GITHUB_TOKEN: ${{ case(needs.pat_pool.outputs.pat_number == '0', secrets.COPILOT_PAT_0, needs.pat_pool.outputs.pat_number == '1', secrets.COPILOT_PAT_1, needs.pat_pool.outputs.pat_number == '2', secrets.COPILOT_PAT_2, needs.pat_pool.outputs.pat_number == '3', secrets.COPILOT_PAT_3, needs.pat_pool.outputs.pat_number == '4', secrets.COPILOT_PAT_4, needs.pat_pool.outputs.pat_number == '5', secrets.COPILOT_PAT_5, needs.pat_pool.outputs.pat_number == '6', secrets.COPILOT_PAT_6, needs.pat_pool.outputs.pat_number == '7', secrets.COPILOT_PAT_7, needs.pat_pool.outputs.pat_number == '8', secrets.COPILOT_PAT_8, needs.pat_pool.outputs.pat_number == '9', secrets.COPILOT_PAT_9, 'NO COPILOT PAT AVAILABLE') }}
+    COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
 jobs:
   pre-activation:
