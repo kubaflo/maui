@@ -1,0 +1,14 @@
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/bin/Debug/net8.0/.msCoverageSourceRootsMapping_TextKit.Tests
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/bin/Debug/net8.0/xunit.runner.visualstudio.testadapter.dll
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/bin/Debug/net8.0/xunit.runner.reporters.netcoreapp10.dll
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/bin/Debug/net8.0/xunit.runner.utility.netcoreapp10.dll
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/bin/Debug/net8.0/TextKit.Tests.dll
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/bin/Debug/net8.0/TextKit.Tests.pdb
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/obj/Debug/net8.0/TextKit.Tests.csproj.AssemblyReference.cache
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/obj/Debug/net8.0/TextKit.Tests.GeneratedMSBuildEditorConfig.editorconfig
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/obj/Debug/net8.0/TextKit.Tests.AssemblyInfoInputs.cache
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/obj/Debug/net8.0/TextKit.Tests.AssemblyInfo.cs
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/obj/Debug/net8.0/TextKit.Tests.csproj.CoreCompileInputs.cache
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/obj/Debug/net8.0/TextKit.Tests.dll
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/obj/Debug/net8.0/refint/TextKit.Tests.dll
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit.Tests/obj/Debug/net8.0/TextKit.Tests.pdb

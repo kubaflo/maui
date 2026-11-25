@@ -1,0 +1,9 @@
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/bin/Debug/net8.0/TextKit.dll
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/bin/Debug/net8.0/TextKit.pdb
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/obj/Debug/net8.0/TextKit.GeneratedMSBuildEditorConfig.editorconfig
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/obj/Debug/net8.0/TextKit.AssemblyInfoInputs.cache
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/obj/Debug/net8.0/TextKit.AssemblyInfo.cs
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/obj/Debug/net8.0/TextKit.csproj.CoreCompileInputs.cache
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/obj/Debug/net8.0/TextKit.dll
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/obj/Debug/net8.0/refint/TextKit.dll
+/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/obj/Debug/net8.0/TextKit.pdb

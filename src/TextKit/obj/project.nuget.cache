@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "umI4K2s35+M=",
+  "success": true,
+  "projectFilePath": "/private/var/folders/tx/6wyzvmm94xnblz0t89xgjdw00000gn/T/tmp.hVvspRxdDK/src/TextKit/TextKit.csproj",
+  "expectedPackageFiles": [
+    "/Users/kubaflo/.nuget/packages/microsoft.netcore.app.ref/8.0.34/microsoft.netcore.app.ref.8.0.34.nupkg.sha512",
+    "/Users/kubaflo/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.34/microsoft.aspnetcore.app.ref.8.0.34.nupkg.sha512"
+  ],
+  "logs": []
+}
