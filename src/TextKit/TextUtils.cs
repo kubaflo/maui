@@ -9,4 +9,12 @@ public static class TextUtils
 
 		return char.ToUpperInvariant(text[0]) + text.Substring(1);
 	}
+
+	public static string Truncate(string text, int maxLength)
+	{
+		if (text.Length <= maxLength)
+			return text;
+
+		return text.Substring(0, maxLength - 3) + "...";
+	}
 }

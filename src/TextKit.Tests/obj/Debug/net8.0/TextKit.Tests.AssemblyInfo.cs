@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TextKit.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+85218fdd57e3c1f17dbf98d4301101f9b1eff455")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e60984416ed3db4674af28fc855f6caa2afb5ac5")]
 [assembly: System.Reflection.AssemblyProductAttribute("TextKit.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TextKit.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
