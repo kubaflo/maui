@@ -9,4 +9,9 @@ public static class TextUtils
 
 		return char.ToUpperInvariant(text[0]) + text.Substring(1);
 	}
+
+	public static int WordCount(string text)
+	{
+		return text.Split(' ').Length;
+	}
 }
