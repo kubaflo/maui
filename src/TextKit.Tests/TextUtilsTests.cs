@@ -9,4 +9,14 @@ public class TextUtilsTests
 	[InlineData("maui", "Maui")]
 	public void CapitalizeUppercasesFirstLetter(string? input, string expected)
 		=> Assert.Equal(expected, TextUtils.Capitalize(input));
+
+	[Theory]
+	[InlineData("ada lovelace", "AL")]
+	[InlineData("Ada  Lovelace", "AL")]
+	[InlineData(" Ada Lovelace", "AL")]
+	[InlineData("Ada Lovelace ", "AL")]
+	[InlineData("", "")]
+	[InlineData("   ", "")]
+	public void InitialsIgnoresEmptyNameParts(string input, string expected)
+		=> Assert.Equal(expected, TextUtils.Initials(input));
 }
