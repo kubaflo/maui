@@ -399,7 +399,7 @@ jobs:
                 ? `❌ The [fix round](${runUrl}) failed twice in a row. A maintainer can comment \`/review autopilot\` to try again.`
                 : '❌ The last fix round found nothing more it could fix. A maintainer can decide how to continue.';
               await github.rest.issues.createComment({ ...context.repo, issue_number: number,
-                body: `## MAUI Autopilot — Stopped\n\n${summary}${reason ? `\n\n<details><summary>Why</summary>\n\n${reason}\n\n</details>` : ''}\n\n<!-- ${failed ? 'maui-expert-autopilot-status' : 'maui-expert-autopilot-result'} -->` });
+                body: `## MAUI Autopilot — Stopped\n\n${summary}${reason ? `\n\n<details><summary>Why</summary>\n\n${reason}\n\n</details>` : ''}\n\n<!-- maui-expert-autopilot-status -->` });
               if (note) await github.rest.issues.deleteComment({ ...context.repo, comment_id: note.id }).catch(() => {});
             };
             const { data: labels } = await github.rest.issues.listLabelsOnIssue({ ...context.repo, issue_number: number });
