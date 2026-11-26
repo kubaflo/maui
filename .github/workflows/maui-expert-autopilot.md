@@ -117,6 +117,11 @@ on:
             // Hide the command as resolved, like the other /review commands.
             await github.graphql('mutation($id: ID!) { minimizeComment(input: { subjectId: $id, classifier: RESOLVED }) { minimizedComment { isMinimized } } }',
               { id: context.payload.comment.node_id }).catch(e => core.warning(`Could not hide the command: ${e.message}`));
+            // A run can start late; a newer start or stop command wins over this one.
+            const comments = await github.paginate(github.rest.issues.listComments, { ...repo, issue_number: number, since: context.payload.comment.created_at, per_page: 100 });
+            if (comments.some(c => c.id > context.payload.comment.id && c.user?.type === 'User' && COMMAND.test(c.body || ''))) {
+              return core.info('A newer /review autopilot command supersedes this one.');
+            }
             if (command[1]) {
               if (pr.state === 'open') await stopLoop(`## MAUI Autopilot — Stopped\n\nStopped by @${requester}.`);
               return;
