@@ -14,7 +14,7 @@ public static class TextUtils
 	{
 		for (int i = 0; i < text.Length; i++)
 		{
-			if (text[i] != text[text.Length - i])
+			if (text[i] != text[text.Length - 1 - i])
 				return false;
 		}
 		return true;
