@@ -13,11 +13,12 @@ public static class TextUtils
 	public static string Reverse(string text)
 	{
 		var chars = text.ToCharArray();
-		for (int i = 0; i <= chars.Length / 2; i++)
+		for (int i = 0; i < chars.Length / 2; i++)
 		{
+			int opposite = chars.Length - 1 - i;
 			var tmp = chars[i];
-			chars[i] = chars[chars.Length - i];
-			chars[chars.Length - i] = tmp;
+			chars[i] = chars[opposite];
+			chars[opposite] = tmp;
 		}
 		return new string(chars);
 	}
