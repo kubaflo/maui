@@ -570,6 +570,34 @@ steps:
       jq 'length' /tmp/gh-aw/autopilot/threads.json
       git status --short | head -20
 
+  - name: Collect the failing test evidence
+    # The agent can't reach Azure DevOps itself; fetch the failed jobs, tasks, and error lines up front.
+    if: needs.pre_activation.outputs.autopilot_source == 'tests'
+    env:
+      PR_NUMBER: ${{ needs.pre_activation.outputs.autopilot_pr }}
+      HEAD_SHA: ${{ needs.pre_activation.outputs.autopilot_head_sha }}
+      GH_TOKEN: ${{ github.token }}
+    run: |
+      set -uo pipefail
+      OUT=/tmp/gh-aw/autopilot/test-failures.md
+      API=https://dev.azure.com/dnceng-public/public/_apis/build/builds
+      BODY="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --paginate \
+        --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"<!-- review-run-tests-head: ${HEAD_SHA} -->\"))) | .body" | tail -c 200000)"
+      echo "# Failing test evidence for ${HEAD_SHA}" > "${OUT}"
+      for BUILD in $(grep -oE 'buildId=[0-9]+' <<< "${BODY}" | cut -d= -f2 | sort -u); do
+        TIMELINE="$(curl -fsSL "${API}/${BUILD}/timeline?api-version=7.1")" || { echo "Build ${BUILD}: timeline unavailable" >> "${OUT}"; continue; }
+        RESULT="$(curl -fsSL "${API}/${BUILD}?api-version=7.1" | jq -r '.result // "unknown"')"
+        printf '\n## Build %s: %s\n\nhttps://dev.azure.com/dnceng-public/public/_build/results?buildId=%s\n' "${BUILD}" "${RESULT}" "${BUILD}" >> "${OUT}"
+        jq -r '.records[] | select(.result == "failed" and (.type == "Job" or .type == "Task")) |
+          "- \(.type) **\(.name)**: \([.issues[]?.message] | join(" / ") | .[0:400])"' <<< "${TIMELINE}" >> "${OUT}"
+        for LOG in $(jq -r '.records[] | select(.result == "failed" and .type == "Task" and .log.id != null) | .log.id' <<< "${TIMELINE}" | head -8); do
+          printf '\n### Log %s: error lines\n\n```\n' "${LOG}" >> "${OUT}"
+          curl -fsSL "${API}/${BUILD}/logs/${LOG}?api-version=7.1" | grep -E 'error [A-Z]+[0-9]+|\[FAIL\]|Failed [A-Za-z]|Assert\.' | sed -E 's/^[0-9T:.Z-]+ //' | sort -u | head -40 >> "${OUT}"
+          printf '```\n' >> "${OUT}"
+        done
+      done
+      cat "${OUT}"
+
 
 network:
   allowed:
@@ -656,7 +684,9 @@ The PR head is checked out on `work_branch`.
 1. **Collect the items.**
    - `expert`: every `critical`/`major` finding; `moderate`/`minor` only when the fix is small and safe.
    - `tests`: every failing test in the run-tests comment. Open its linked Azure DevOps results for
-     the error and stack trace. Decide for each failure whether this PR causes it. Do not "fix"
+     the error and stack trace: `/tmp/gh-aw/autopilot/test-failures.md` already has each failed job, task, and
+     its error lines. Decide for each failure whether this PR causes it: a build error or test in code the PR
+     doesn't touch, that also fails on the base branch, is not caused by it. Do not "fix"
      failures that are unrelated (infrastructure, known flaky tests); list them in your comment.
    - `copilot`, and in every round: each unresolved Copilot code review thread in `threads.json`
      (author `copilot-pull-request-reviewer`) that has no maui-expert-autopilot reply. Treat a suggestion
