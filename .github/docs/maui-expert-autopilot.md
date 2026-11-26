@@ -92,6 +92,8 @@ The items come from:
 
 - the expert review: all critical and major findings, plus small and safe moderate and minor ones,
 - failing tests the PR causes: the round lists infrastructure and known-flaky failures instead of fixing them,
+- Copilot code review suggestions that are still open: after a clean expert review, open Copilot threads
+  start a fix round before the tests run. Each one is fixed or answered in its thread,
 - open maintainer requests.
 
 How the fixes are published:
