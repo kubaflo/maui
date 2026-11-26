@@ -59,6 +59,9 @@ public static class TextUtils
 		if (maxLength == 0)
 			return string.Empty;
 
-		return text.Substring(0, maxLength - 1) + "…";
+		var length = maxLength - 1;
+		if (length > 0 && char.IsSurrogatePair(text[length - 1], text[length]))
+			length--;
+		return text.Substring(0, length) + "…";
 	}
 }
