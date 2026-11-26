@@ -9,4 +9,12 @@ public static class TextUtils
 
 		return char.ToUpperInvariant(text[0]) + text.Substring(1);
 	}
+
+	public static string Slugify(string title)
+	{
+		var slug = title.ToLower().Replace(' ', '-');
+		while (slug.Contains("--"))
+			slug = slug.Replace("--", "-");
+		return slug.Trim('-').Substring(0, 50);
+	}
 }
