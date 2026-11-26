@@ -26,7 +26,11 @@ public class TextUtilsTests
 	public void InitialsPreservesSupplementaryCharacters(string input, string expected)
 		=> Assert.Equal(expected, TextUtils.Initials(input));
 
-	[Fact]
-	public void InitialsSplitsOnAnyWhitespace()
-		=> Assert.Equal("AL", TextUtils.Initials("Ada\tLovelace"));
+	[Theory]
+	[InlineData("Ada\tLovelace", "AL")]
+	[InlineData("\tAda \r\n Lovelace\n", "AL")]
+	[InlineData("Ada\u00A0Lovelace", "AL")]
+	[InlineData("\t\r\n\u00A0", "")]
+	public void InitialsSplitsOnAnyWhitespace(string input, string expected)
+		=> Assert.Equal(expected, TextUtils.Initials(input));
 }
