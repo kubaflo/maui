@@ -9,24 +9,35 @@ permissions: {}
 jobs:
   simulate:
     runs-on: ubuntu-latest
-    permissions: { actions: write, issues: write, pull-requests: write }
+    permissions: { actions: write, contents: write, issues: write, pull-requests: write }
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         env: { PR_NUMBER: "${{ inputs.pr_number }}" }
         with:
           script: |
             const number = Number(process.env.PR_NUMBER);
-            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number });
+            let { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number });
+            // Like a contributor, add a test that documents the intended behavior and fails today.
+            const path = 'src/TextKit.Tests/TextUtilsTests.cs';
+            const { data: file } = await github.rest.repos.getContent({ ...context.repo, path, ref: pr.head.ref });
+            let text = Buffer.from(file.content, 'base64').toString('utf8').trimEnd();
+            text = text.replace(/}\s*$/, '') + '\n\t[Fact]\n\tpublic void WordCountReturnsZeroForNull()\n\t\t=> Assert.Equal(0, TextUtils.WordCount(null!));\n}\n';
+            await github.rest.repos.createOrUpdateFileContents({ ...context.repo, path, branch: pr.head.ref, sha: file.sha,
+              message: 'Add WordCount null test', content: Buffer.from(text).toString('base64') });
+            ({ data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number }));
+            // Sandbox stand-in for a clean expert review of the new head, so the loop is in its test stage.
+            await github.rest.pulls.createReview({ ...context.repo, pull_number: number, commit_id: pr.head.sha, event: 'COMMENT',
+              body: '## Expert Review — 0 findings\n\n_Sandbox stand-in: the expert review of this head is treated as clean._' });
             const body = [
               '<!-- review-run-tests-all -->',
               '### 🧪 /review run-tests',
               '<img alt="Result FAILED" src="https://img.shields.io/badge/Result-FAILED-cf222e">',
               '',
               '<!-- run-tests-section: ui -->',
-              '❌ [maui-pr-uitests #424242](https://dev.azure.com/dnceng-public/public/_build/results?buildId=424242) failed: 1 test failed.',
+              '❌ Sandbox stand-in for maui-pr-uitests: 1 test failed. Reproduce with `dotnet test src/TextKit.Tests/TextKit.Tests.csproj --filter WordCountReturnsZeroForNull`.',
               '',
               '| Test | Error |', '|---|---|',
-              '| `TextUtilsTests.WordCountReturnsZeroForNull` (android) | `System.NullReferenceException : Object reference not set to an instance of an object.` at `TextKit.TextUtils.WordCount(String text)` in `src/TextKit/TextUtils.cs:line 17` |',
+              '| `TextUtilsTests.WordCountReturnsZeroForNull` | `System.NullReferenceException : Object reference not set to an instance of an object.` at `TextKit.TextUtils.WordCount(String text)` |',
               `<!-- review-run-tests-head: ${pr.head.sha} -->`,
               '<!-- review-run-tests-state: done -->',
               '<!-- run-tests-result: FAILED -->',
