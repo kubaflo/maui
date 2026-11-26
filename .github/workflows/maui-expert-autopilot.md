@@ -374,6 +374,7 @@ jobs:
           PR_NUMBER: ${{ needs.pre_activation.outputs.autopilot_pr }}
           HEAD_SHA: ${{ needs.pre_activation.outputs.autopilot_head_sha }}
           IS_FORK: ${{ needs.pre_activation.outputs.autopilot_is_fork }}
+          RUN_ID: ${{ github.run_id }}
         with:
           script: |
             const LABEL = 's/autopilot-running';
@@ -382,6 +383,19 @@ jobs:
               const { data: labels } = await github.rest.issues.listLabelsOnIssue({ ...context.repo, issue_number: n });
               for (const l of labels.filter(l => l.name.startsWith('s/autopilot-')))
                 await github.rest.issues.removeLabel({ ...context.repo, issue_number: n, name: l.name }).catch(() => {});
+            };
+            // The round fixed nothing: replace the agent's explanation with a final Stopped comment and hide
+            // the earlier status comments, so the PR ends with one visible result.
+            const finishNoop = async () => {
+              const all = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: number, per_page: 100 });
+              const bot = all.filter(c => c.user?.login === 'github-actions[bot]');
+              const note = bot.filter(c => (c.body || '').includes(`id: ${process.env.RUN_ID},`)).pop();
+              const reason = (note?.body || '').replace(/<!--[\s\S]*?-->/g, '').replace(/^\*\*MAUI Autopilot\*\*[^\n]*\n+/, '').trim();
+              for (const c of bot.filter(c => (c.body || '').includes('<!-- maui-expert-autopilot-status -->')))
+                await github.graphql('mutation($id: ID!) { minimizeComment(input: { subjectId: $id, classifier: RESOLVED }) { minimizedComment { isMinimized } } }', { id: c.node_id }).catch(() => {});
+              await github.rest.issues.createComment({ ...context.repo, issue_number: number,
+                body: `## MAUI Autopilot — Stopped\n\n❌ The last fix round found nothing more it could fix. A maintainer can decide how to continue.${reason ? `\n\n<details><summary>Why</summary>\n\n${reason}\n\n</details>` : ''}\n\n<!-- maui-expert-autopilot-result -->` });
+              if (note) await github.rest.issues.deleteComment({ ...context.repo, comment_id: note.id }).catch(() => {});
             };
             let target = number;
             if (process.env.IS_FORK === 'true') {
@@ -396,6 +410,7 @@ jobs:
               const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number });
               if (pr.state !== 'open' || pr.head.sha === process.env.HEAD_SHA) {
                 await stop();
+                if (pr.state === 'open') await finishNoop();
                 return core.info('Nothing was pushed; the loop is done (see the maui-expert-autopilot comment).');
               }
             }
