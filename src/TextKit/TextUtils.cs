@@ -9,4 +9,9 @@ public static class TextUtils
 
 		return char.ToUpperInvariant(text[0]) + text.Substring(1);
 	}
+
+	public static string Mask(string value, int visible)
+	{
+		return new string('*', value.Length - visible) + value.Substring(value.Length - visible);
+	}
 }
