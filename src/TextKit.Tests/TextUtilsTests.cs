@@ -1,3 +1,4 @@
+using System;
 using TextKit;
 using Xunit;
 
@@ -16,4 +17,8 @@ public class TextUtilsTests
 	[InlineData("ab", 3, "ababab")]
 	public void RepeatReturnsExactlyCountCopies(string text, int count, string expected)
 		=> Assert.Equal(expected, TextUtils.Repeat(text, count));
+
+	[Fact]
+	public void RepeatThrowsForNegativeCount()
+		=> Assert.Throws<ArgumentOutOfRangeException>("count", () => TextUtils.Repeat("ab", -1));
 }

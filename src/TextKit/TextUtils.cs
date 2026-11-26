@@ -1,3 +1,5 @@
+using System;
+
 namespace TextKit;
 
 public static class TextUtils
@@ -11,8 +13,11 @@ public static class TextUtils
 	}
 
 	/// <summary>Returns <paramref name="text"/> repeated <paramref name="count"/> times.</summary>
+	/// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is negative.</exception>
 	public static string Repeat(string text, int count)
 	{
+		ArgumentOutOfRangeException.ThrowIfNegative(count);
+
 		var result = "";
 		for (int i = 0; i < count; i++)
 			result += text;
