@@ -25,5 +25,5 @@ public class TextUtilsTests
 
 	[Fact]
 	public void WordCountReturnsZeroForNull()
-		=> Assert.Equal(0, TextUtils.WordCount(null!));
+		=> Assert.Equal(0, TextUtils.WordCount(null));
 }
