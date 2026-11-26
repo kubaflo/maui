@@ -1,0 +1,38 @@
+# Sandbox only: Azure DevOps cannot run tests for this fork, so post a run-tests result the way
+# review-run-tests-results would, then continue PR Autopilot.
+name: Sandbox simulate run-tests failure
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number: { required: true, type: string }
+permissions: {}
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    permissions: { actions: write, issues: write, pull-requests: write }
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env: { PR_NUMBER: "${{ inputs.pr_number }}" }
+        with:
+          script: |
+            const number = Number(process.env.PR_NUMBER);
+            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number });
+            const body = [
+              '<!-- review-run-tests-all -->',
+              '### 🧪 /review run-tests',
+              '<img alt="Result FAILED" src="https://img.shields.io/badge/Result-FAILED-cf222e">',
+              '',
+              '<!-- run-tests-section: ui -->',
+              '❌ [maui-pr-uitests #424242](https://dev.azure.com/dnceng-public/public/_build/results?buildId=424242) failed: 1 test failed.',
+              '',
+              '| Test | Error |', '|---|---|',
+              '| `TextUtilsTests.WordCountReturnsZeroForNull` (android) | `System.NullReferenceException : Object reference not set to an instance of an object.` at `TextKit.TextUtils.WordCount(String text)` in `src/TextKit/TextUtils.cs:line 17` |',
+              `<!-- review-run-tests-head: ${pr.head.sha} -->`,
+              '<!-- review-run-tests-state: done -->',
+              '<!-- run-tests-result: FAILED -->',
+              '<!-- /run-tests-section: ui -->',
+            ].join('\n');
+            await github.rest.issues.createComment({ ...context.repo, issue_number: number, body });
+            await github.rest.issues.addLabels({ ...context.repo, issue_number: number, labels: ['s/autopilot-running'] });
+            await github.rest.actions.createWorkflowDispatch({ ...context.repo, workflow_id: 'pr-autopilot.lock.yml',
+              ref: context.payload.repository.default_branch, inputs: { pr_number: String(number) } });
