@@ -44,4 +44,12 @@ public static class TextUtils
 			length--;
 		return slug.Substring(0, length);
 	}
+
+	/// <summary>Shortens <paramref name="text"/> to at most <paramref name="maxLength"/> characters, ending with "…".</summary>
+	public static string Truncate(string text, int maxLength)
+	{
+		if (text.Length <= maxLength)
+			return text;
+		return text.Substring(0, maxLength) + "…";
+	}
 }
