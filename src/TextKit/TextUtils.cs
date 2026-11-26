@@ -10,11 +10,23 @@ public static class TextUtils
 		return char.ToUpperInvariant(text[0]) + text.Substring(1);
 	}
 
+	/// <summary>
+	/// Creates a lowercase URL path slug of at most 50 UTF-16 code units.
+	/// </summary>
 	public static string Slugify(string title)
 	{
 		var slug = title.ToLowerInvariant().Replace(' ', '-');
 		while (slug.Contains("--"))
 			slug = slug.Replace("--", "-");
-		return slug.Trim('-').Substring(0, 50);
+
+		slug = slug.Trim('-');
+		const int MaxSlugLength = 50;
+		if (slug.Length <= MaxSlugLength)
+			return slug;
+
+		var length = MaxSlugLength;
+		if (char.IsSurrogatePair(slug[length - 1], slug[length]))
+			length--;
+		return slug.Substring(0, length);
 	}
 }
