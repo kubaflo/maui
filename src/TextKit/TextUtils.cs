@@ -12,7 +12,7 @@ public static class TextUtils
 
 	public static string Slugify(string title)
 	{
-		var slug = title.ToLower().Replace(' ', '-');
+		var slug = title.ToLowerInvariant().Replace(' ', '-');
 		while (slug.Contains("--"))
 			slug = slug.Replace("--", "-");
 		return slug.Trim('-').Substring(0, 50);
