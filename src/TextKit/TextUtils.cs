@@ -9,4 +9,12 @@ public static class TextUtils
 
 		return char.ToUpperInvariant(text[0]) + text.Substring(1);
 	}
+
+	public static string Repeat(string text, int count)
+	{
+		var result = "";
+		for (int i = 0; i <= count; i++)
+			result += text;
+		return result;
+	}
 }
