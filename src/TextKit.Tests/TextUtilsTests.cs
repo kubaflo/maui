@@ -48,4 +48,23 @@ public class TextUtilsTests
 		var prefix = new string('a', prefixLength);
 		Assert.Equal(prefix + expectedSuffix, TextUtils.Slugify(prefix + "\U0001F600z"));
 	}
+
+	[Theory]
+	[InlineData('#')]
+	[InlineData('/')]
+	[InlineData('?')]
+	[InlineData('\\')]
+	[InlineData('%')]
+	public void SlugifyNormalizesUrlDelimiters(char delimiter)
+	{
+		var prefix = new string('a', 25);
+		var suffix = new string('b', 24);
+		Assert.Equal(prefix + "-" + suffix, TextUtils.Slugify(prefix + delimiter + suffix));
+	}
+
+	[Theory]
+	[InlineData(".")]
+	[InlineData("..")]
+	public void SlugifyDoesNotReturnDotSegments(string title)
+		=> Assert.Equal("", TextUtils.Slugify(title));
 }

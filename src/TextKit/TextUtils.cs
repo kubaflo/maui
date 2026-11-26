@@ -15,11 +15,26 @@ public static class TextUtils
 	/// </summary>
 	public static string Slugify(string title)
 	{
-		var slug = title.ToLowerInvariant().Replace(' ', '-');
+		var characters = title.ToLowerInvariant().ToCharArray();
+		for (var i = 0; i < characters.Length; i++)
+		{
+			var character = characters[i];
+			if (char.IsAscii(character)
+				? !char.IsAsciiLetterOrDigit(character) && character is not ('-' or '.' or '_' or '~')
+				: char.IsWhiteSpace(character) || char.IsControl(character))
+			{
+				characters[i] = '-';
+			}
+		}
+
+		var slug = new string(characters);
 		while (slug.Contains("--"))
 			slug = slug.Replace("--", "-");
 
 		slug = slug.Trim('-');
+		if (slug is "." or "..")
+			return "";
+
 		const int MaxSlugLength = 50;
 		if (slug.Length <= MaxSlugLength)
 			return slug;
