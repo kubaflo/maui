@@ -22,4 +22,8 @@ public class TextUtilsTests
 	[InlineData("one\u00A0two", 2)]
 	public void WordCountCountsNonemptyWhitespaceSeparatedWords(string input, int expected)
 		=> Assert.Equal(expected, TextUtils.WordCount(input));
+
+	[Fact]
+	public void WordCountReturnsZeroForNull()
+		=> Assert.Equal(0, TextUtils.WordCount(null!));
 }
