@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using TextKit;
 using Xunit;
@@ -67,4 +68,32 @@ public class TextUtilsTests
 	[InlineData("..")]
 	public void SlugifyDoesNotReturnDotSegments(string title)
 		=> Assert.Equal("", TextUtils.Slugify(title));
+
+	[Theory]
+	[InlineData("abcdef", 5, "abcd…")]
+	[InlineData("x", 0, "")]
+	[InlineData("ab", 1, "…")]
+	public void TruncateCountsEllipsisTowardMaxLength(string text, int maxLength, string expected)
+		=> Assert.Equal(expected, TextUtils.Truncate(text, maxLength));
+
+	[Theory]
+	[InlineData("\U0001F600x", 1, "…")]
+	[InlineData("\U0001F600xy", 2, "…")]
+	[InlineData("a\U0001F600xy", 3, "a…")]
+	[InlineData("\U0001F600xy", 3, "\U0001F600…")]
+	public void TruncateDoesNotSplitSurrogatePairs(string text, int maxLength, string expected)
+		=> Assert.Equal(expected, TextUtils.Truncate(text, maxLength));
+
+	[Theory]
+	[InlineData("abc", 4)]
+	[InlineData("abc", 3)]
+	[InlineData("", 0)]
+	public void TruncateReturnsTextUnchangedWhenWithinMaxLength(string text, int maxLength)
+		=> Assert.Equal(text, TextUtils.Truncate(text, maxLength));
+
+	[Theory]
+	[InlineData(-1)]
+	[InlineData(int.MinValue)]
+	public void TruncateRejectsNegativeMaxLength(int maxLength)
+		=> Assert.Throws<ArgumentOutOfRangeException>(() => TextUtils.Truncate("abc", maxLength));
 }
