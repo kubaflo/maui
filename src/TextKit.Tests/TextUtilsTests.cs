@@ -25,4 +25,8 @@ public class TextUtilsTests
 	[InlineData("ada \U00020BB7", "A\U00020BB7")]
 	public void InitialsPreservesSupplementaryCharacters(string input, string expected)
 		=> Assert.Equal(expected, TextUtils.Initials(input));
+
+	[Fact]
+	public void InitialsSplitsOnAnyWhitespace()
+		=> Assert.Equal("AL", TextUtils.Initials("Ada\tLovelace"));
 }
