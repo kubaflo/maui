@@ -19,4 +19,10 @@ public class TextUtilsTests
 	[InlineData("   ", "")]
 	public void InitialsIgnoresEmptyNameParts(string input, string expected)
 		=> Assert.Equal(expected, TextUtils.Initials(input));
+
+	[Theory]
+	[InlineData("\U00020BB7 tanaka", "\U00020BB7T")]
+	[InlineData("ada \U00020BB7", "A\U00020BB7")]
+	public void InitialsPreservesSupplementaryCharacters(string input, string expected)
+		=> Assert.Equal(expected, TextUtils.Initials(input));
 }

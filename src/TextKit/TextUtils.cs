@@ -10,13 +10,18 @@ public static class TextUtils
 		return char.ToUpperInvariant(text[0]) + text.Substring(1);
 	}
 
-	/// <summary>Returns uppercase initials from nonempty space-separated parts of a name.</summary>
+	/// <summary>Returns uppercase initials from the first Unicode character of each nonempty space-separated part.</summary>
 	public static string Initials(string fullName)
 	{
 		var parts = fullName.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
 		var result = "";
 		foreach (var part in parts)
-			result += part[0];
+		{
+			if (char.IsSurrogatePair(part, 0))
+				result += part[..2];
+			else
+				result += part[0];
+		}
 		return result.ToUpper();
 	}
 }
