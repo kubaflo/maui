@@ -45,11 +45,20 @@ public static class TextUtils
 		return slug.Substring(0, length);
 	}
 
-	/// <summary>Shortens <paramref name="text"/> to at most <paramref name="maxLength"/> characters, ending with "…".</summary>
+	/// <summary>
+	/// Returns <paramref name="text"/> unchanged if it fits within <paramref name="maxLength"/> UTF-16 code units.
+	/// Otherwise, shortens it to fit, including a final ellipsis, or returns an empty string when the limit is zero.
+	/// </summary>
+	/// <exception cref="System.ArgumentOutOfRangeException"><paramref name="maxLength"/> is negative.</exception>
 	public static string Truncate(string text, int maxLength)
 	{
 		if (text.Length <= maxLength)
 			return text;
-		return text.Substring(0, maxLength) + "…";
+
+		System.ArgumentOutOfRangeException.ThrowIfNegative(maxLength);
+		if (maxLength == 0)
+			return string.Empty;
+
+		return text.Substring(0, maxLength - 1) + "…";
 	}
 }
