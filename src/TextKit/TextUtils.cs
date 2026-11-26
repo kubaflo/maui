@@ -9,4 +9,14 @@ public static class TextUtils
 
 		return char.ToUpperInvariant(text[0]) + text.Substring(1);
 	}
+
+	public static bool IsPalindrome(string text)
+	{
+		for (int i = 0; i < text.Length; i++)
+		{
+			if (text[i] != text[text.Length - i])
+				return false;
+		}
+		return true;
+	}
 }
