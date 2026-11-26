@@ -29,11 +29,17 @@ jobs:
             const { data: file } = await github.rest.repos.getContent({ ...context.repo, path, ref: pr.head.ref });
             let text = Buffer.from(file.content, 'base64').toString('utf8').trimEnd();
             text = text.replace(/}\s*$/, '') + '\n\t[Fact]\n\tpublic void ' + process.env.TEST_NAME + '()\n\t\t=> ' + process.env.TEST_CODE + ';\n}\n';
-            await github.rest.repos.createOrUpdateFileContents({ ...context.repo, path, branch: pr.head.ref, sha: file.sha,
+            const { data: commit } = await github.rest.repos.createOrUpdateFileContents({ ...context.repo, path, branch: pr.head.ref, sha: file.sha,
               message: `Add ${process.env.TEST_NAME} test`, content: Buffer.from(text).toString('base64') });
-            ({ data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number }));
+            // Use the new commit directly; the PR head can lag right after a push.
+            const head = commit.commit.sha;
+            for (let i = 0; i < 20; i++) {
+              ({ data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number }));
+              if (pr.head.sha === head) break;
+              await new Promise(r => setTimeout(r, 3000));
+            }
             // Sandbox stand-in for a clean expert review of the new head, so the loop is in its test stage.
-            await github.rest.pulls.createReview({ ...context.repo, pull_number: number, commit_id: pr.head.sha, event: 'COMMENT',
+            await github.rest.pulls.createReview({ ...context.repo, pull_number: number, commit_id: head, event: 'COMMENT',
               body: '## Expert Review — 0 findings\n\n_Sandbox stand-in: the expert review of this head is treated as clean._' });
             const body = [
               '<!-- review-run-tests-all -->',
@@ -45,7 +51,7 @@ jobs:
               '',
               '| Test | Error |', '|---|---|',
               `| \`TextUtilsTests.${process.env.TEST_NAME}\` | \`${process.env.TEST_ERROR}\` |`,
-              `<!-- review-run-tests-head: ${pr.head.sha} -->`,
+              `<!-- review-run-tests-head: ${head} -->`,
               '<!-- review-run-tests-state: done -->',
               '<!-- run-tests-result: FAILED -->',
               '<!-- /run-tests-section: ui -->',
