@@ -49,7 +49,7 @@ public static class TextUtils
 	public static string Initials(string name)
 	{
 		var result = "";
-		foreach (var word in name.Split(' '))
+		foreach (var word in name.Split(' ', System.StringSplitOptions.RemoveEmptyEntries))
 			result += word[0];
 		return result.ToUpper();
 	}
