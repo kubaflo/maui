@@ -44,4 +44,13 @@ public static class TextUtils
 			length--;
 		return slug.Substring(0, length);
 	}
+
+	/// <summary>Returns the initials of each word in <paramref name="name"/>, upper-cased.</summary>
+	public static string Initials(string name)
+	{
+		var result = "";
+		foreach (var word in name.Split(' '))
+			result += word[0];
+		return result.ToUpper();
+	}
 }
