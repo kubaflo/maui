@@ -2,14 +2,10 @@
 description: Sandbox probe - can the agent run a nested Copilot CLI with Claude over chat completions?
 on:
   workflow_dispatch:
-  roles: [admin, maintain, write]
 permissions:
   contents: read
 imports:
   - shared/gpt-6.2-sol.md
-  - uses: shared/pat_pool.md
-    with:
-      environment: copilot-pat-pool
 environment: copilot-pat-pool
 tools:
   bash: ["which", "env", "copilot", "ls", "cat", "echo", "bash", "sh", "printenv", "cut", "grep", "sed", "head"]
@@ -46,7 +42,7 @@ engine:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
     DOTNET_NOLOGO: "1"
     DOTNET_CLI_TELEMETRY_OPTOUT: "1"
-    COPILOT_GITHUB_TOKEN: ${{ case(needs.pat_pool.outputs.pat_number == '0', secrets.COPILOT_PAT_0, needs.pat_pool.outputs.pat_number == '1', secrets.COPILOT_PAT_1, needs.pat_pool.outputs.pat_number == '2', secrets.COPILOT_PAT_2, needs.pat_pool.outputs.pat_number == '3', secrets.COPILOT_PAT_3, needs.pat_pool.outputs.pat_number == '4', secrets.COPILOT_PAT_4, needs.pat_pool.outputs.pat_number == '5', secrets.COPILOT_PAT_5, needs.pat_pool.outputs.pat_number == '6', secrets.COPILOT_PAT_6, needs.pat_pool.outputs.pat_number == '7', secrets.COPILOT_PAT_7, needs.pat_pool.outputs.pat_number == '8', secrets.COPILOT_PAT_8, needs.pat_pool.outputs.pat_number == '9', secrets.COPILOT_PAT_9, secrets.COPILOT_GITHUB_TOKEN) }}
+    COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT_0 }}
 
 timeout-minutes: 20
 ---
