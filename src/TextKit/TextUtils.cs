@@ -52,7 +52,10 @@ public static class TextUtils
 	{
 		var result = new StringBuilder();
 		foreach (var word in name.Split(' ', System.StringSplitOptions.RemoveEmptyEntries))
-			result.Append(word[0]);
+		{
+			var length = word.Length > 1 && char.IsSurrogatePair(word, 0) ? 2 : 1;
+			result.Append(word, 0, length);
+		}
 		return result.ToString().ToUpper();
 	}
 }
