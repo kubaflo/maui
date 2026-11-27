@@ -7,7 +7,8 @@ themselves. The PR template has one checkbox:
 
 > - [ ] **Let the MAUI agent address review feedback and fix remaining issues on this PR.**
 
-When it's ticked, **one `/review autopilot` comment from a maintainer** drives the PR until the MAUI expert reviewer has
+Ticking it tells maintainers the author wants this. **One `/review autopilot` comment from a maintainer** drives any PR,
+ticked or not, until the MAUI expert reviewer has
 no findings and the relevant tests pass. Maintainers still decide whether the PR is merged.
 
 The command comment is hidden as resolved once it's processed, like the other `/review` commands. `/review autopilot`
@@ -51,7 +52,6 @@ The loop has no round limit. It stops when:
 - the tests pass,
 - a fix round finds nothing it can fix,
 - a maintainer removes the `s/autopilot-running` label,
-- the author unticks the checkbox,
 - the PR is closed,
 - the maintainer who started the loop loses write access.
 
@@ -101,8 +101,11 @@ The items come from:
   failure independently as `related`, `unrelated` (infrastructure, flaky, or already broken on the base branch) or
   `unsure`, using the failed jobs and error lines collected from Azure DevOps. The majority decides; a split counts as
   `related`. Only related failures are fixed, and the round's comment shows each model's verdict per failure,
-- Copilot code review suggestions that are still open: after a clean expert review, open Copilot threads
-  start a fix round before the tests run. Each one is fixed or answered in its thread,
+- **every earlier suggestion that's still open**, from maintainers, earlier MAUI expert reviews, MauiBot and Copilot
+  code review, on any head, outdated or not. Each one is checked against the current code: it's fixed, answered
+  "✅ Already addressed" or "✅ No longer applies" and resolved, or answered "❌ Not changed" with why and left
+  open for a maintainer. Unanswered threads start a fix round before the tests run, and a round that pushes nothing
+  but answers every thread moves the loop on,
 - open maintainer requests.
 
 How the fixes are published:
