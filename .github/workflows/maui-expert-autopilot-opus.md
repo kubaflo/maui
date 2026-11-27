@@ -217,7 +217,7 @@ steps:
       BASE_REF: ${{ needs.pre_activation.outputs.autopilot_base_ref }}
     run: |
       set -euo pipefail
-      VERSION="$(git show "refs/remotes/origin/${BASE_REF}:global.json" | jq -r '.tools.dotnet // empty')"
+      VERSION="$(git show "refs/remotes/origin/${BASE_REF}:global.json" 2>/dev/null | jq -r '.tools.dotnet // empty' || true)"
       if [ -z "${VERSION}" ]; then echo "global.json pins no SDK."; exit 0; fi
       DIR="${RUNNER_TOOL_CACHE}/maui-dotnet/x64/bin"
       curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
