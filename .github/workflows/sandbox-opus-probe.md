@@ -2,6 +2,7 @@
 description: Sandbox probe - can the agent run a nested Copilot CLI with Claude over chat completions?
 on:
   workflow_dispatch:
+  roles: [admin, maintain, write]
 permissions:
   contents: read
 imports:
