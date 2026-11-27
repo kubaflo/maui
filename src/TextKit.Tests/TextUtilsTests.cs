@@ -76,4 +76,8 @@ public class TextUtilsTests
 	[InlineData("A\U0001F469\u200D\U0001F4BBe\u0301B", "Be\u0301\U0001F469\u200D\U0001F4BBA")]
 	public void ReverseTextReversesWholeTextElements(string input, string expected)
 		=> Assert.Equal(expected, TextUtils.ReverseText(input));
+
+	[Fact]
+	public void ReverseTextTreatsNullAsEmpty()
+		=> Assert.Equal("", TextUtils.ReverseText(null!));
 }
