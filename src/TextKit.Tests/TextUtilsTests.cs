@@ -11,6 +11,28 @@ public class TextUtilsTests
 	public void CapitalizeUppercasesFirstLetter(string? input, string expected)
 		=> Assert.Equal(expected, TextUtils.Capitalize(input));
 
+	[Theory]
+	[InlineData("Ada Lovelace", "AL")]
+	[InlineData(" Ada  Lovelace ", "AL")]
+	[InlineData("", "")]
+	[InlineData("   ", "")]
+	public void InitialsSkipsEmptyWords(string name, string expected)
+		=> Assert.Equal(expected, TextUtils.Initials(name));
+
+	[Theory]
+	[InlineData("Ada\tLovelace", "AL")]
+	[InlineData("\tAda Lovelace", "AL")]
+	[InlineData("ada\nlovelace", "AL")]
+	[InlineData("Ada\u00A0Lovelace", "AL")]
+	public void InitialsSplitsOnWhitespace(string name, string expected)
+		=> Assert.Equal(expected, TextUtils.Initials(name));
+
+	[Theory]
+	[InlineData("\U00010428 Smith", "\U00010400S")]
+	[InlineData("Smith \U00010428", "S\U00010400")]
+	public void InitialsUppercasesSupplementaryLetters(string name, string expected)
+		=> Assert.Equal(expected, TextUtils.Initials(name));
+
 	[Fact]
 	public void SlugifyUsesInvariantCasing()
 	{

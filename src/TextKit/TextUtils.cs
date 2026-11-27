@@ -1,3 +1,6 @@
+using System;
+using System.Text;
+
 namespace TextKit;
 
 public static class TextUtils
@@ -43,5 +46,17 @@ public static class TextUtils
 		if (char.IsSurrogatePair(slug[length - 1], slug[length]))
 			length--;
 		return slug.Substring(0, length);
+	}
+
+	/// <summary>Returns the upper-cased initials of the whitespace-separated words in <paramref name="name"/>.</summary>
+	public static string Initials(string name)
+	{
+		var result = new StringBuilder();
+		foreach (var word in name.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+		{
+			var length = word.Length > 1 && char.IsSurrogatePair(word, 0) ? 2 : 1;
+			result.Append(word, 0, length);
+		}
+		return result.ToString().ToUpper();
 	}
 }
