@@ -4,8 +4,8 @@ description: |
   One `/review autopilot` command from a maintainer drives an opted-in pull request toward a mergeable
   state: MAUI expert review -> fix -> expert review ... until the expert reviewer has no findings,
   then `/review run-tests` -> fix -> expert review -> run-tests ... until the relevant tests pass.
-  Every fix round has GPT-6.2 Sol, MAI Code 2 and Claude Opus 5.5 each propose a fix, critique each other's
-  fixes and revise their own, then keeps the best one per item.
+  Every fix round has GPT-6.2 Sol, MAI Code 2 and Claude Opus 5.5 (in maui-expert-autopilot-opus) each propose a
+  fix; GPT-6.2 Sol and MAI Code 2 critique the others and revise their own, then the best one per item is kept.
   The loop runs while the PR carries `s/autopilot-running`; removing the label ends it. Maintainers still decide whether anything is merged. See .github/docs/maui-expert-autopilot.md.
 
 imports:
@@ -265,7 +265,7 @@ on:
               '<details><summary>Models</summary>',
               '',
               '- Review: GPT-6.1 Sol (MAUI expert reviewer)',
-              '- Fix: GPT-6.2 Sol, MAI Code 2 and Claude Opus 5.5 fix independently, critique each other and revise; the best fix is kept',
+              '- Fix: GPT-6.2 Sol, MAI Code 2 and Claude Opus 5.5 fix independently, then cross-examine each other; the best fix is kept',
               '- Test selection: GPT-6.2 Sol and MAI Code 2',
               '',
               '</details>',
