@@ -79,5 +79,5 @@ public class TextUtilsTests
 
 	[Fact]
 	public void ReverseTextTreatsNullAsEmpty()
-		=> Assert.Equal("", TextUtils.ReverseText(null!));
+		=> Assert.Equal("", TextUtils.ReverseText(null));
 }

@@ -49,9 +49,11 @@ public static class TextUtils
 	}
 
 	/// <summary>Reverses the order of the Unicode text elements in <paramref name="text"/>.</summary>
-	public static string ReverseText(string text)
+	/// <returns>The reversed text, or an empty string when <paramref name="text"/> is <see langword="null"/>.</returns>
+	public static string ReverseText(string? text)
 	{
-		ArgumentNullException.ThrowIfNull(text);
+		if (text is null)
+			return string.Empty;
 
 		return string.Create(text.Length, text, static (destination, source) =>
 		{
