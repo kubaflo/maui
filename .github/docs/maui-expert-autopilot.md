@@ -66,6 +66,7 @@ the loop moves:
 | `s/autopilot-fixing` | A fix round (GPT-6.2 Sol, MAI Code 2, Claude Opus 5.5) is running |
 | `s/autopilot-testing` | `/review run-tests` is selecting or running the relevant tests |
 | `s/autopilot-waiting-for-maintainer-review` | Done: the expert review is clean and the tests passed. Waiting for a maintainer |
+| `s/autopilot-needs-maintainer-decision` | Stopped: nothing more the loop can fix, a step failed twice, or the tests couldn't run. A maintainer decides how to continue |
 | `s/autopilot-retrying` | An expert review, fix round or test selection failed once and is being retried. A second failure in a row stops the loop |
 
 Stopping the loop, for any reason, removes all `s/autopilot-*` labels, and a new `/review autopilot` replaces
@@ -75,13 +76,18 @@ Stopping the loop, for any reason, removes all `s/autopilot-*` labels, and a new
 
 The main agent (GPT-6.2 Sol) writes down the items to fix. Then:
 
-1. **Propose.** Each model fixes the items independently in its own worktree:
-   - GPT-6.2 Sol, in the main agent,
-   - MAI Code 2, through the in-workflow `autopilot-mai-fixer` agent,
-   - Claude Opus 5.5, through the in-workflow `autopilot-opus-fixer` agent.
-2. **Cross-examine.** Each model reviews the other two candidates as an adversary (bugs, missed cases, weak
-   tests, changes beyond the item), then revises its own candidate. It fixes what the others found and adopts a
-   better idea from another candidate when there is one. There is one critique round.
+1. **Propose.** Each model fixes the items independently:
+   - Claude Opus 5.5 goes first, in its own sandboxed workflow,
+     [`maui-expert-autopilot-opus`](../workflows/maui-expert-autopilot-opus.md). The Copilot CLI uses one wire
+     API per process: Claude is served over chat completions, while GPT-6.2 Sol and MAI Code 2 need the Responses
+     API. Opus only writes a candidate patch, saved as an artifact, then continues the fix round. If it fails,
+     the round continues with two candidates.
+   - GPT-6.2 Sol, in the main agent, and MAI Code 2, through the in-workflow `autopilot-mai-fixer` agent, each in
+     their own worktree.
+2. **Cross-examine.** GPT-6.2 Sol and MAI Code 2 each review the other two candidates as an adversary (bugs,
+   missed cases, weak tests, changes beyond the item), then revise their own candidate. They fix what the others
+   found and adopt a better idea from another candidate, including Opus's, when there is one. There is one
+   critique round. Opus's candidate is critiqued but not revised.
 3. **Choose.** The main agent picks the best revised candidate per item. It considers correctness, whether
    every critique was answered, regression tests, size, the repo guidance, and validation results. It then runs
    the unit tests it can and commits one commit per item.
@@ -91,7 +97,10 @@ The thread reply names the model whose fix was kept, and any idea it adopted fro
 The items come from:
 
 - the expert review: all critical and major findings, plus small and safe moderate and minor ones,
-- failing tests the PR causes: the round lists infrastructure and known-flaky failures instead of fixing them,
+- failing tests the PR causes. Before fixing anything, GPT-6.2 Sol, MAI Code 2 and Claude Opus 5.5 each judge every
+  failure independently as `related`, `unrelated` (infrastructure, flaky, or already broken on the base branch) or
+  `unsure`, using the failed jobs and error lines collected from Azure DevOps. The majority decides; a split counts as
+  `related`. Only related failures are fixed, and the round's comment shows each model's verdict per failure,
 - Copilot code review suggestions that are still open: after a clean expert review, open Copilot threads
   start a fix round before the tests run. Each one is fixed or answered in its thread,
 - open maintainer requests.
