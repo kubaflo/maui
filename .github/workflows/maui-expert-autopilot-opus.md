@@ -209,6 +209,21 @@ steps:
       jq 'length' /tmp/gh-aw/autopilot/threads.json
       git status --short | head -20
 
+  - name: Install the repository's .NET SDK
+    # Fix rounds build and run unit tests, and the runner's SDK is older than global.json. The agent
+    # container puts every tool-cache bin directory on PATH, so install there. The version comes from
+    # the trusted base branch, not the PR.
+    env:
+      BASE_REF: ${{ needs.pre_activation.outputs.autopilot_base_ref }}
+    run: |
+      set -euo pipefail
+      VERSION="$(git show "refs/remotes/origin/${BASE_REF}:global.json" | jq -r '.tools.dotnet // empty')"
+      if [ -z "${VERSION}" ]; then echo "global.json pins no SDK."; exit 0; fi
+      DIR="${RUNNER_TOOL_CACHE}/maui-dotnet/x64/bin"
+      curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+      bash /tmp/dotnet-install.sh --version "${VERSION}" --install-dir "${DIR}" --no-path
+      "${DIR}/dotnet" --list-sdks
+
   - name: Collect the failing test evidence
     # The agent can't reach Azure DevOps itself; fetch the failed jobs, tasks, and error lines up front.
     if: needs.pre_activation.outputs.autopilot_source == 'tests'
@@ -269,6 +284,7 @@ network:
     - github
     - dotnet
     - dev.azure.com
+    - pkgs.dev.azure.com
     - "*.blob.core.windows.net"
 
 safe-outputs:
@@ -278,8 +294,7 @@ safe-outputs:
 
 # maui-expert-autopilot — Claude Opus 5.5 candidate
 
-A maintainer started maui-expert-autopilot on the pull request in `/tmp/gh-aw/autopilot/context.json`, and
-its author ticked **"Let the MAUI agent address review feedback and fix remaining issues on this PR."**
+A maintainer started maui-expert-autopilot on the pull request in `/tmp/gh-aw/autopilot/context.json`.
 Three models (GPT-6.2 Sol, MAI Code 2 and you, Claude Opus 5.5) each fix the same round independently.
 **You produce one candidate.** You do not commit, push, comment, or reply: the fix round compares your
 candidate against the others, has them critique it, and publishes the best fix per item.
