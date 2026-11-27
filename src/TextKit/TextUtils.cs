@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 
 namespace TextKit;
@@ -47,11 +48,11 @@ public static class TextUtils
 		return slug.Substring(0, length);
 	}
 
-	/// <summary>Returns the initials of each word in <paramref name="name"/>, upper-cased.</summary>
+	/// <summary>Returns the upper-cased initials of the whitespace-separated words in <paramref name="name"/>.</summary>
 	public static string Initials(string name)
 	{
 		var result = new StringBuilder();
-		foreach (var word in name.Split(' ', System.StringSplitOptions.RemoveEmptyEntries))
+		foreach (var word in name.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
 		{
 			var length = word.Length > 1 && char.IsSurrogatePair(word, 0) ? 2 : 1;
 			result.Append(word, 0, length);
