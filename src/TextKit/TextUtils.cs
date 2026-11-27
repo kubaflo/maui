@@ -1,3 +1,5 @@
+using System;
+
 namespace TextKit;
 
 public static class TextUtils
@@ -45,9 +47,9 @@ public static class TextUtils
 		return slug.Substring(0, length);
 	}
 
-	/// <summary>Counts the words in <paramref name="text"/>. Words are separated by whitespace.</summary>
+	/// <summary>Counts the nonempty words in <paramref name="text"/>, using whitespace as separators.</summary>
 	public static int CountWords(string text)
 	{
-		return text.Split(' ').Length;
+		return text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
 	}
 }
