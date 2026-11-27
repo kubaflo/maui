@@ -8,7 +8,7 @@ imports:
   - shared/gpt-6.2-sol.md
 environment: copilot-pat-pool
 tools:
-  bash: ["which", "env", "copilot", "ls", "cat", "echo", "bash", "sh", "printenv", "cut", "grep", "sed", "head"]
+  bash: ["echo"]
 network:
   allowed: [defaults, github]
 model: gpt-6.2-sol
@@ -36,8 +36,6 @@ models:
 engine:
   id: copilot
   env:
-    # GPT-6.2 Sol and MAI Code 2 are served only over the Responses API.
-    COPILOT_PROVIDER_WIRE_API: responses
     # The candidates run dotnet in parallel worktrees; skip first-run setup and telemetry.
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
     DOTNET_NOLOGO: "1"
@@ -47,11 +45,21 @@ engine:
 timeout-minutes: 20
 ---
 
-Run these bash commands one at a time and report each exact output in your final answer:
+Delegate to the `probe-mai` agent, then to the `probe-opus` agent. Report each agent's exact reply, or its exact
+error, in your final answer. Then reply yourself with `SOL-OK`. Do nothing else.
 
-1. `which copilot`
-2. `printenv | grep -E '^COPILOT_(PROVIDER|MODEL)' | cut -d= -f1`
-3. `env COPILOT_PROVIDER_WIRE_API=completions copilot --model claude-opus-5.5 --allow-all-tools -p "Reply with exactly: OPUS-OK"`
-4. `env COPILOT_PROVIDER_WIRE_API=completions COPILOT_MODEL=claude-opus-5.5 copilot --allow-all-tools -p "Reply with exactly: OPUS-OK"`
+## agent: `probe-mai`
+---
+description: MAI probe
+model: mai-code-2
+---
 
-Do not do anything else.
+Reply with exactly: MAI-OK
+
+## agent: `probe-opus`
+---
+description: Opus probe
+model: claude-opus-5.5
+---
+
+Reply with exactly: OPUS-OK
