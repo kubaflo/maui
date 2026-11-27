@@ -82,6 +82,8 @@ jobs:
       autopilot_head_sha: ${{ steps.state.outputs.head_sha }}
       autopilot_is_fork: ${{ steps.state.outputs.is_fork }}
       autopilot_requested_by: ${{ steps.state.outputs.requested_by }}
+  agent:
+    needs: [pre_activation, activation, pat_pool]
   continue_round:
     # Hand the candidate (or its absence) to the fix round, which runs even if Opus failed.
     needs: [pre_activation, activation, agent]
