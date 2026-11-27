@@ -12,6 +12,14 @@ public class TextUtilsTests
 		=> Assert.Equal(expected, TextUtils.Capitalize(input));
 
 	[Theory]
+	[InlineData("Ada Lovelace", "AL")]
+	[InlineData(" Ada  Lovelace ", "AL")]
+	[InlineData("", "")]
+	[InlineData("   ", "")]
+	public void InitialsSkipsEmptyWords(string name, string expected)
+		=> Assert.Equal(expected, TextUtils.Initials(name));
+
+	[Theory]
 	[InlineData("Ada\tLovelace", "AL")]
 	[InlineData("\tAda Lovelace", "AL")]
 	[InlineData("ada\nlovelace", "AL")]
