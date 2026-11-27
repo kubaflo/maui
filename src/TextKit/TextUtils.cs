@@ -44,4 +44,10 @@ public static class TextUtils
 			length--;
 		return slug.Substring(0, length);
 	}
+
+	/// <summary>Counts the words in <paramref name="text"/>. Words are separated by whitespace.</summary>
+	public static int CountWords(string text)
+	{
+		return text.Split(' ').Length;
+	}
 }
