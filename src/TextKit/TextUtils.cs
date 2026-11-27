@@ -44,4 +44,12 @@ public static class TextUtils
 			length--;
 		return slug.Substring(0, length);
 	}
+
+	/// <summary>Reverses the characters in <paramref name="text"/>.</summary>
+	public static string ReverseText(string text)
+	{
+		var chars = text.ToCharArray();
+		System.Array.Reverse(chars);
+		return new string(chars);
+	}
 }
