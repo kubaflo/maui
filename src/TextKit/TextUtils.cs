@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace TextKit;
 
 public static class TextUtils
@@ -48,9 +50,9 @@ public static class TextUtils
 	/// <summary>Returns the initials of each word in <paramref name="name"/>, upper-cased.</summary>
 	public static string Initials(string name)
 	{
-		var result = "";
+		var result = new StringBuilder();
 		foreach (var word in name.Split(' ', System.StringSplitOptions.RemoveEmptyEntries))
-			result += word[0];
-		return result.ToUpper();
+			result.Append(word[0]);
+		return result.ToString().ToUpper();
 	}
 }
