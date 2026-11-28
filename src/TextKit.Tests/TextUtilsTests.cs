@@ -67,4 +67,17 @@ public class TextUtilsTests
 	[InlineData("..")]
 	public void SlugifyDoesNotReturnDotSegments(string title)
 		=> Assert.Equal("", TextUtils.Slugify(title));
+
+	[Theory]
+	[InlineData("", 0)]
+	[InlineData(" \t\n", 0)]
+	[InlineData("one two", 2)]
+	[InlineData("one  two", 2)]
+	[InlineData(" one ", 1)]
+	[InlineData("one\ttwo", 2)]
+	[InlineData("one\ntwo", 2)]
+	[InlineData("one\u00A0two", 2)]
+	[InlineData("one-two", 1)]
+	public void CountWordsCountsNonemptyWhitespaceSeparatedWords(string text, int expected)
+		=> Assert.Equal(expected, TextUtils.CountWords(text));
 }

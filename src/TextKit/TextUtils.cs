@@ -1,3 +1,5 @@
+using System;
+
 namespace TextKit;
 
 public static class TextUtils
@@ -44,5 +46,11 @@ public static class TextUtils
 		if (char.IsSurrogatePair(slug[length - 1], slug[length]))
 			length--;
 		return slug.Substring(0, length);
+	}
+
+	/// <summary>Counts the nonempty words in <paramref name="text"/>, using whitespace as separators.</summary>
+	public static int CountWords(string text)
+	{
+		return text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
 	}
 }
