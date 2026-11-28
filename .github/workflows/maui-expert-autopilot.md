@@ -449,6 +449,7 @@ jobs:
           SAFE_OUTPUTS_RESULT: ${{ needs.safe_outputs.result }}
           OPUS_RUN: ${{ needs.pre_activation.outputs.autopilot_opus_run }}
           LOOP_START: ${{ needs.pre_activation.outputs.autopilot_loop_start }}
+          SOURCE: ${{ needs.pre_activation.outputs.autopilot_source }}
         with:
           script: |
             const LABEL = 's/autopilot-running';
@@ -532,7 +533,8 @@ jobs:
             const published = process.env.IS_FORK === 'true' ? !!followUp : pr.state === 'open' && pr.head.sha !== process.env.HEAD_SHA;
             if (!published) {
               // Nothing published, but if the round answered every open thread, the loop moves on (to tests or done).
-              if (pr.state === 'open' && !failed && !(await unansweredThreads())) {
+              // A conflicts round that published nothing would only find the same conflicts again.
+              if (pr.state === 'open' && !failed && process.env.SOURCE !== 'conflicts' && !(await unansweredThreads())) {
                 await github.rest.actions.createWorkflowDispatch({ ...context.repo, workflow_id: 'maui-expert-autopilot.lock.yml',
                   ref: context.payload.repository.default_branch, inputs: { pr_number: String(number) } });
                 return core.info(`#${number}: every thread is answered; the loop continues.`);
@@ -647,7 +649,7 @@ steps:
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git merge --squash "refs/remotes/origin/pr-${PR_NUMBER}" || true
         # PublicAPI.Unshipped.txt entries are a set: base entries, plus the PR's added ones, minus its removed ones.
-        for FILE in $(git diff --name-only --diff-filter=U | grep -E '(^|/)PublicAPI\.Unshipped\.txt$' || true); do
+        for FILE in $(git ls-files -u | awk '{print $4}' | sort -u | grep -E '(^|/)PublicAPI\.Unshipped\.txt$' || true); do
           git show ":1:${FILE}" > /tmp/api-base 2>/dev/null || : > /tmp/api-base
           git show ":2:${FILE}" > /tmp/api-ours
           git show ":3:${FILE}" > /tmp/api-pr
@@ -663,7 +665,7 @@ steps:
           echo "PublicAPI.Unshipped.txt conflicts were resolved by combining the entries. Commit author: ${CONFLICT_AUTHOR}"
           echo
           echo "Still conflicting:"
-          git diff --name-only --diff-filter=U | sed 's/^/- /'
+          git ls-files -u | awk '{print $4}' | sort -u | sed 's/^/- /'
         } > /tmp/gh-aw/autopilot/conflicts.md
         cat /tmp/gh-aw/autopilot/conflicts.md
       else
@@ -680,7 +682,7 @@ steps:
 
       git config user.name "github-actions[bot]"
       git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      if [ "${SOURCE}" = "conflicts" ] && [ -z "$(git diff --name-only --diff-filter=U)" ] && ! git diff --cached --quiet; then
+      if [ "${SOURCE}" = "conflicts" ] && [ -z "$(git ls-files -u | awk '{print $4}' | sort -u)" ] && ! git diff --cached --quiet; then
         git commit -q --author="${CONFLICT_AUTHOR}" -m "Changes from #${PR_NUMBER}, rebased on ${BASE_REF}" \
           -m "Rebased by MAUI Autopilot to resolve merge conflicts."
       fi
