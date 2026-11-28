@@ -67,4 +67,17 @@ public class TextUtilsTests
 	[InlineData("..")]
 	public void SlugifyDoesNotReturnDotSegments(string title)
 		=> Assert.Equal("", TextUtils.Slugify(title));
+
+	[Theory]
+	[InlineData("", "")]
+	[InlineData("abc", "cba")]
+	[InlineData("A\U0001F600B", "B\U0001F600A")]
+	[InlineData("e\u0301x", "xe\u0301")]
+	[InlineData("A\U0001F469\u200D\U0001F4BBe\u0301B", "Be\u0301\U0001F469\u200D\U0001F4BBA")]
+	public void ReverseTextReversesWholeTextElements(string input, string expected)
+		=> Assert.Equal(expected, TextUtils.ReverseText(input));
+
+	[Fact]
+	public void ReverseTextTreatsNullAsEmpty()
+		=> Assert.Equal("", TextUtils.ReverseText(null));
 }

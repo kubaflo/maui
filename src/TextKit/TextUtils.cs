@@ -1,3 +1,6 @@
+using System;
+using System.Globalization;
+
 namespace TextKit;
 
 public static class TextUtils
@@ -44,5 +47,27 @@ public static class TextUtils
 		if (char.IsSurrogatePair(slug[length - 1], slug[length]))
 			length--;
 		return slug.Substring(0, length);
+	}
+
+	/// <summary>Reverses the order of the Unicode text elements in <paramref name="text"/>.</summary>
+	/// <returns>The reversed text, or an empty string when <paramref name="text"/> is <see langword="null"/>.</returns>
+	public static string ReverseText(string? text)
+	{
+		if (text is null)
+			return string.Empty;
+
+		return string.Create(text.Length, text, static (destination, source) =>
+		{
+			var remaining = source.AsSpan();
+			var offset = destination.Length;
+			while (!remaining.IsEmpty)
+			{
+				var length = StringInfo.GetNextTextElementLength(remaining);
+				// Scan forward for boundaries, but place each intact element from right to left.
+				offset -= length;
+				remaining[..length].CopyTo(destination[offset..]);
+				remaining = remaining[length..];
+			}
+		});
 	}
 }
