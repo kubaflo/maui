@@ -2,6 +2,7 @@ namespace TextKit;
 
 public static class TextUtils
 {
+	/// <summary>Upper-cases the first letter of <paramref name="text"/>; null or empty input returns an empty string.</summary>
 	public static string Capitalize(string? text)
 	{
 		if (string.IsNullOrEmpty(text))
