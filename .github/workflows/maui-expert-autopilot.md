@@ -642,6 +642,9 @@ steps:
         # in its workflow and build changes, which neither GITHUB_TOKEN nor the allowed-files list permits.
         CONFLICT_AUTHOR="$(git log --reverse --format='%an <%ae>' "refs/remotes/origin/${BASE_REF}..refs/remotes/origin/pr-${PR_NUMBER}" | head -1)"
         git checkout -B "${WORK_BRANCH}" "refs/remotes/origin/${BASE_REF}"
+        # git merge needs an identity even for --squash.
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git merge --squash "refs/remotes/origin/pr-${PR_NUMBER}" || true
         # PublicAPI.Unshipped.txt entries are a set: base entries, plus the PR's added ones, minus its removed ones.
         for FILE in $(git diff --name-only --diff-filter=U | grep -E '(^|/)PublicAPI\.Unshipped\.txt$' || true); do
